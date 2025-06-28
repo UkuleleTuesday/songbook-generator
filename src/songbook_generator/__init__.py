@@ -34,11 +34,11 @@ def main(source_folder: str, dest_folder: str, limit: int):
     query = f"'{source_folder}' in parents and trashed = false"
     resp = drive.files().list(
         q=query,
-        pageSize=limit,
+        pageSize=1000,  # Fetch a large number of files to ensure all are retrieved
         fields="files(id,name)"
     ).execute()
 
-    files = sorted(resp.get('files', []), key=lambda f: f['name'])
+    files = sorted(resp.get('files', []), key=lambda f: f['name'])[:limit]
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
         return
