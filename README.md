@@ -16,7 +16,7 @@ Songbook Generator is a Python-based CLI tool designed specifically for Ukulele 
 
 ## Installation
 
-This project uses `uv` for development and building. Ensure `uv` is installed on your system.
+This project uses [uv](https://docs.astral.sh/uv/) for development and building. Ensure `uv` is installed on your system (check the link above for instructions).
 
 Clone the repository:
 ```bash
