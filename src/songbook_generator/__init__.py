@@ -47,23 +47,26 @@ def main(source_folder: str, dest_folder: str, limit: int):
         click.echo(f'No files found in folder {source_folder}.')
         return
 
-    # 3) Download files as PDFs into a temporary folder
+    click.echo(f"Starting download of {len(files)} files from folder {source_folder}...")
     temp_dir = tempfile.mkdtemp()
     pdf_paths = []
     for f in files:
         file_id = f['id']
         file_name = f['name']
         pdf_path = os.path.join(temp_dir, f"{file_name}.pdf")
+        click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
         request = drive.files().export_media(fileId=file_id, mimeType='application/pdf')
         with open(pdf_path, 'wb') as pdf_file:
             downloader = MediaIoBaseDownload(pdf_file, request)
             done = False
             while not done:
                 _, done = downloader.next_chunk()
+        click.echo(f"Saved PDF: {pdf_path}")
         pdf_paths.append(pdf_path)
 
     # 4) Merge all PDFs into a single master PDF
     master_pdf_path = os.path.join(temp_dir, "master.pdf")
+    click.echo("Merging all downloaded PDFs into a single master PDF...")
     merger = PdfMerger()
     for pdf_path in pdf_paths:
         merger.append(pdf_path)
@@ -71,7 +74,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
         merger.write(master_pdf_file)
 
     # 5) Output the path to the saved master PDF
-    click.echo(f"Master PDF saved at: {master_pdf_path}")
+    click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
 
 if __name__ == '__main__':
     main()
