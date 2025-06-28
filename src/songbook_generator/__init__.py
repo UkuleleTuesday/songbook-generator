@@ -38,7 +38,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
         fields="files(id,name)"
     ).execute()
 
-    files = resp.get('files', [])
+    files = sorted(resp.get('files', []), key=lambda f: f['name'])
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
         return
