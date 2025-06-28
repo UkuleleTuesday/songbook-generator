@@ -8,7 +8,7 @@ def load_toc_config():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        return config.get("toc", {}).get("font", "helv"), config.get("toc", {}).get("fontsize", 9)
+        return config.get("toc", {}).get("font", "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"), config.get("toc", {}).get("fontsize", 9)
     return "helv", 9
 
 
