@@ -97,7 +97,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
 
 
 @click.command()
-@click.option('--source-folder', '-s', multiple=True, default=load_config_folder_id(), help='Drive folder IDs to read files from (can be passed multiple times)')
+@click.option('--source-folder', '-s', multiple=True, default=[load_config_folder_id()], help='Drive folder IDs to read files from (can be passed multiple times)')
 @click.option('--limit', '-l', type=int, default=None, help='Limit the number of files to process (no limit by default)')
 def main(source_folder: str, limit: int):
     drive = authenticate_drive()
