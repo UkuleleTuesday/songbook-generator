@@ -4,7 +4,7 @@ import tempfile
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from pypdf import PdfWriter
+from pypdf import PdfWriter, PdfReader, Transformation
 
 
 @click.command()
@@ -71,7 +71,6 @@ def main(source_folder: str, dest_folder: str, limit: int):
     for pdf_path in pdf_paths:
         writer.append(pdf_path)
 
-    from pypdf import PdfWriter, PdfReader, Transformation
 
     click.echo("Adding page numbers to the top-right corner...")
     temp_dir = tempfile.mkdtemp()
