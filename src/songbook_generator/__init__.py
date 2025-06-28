@@ -42,7 +42,11 @@ def main(source_folder: str, dest_folder: str, limit: int):
         fields="files(id,name,md5Checksum)"
     ).execute()
 
-    files = sorted(resp.get('files', []), key=lambda f: f['name'])[:limit]
+    files = resp.get('files', [])
+    click.echo(f"Fetched {len(files)} files from Drive. Inspecting response...")
+    for f in files:
+        click.echo(f"File: {f.get('name')}, ID: {f.get('id')}, md5Checksum: {f.get('md5Checksum')}")
+    files = sorted(files, key=lambda f: f['name'])[:limit]
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
         return
