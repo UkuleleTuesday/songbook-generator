@@ -19,7 +19,7 @@ def load_config_folder_ids():
         config = toml.load(config_path)
         folder_ids = config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])
         return folder_ids if isinstance(folder_ids, list) else [folder_ids]
-    return DEFAULT_GDRIVE_FOLDER_ID
+    return [DEFAULT_GDRIVE_FOLDER_ID]
 
 
 def authenticate_drive():
