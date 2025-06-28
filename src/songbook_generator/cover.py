@@ -37,7 +37,12 @@ def generate_cover(drive, cache_dir, merged_pdf):
         except fitz.EmptyFileError:
             click.echo(f"Cached cover file is empty or corrupted: {cached_cover_path}. Redownloading...")
 
-    request = drive.files().export_media(fileId=cover_file_id, mimeType='application/pdf')
+    try:
+        request = drive.files().get_media(fileId=cover_file_id)
+    except errors.HttpError as e:
+        if "fileNotExportable" in str(e):
+            raise ValueError(f"Cover file (ID: {cover_file_id}) is not exportable. Ensure it is a valid file type.")
+        raise
     with open(cached_cover_path, 'wb') as cover_file:
         downloader = MediaIoBaseDownload(cover_file, request)
         done = False
