@@ -85,5 +85,9 @@ def main(source_folder: str, dest_folder: str, limit: int):
     # 5) Output the path to the saved master PDF
     click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
 
+    # Open the generated PDF
+    click.echo("Opening the master PDF...")
+    os.system(f"xdg-open {master_pdf_path}")
+
 if __name__ == '__main__':
     main()
