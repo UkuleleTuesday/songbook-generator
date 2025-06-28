@@ -62,7 +62,9 @@ def main(source_folder: str, dest_folder: str, limit: int):
     for f in files:
         file_id = f['id']
         file_name = f['name']
-        file_checksum = f.get('md5Checksum')
+        # Fetch file details to get the md5Checksum
+        file_details = drive.files().get(fileId=file_id, fields="md5Checksum").execute()
+        file_checksum = file_details.get('md5Checksum')
         cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
         cached_checksum_path = os.path.join(cache_dir, f"{file_name}.md5")
 
