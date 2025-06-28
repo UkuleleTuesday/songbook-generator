@@ -220,21 +220,27 @@ wheels = [
 ]
 
 [[package]]
+name = "pymupdf"
+version = "1.26.1"
+source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
+sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1.tar.gz", hash = "sha256:372c77c831f82090ce7a6e4de284ca7c5a78220f63038bb28c5d9b279cd7f4d9" }
+wheels = [
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-macosx_10_9_x86_64.whl", hash = "sha256:32296f12a7c7f36febd59cee77823a54490313bcaba9879b17def6518186f94e" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:aad7949eca62aca40854510cdb125cf873b181726dc9497a90834200f31faa63" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:3b62c4d443121ed9a2eb967c3a0e45f8dbabcc838db8604ece02c4e868808edc" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:a65c411eb1cbb79e40c307e10fbad23658f19e9d7334ac4de21d24b58009a7b9" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:26cebdcc1b2b7a7445423599ce2e0000f2be0333cce0fa0e6846e5a7da46f965" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-win32.whl", hash = "sha256:82ed9e106cf564fc959c0691c374ba68443086ba1a1c9f26128eebbc3e6df9e5" },
+    { url = "https://pypi.zalando.net/repository/pypi/packages/pymupdf/1.26.1/pymupdf-1.26.1-cp39-abi3-win_amd64.whl", hash = "sha256:8deae5168fce37d707f68d1981da6c0bb71f1f176d9835d5914ad46f779a036f" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.2.3"
 source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
 sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/pyparsing/3.2.3/pyparsing-3.2.3.tar.gz", hash = "sha256:b9c13f1ab8b3b542f72e28f634bad4de758ab3ce4546e4301970ad6fa77c38be" }
 wheels = [
     { url = "https://pypi.zalando.net/repository/pypi/packages/pyparsing/3.2.3/pyparsing-3.2.3-py3-none-any.whl", hash = "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf" },
-]
-
-[[package]]
-name = "pypdf"
-version = "5.6.1"
-source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
-sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/pypdf/5.6.1/pypdf-5.6.1.tar.gz", hash = "sha256:dde36cd67afe3afd733a562a0dd08a3c1dcdf01fe01de13785291319c8a883ff" }
-wheels = [
-    { url = "https://pypi.zalando.net/repository/pypi/packages/pypdf/5.6.1/pypdf-5.6.1-py3-none-any.whl", hash = "sha256:ff09d03d37addbc40f75db3624997a660ff5fe41c61e7ae4db6828dc3f581e4d" },
 ]
 
 [[package]]
@@ -272,7 +278,7 @@ dependencies = [
     { name = "click" },
     { name = "google-api-python-client" },
     { name = "google-auth" },
-    { name = "pypdf" },
+    { name = "pymupdf" },
 ]
 
 [package.metadata]
@@ -280,7 +286,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "google-api-python-client", specifier = ">=2.174.0" },
     { name = "google-auth", specifier = ">=2.40.3" },
-    { name = "pypdf", specifier = ">=5.6.1" },
+    { name = "pymupdf", specifier = ">=1.26.1" },
 ]
 
 [[package]]
