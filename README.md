@@ -50,8 +50,8 @@ To see what the generated output looks like, check the [`SAMPLE.pdf`](SAMPLE.pdf
 
 ### Requirements
 - Python 3.12+
-- `uv` for dependency management and running the project
-- `gcloud` CLI installed for authentication
+- [uv](https://docs.astral.sh/uv/) for dependency management and running the project
+- [gcloud](https://cloud.google.com/sdk/docs/install) CLI installed for authentication
 
 ### Authentication
 Before running the tool, authenticate with Google Cloud using the following command:
