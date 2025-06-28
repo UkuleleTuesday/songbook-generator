@@ -14,7 +14,13 @@ from googleapiclient.discovery import build
     required=True,
     help='Drive folder ID to write output to (not used yet)'
 )
-def main(source_folder: str, dest_folder: str):
+@click.option(
+    '--limit', '-l',
+    type=int,
+    default=100,
+    help='Limit the number of files to process (default is 100)'
+)
+def main(source_folder: str, dest_folder: str, limit: int):
     """
     MVP: list files in SOURCE_FOLDER. DEST_FOLDER is reserved for the merged PDF.
     """
@@ -28,7 +34,7 @@ def main(source_folder: str, dest_folder: str):
     query = f"'{source_folder}' in parents and trashed = false"
     resp = drive.files().list(
         q=query,
-        pageSize=100,
+        pageSize=limit,
         fields="files(id,name)"
     ).execute()
 
