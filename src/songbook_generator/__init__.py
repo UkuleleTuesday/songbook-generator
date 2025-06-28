@@ -4,7 +4,7 @@ import tempfile
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from pypdf import PdfMerger
+from pypdf import PdfWriter
 
 
 @click.command()
@@ -67,11 +67,11 @@ def main(source_folder: str, dest_folder: str, limit: int):
     # 4) Merge all PDFs into a single master PDF
     master_pdf_path = os.path.join(temp_dir, "master.pdf")
     click.echo("Merging all downloaded PDFs into a single master PDF...")
-    merger = PdfMerger()
+    writer = PdfWriter()
     for pdf_path in pdf_paths:
-        merger.append(pdf_path)
+        writer.append(pdf_path)
     with open(master_pdf_path, "wb") as master_pdf_file:
-        merger.write(master_pdf_file)
+        writer.write(master_pdf_file)
 
     # 5) Output the path to the saved master PDF
     click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
