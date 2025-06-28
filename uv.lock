@@ -7,6 +7,19 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "arrow"
+version = "1.3.0"
+source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "types-python-dateutil" },
+]
+sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/arrow/1.3.0/arrow-1.3.0.tar.gz", hash = "sha256:d4540617648cb5f895730f1ad8c82a65f2dad0166f57b75f3ca54759c4d67a85" }
+wheels = [
+    { url = "https://pypi.zalando.net/repository/pypi/packages/arrow/1.3.0/arrow-1.3.0-py3-none-any.whl", hash = "sha256:c728b120ebc00eb84e01882a6f5e7927a53960aa990ce7dd2b10f39005a67f80" },
+]
+
+[[package]]
 name = "cachetools"
 version = "5.5.2"
 source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
@@ -244,6 +257,18 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dateutil"
+version = "2.9.0.post0"
+source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/python-dateutil/2.9.0.post0/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3" }
+wheels = [
+    { url = "https://pypi.zalando.net/repository/pypi/packages/python-dateutil/2.9.0.post0/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427" },
+]
+
+[[package]]
 name = "requests"
 version = "2.32.4"
 source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
@@ -271,10 +296,20 @@ wheels = [
 ]
 
 [[package]]
+name = "six"
+version = "1.17.0"
+source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
+sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/six/1.17.0/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81" }
+wheels = [
+    { url = "https://pypi.zalando.net/repository/pypi/packages/six/1.17.0/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274" },
+]
+
+[[package]]
 name = "songbook-generator"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "arrow" },
     { name = "click" },
     { name = "google-api-python-client" },
     { name = "google-auth" },
@@ -284,6 +319,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "arrow", specifier = ">=1.3.0" },
     { name = "click", specifier = ">=8.2.1" },
     { name = "google-api-python-client", specifier = ">=2.174.0" },
     { name = "google-auth", specifier = ">=2.40.3" },
@@ -298,6 +334,15 @@ source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
 sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/toml/0.10.2/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f" }
 wheels = [
     { url = "https://pypi.zalando.net/repository/pypi/packages/toml/0.10.2/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b" },
+]
+
+[[package]]
+name = "types-python-dateutil"
+version = "2.9.0.20250516"
+source = { registry = "https://pypi.zalando.net/repository/pypi/simple" }
+sdist = { url = "https://pypi.zalando.net/repository/pypi/packages/types-python-dateutil/2.9.0.20250516/types_python_dateutil-2.9.0.20250516.tar.gz", hash = "sha256:13e80d6c9c47df23ad773d54b2826bd52dbbb41be87c3f339381c1700ad21ee5" }
+wheels = [
+    { url = "https://pypi.zalando.net/repository/pypi/packages/types-python-dateutil/2.9.0.20250516/types_python_dateutil-2.9.0.20250516-py3-none-any.whl", hash = "sha256:2b2b3f57f9c6a61fba26a9c0ffb9ea5681c9b83e69cd897c6b5f668d9c0cab93" },
 ]
 
 [[package]]

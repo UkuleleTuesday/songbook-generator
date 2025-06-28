@@ -55,5 +55,4 @@ def build_table_of_contents(files):
     except Exception as e:
         click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
         toc_page.insert_text((50, 50), toc_text, fontsize=16, fontname="helv", color=(0, 0, 0))
-    toc_pdf.set_toc(toc_entries)
     return toc_pdf
