@@ -21,7 +21,9 @@ def generate_cover(drive, cache_dir):
         return
 
     cover_file = {"id": cover_file_id, "name": "cover"}
-    cached_cover_path = download_file(drive, cover_file, cache_dir)
+    cover_dir = os.path.join(cache_dir, "cover")
+    os.makedirs(cover_dir, exist_ok=True)
+    cached_cover_path = download_file(drive, cover_file, cover_dir)
     try:
         cover_pdf = fitz.open(cached_cover_path)
     except fitz.EmptyFileError:

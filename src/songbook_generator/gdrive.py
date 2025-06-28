@@ -17,8 +17,9 @@ def download_file(drive, file, cache_dir):
     file_id = file['id']
     file_name = file['name']
     file_details = drive.files().get(fileId=file_id, fields='modifiedTime').execute()
-    os.makedirs(cache_dir, exist_ok=True)
-    cached_pdf_path = os.path.join(cache_dir, f"{file_id}.pdf")
+    song_sheets_dir = os.path.join(cache_dir, "song-sheets")
+    os.makedirs(song_sheets_dir, exist_ok=True)
+    cached_pdf_path = os.path.join(song_sheets_dir, f"{file_id}.pdf")
     if os.path.exists(cached_pdf_path):
         local_creation_time = os.path.getmtime(cached_pdf_path)
         remote_modified_time = file_details.get('modifiedTime')
