@@ -6,6 +6,7 @@ from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 import fitz  # PyMuPDF
+import toml
 
 
 def authenticate_drive():
@@ -79,7 +80,17 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         file_name = file['name']
         toc_text += f"{page_number}. {file_name}\n"
         toc_entries.append([1, file_name, page_number + 1])
-    toc_page.insert_text((50, 50), toc_text, fontsize=9, fontname="helv", color=(0, 0, 0))
+    # Load configuration for TOC
+    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
+    if os.path.exists(config_path):
+        config = toml.load(config_path)
+        toc_font = config.get("toc", {}).get("font", "helv")
+        toc_fontsize = config.get("toc", {}).get("fontsize", 9)
+    else:
+        toc_font = "helv"
+        toc_fontsize = 9
+
+    toc_page.insert_text((50, 50), toc_text, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
     merged_pdf.set_toc(toc_entries)
     merged_pdf.save(master_pdf_path)
     return master_pdf_path
