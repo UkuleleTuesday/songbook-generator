@@ -97,12 +97,14 @@ def merge_pdfs(pdf_paths, files, cache_dir):
 
 
 @click.command()
-@click.option('--source-folder', '-s', default=load_config_folder_id(), help='Drive folder ID to read files from')
+@click.option('--source-folder', '-s', multiple=True, default=load_config_folder_id(), help='Drive folder IDs to read files from (can be passed multiple times)')
 @click.option('--limit', '-l', type=int, default=None, help='Limit the number of files to process (no limit by default)')
 def main(source_folder: str, limit: int):
     drive = authenticate_drive()
     click.echo("Authenticating with Google Drive...")
-    files = query_drive_files(drive, source_folder, limit)
+    files = []
+    for folder in source_folder:
+        files.extend(query_drive_files(drive, folder, limit))
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
         return
