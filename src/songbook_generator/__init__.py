@@ -79,7 +79,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         file_name = file['name']
         toc_text += f"{page_number}. {file_name}\n"
         toc_entries.append([1, file_name, page_number + 1])
-    toc_page.insert_text((50, 50), toc_text, fontsize=9, fontname="verdana", color=(0, 0, 0))
+    toc_page.insert_text((50, 50), toc_text, fontsize=9, fontname="helv", color=(0, 0, 0))
     merged_pdf.set_toc(toc_entries)
     merged_pdf.save(master_pdf_path)
     return master_pdf_path
