@@ -17,8 +17,9 @@ def load_toc_config():
     return "helv", 9
 
 
-def build_table_of_contents(merged_pdf, files):
-    toc_page = merged_pdf.new_page(0)
+def build_table_of_contents(files):
+    toc_pdf = fitz.open()
+    toc_page = toc_pdf.new_page()
     toc_text = "Table of Contents\n\n"
     toc_entries = []
     column_width = 250  # Width of each column
@@ -53,4 +54,5 @@ def build_table_of_contents(merged_pdf, files):
     except Exception as e:
         click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
         toc_page.insert_text((50, 50), toc_text, fontsize=16, fontname="helv", color=(0, 0, 0))
-    merged_pdf.set_toc(toc_entries)
+    toc_pdf.set_toc(toc_entries)
+    return toc_pdf
