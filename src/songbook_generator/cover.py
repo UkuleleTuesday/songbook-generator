@@ -19,43 +19,10 @@ def generate_cover(drive, cache_dir, merged_pdf):
         click.echo("No cover file ID configured. Skipping cover generation.")
         return
 
-    cover_dir = os.path.join(cache_dir, "cover")
-    os.makedirs(cover_dir, exist_ok=True)
-    cached_cover_path = os.path.join(cover_dir, f"{cover_file_id}.pdf")
-
-    # FIXME need stronger check
-    if os.path.exists(cached_cover_path) and os.path.getsize(cached_cover_path) > 0:
-        try:
-            local_creation_time = os.path.getmtime(cached_cover_path)
-            remote_modified_time = drive.files().get(fileId=cover_file_id, fields='modifiedTime').execute().get('modifiedTime')
-            remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
-            local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
-            if remote_modified_timestamp <= local_creation_datetime:
-                click.echo(f"Using cached cover: {cached_cover_path}")
-                try:
-                    cover_pdf = fitz.open(cached_cover_path)
-                except fitz.EmptyFileError:
-                    raise ValueError(f"Downloaded cover file is corrupted: {cached_cover_path}. Please check the file on Google Drive.")
-                merged_pdf.insert_pdf(cover_pdf, 0)
-                return
-        except fitz.EmptyFileError:
-            click.echo(f"Cached cover file is empty or corrupted: {cached_cover_path}. Redownloading...")
-
+    cover_file = {"id": cover_file_id, "name": "cover"}
+    cached_cover_path = download_file(drive, cover_file, cache_dir)
     try:
-        request = drive.files().get_media(fileId=cover_file_id)
-    except errors.HttpError as e:
-        if "fileNotExportable" in str(e):
-            raise ValueError(f"Cover file (ID: {cover_file_id}) is not exportable. Ensure it is a valid file type.")
-        raise
-    with open(cached_cover_path, 'wb') as cover_file:
-        downloader = MediaIoBaseDownload(cover_file, request)
-        done = False
-        try:
-            while not done:
-                _, done = downloader.next_chunk()
-        except errors.HttpError as e:
-            if "fileNotExportable" in str(e):
-                raise ValueError(f"Cover file (ID: {cover_file_id}) is not exportable. Ensure it is a valid Docs Editors file.")
-    click.echo(f"Downloading cover file (ID: {cover_file_id})...")
-    cover_pdf = fitz.open(cached_cover_path)
+        cover_pdf = fitz.open(cached_cover_path)
+    except fitz.EmptyFileError:
+        raise ValueError(f"Downloaded cover file is corrupted: {cached_cover_path}. Please check the file on Google Drive.")
     merged_pdf.insert_pdf(cover_pdf, 0)
