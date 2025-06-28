@@ -84,7 +84,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        toc_font = config.get("toc", {}).get("font", "helv")
+        toc_font = config.get("toc", {}).get("font", "helv").replace("/", "")
         toc_fontsize = config.get("toc", {}).get("fontsize", 9)
     else:
         toc_font = "helv"
