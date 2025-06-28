@@ -5,6 +5,7 @@ from googleapiclient import errors
 from datetime import datetime
 import fitz  # PyMuPDF
 import toml
+from .gdrive import download_file
 
 def load_cover_config():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
