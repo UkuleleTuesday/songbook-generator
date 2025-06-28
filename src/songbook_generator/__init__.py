@@ -76,10 +76,20 @@ def merge_pdfs(pdf_paths, files, cache_dir):
     toc_page = merged_pdf.new_page(0)
     toc_text = "Table of Contents\n\n"
     toc_entries = []
+    column_width = 250  # Width of each column
+    column_spacing = 20  # Space between columns
+    column_height = toc_page.rect.height - 100  # Adjust for margins
+    current_y = 50
+    current_x = 50
     for page_number, file in enumerate(files, start=1):
         file_name = file['name']
-        toc_text += f"{page_number}. {file_name}\n"
+        toc_text_line = f"{page_number}. {file_name}"
         toc_entries.append([1, file_name, page_number + 1])
+        toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
+        current_y += 20  # Line spacing
+        if current_y > column_height:  # Move to next column if overspills
+            current_y = 50
+            current_x += column_width + column_spacing
     # Load configuration for TOC
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
