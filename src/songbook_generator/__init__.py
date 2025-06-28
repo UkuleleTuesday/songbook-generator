@@ -79,9 +79,12 @@ def main(source_folder: str, dest_folder: str, limit: int):
                 _, done = downloader.next_chunk()
         click.echo(f"Saved PDF: {cached_pdf_path}")
 
-        # Save the checksum for future comparisons
-        with open(cached_checksum_path, 'w') as checksum_file:
-            checksum_file.write(file_checksum)
+        # Save the checksum for future comparisons if it exists
+        if file_checksum:
+            with open(cached_checksum_path, 'w') as checksum_file:
+                checksum_file.write(file_checksum)
+        else:
+            click.echo(f"Checksum missing for file: {file_name}. Skipping caching.")
 
         pdf_paths.append(cached_pdf_path)
 
