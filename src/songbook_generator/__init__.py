@@ -36,11 +36,13 @@ def main(source_folder: str, dest_folder: str, limit: int):
 
     # 2) Query files in the source folder
     query = f"'{source_folder}' in parents and trashed = false"
+    click.echo(f"Executing Drive API query: {query}")
     resp = drive.files().list(
         q=query,
         pageSize=1000,  # Fetch a large number of files to ensure all are retrieved
         fields="files(id,name,md5Checksum)"
     ).execute()
+    click.echo(f"Drive API response: {resp}")
 
     files = resp.get('files', [])
     click.echo(f"Fetched {len(files)} files from Drive. Inspecting response...")
