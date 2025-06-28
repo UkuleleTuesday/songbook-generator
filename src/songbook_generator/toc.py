@@ -1,6 +1,7 @@
 import toml
 import os
 import click
+import fitz  # PyMuPDF
 
 
 # Load configuration for TOC
