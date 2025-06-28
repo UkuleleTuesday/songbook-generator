@@ -71,7 +71,6 @@ def main(source_folder: str, dest_folder: str, limit: int):
         file_name = f['name']
         # Fetch file details to get the modifiedTime
         file_details = drive.files().get(fileId=file_id, fields='modifiedTime').execute()
-        print(f"Raw file details: {file_details}")
         cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
         # Check if the file is already cached and unchanged
         if os.path.exists(cached_pdf_path):
