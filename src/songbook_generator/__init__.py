@@ -91,7 +91,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
     toc_entries = []
     for page_number, file_name in enumerate([os.path.basename(path) for path in pdf_paths], start=1):
         toc_text += f"{page_number}. {file_name}\n"
-        toc_entries.append([1, file_name, page_number])
+        toc_entries.append([1, file_name, page_number + 1])
     toc_page.insert_text((50, 50), toc_text, fontsize=12, color=(0, 0, 0))
 
     # Set the table of contents using set_toc
