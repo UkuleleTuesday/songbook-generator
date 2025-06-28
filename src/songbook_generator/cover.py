@@ -72,6 +72,11 @@ def create_cover_from_template(
     print(f"Replaced {total} occurrences in the copy.")
 
     # 4) Export the modified copy as PDF
+    try:
+        drive.files().delete(fileId=copy_id).execute()
+        print(f"Deleted copy: {copy_id} from Google Drive.")
+    except Exception as e:
+        print(f"Failed to delete copy: {copy_id}. Error: {e}")
     return copy_id
 
 def generate_cover(drive, cache_dir):
