@@ -83,8 +83,9 @@ def main(source_folder: str, limit: int):
     click.echo("Merging downloaded PDFs into a single master PDF...")
     merged_pdf = merge_pdfs(pdf_paths, files, cache_dir, drive)
     toc_pdf = toc.build_table_of_contents(files)
-    merged_pdf.insert_pdf(toc_pdf)
-    cover.generate_cover(drive, cache_dir, merged_pdf)
+    merged_pdf.insert_pdf(toc_pdf, start_at=0)
+    cover_pdf = cover.generate_cover(drive, cache_dir)
+    merged_pdf.insert_pdf(cover_pdf, start_at=0)
 
     try:
         master_pdf_path = os.path.join(cache_dir, "master.pdf")
