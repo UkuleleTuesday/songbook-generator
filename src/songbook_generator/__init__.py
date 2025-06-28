@@ -57,6 +57,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
     temp_dir = tempfile.mkdtemp()
     pdf_paths = []
     cache_dir = os.path.join(temp_dir, "cache")
+    # Ensure the cache directory exists
     os.makedirs(cache_dir, exist_ok=True)
 
     for f in files:
