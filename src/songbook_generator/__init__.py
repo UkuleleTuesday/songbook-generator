@@ -39,7 +39,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
     click.echo(f"Executing Drive API query: {query}")
     resp = drive.files().list(
         q=query,
-        pageSize=1000,  # Fetch a large number of files to ensure all are retrieved
+        pageSize=limit,  # Use the limit from CLI argument
         fields="files(id,name)",
         orderBy="name_natural"
     ).execute()
