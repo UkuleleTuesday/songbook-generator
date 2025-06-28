@@ -87,8 +87,9 @@ def generate_cover(drive, cache_dir):
         mimeType='application/pdf'
     ).execute()
 
-    pdf_output_path = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator", "cache", "covers",
-                                   f"{cover_id}.pdf")
+    covers_dir = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator", "cache", "covers")
+    os.makedirs(covers_dir, exist_ok=True)
+    pdf_output_path = os.path.join(covers_dir, f"{cover_id}.pdf")
     with open(pdf_output_path, 'wb') as f:
         f.write(pdf_blob)
     try:
