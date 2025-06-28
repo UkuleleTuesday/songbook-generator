@@ -91,7 +91,9 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         toc_font = "helv"
         toc_fontsize = 9
 
+    current_y += 20  # Line spacing
     for page_number, file in enumerate(files, start=1):
+        current_y += 10  # Line spacing
         file_name = file['name']
         toc_text_line = f"{page_number}. {file_name}"
         toc_entries.append([1, file_name, page_number + 1])
@@ -100,7 +102,6 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         except Exception as e:
             click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
             toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=9, fontname="helv", color=(0, 0, 0))
-        current_y += 20  # Line spacing
         if current_y > column_height:  # Move to next column if overspills
             current_y = 50
             current_x += column_width + column_spacing
