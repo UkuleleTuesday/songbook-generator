@@ -14,7 +14,7 @@ def load_cover_config():
         return config.get("cover", {}).get("file-id", None)
     return None
 
-def generate_cover(drive, cache_dir, merged_pdf):
+def generate_cover(drive, cache_dir):
     cover_file_id = load_cover_config()
     if not cover_file_id:
         click.echo("No cover file ID configured. Skipping cover generation.")
@@ -26,4 +26,4 @@ def generate_cover(drive, cache_dir, merged_pdf):
         cover_pdf = fitz.open(cached_cover_path)
     except fitz.EmptyFileError:
         raise ValueError(f"Downloaded cover file is corrupted: {cached_cover_path}. Please check the file on Google Drive.")
-    merged_pdf.insert_pdf(cover_pdf)
+    return cover_pdf
