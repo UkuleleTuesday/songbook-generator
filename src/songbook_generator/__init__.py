@@ -42,12 +42,11 @@ def main(source_folder: str, dest_folder: str, limit: int):
         pageSize=1000,  # Fetch a large number of files to ensure all are retrieved
         fields="files(id,name)"
     ).execute()
-    click.echo(f"Drive API response: {resp}")
 
     files = resp.get('files', [])
     click.echo(f"Fetched {len(files)} files from Drive. Inspecting response...")
     for f in files:
-        click.echo(f"File: {f.get('name')}, ID: {f.get('id')}, md5Checksum: {f.get('md5Checksum')}")
+        click.echo(f"File: {f.get('name')}, ID: {f.get('id')}")
     files = sorted(files, key=lambda f: f['name'])[:limit]
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
@@ -65,6 +64,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
         # Fetch file details to get the md5Checksum
         file_details = drive.files().get(fileId=file_id, fields="id,name,md5Checksum").execute()
         file_checksum = file_details.get('md5Checksum')
+        print(f"checksum = {file_checksum}")
         cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
         cached_checksum_path = os.path.join(cache_dir, f"{file_name}.md5")
 
