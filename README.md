@@ -21,11 +21,6 @@ This project uses `uv` for development and building. Ensure `uv` is installed on
    cd <repository-directory>
    ```
 
-2. Install dependencies using `uv`:
-   ```bash
-   uv install
-   ```
-
 ## Usage
 
 Run the CLI tool with the following options:
@@ -55,11 +50,3 @@ Run the pre-commit tests:
 ```bash
 uv run songbook-generator -s 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 -l 3
 ```
-
-## License
-
-This project is licensed under the MIT License.
-
-## Contact
-
-For questions or support, please contact [jeremiejost@gmail.com](mailto:jeremiejost@gmail.com).
