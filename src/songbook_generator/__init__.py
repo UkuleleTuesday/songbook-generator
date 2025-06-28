@@ -4,7 +4,7 @@ import tempfile
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from pypdf import PdfWriter, PdfReader, Transformation
+import fitz  # PyMuPDF
 
 
 @click.command()
@@ -67,51 +67,24 @@ def main(source_folder: str, dest_folder: str, limit: int):
     # 4) Merge all PDFs into a single master PDF
     master_pdf_path = os.path.join(temp_dir, "master.pdf")
     click.echo("Merging all downloaded PDFs into a single master PDF...")
-    writer = PdfWriter()
+    merged_pdf = fitz.open()
     for pdf_path in pdf_paths:
-        writer.append(pdf_path)
-
+        pdf_document = fitz.open(pdf_path)
+        merged_pdf.insert_pdf(pdf_document)
 
     click.echo("Adding page numbers to the top-right corner...")
-    temp_dir = tempfile.mkdtemp()
+    for page_number in range(len(merged_pdf)):
+        click.echo(f"Processing page {page_number + 1}...")
+        page = merged_pdf[page_number]
+        text = str(page_number + 1)
+        x = page.rect.width - 50  # Adjust x-coordinate for top-right corner
+        y = 30  # Adjust y-coordinate for top-right corner
+        page.insert_text((x, y), text, fontsize=12, color=(0, 0, 0))
+        intermediate_pdf_path = os.path.join(temp_dir, f"intermediate_page_{page_number + 1}.pdf")
+        merged_pdf.save(intermediate_pdf_path)
+        click.echo(f"Intermediate PDF saved for page {page_number + 1}: {intermediate_pdf_path}")
 
-    for page_number, page in enumerate(writer.pages, start=1):
-        click.echo(f"Processing page {page_number}...")
-        # Create a temporary PDF with the page number as a stamp
-        stamp_path = os.path.join(temp_dir, f"stamp_{page_number}.pdf")
-        with open(stamp_path, "wb") as stamp_file:
-            try:
-                stamp_writer = PdfWriter()
-                stamp_page = page.create_blank_page(
-                    width=page.mediabox.width, height=page.mediabox.height
-                )
-                stamp_writer.add_page(stamp_page)
-                stamp_writer.write(stamp_file)
-                click.echo(f"Stamp created successfully: {stamp_path}")
-            except Exception as e:
-                click.echo(f"Error creating stamp: {e}")
-
-        # Read the stamp PDF and merge it onto the current page
-        try:
-            stamp_reader = PdfReader(stamp_path)
-            stamp_page = stamp_reader.pages[0]
-            click.echo(f"Stamp page loaded successfully.")
-        except Exception as e:
-            click.echo(f"Error loading stamp page: {e}")
-
-        try:
-            page.merge_transformed_page(
-                stamp_page,
-                Transformation().translate(page.mediabox.width - 50, page.mediabox.height - 30)
-            )
-            intermediate_pdf_path = os.path.join(temp_dir, f"intermediate_page_{page_number}.pdf")
-            with open(intermediate_pdf_path, "wb") as intermediate_pdf_file:
-                writer.write(intermediate_pdf_file)
-            click.echo(f"Intermediate PDF saved for page {page_number}: {intermediate_pdf_path}")
-        except Exception as e:
-            click.echo(f"Error merging stamp onto page {page_number}: {e}")
-    with open(master_pdf_path, "wb") as master_pdf_file:
-        writer.write(master_pdf_file)
+    merged_pdf.save(master_pdf_path)
 
     # 5) Output the path to the saved master PDF
     click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
