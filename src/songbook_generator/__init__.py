@@ -75,7 +75,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
 
-    toc.build_table_of_contents(merged_pdf, files)
+    merged_pdf.save(master_pdf_path)  # Save the merged PDF
     return master_pdf_path
 
 
