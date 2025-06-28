@@ -46,6 +46,7 @@ def download_files(drive, files, cache_dir):
             remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
             local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
             if remote_modified_timestamp <= local_creation_datetime:
+                click.echo(f"Using cached version: {cached_pdf_path}")
                 pdf_paths.append(cached_pdf_path)
                 continue
         request = drive.files().export_media(fileId=file_id, mimeType='application/pdf')
@@ -54,6 +55,7 @@ def download_files(drive, files, cache_dir):
             done = False
             while not done:
                 _, done = downloader.next_chunk()
+        click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
         pdf_paths.append(cached_pdf_path)
     return pdf_paths
 
