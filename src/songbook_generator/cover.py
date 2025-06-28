@@ -1,6 +1,7 @@
 import os
 import click
 from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient import errors
 from datetime import datetime
 import fitz  # PyMuPDF
 import toml
@@ -40,7 +41,7 @@ def generate_cover(drive, cache_dir, merged_pdf):
         try:
             while not done:
                 _, done = downloader.next_chunk()
-        except googleapiclient.errors.HttpError as e:
+        except errors.HttpError as e:
             if "fileNotExportable" in str(e):
                 raise ValueError(f"Cover file (ID: {cover_file_id}) is not exportable. Ensure it is a valid Docs Editors file.")
             raise
