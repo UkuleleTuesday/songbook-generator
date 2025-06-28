@@ -8,23 +8,6 @@ from googleapiclient.http import MediaIoBaseDownload
 import fitz  # PyMuPDF
 
 
-@click.command()
-@click.option(
-    '--source-folder', '-s',
-    required=True,
-    help='Drive folder ID to read files from'
-)
-@click.option(
-    '--dest-folder', '-d',
-    required=True,
-    help='Drive folder ID to write output to (not used yet)'
-)
-@click.option(
-    '--limit', '-l',
-    type=int,
-    default=100,
-    help='Limit the number of files to process (default is 100)'
-)
 def authenticate_drive():
     creds, _ = default(scopes=['https://www.googleapis.com/auth/drive.readonly'])
     return build('drive', 'v3', credentials=creds)
