@@ -73,6 +73,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         x = page.rect.width - 50
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+def build_table_of_contents(merged_pdf, files):
     toc_page = merged_pdf.new_page(0)
     toc_text = "Table of Contents\n\n"
     toc_entries = []
@@ -81,19 +82,18 @@ def merge_pdfs(pdf_paths, files, cache_dir):
     column_height = toc_page.rect.height - 100  # Adjust for margins
     current_y = 50
     current_x = 50
-    # Load configuration for TOC
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        toc_font = config.get("toc", {}).get("font", "helv")
-        toc_fontsize = config.get("toc", {}).get("fontsize", 9)
-    else:
-        toc_font = "helv"
-        toc_fontsize = 9
 
-    current_y += 20  # Line spacing
+    # Load configuration for TOC
+    def load_toc_config():
+        config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
+        if os.path.exists(config_path):
+            config = toml.load(config_path)
+            return config.get("toc", {}).get("font", "helv"), config.get("toc", {}).get("fontsize", 9)
+        return "helv", 9
+
+    toc_font, toc_fontsize = load_toc_config()
+
     for page_number, file in enumerate(files, start=1):
-        current_y += 10  # Line spacing
         file_name = file['name']
         toc_text_line = f"{page_number}. {file_name}"
         toc_entries.append([1, file_name, page_number + 1])
@@ -102,18 +102,10 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         except Exception as e:
             click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
             toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=9, fontname="helv", color=(0, 0, 0))
+        current_y += 20  # Line spacing
         if current_y > column_height:  # Move to next column if overspills
             current_y = 50
             current_x += column_width + column_spacing
-    # Load configuration for TOC
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        toc_font = config.get("toc", {}).get("font", "helv")
-        toc_fontsize = config.get("toc", {}).get("fontsize", 9)
-    else:
-        toc_font = "helv"
-        toc_fontsize = 9
 
     try:
         toc_page.insert_text((50, 50), toc_text, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
