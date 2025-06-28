@@ -8,7 +8,12 @@ def load_toc_config():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        return config.get("toc", {}).get("font", "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"), config.get("toc", {}).get("fontsize", 9)
+        return (
+            config.get("toc", {}).get("font", "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"),
+            config.get("toc", {}).get("fontsize", 9),
+            config.get("toc", {}).get("title-font", "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"),
+            config.get("toc", {}).get("title-fontsize", 16),
+        )
     return "helv", 9
 
 
@@ -22,7 +27,7 @@ def build_table_of_contents(merged_pdf, files):
     current_y = 50
     current_x = 50
 
-    toc_font, toc_fontsize = load_toc_config()
+    toc_font, toc_fontsize, title_font, title_fontsize = load_toc_config()
 
     current_y += 10
     for page_number, file in enumerate(files, start=1):
@@ -40,7 +45,11 @@ def build_table_of_contents(merged_pdf, files):
             current_x += column_width + column_spacing
 
     try:
-        toc_page.insert_text((50, 50), toc_text, fontsize=16, fontfile=toc_font, color=(0, 0, 0))
+        try:
+            toc_page.insert_text((50, 50), toc_text, fontsize=title_fontsize, fontfile=title_font, color=(0, 0, 0))
+        except Exception as e:
+            click.echo(f"Warning: Failed to load title font '{title_font}'. Falling back to default font 'helv'. Error: {e}")
+            toc_page.insert_text((50, 50), toc_text, fontsize=title_fontsize, fontname="helv", color=(0, 0, 0))
     except Exception as e:
         click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
         toc_page.insert_text((50, 50), toc_text, fontsize=16, fontname="helv", color=(0, 0, 0))
