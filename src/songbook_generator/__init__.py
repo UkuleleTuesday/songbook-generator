@@ -76,23 +76,40 @@ def main(source_folder: str, dest_folder: str, limit: int):
     temp_dir = tempfile.mkdtemp()
 
     for page_number, page in enumerate(writer.pages, start=1):
+        click.echo(f"Processing page {page_number}...")
         # Create a temporary PDF with the page number as a stamp
         stamp_path = os.path.join(temp_dir, f"stamp_{page_number}.pdf")
         with open(stamp_path, "wb") as stamp_file:
-            stamp_writer = PdfWriter()
-            stamp_page = page.create_blank_page(
-                width=page.mediabox.width, height=page.mediabox.height
-            )
-            stamp_writer.add_page(stamp_page)
-            stamp_writer.write(stamp_file)
+            try:
+                stamp_writer = PdfWriter()
+                stamp_page = page.create_blank_page(
+                    width=page.mediabox.width, height=page.mediabox.height
+                )
+                stamp_writer.add_page(stamp_page)
+                stamp_writer.write(stamp_file)
+                click.echo(f"Stamp created successfully: {stamp_path}")
+            except Exception as e:
+                click.echo(f"Error creating stamp: {e}")
 
         # Read the stamp PDF and merge it onto the current page
-        stamp_reader = PdfReader(stamp_path)
-        stamp_page = stamp_reader.pages[0]
-        page.merge_transformed_page(
-            stamp_page,
-            Transformation().translate(page.mediabox.width - 50, page.mediabox.height - 30)
-        )
+        try:
+            stamp_reader = PdfReader(stamp_path)
+            stamp_page = stamp_reader.pages[0]
+            click.echo(f"Stamp page loaded successfully.")
+        except Exception as e:
+            click.echo(f"Error loading stamp page: {e}")
+
+        try:
+            page.merge_transformed_page(
+                stamp_page,
+                Transformation().translate(page.mediabox.width - 50, page.mediabox.height - 30)
+            )
+            intermediate_pdf_path = os.path.join(temp_dir, f"intermediate_page_{page_number}.pdf")
+            with open(intermediate_pdf_path, "wb") as intermediate_pdf_file:
+                writer.write(intermediate_pdf_file)
+            click.echo(f"Intermediate PDF saved for page {page_number}: {intermediate_pdf_path}")
+        except Exception as e:
+            click.echo(f"Error merging stamp onto page {page_number}: {e}")
     with open(master_pdf_path, "wb") as master_pdf_file:
         writer.write(master_pdf_file)
 
