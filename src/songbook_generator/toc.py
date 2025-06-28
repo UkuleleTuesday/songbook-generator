@@ -36,7 +36,7 @@ def build_table_of_contents(files):
         current_y += 10  # Line spacing
         file_name = file['name']
         toc_text_line = f"{page_number}. {file_name}"
-        toc_entries.append([1, file_name, page_number + 1])
+        toc_entries.append([1, file_name, page_number])
         try:
             toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=toc_fontsize, fontfile=toc_font, color=(0, 0, 0))
         except Exception as e:
