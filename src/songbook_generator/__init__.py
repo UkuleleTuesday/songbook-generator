@@ -90,6 +90,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
 
         # Save the checksum for future comparisons if it exists
         if file_checksum:
+            cached_checksum_path = os.path.join(cache_dir, f"{file_name}.md5")
             with open(cached_checksum_path, 'w') as checksum_file:
                 checksum_file.write(file_checksum)
         else:
