@@ -8,6 +8,7 @@ from googleapiclient.http import MediaIoBaseDownload
 import fitz  # PyMuPDF
 
 import toml
+from .gdrive import download_files
 from . import toc, cover
 
 DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
