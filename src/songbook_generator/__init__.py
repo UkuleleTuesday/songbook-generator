@@ -39,7 +39,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
     resp = drive.files().list(
         q=query,
         pageSize=1000,  # Fetch a large number of files to ensure all are retrieved
-        fields="files(id,name)"
+        fields="files(id,name,md5Checksum)"
     ).execute()
 
     files = sorted(resp.get('files', []), key=lambda f: f['name'])[:limit]
@@ -50,19 +50,40 @@ def main(source_folder: str, dest_folder: str, limit: int):
     click.echo(f"Starting download of {len(files)} files from folder {source_folder}...")
     temp_dir = tempfile.mkdtemp()
     pdf_paths = []
+    cache_dir = os.path.join(temp_dir, "cache")
+    os.makedirs(cache_dir, exist_ok=True)
+
     for f in files:
         file_id = f['id']
         file_name = f['name']
-        pdf_path = os.path.join(temp_dir, f"{file_name}.pdf")
+        file_checksum = f.get('md5Checksum')
+        cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
+        cached_checksum_path = os.path.join(cache_dir, f"{file_name}.md5")
+
+        # Check if the file is already cached and unchanged
+        if os.path.exists(cached_pdf_path) and os.path.exists(cached_checksum_path):
+            with open(cached_checksum_path, 'r') as checksum_file:
+                cached_checksum = checksum_file.read().strip()
+            if cached_checksum == file_checksum:
+                click.echo(f"File unchanged, using cached version: {cached_pdf_path}")
+                pdf_paths.append(cached_pdf_path)
+                continue
+
+        # Download the file if not cached or changed
         click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
         request = drive.files().export_media(fileId=file_id, mimeType='application/pdf')
-        with open(pdf_path, 'wb') as pdf_file:
+        with open(cached_pdf_path, 'wb') as pdf_file:
             downloader = MediaIoBaseDownload(pdf_file, request)
             done = False
             while not done:
                 _, done = downloader.next_chunk()
-        click.echo(f"Saved PDF: {pdf_path}")
-        pdf_paths.append(pdf_path)
+        click.echo(f"Saved PDF: {cached_pdf_path}")
+
+        # Save the checksum for future comparisons
+        with open(cached_checksum_path, 'w') as checksum_file:
+            checksum_file.write(file_checksum)
+
+        pdf_paths.append(cached_pdf_path)
 
     # 4) Merge all PDFs into a single master PDF
     master_pdf_path = os.path.join(temp_dir, "master.pdf")
