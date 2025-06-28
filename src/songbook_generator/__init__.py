@@ -16,7 +16,8 @@ def load_config_folder_id():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        return config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])
+        folder_ids = config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])
+        return folder_ids if isinstance(folder_ids, list) else [folder_ids]
     return DEFAULT_GDRIVE_FOLDER_ID
 
 
@@ -97,7 +98,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
 
 
 @click.command()
-@click.option('--source-folder', '-s', multiple=True, default=[load_config_folder_id()], help='Drive folder IDs to read files from (can be passed multiple times)')
+@click.option('--source-folder', '-s', multiple=True, default=load_config_folder_id(), help='Drive folder IDs to read files from (can be passed multiple times)')
 @click.option('--limit', '-l', type=int, default=None, help='Limit the number of files to process (no limit by default)')
 def main(source_folder: str, limit: int):
     drive = authenticate_drive()
