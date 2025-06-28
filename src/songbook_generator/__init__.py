@@ -88,9 +88,14 @@ def main(source_folder: str, dest_folder: str, limit: int):
     click.echo("Creating table of contents...")
     toc_page = merged_pdf.new_page(-1)  # Add a new page at the end
     toc_text = "Table of Contents\n\n"
+    toc_entries = []
     for page_number, file_name in enumerate([os.path.basename(path) for path in pdf_paths], start=1):
         toc_text += f"{page_number}. {file_name}\n"
+        toc_entries.append([1, file_name, page_number])
     toc_page.insert_text((50, 50), toc_text, fontsize=12, color=(0, 0, 0))
+
+    # Set the table of contents using set_toc
+    merged_pdf.set_toc(toc_entries)
 
     # Save the final PDF with the table of contents
     merged_pdf.save(master_pdf_path)
