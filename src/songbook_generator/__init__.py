@@ -115,7 +115,8 @@ def main(source_folder: str, dest_folder: str, limit: int):
         x = page.rect.width - 50  # Adjust x-coordinate for top-right corner
         y = 30  # Adjust y-coordinate for top-right corner
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
-        intermediate_pdf_path = os.path.join(cache_dir, f"intermediate_page_{page_number + 1}.pdf")
+        tmp_dir = tempfile.gettempdir()
+        intermediate_pdf_path = os.path.join(tmp_dir, f"intermediate_page_{page_number + 1}.pdf")
         merged_pdf.save(intermediate_pdf_path)
         click.echo(f"Intermediate PDF saved for page {page_number + 1}: {intermediate_pdf_path}")
 
