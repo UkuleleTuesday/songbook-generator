@@ -4,6 +4,8 @@
 
 Songbook Generator is a Python-based CLI tool designed specifically for Ukulele Tuesday. It creates a master PDF from files stored in a specified Google Drive folder. The tool authenticates with Google Drive, downloads files as PDFs, merges them into a single document, and adds a table of contents.
 
+To see what the generated output looks like, check the [`SAMPLE.pdf`](SAMPLE.pdf) file included in the repository.
+
 ## Features
 
 - **Google Drive Integration**: Authenticate and query files from a Google Drive folder.
@@ -42,9 +44,6 @@ This should just work, though:
 ```bash
 uv run songbook-generator 
 ```
-
-### Output Example
-To see what the generated output looks like, check the [`SAMPLE.pdf`](SAMPLE.pdf) file included in the repository.
 
 ## Development
 
