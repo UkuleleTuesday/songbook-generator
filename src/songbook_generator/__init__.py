@@ -86,7 +86,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
 
     # Create a table of contents page
     click.echo("Creating table of contents...")
-    toc_page = merged_pdf.new_page(-1)  # Add a new page at the end
+    toc_page = merged_pdf.new_page(0)  # Add a new page at the beginning
     toc_text = "Table of Contents\n\n"
     toc_entries = []
     for page_number, file_name in enumerate([os.path.basename(path) for path in pdf_paths], start=1):
