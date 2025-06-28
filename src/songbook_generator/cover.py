@@ -31,7 +31,12 @@ def generate_cover(drive, cache_dir, merged_pdf):
             local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
             if remote_modified_timestamp <= local_creation_datetime:
                 click.echo(f"Using cached cover: {cached_cover_path}")
-                cover_pdf = fitz.open(cached_cover_path)
+                if os.path.getsize(cached_cover_path) == 0:
+                    raise ValueError(f"Downloaded cover file is empty: {cached_cover_path}. Please check the file on Google Drive.")
+                try:
+                    cover_pdf = fitz.open(cached_cover_path)
+                except fitz.EmptyFileError:
+                    raise ValueError(f"Downloaded cover file is corrupted: {cached_cover_path}. Please check the file on Google Drive.")
                 merged_pdf.insert_pdf(cover_pdf, 0)
                 return
         except fitz.EmptyFileError:
