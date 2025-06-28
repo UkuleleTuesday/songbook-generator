@@ -4,7 +4,7 @@ from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient import errors
 from google.auth import default
 from googleapiclient.discovery import build
-from datetime import datetime
+import arrow
 import fitz  # PyMuPDF
 import toml
 from .gdrive import download_file
@@ -81,10 +81,8 @@ def generate_cover(drive, cache_dir):
 
 
     # Generate the formatted date
-    today = datetime.now()
-    day = today.day
-    suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    formatted_date = f"{day}{suffix} {today.strftime('%B %Y')}"
+    today = arrow.now()
+    formatted_date = today.format("Do MMMM YYYY")
 
     cover_id = create_cover_from_template(cover_file_id, { "{{DATE}}" : formatted_date })
     pdf_blob = drive.files().export(
