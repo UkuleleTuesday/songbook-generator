@@ -60,7 +60,7 @@ def download_files(drive, files, cache_dir):
     return pdf_paths
 
 
-def merge_pdfs(pdf_paths, cache_dir):
+def merge_pdfs(pdf_paths, files, cache_dir):
     master_pdf_path = os.path.join(cache_dir, "master.pdf")
     merged_pdf = fitz.open()
     for pdf_path in pdf_paths:
@@ -75,7 +75,8 @@ def merge_pdfs(pdf_paths, cache_dir):
     toc_page = merged_pdf.new_page(0)
     toc_text = "Table of Contents\n\n"
     toc_entries = []
-    for page_number, file_name in enumerate([os.path.basename(path) for path in pdf_paths], start=1):
+    for page_number, file in enumerate(files, start=1):
+        file_name = file['name']
         toc_text += f"{page_number}. {file_name}\n"
         toc_entries.append([1, file_name, page_number + 1])
     toc_page.insert_text((50, 50), toc_text, fontsize=12, color=(0, 0, 0))
@@ -100,7 +101,7 @@ def main(source_folder: str, dest_folder: str, limit: int):
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     pdf_paths = download_files(drive, files, cache_dir)
     click.echo("Merging downloaded PDFs into a single master PDF...")
-    master_pdf_path = merge_pdfs(pdf_paths, cache_dir)
+    master_pdf_path = merge_pdfs(pdf_paths, files, cache_dir)
     click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
     click.echo("Opening the master PDF...")
     os.system(f"xdg-open {master_pdf_path}")
