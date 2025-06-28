@@ -8,7 +8,7 @@ from googleapiclient.http import MediaIoBaseDownload
 import fitz  # PyMuPDF
 
 import toml
-from . import toc
+from . import toc, cover
 
 DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 
@@ -78,6 +78,9 @@ def download_files(drive, files, cache_dir):
 def merge_pdfs(pdf_paths, files, cache_dir):
     master_pdf_path = os.path.join(cache_dir, "master.pdf")
     merged_pdf = fitz.open()
+    merged_pdf = fitz.open()
+    cover.generate_cover(drive, cache_dir, merged_pdf)
+
     for pdf_path in pdf_paths:
         pdf_document = fitz.open(pdf_path)
         merged_pdf.insert_pdf(pdf_document)
