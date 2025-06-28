@@ -24,15 +24,18 @@ def generate_cover(drive, cache_dir, merged_pdf):
     cached_cover_path = os.path.join(cover_dir, f"{cover_file_id}.pdf")
 
     if os.path.exists(cached_cover_path):
-        local_creation_time = os.path.getmtime(cached_cover_path)
-        remote_modified_time = drive.files().get(fileId=cover_file_id, fields='modifiedTime').execute().get('modifiedTime')
-        remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
-        local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
-        if remote_modified_timestamp <= local_creation_datetime:
-            click.echo(f"Using cached cover: {cached_cover_path}")
-            cover_pdf = fitz.open(cached_cover_path)
-            merged_pdf.insert_pdf(cover_pdf, 0)
-            return
+        try:
+            local_creation_time = os.path.getmtime(cached_cover_path)
+            remote_modified_time = drive.files().get(fileId=cover_file_id, fields='modifiedTime').execute().get('modifiedTime')
+            remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
+            local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
+            if remote_modified_timestamp <= local_creation_datetime:
+                click.echo(f"Using cached cover: {cached_cover_path}")
+                cover_pdf = fitz.open(cached_cover_path)
+                merged_pdf.insert_pdf(cover_pdf, 0)
+                return
+        except fitz.EmptyFileError:
+            click.echo(f"Cached cover file is empty or corrupted: {cached_cover_path}. Redownloading...")
 
     request = drive.files().export_media(fileId=cover_file_id, mimeType='application/pdf')
     with open(cached_cover_path, 'wb') as cover_file:
