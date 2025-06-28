@@ -73,7 +73,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         x = page.rect.width - 50
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
-def build_table_of_contents(merged_pdf, files):
+    build_table_of_contents(merged_pdf, files)
     toc_page = merged_pdf.new_page(0)
     toc_text = "Table of Contents\n\n"
     toc_entries = []
