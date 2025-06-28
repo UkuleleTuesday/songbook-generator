@@ -88,7 +88,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
 @click.command()
 @click.option('--source-folder', '-s', required=True, help='Drive folder ID to read files from')
 @click.option('--dest-folder', '-d', required=True, help='Drive folder ID to write output to (not used yet)')
-@click.option('--limit', '-l', type=int, default=100, help='Limit the number of files to process (default is 100)')
+@click.option('--limit', '-l', type=int, default=None, help='Limit the number of files to process (no limit by default)')
 def main(source_folder: str, dest_folder: str, limit: int):
     drive = authenticate_drive()
     click.echo("Authenticating with Google Drive...")
