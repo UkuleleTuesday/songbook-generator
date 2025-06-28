@@ -1,8 +1,8 @@
-# Songbook Generator
+# Songbook Generator for Ukulele Tuesday
 
 ## Overview
 
-Songbook Generator is a Python-based CLI tool that creates a master PDF from files stored in a specified Google Drive folder. It authenticates with Google Drive, downloads files as PDFs, merges them into a single document, and adds a table of contents.
+Songbook Generator is a Python-based CLI tool designed specifically for Ukulele Tuesday. It creates a master PDF from files stored in a specified Google Drive folder. The tool authenticates with Google Drive, downloads files as PDFs, merges them into a single document, and adds a table of contents.
 
 ## Features
 
