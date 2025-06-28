@@ -4,7 +4,7 @@ import tempfile
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
-from PyPDF2 import PdfMerger
+from pypdf import PdfMerger
 
 
 @click.command()
@@ -67,8 +67,8 @@ def main(source_folder: str, dest_folder: str, limit: int):
     merger = PdfMerger()
     for pdf_path in pdf_paths:
         merger.append(pdf_path)
-    merger.write(master_pdf_path)
-    merger.close()
+    with open(master_pdf_path, "wb") as master_pdf_file:
+        merger.write(master_pdf_file)
 
     # 5) Output the path to the saved master PDF
     click.echo(f"Master PDF saved at: {master_pdf_path}")
