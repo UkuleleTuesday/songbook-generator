@@ -54,9 +54,14 @@ def main(source_folder: str, dest_folder: str, limit: int):
         return
 
     click.echo(f"Starting download of {len(files)} files from folder {source_folder}...")
-    temp_dir = tempfile.mkdtemp()
+    # Use OS-specific standard paths for the cache directory
     pdf_paths = []
-    cache_dir = os.path.join(temp_dir, "cache")
+    if os.name == 'posix':  # Linux/macOS
+        cache_dir = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator", "cache")
+    elif os.name == 'nt':  # Windows
+        cache_dir = os.path.join(os.getenv("LOCALAPPDATA"), "songbook-generator", "cache")
+    else:  # Fallback
+        cache_dir = os.path.join(tempfile.gettempdir(), "songbook-generator", "cache")
     # Ensure the cache directory exists
     os.makedirs(cache_dir, exist_ok=True)
 
