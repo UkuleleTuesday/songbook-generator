@@ -48,6 +48,26 @@ uv run songbook-generator --source-folder 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 --li
 - Python 3.12+
 - `uv` for dependency management and running the project
 
+### Configuration
+The tool uses a configuration file located at:
+```bash
+~/.config/songbook-generator/config.toml
+```
+This file allows you to specify folder IDs, fonts, and other settings. Example structure:
+```toml
+[song-sheets]
+folder-ids = ["<DEFAULT_FOLDER_ID>"]
+
+[cover]
+file-id = "<COVER_TEMPLATE_FILE_ID>"
+
+[toc]
+font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
+fontsize = 9
+title-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
+title-fontsize = 16
+```
+
 ### Caching
 The tool uses a caching mechanism to store downloaded files and generated covers locally. Cached files are stored in:
 ```bash
