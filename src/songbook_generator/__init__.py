@@ -75,7 +75,13 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
 
-    merged_pdf.save(master_pdf_path)  # Save the merged PDF
+    try:
+        merged_pdf.save(master_pdf_path)  # Save the merged PDF
+        if not os.path.exists(master_pdf_path):
+            raise FileNotFoundError(f"Failed to save master PDF at {master_pdf_path}")
+    except Exception as e:
+        click.echo(f"Error saving master PDF: {e}")
+        return None
     return master_pdf_path
 
 
@@ -95,7 +101,12 @@ def main(source_folder: str, limit: int):
     pdf_paths = download_files(drive, files, cache_dir)
     click.echo("Merging downloaded PDFs into a single master PDF...")
     master_pdf_path = merge_pdfs(pdf_paths, files, cache_dir)
-    click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
+    if master_pdf_path and os.path.exists(master_pdf_path):
+        click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
+        click.echo("Opening the master PDF...")
+        os.system(f"xdg-open {master_pdf_path}")
+    else:
+        click.echo("Failed to save or locate the master PDF.")
     click.echo("Opening the master PDF...")
     os.system(f"xdg-open {master_pdf_path}")
 
