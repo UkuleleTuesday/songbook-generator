@@ -88,15 +88,19 @@ def merge_pdfs(pdf_paths, cache_dir):
 @click.option('--limit', '-l', type=int, default=100, help='Limit the number of files to process (default is 100)')
 def main(source_folder: str, dest_folder: str, limit: int):
     drive = authenticate_drive()
+    click.echo("Authenticating with Google Drive...")
     files = query_drive_files(drive, source_folder, limit)
     if not files:
         click.echo(f'No files found in folder {source_folder}.')
         return
     cache_dir = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator", "cache")
     os.makedirs(cache_dir, exist_ok=True)
+    click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     pdf_paths = download_files(drive, files, cache_dir)
+    click.echo("Merging downloaded PDFs into a single master PDF...")
     master_pdf_path = merge_pdfs(pdf_paths, cache_dir)
     click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
+    click.echo("Opening the master PDF...")
     os.system(f"xdg-open {master_pdf_path}")
 
 if __name__ == '__main__':
