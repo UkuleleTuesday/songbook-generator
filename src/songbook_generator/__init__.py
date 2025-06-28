@@ -62,11 +62,9 @@ def main(source_folder: str, dest_folder: str, limit: int):
     for f in files:
         file_id = f['id']
         file_name = f['name']
-        # Fetch file details to get the md5Checksum
+        # Fetch file details to get the modifiedTime
         file_details = drive.files().get(fileId=file_id, fields='modifiedTime').execute()
         print(f"Raw file details: {file_details}")
-        file_checksum = file_details.get('modifiedTime')
-        print(f"checksum = {file_checksum}")
         cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
         # Check if the file is already cached and unchanged
         if os.path.exists(cached_pdf_path):
