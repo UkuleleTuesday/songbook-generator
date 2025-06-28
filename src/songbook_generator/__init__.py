@@ -49,10 +49,7 @@ def query_drive_files(drive, source_folder, limit):
 
 
 def merge_pdfs(pdf_paths, files, cache_dir, drive):
-    master_pdf_path = os.path.join(cache_dir, "master.pdf")
     merged_pdf = fitz.open()
-    merged_pdf = fitz.open()
-    cover.generate_cover(drive, cache_dir, merged_pdf)
 
     for pdf_path in pdf_paths:
         pdf_document = fitz.open(pdf_path)
@@ -64,15 +61,7 @@ def merge_pdfs(pdf_paths, files, cache_dir, drive):
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
 
-    toc.build_table_of_contents(merged_pdf, files)
-    try:
-        merged_pdf.save(master_pdf_path)  # Save the merged PDF
-        if not os.path.exists(master_pdf_path):
-            raise FileNotFoundError(f"Failed to save master PDF at {master_pdf_path}")
-    except Exception as e:
-        click.echo(f"Error saving master PDF: {e}")
-        return None
-    return master_pdf_path
+    return merged_pdf
 
 
 @click.command()
@@ -92,7 +81,19 @@ def main(source_folder: str, limit: int):
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     pdf_paths = download_files(drive, files, cache_dir)
     click.echo("Merging downloaded PDFs into a single master PDF...")
-    master_pdf_path = merge_pdfs(pdf_paths, files, cache_dir, drive)
+    merged_pdf = merge_pdfs(pdf_paths, files, cache_dir, drive)
+    toc.build_table_of_contents(merged_pdf, files)
+    cover.generate_cover(drive, cache_dir, merged_pdf)
+
+    try:
+        master_pdf_path = os.path.join(cache_dir, "master.pdf")
+        merged_pdf.save(master_pdf_path)  # Save the merged PDF
+        if not os.path.exists(master_pdf_path):
+            raise FileNotFoundError(f"Failed to save master PDF at {master_pdf_path}")
+    except Exception as e:
+        click.echo(f"Error saving master PDF: {e}")
+        return None
+
     if master_pdf_path and os.path.exists(master_pdf_path):
         click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
         click.echo("Opening the master PDF...")
