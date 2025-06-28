@@ -68,13 +68,12 @@ def main(source_folder: str, dest_folder: str, limit: int):
         file_checksum = file_details.get('modifiedTime')
         print(f"checksum = {file_checksum}")
         cached_pdf_path = os.path.join(cache_dir, f"{file_name}.pdf")
-        cached_checksum_path = os.path.join(cache_dir, f"{file_name}.md5")
-
         # Check if the file is already cached and unchanged
-        if os.path.exists(cached_pdf_path) and os.path.exists(cached_checksum_path):
-            with open(cached_checksum_path, 'r') as checksum_file:
-                cached_checksum = checksum_file.read().strip()
-            if cached_checksum == file_checksum:
+        if os.path.exists(cached_pdf_path):
+            local_creation_time = os.path.getctime(cached_pdf_path)
+            remote_modified_time = file_details.get('modifiedTime')
+            remote_modified_timestamp = fitz.get_time(remote_modified_time)
+            if remote_modified_timestamp <= local_creation_time:
                 click.echo(f"File unchanged, using cached version: {cached_pdf_path}")
                 pdf_paths.append(cached_pdf_path)
                 continue
