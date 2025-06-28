@@ -90,7 +90,11 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         toc_font = "helv"
         toc_fontsize = 9
 
-    toc_page.insert_text((50, 50), toc_text, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
+    try:
+        toc_page.insert_text((50, 50), toc_text, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
+    except Exception as e:
+        click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
+        toc_page.insert_text((50, 50), toc_text, fontsize=9, fontname="helv", color=(0, 0, 0))
     merged_pdf.set_toc(toc_entries)
     merged_pdf.save(master_pdf_path)
     return master_pdf_path
