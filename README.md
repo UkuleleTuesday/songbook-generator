@@ -29,17 +29,18 @@ cd <repository-directory>
 Run the CLI tool with the following options:
 
 ```bash
-uv run songbook-generator --source-folder <FOLDER_ID> --limit <LIMIT>
+uv run songbook-generator [--source-folder <FOLDER_ID>] [--limit <LIMIT>]
 ```
 
 ### Options:
-- `--source-folder` or `-s`: The Google Drive folder ID to read files from (required).
+- `--source-folder` or `-s`: The Google Drive folder ID to read files from (optional, defaults to current song sheets
+    folder).
 - `--limit` or `-l`: Limit the number of files to process (optional).
 
-Example:
+This should just work, though:
 
 ```bash
-uv run songbook-generator --source-folder 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 --limit 3
+uv run songbook-generator 
 ```
 
 ## Development
