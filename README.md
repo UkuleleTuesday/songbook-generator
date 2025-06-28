@@ -44,7 +44,7 @@ uv run songbook-generator
 ```
 
 ### Output Example
-To see what the generated output looks like, check the `SAMPLE.pdf` file included in the repository.
+To see what the generated output looks like, check the [`SAMPLE.pdf`](SAMPLE.pdf) file included in the repository.
 
 ## Development
 
