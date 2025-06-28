@@ -41,7 +41,7 @@ def download_files(drive, files, cache_dir):
         file_details = drive.files().get(fileId=file_id, fields='modifiedTime').execute()
         cached_pdf_path = os.path.join(cache_dir, f"{file_id}.pdf")
         if os.path.exists(cached_pdf_path):
-            local_creation_time = os.path.getctime(cached_pdf_path)
+            local_creation_time = os.path.getmtime(cached_pdf_path)
             remote_modified_time = file_details.get('modifiedTime')
             remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
             local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
