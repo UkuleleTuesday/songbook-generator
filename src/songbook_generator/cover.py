@@ -9,6 +9,8 @@ import fitz  # PyMuPDF
 import toml
 from .gdrive import download_file
 
+DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+
 def load_cover_config():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):

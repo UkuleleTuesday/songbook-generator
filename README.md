@@ -10,16 +10,19 @@ Songbook Generator is a Python-based CLI tool designed specifically for Ukulele 
 - **PDF Download**: Download files as PDFs, with caching to avoid redundant downloads.
 - **PDF Merging**: Combine multiple PDFs into a single master PDF.
 - **Table of Contents**: Automatically generate a table of contents for the merged PDF.
+- **Cover Generation**: Dynamically generate a cover page using a Google Doc template, with placeholders replaced by real data.
+- **Caching**: Efficient caching mechanism to store downloaded files and generated covers locally, reducing redundant API calls.
+- **Configurable Settings**: Use a TOML configuration file to specify folder IDs, fonts, and other settings.
 
 ## Installation
 
 This project uses `uv` for development and building. Ensure `uv` is installed on your system.
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
-   ```
+Clone the repository:
+```bash
+git clone <repository-url>
+cd <repository-directory>
+```
 
 ## Usage
 
@@ -44,6 +47,15 @@ uv run songbook-generator --source-folder 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 --li
 ### Requirements
 - Python 3.12+
 - `uv` for dependency management and running the project
+
+### Caching
+The tool uses a caching mechanism to store downloaded files and generated covers locally. Cached files are stored in:
+```bash
+~/.cache/songbook-generator/cache
+```
+Subdirectories include:
+- `song-sheets`: Cached song sheet PDFs.
+- `covers`: Cached cover PDFs.
 
 ### Testing
 Run the pre-commit tests:
