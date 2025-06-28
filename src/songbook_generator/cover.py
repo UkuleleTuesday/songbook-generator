@@ -80,7 +80,13 @@ def generate_cover(drive, cache_dir):
         return
 
 
-    cover_id = create_cover_from_template(cover_file_id, { "{{DATE}}" : "test" })
+    # Generate the formatted date
+    today = datetime.now()
+    day = today.day
+    suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    formatted_date = f"{day}{suffix} {today.strftime('%B %Y')}"
+
+    cover_id = create_cover_from_template(cover_file_id, { "{{DATE}}" : formatted_date })
     pdf_blob = drive.files().export(
         fileId=cover_id,
         mimeType='application/pdf'
