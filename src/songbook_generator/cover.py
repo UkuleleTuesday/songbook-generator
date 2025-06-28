@@ -22,7 +22,6 @@ def generate_cover(drive, cache_dir, merged_pdf):
     cover_dir = os.path.join(cache_dir, "cover")
     os.makedirs(cover_dir, exist_ok=True)
     cached_cover_path = os.path.join(cover_dir, f"{cover_file_id}.pdf")
-    import pdb;pdb.set_trace()
 
     # FIXME need stronger check
     if os.path.exists(cached_cover_path) and os.path.getsize(cached_cover_path) > 0:
