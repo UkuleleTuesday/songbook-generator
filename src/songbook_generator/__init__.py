@@ -1,6 +1,7 @@
 import click
 import os
 import tempfile
+from datetime import datetime
 from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
@@ -78,7 +79,6 @@ def main(source_folder: str, dest_folder: str, limit: int):
             local_creation_time = os.path.getctime(cached_pdf_path)
             click.echo(f"Local creation time for {cached_pdf_path}: {local_creation_time}")
             remote_modified_time = file_details.get('modifiedTime')
-            from datetime import datetime
             remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
             if remote_modified_timestamp <= local_creation_time:
                 click.echo(f"File unchanged, using cached version: {cached_pdf_path}")
