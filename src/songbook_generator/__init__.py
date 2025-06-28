@@ -69,6 +69,8 @@ def main(source_folder: str, dest_folder: str, limit: int):
         # Check if the file is already cached and unchanged
         if os.path.exists(cached_pdf_path):
             local_creation_time = os.path.getctime(cached_pdf_path)
+            local_creation_time = os.path.getctime(cached_pdf_path)
+            click.echo(f"Local creation time for {cached_pdf_path}: {local_creation_time}")
             remote_modified_time = file_details.get('modifiedTime')
             remote_modified_timestamp = fitz.get_time(remote_modified_time)
             if remote_modified_timestamp <= local_creation_time:
