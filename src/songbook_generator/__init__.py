@@ -80,7 +80,8 @@ def main(source_folder: str, dest_folder: str, limit: int):
             click.echo(f"Local creation time for {cached_pdf_path}: {local_creation_time}")
             remote_modified_time = file_details.get('modifiedTime')
             remote_modified_timestamp = datetime.fromisoformat(remote_modified_time.replace("Z", "+00:00"))
-            if remote_modified_timestamp <= local_creation_time:
+            local_creation_datetime = datetime.fromtimestamp(local_creation_time)
+            if remote_modified_timestamp <= local_creation_datetime:
                 click.echo(f"File unchanged, using cached version: {cached_pdf_path}")
                 pdf_paths.append(cached_pdf_path)
                 continue
