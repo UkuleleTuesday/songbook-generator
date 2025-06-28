@@ -84,6 +84,15 @@ def main(source_folder: str, dest_folder: str, limit: int):
         merged_pdf.save(intermediate_pdf_path)
         click.echo(f"Intermediate PDF saved for page {page_number + 1}: {intermediate_pdf_path}")
 
+    # Create a table of contents page
+    click.echo("Creating table of contents...")
+    toc_page = merged_pdf.new_page(-1)  # Add a new page at the end
+    toc_text = "Table of Contents\n\n"
+    for page_number, file_name in enumerate([os.path.basename(path) for path in pdf_paths], start=1):
+        toc_text += f"{page_number}. {file_name}\n"
+    toc_page.insert_text((50, 50), toc_text, fontsize=12, color=(0, 0, 0))
+
+    # Save the final PDF with the table of contents
     merged_pdf.save(master_pdf_path)
 
     # 5) Output the path to the saved master PDF
