@@ -75,6 +75,7 @@ def merge_pdfs(pdf_paths, files, cache_dir):
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
 
+    toc.build_table_of_contents(merged_pdf, files)
     try:
         merged_pdf.save(master_pdf_path)  # Save the merged PDF
         if not os.path.exists(master_pdf_path):
@@ -107,8 +108,6 @@ def main(source_folder: str, limit: int):
         os.system(f"xdg-open {master_pdf_path}")
     else:
         click.echo("Failed to save or locate the master PDF.")
-    click.echo("Opening the master PDF...")
-    os.system(f"xdg-open {master_pdf_path}")
 
 
 if __name__ == '__main__':
