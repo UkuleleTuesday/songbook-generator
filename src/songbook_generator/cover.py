@@ -22,8 +22,10 @@ def generate_cover(drive, cache_dir, merged_pdf):
     cover_dir = os.path.join(cache_dir, "cover")
     os.makedirs(cover_dir, exist_ok=True)
     cached_cover_path = os.path.join(cover_dir, f"{cover_file_id}.pdf")
+    import pdb;pdb.set_trace()
 
-    if os.path.exists(cached_cover_path):
+    # FIXME need stronger check
+    if os.path.exists(cached_cover_path) and os.path.getsize(cached_cover_path) > 0:
         try:
             local_creation_time = os.path.getmtime(cached_cover_path)
             remote_modified_time = drive.files().get(fileId=cover_file_id, fields='modifiedTime').execute().get('modifiedTime')
@@ -31,8 +33,6 @@ def generate_cover(drive, cache_dir, merged_pdf):
             local_creation_datetime = datetime.fromtimestamp(local_creation_time).astimezone()
             if remote_modified_timestamp <= local_creation_datetime:
                 click.echo(f"Using cached cover: {cached_cover_path}")
-                if os.path.getsize(cached_cover_path) == 0:
-                    raise ValueError(f"Downloaded cover file is empty: {cached_cover_path}. Please check the file on Google Drive.")
                 try:
                     cover_pdf = fitz.open(cached_cover_path)
                 except fitz.EmptyFileError:
