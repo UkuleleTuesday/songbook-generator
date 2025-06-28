@@ -71,13 +71,28 @@ def main(source_folder: str, dest_folder: str, limit: int):
     for pdf_path in pdf_paths:
         writer.append(pdf_path)
 
-    # Add page numbers to the top-right corner
+    from pypdf import PdfWriter, PdfReader, Transformation
+
+    click.echo("Adding page numbers to the top-right corner...")
+    temp_dir = tempfile.mkdtemp()
+
     for page_number, page in enumerate(writer.pages, start=1):
-        page.add_text(
-            text=str(page_number),
-            x=500,  # Adjust x-coordinate for top-right corner
-            y=750,  # Adjust y-coordinate for top-right corner
-            size=12  # Font size
+        # Create a temporary PDF with the page number as a stamp
+        stamp_path = os.path.join(temp_dir, f"stamp_{page_number}.pdf")
+        with open(stamp_path, "wb") as stamp_file:
+            stamp_writer = PdfWriter()
+            stamp_page = page.create_blank_page(
+                width=page.mediabox.width, height=page.mediabox.height
+            )
+            stamp_writer.add_page(stamp_page)
+            stamp_writer.write(stamp_file)
+
+        # Read the stamp PDF and merge it onto the current page
+        stamp_reader = PdfReader(stamp_path)
+        stamp_page = stamp_reader.pages[0]
+        page.merge_transformed_page(
+            stamp_page,
+            Transformation().translate(page.mediabox.width - 50, page.mediabox.height - 30)
         )
     with open(master_pdf_path, "wb") as master_pdf_file:
         writer.write(master_pdf_file)
