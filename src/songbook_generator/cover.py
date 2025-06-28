@@ -26,4 +26,4 @@ def generate_cover(drive, cache_dir, merged_pdf):
         cover_pdf = fitz.open(cached_cover_path)
     except fitz.EmptyFileError:
         raise ValueError(f"Downloaded cover file is corrupted: {cached_cover_path}. Please check the file on Google Drive.")
-    merged_pdf.insert_pdf(cover_pdf, 0)
+    merged_pdf.insert_pdf(cover_pdf)
