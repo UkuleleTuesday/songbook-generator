@@ -38,14 +38,24 @@ def main(source_folder: str, dest_folder: str, limit: int):
     # 2) Query files in the source folder
     query = f"'{source_folder}' in parents and trashed = false"
     click.echo(f"Executing Drive API query: {query}")
-    resp = drive.files().list(
-        q=query,
-        pageSize=limit,  # Use the limit from CLI argument
-        fields="files(id,name)",
-        orderBy="name_natural"
-    ).execute()
+    files = []
+    page_token = None
+    while True:
+        resp = drive.files().list(
+            q=query,
+            pageSize=limit if limit else 1000,  # Default to 1000 if no limit is specified
+            fields="nextPageToken, files(id,name)",
+            orderBy="name_natural",
+            pageToken=page_token
+        ).execute()
 
-    files = resp.get('files', [])
+        files.extend(resp.get('files', []))
+        page_token = resp.get('nextPageToken')
+        if not page_token or (limit and len(files) >= limit):
+            break
+
+    if limit:
+        files = files[:limit]
     click.echo(f"Fetched {len(files)} files from Drive. Inspecting response...")
     for f in files:
         click.echo(f"File: {f.get('name')}, ID: {f.get('id')}")
