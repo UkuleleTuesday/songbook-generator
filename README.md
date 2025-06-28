@@ -55,6 +55,8 @@ Before running the tool, authenticate with Google Cloud using the following comm
 gcloud auth application-default login --client-id-file=client-secret.json --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
 ```
 
+**Note**: The app is currently whitelisted for test users only. If you are not already whitelisted, please contact the project owner to request access.
+
 ### Configuration
 The tool uses a configuration file located at:
 ```bash
