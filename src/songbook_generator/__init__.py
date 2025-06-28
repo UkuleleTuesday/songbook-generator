@@ -109,7 +109,6 @@ def main(source_folder: str, dest_folder: str, limit: int):
 
     click.echo("Adding page numbers to the top-right corner...")
     for page_number in range(len(merged_pdf)):
-        click.echo(f"Processing page {page_number + 1}...")
         page = merged_pdf[page_number]
         text = str(page_number + 1)
         x = page.rect.width - 50  # Adjust x-coordinate for top-right corner
@@ -118,7 +117,6 @@ def main(source_folder: str, dest_folder: str, limit: int):
         tmp_dir = tempfile.gettempdir()
         intermediate_pdf_path = os.path.join(tmp_dir, f"intermediate_page_{page_number + 1}.pdf")
         merged_pdf.save(intermediate_pdf_path)
-        click.echo(f"Intermediate PDF saved for page {page_number + 1}: {intermediate_pdf_path}")
 
     # Create a table of contents page
     click.echo("Creating table of contents...")
