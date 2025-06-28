@@ -70,6 +70,15 @@ def main(source_folder: str, dest_folder: str, limit: int):
     writer = PdfWriter()
     for pdf_path in pdf_paths:
         writer.append(pdf_path)
+
+    # Add page numbers to the top-right corner
+    for page_number, page in enumerate(writer.pages, start=1):
+        page.add_text(
+            text=str(page_number),
+            x=500,  # Adjust x-coordinate for top-right corner
+            y=750,  # Adjust y-coordinate for top-right corner
+            size=12  # Font size
+        )
     with open(master_pdf_path, "wb") as master_pdf_file:
         writer.write(master_pdf_file)
 
