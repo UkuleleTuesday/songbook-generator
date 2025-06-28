@@ -47,6 +47,13 @@ uv run songbook-generator --source-folder 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 --li
 ### Requirements
 - Python 3.12+
 - `uv` for dependency management and running the project
+- `gcloud` CLI installed for authentication
+
+### Authentication
+Before running the tool, authenticate with Google Cloud using the following command:
+```bash
+gcloud auth application-default login --client-id-file=client-secret.json --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
+```
 
 ### Configuration
 The tool uses a configuration file located at:
