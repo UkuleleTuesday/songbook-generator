@@ -52,7 +52,6 @@ def generate_cover(drive, cache_dir, merged_pdf):
         except errors.HttpError as e:
             if "fileNotExportable" in str(e):
                 raise ValueError(f"Cover file (ID: {cover_file_id}) is not exportable. Ensure it is a valid Docs Editors file.")
-            raise
     click.echo(f"Downloading cover file (ID: {cover_file_id})...")
     cover_pdf = fitz.open(cached_cover_path)
     merged_pdf.insert_pdf(cover_pdf, 0)
