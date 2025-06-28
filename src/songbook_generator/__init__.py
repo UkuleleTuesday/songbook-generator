@@ -16,7 +16,7 @@ def load_config_folder_id():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        return config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])[0]
+        return config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])
     return DEFAULT_GDRIVE_FOLDER_ID
 
 
