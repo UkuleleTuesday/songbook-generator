@@ -71,12 +71,6 @@ def create_cover_from_template(
     )
     print(f"Replaced {total} occurrences in the copy.")
 
-    # 4) Export the modified copy as PDF
-    try:
-        drive.files().delete(fileId=copy_id).execute()
-        print(f"Deleted copy: {copy_id} from Google Drive.")
-    except Exception as e:
-        print(f"Failed to delete copy: {copy_id}. Error: {e}")
     return copy_id
 
 def generate_cover(drive, cache_dir):
@@ -101,4 +95,9 @@ def generate_cover(drive, cache_dir):
         cover_pdf = fitz.open(pdf_output_path)
     except fitz.EmptyFileError:
         raise ValueError(f"Downloaded cover file is corrupted: {pdf_output_path}. Please check the file on Google Drive.")
+    try:
+        drive.files().delete(fileId=cover_id).execute()
+        print(f"Deleted copy: {cover_id} from Google Drive.")
+    except Exception as e:
+        print(f"Failed to delete copy: {cover_id}. Error: {e}")
     return cover_pdf
