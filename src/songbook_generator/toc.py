@@ -18,29 +18,30 @@ def build_table_of_contents(merged_pdf, files):
     toc_entries = []
     column_width = 250  # Width of each column
     column_spacing = 20  # Space between columns
-    column_height = toc_page.rect.height - 100  # Adjust for margins
+    column_height = toc_page.rect.height - 25  # Adjust for margins
     current_y = 50
     current_x = 50
 
     toc_font, toc_fontsize = load_toc_config()
 
+    current_y += 10
     for page_number, file in enumerate(files, start=1):
+        current_y += 10  # Line spacing
         file_name = file['name']
         toc_text_line = f"{page_number}. {file_name}"
         toc_entries.append([1, file_name, page_number + 1])
         try:
-            toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
+            toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=toc_fontsize, fontfile=toc_font, color=(0, 0, 0))
         except Exception as e:
             click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
             toc_page.insert_text((current_x, current_y), toc_text_line, fontsize=9, fontname="helv", color=(0, 0, 0))
-        current_y += 20  # Line spacing
         if current_y > column_height:  # Move to next column if overspills
             current_y = 50
             current_x += column_width + column_spacing
 
     try:
-        toc_page.insert_text((50, 50), toc_text, fontsize=toc_fontsize, fontname=toc_font, color=(0, 0, 0))
+        toc_page.insert_text((50, 50), toc_text, fontsize=16, fontfile=toc_font, color=(0, 0, 0))
     except Exception as e:
         click.echo(f"Warning: Failed to load font '{toc_font}'. Falling back to default font 'helv'. Error: {e}")
-        toc_page.insert_text((50, 50), toc_text, fontsize=9, fontname="helv", color=(0, 0, 0))
+        toc_page.insert_text((50, 50), toc_text, fontsize=16, fontname="helv", color=(0, 0, 0))
     merged_pdf.set_toc(toc_entries)
