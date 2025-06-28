@@ -75,7 +75,7 @@ def download_files(drive, files, cache_dir):
     return pdf_paths
 
 
-def merge_pdfs(pdf_paths, files, cache_dir):
+def merge_pdfs(pdf_paths, files, cache_dir, drive):
     master_pdf_path = os.path.join(cache_dir, "master.pdf")
     merged_pdf = fitz.open()
     merged_pdf = fitz.open()
@@ -119,7 +119,7 @@ def main(source_folder: str, limit: int):
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     pdf_paths = download_files(drive, files, cache_dir)
     click.echo("Merging downloaded PDFs into a single master PDF...")
-    master_pdf_path = merge_pdfs(pdf_paths, files, cache_dir)
+    master_pdf_path = merge_pdfs(pdf_paths, files, cache_dir, drive)
     if master_pdf_path and os.path.exists(master_pdf_path):
         click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
         click.echo("Opening the master PDF...")
