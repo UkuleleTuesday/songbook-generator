@@ -12,6 +12,8 @@ def resolve_font(fontfile, fallback_font):
     If it fails, log a warning and fall back to the fallback_font.
     """
     try:
+        if fontfile is None:
+            raise ValueError("No fontfile provided")
         fitz.Font(fontfile=fontfile)
         return fontfile
     except Exception as e:
