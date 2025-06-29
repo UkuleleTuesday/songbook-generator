@@ -1,7 +1,7 @@
-import toml
-import os
 import click
 import fitz  # PyMuPDF
+
+from .config import load_config
 
 DEFAULT_FONT = "helv"
 
@@ -15,7 +15,7 @@ def resolve_font(fontfile, fallback_font):
         if fontfile is None:
             raise ValueError("No fontfile provided")
         if fontfile != DEFAULT_FONT:
-            font = fitz.Font(fontfile=fontfile)
+            fitz.Font(fontfile=fontfile)
             return fontfile
         return fallback_font
     except Exception as e:
@@ -25,11 +25,7 @@ def resolve_font(fontfile, fallback_font):
 
 # Load configuration for TOC
 def load_toc_config():
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-    else:
-        config = toml.loads("")
+    config = load_config()
     return (
         resolve_font(config.get("toc", {}).get("text-font", DEFAULT_FONT), DEFAULT_FONT),
         config.get("toc", {}).get("text-fontsize", 9),
