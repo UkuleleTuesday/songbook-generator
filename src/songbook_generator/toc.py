@@ -24,13 +24,14 @@ def load_toc_config():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        return (
-            resolve_font(config.get("toc", {}).get("text-font", DEFAULT_FONT), DEFAULT_FONT),
-            config.get("toc", {}).get("text-fontsize", 9),
-            resolve_font(config.get("toc", {}).get("title-font", DEFAULT_FONT), DEFAULT_FONT),
-            config.get("toc", {}).get("title-fontsize", 16),
-        )
-    return "helv", 9
+    else:
+        config = toml.loads("")
+    return (
+        resolve_font(config.get("toc", {}).get("text-font", DEFAULT_FONT), DEFAULT_FONT),
+        config.get("toc", {}).get("text-fontsize", 9),
+        resolve_font(config.get("toc", {}).get("title-font", DEFAULT_FONT), DEFAULT_FONT),
+        config.get("toc", {}).get("title-fontsize", 16),
+    )
 
 
 def build_table_of_contents(files):
@@ -52,54 +53,22 @@ def build_table_of_contents(files):
         file_name = file["name"]
         toc_text_line = f"{page_number}. {file_name}"
         toc_entries.append([1, file_name, page_number])
-        try:
-            toc_page.insert_text(
-                (current_x, current_y),
-                toc_text_line,
-                fontsize=toc_fontsize,
-                fontfile=toc_font,
-                color=(0, 0, 0),
-            )
-        except Exception as e:
-            click.echo(
-                f"Warning: Failed to load font '{toc_font}'. Falling back to default font '{DEFAULT_FONT}'. Error: {e}"
-            )
-            toc_page.insert_text(
-                (current_x, current_y),
-                toc_text_line,
-                fontsize=9,
-                fontname=DEFAULT_FONT,
-                color=(0, 0, 0),
-            )
+        toc_page.insert_text(
+            (current_x, current_y),
+            toc_text_line,
+            fontsize=toc_fontsize,
+            fontfile=toc_font,
+            color=(0, 0, 0),
+        )
         if current_y > column_height:  # Move to next column if overspills
             current_y = 50
             current_x += column_width + column_spacing
 
-    try:
-        try:
-            toc_page.insert_text(
-                (50, 50),
-                toc_text,
-                fontsize=title_fontsize,
-                fontfile=title_font,
-                color=(0, 0, 0),
-            )
-        except Exception as e:
-            click.echo(
-                f"Warning: Failed to load title font '{title_font}'. Falling back to default font '{DEFAULT_FONT}'. Error: {e}"
-            )
-            toc_page.insert_text(
-                (50, 50),
-                toc_text,
-                fontsize=title_fontsize,
-                fontname=DEFAULT_FONT,
-                color=(0, 0, 0),
-            )
-    except Exception as e:
-        click.echo(
-            f"Warning: Failed to load font '{toc_font}'. Falling back to default font '{DEFAULT_FONT}'. Error: {e}"
-        )
-        toc_page.insert_text(
-            (50, 50), toc_text, fontsize=16, fontname=DEFAULT_FONT, color=(0, 0, 0)
-        )
+    toc_page.insert_text(
+        (50, 50),
+        toc_text,
+        fontsize=title_fontsize,
+        fontfile=title_font,
+        color=(0, 0, 0),
+    )
     return toc_pdf
