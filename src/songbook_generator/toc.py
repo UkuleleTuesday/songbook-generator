@@ -14,8 +14,10 @@ def resolve_font(fontfile, fallback_font):
     try:
         if fontfile is None:
             raise ValueError("No fontfile provided")
-        font = fitz.Font(fontfile=fontfile)
-        return fontfile
+        if fontfile != DEFAULT_FONT:
+            font = fitz.Font(fontfile=fontfile)
+            return fontfile
+        return fallback_font
     except Exception as e:
         click.echo(f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}")
         return fallback_font
