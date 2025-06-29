@@ -30,41 +30,44 @@ def test_resolve_font_no_fontfile(mocker):
     mock_font.assert_not_called()
 
 
-def test_load_toc_config_with_existing_file():
-    mock_config = """
-    [toc]
-    text-font = "custom-font"
-    text-fontsize = 12
-    title-font = "custom-title-font"
-    title-fontsize = 18
-    """
-    with patch("builtins.open", mock_open(read_data=mock_config)):
-        with patch("os.path.exists", return_value=True):
-            text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-            assert text_font == "custom-font"
-            assert text_fontsize == 12
-            assert title_font == "custom-title-font"
-            assert title_fontsize == 18
+def test_load_toc_config_with_existing_file(mocker):
+    mock_config = {
+        "toc": {
+            "text-font": "custom-font",
+            "text-fontsize": 12,
+            "title-font": "custom-title-font",
+            "title-fontsize": 18,
+        }
+    }
+    mock_load_config = mocker.patch("songbook_generator.toc.load_config", return_value=mock_config)
+    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
+    assert text_font == "custom-font"
+    assert text_fontsize == 12
+    assert title_font == "custom-title-font"
+    assert title_fontsize == 18
+    mock_load_config.assert_called_once()
 
 
-def test_load_toc_config_with_missing_file():
-    with patch("os.path.exists", return_value=False):
-        text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-        assert text_font == DEFAULT_FONT
-        assert text_fontsize == 9
-        assert title_font == DEFAULT_FONT
-        assert title_fontsize == 16
+def test_load_toc_config_with_missing_file(mocker):
+    mock_load_config = mocker.patch("songbook_generator.toc.load_config", return_value={})
+    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
+    assert text_font == DEFAULT_FONT
+    assert text_fontsize == 9
+    assert title_font == DEFAULT_FONT
+    assert title_fontsize == 16
+    mock_load_config.assert_called_once()
 
 
-def test_load_toc_config_partial_override():
-    mock_config = """
-    [toc]
-    text-fontsize = 14
-    """
-    with patch("builtins.open", mock_open(read_data=mock_config)):
-        with patch("os.path.exists", return_value=True):
-            text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-            assert text_font == DEFAULT_FONT
-            assert text_fontsize == 14
-            assert title_font == DEFAULT_FONT
-            assert title_fontsize == 16
+def test_load_toc_config_partial_override(mocker):
+    mock_config = {
+        "toc": {
+            "text-fontsize": 14,
+        }
+    }
+    mock_load_config = mocker.patch("songbook_generator.toc.load_config", return_value=mock_config)
+    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
+    assert text_font == DEFAULT_FONT
+    assert text_fontsize == 14
+    assert title_font == DEFAULT_FONT
+    assert title_fontsize == 16
+    mock_load_config.assert_called_once()
