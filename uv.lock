@@ -509,7 +509,7 @@ wheels = [
 [[package]]
 name = "songbook-generator"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "arrow" },
     { name = "click" },
