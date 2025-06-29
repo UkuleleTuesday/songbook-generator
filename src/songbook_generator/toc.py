@@ -3,6 +3,19 @@ import os
 import click
 import fitz  # PyMuPDF
 
+def resolve_font(fontfile, fallback_font):
+    """
+    Try to build a Font() using the provided fontfile path.
+    If it succeeds, return the fontfile path.
+    If it fails, log a warning and fall back to the fallback_font.
+    """
+    try:
+        fitz.Font(fontfile=fontfile)
+        return fontfile
+    except Exception as e:
+        click.echo(f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}")
+        return fallback_font
+
 
 # Load configuration for TOC
 def load_toc_config():
