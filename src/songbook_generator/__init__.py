@@ -1,54 +1,20 @@
-import click
-import os
-from google.auth import default
-from googleapiclient.discovery import build
-import fitz  # PyMuPDF
-
-import toml
-from .gdrive import download_files
+from .config import load_config
 from . import toc, cover
+from .gdrive import authenticate_drive, query_drive_files, download_files
+
+import os
+import fitz
+import click
 
 DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 
 
 def load_config_folder_ids():
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        folder_ids = config.get("song-sheets", {}).get(
-            "folder-ids", [DEFAULT_GDRIVE_FOLDER_ID]
-        )
-        return folder_ids if isinstance(folder_ids, list) else [folder_ids]
-    return [DEFAULT_GDRIVE_FOLDER_ID]
-
-
-def authenticate_drive():
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
-    return build("drive", "v3", credentials=creds)
-
-
-def query_drive_files(drive, source_folder, limit):
-    query = f"'{source_folder}' in parents and trashed = false"
-    click.echo(f"Executing Drive API query: {query}")
-    files = []
-    page_token = None
-    while True:
-        resp = (
-            drive.files()
-            .list(
-                q=query,
-                pageSize=limit if limit else 1000,
-                fields="nextPageToken, files(id,name)",
-                orderBy="name_natural",
-                pageToken=page_token,
-            )
-            .execute()
-        )
-        files.extend(resp.get("files", []))
-        page_token = resp.get("nextPageToken")
-        if not page_token or (limit and len(files) >= limit):
-            break
-    return files[:limit] if limit else files
+    config = load_config()
+    folder_ids = config.get("song-sheets", {}).get(
+        "folder-ids", [DEFAULT_GDRIVE_FOLDER_ID]
+    )
+    return folder_ids if isinstance(folder_ids, list) else [folder_ids]
 
 
 def merge_pdfs(pdf_paths, files, cache_dir, drive):
@@ -67,22 +33,7 @@ def merge_pdfs(pdf_paths, files, cache_dir, drive):
     return merged_pdf
 
 
-@click.command()
-@click.option(
-    "--source-folder",
-    "-s",
-    multiple=True,
-    default=load_config_folder_ids(),
-    help="Drive folder IDs to read files from (can be passed multiple times)",
-)
-@click.option(
-    "--limit",
-    "-l",
-    type=int,
-    default=None,
-    help="Limit the number of files to process (no limit by default)",
-)
-def main(source_folder: str, limit: int):
+def generate_songbook(source_folder: str, limit: int):
     drive = authenticate_drive()
     click.echo("Authenticating with Google Drive...")
     files = []
@@ -121,7 +72,3 @@ def main(source_folder: str, limit: int):
         os.system(f"xdg-open {master_pdf_path}")
     else:
         click.echo("Failed to save or locate the master PDF.")
-
-
-if __name__ == "__main__":
-    main()

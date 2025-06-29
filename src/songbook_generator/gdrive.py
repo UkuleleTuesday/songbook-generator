@@ -2,6 +2,37 @@ import os
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
+from google.auth import default
+from googleapiclient.discovery import build
+
+
+def authenticate_drive():
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    return build("drive", "v3", credentials=creds)
+
+
+def query_drive_files(drive, source_folder, limit):
+    query = f"'{source_folder}' in parents and trashed = false"
+    click.echo(f"Executing Drive API query: {query}")
+    files = []
+    page_token = None
+    while True:
+        resp = (
+            drive.files()
+            .list(
+                q=query,
+                pageSize=limit if limit else 1000,
+                fields="nextPageToken, files(id,name)",
+                orderBy="name_natural",
+                pageToken=page_token,
+            )
+            .execute()
+        )
+        files.extend(resp.get("files", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token or (limit and len(files) >= limit):
+            break
+    return files[:limit] if limit else files
 
 
 def download_files(drive, files, cache_dir):
