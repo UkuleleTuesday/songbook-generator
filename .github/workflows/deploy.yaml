@@ -63,6 +63,7 @@ jobs:
     - name: Deploy to Cloud Functions
       run: |
         gcloud functions deploy ${{ vars.GCP_FUNCTION_NAME }} \
+          --gen2 \
           --region=${{ vars.GCP_REGION }} \
           --runtime=python312 \
           --trigger-http \
