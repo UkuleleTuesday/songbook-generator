@@ -1,6 +1,7 @@
 import pytest
 import fitz
-from songbook_generator.toc import resolve_font, DEFAULT_FONT
+from songbook_generator.toc import resolve_font, DEFAULT_FONT, load_toc_config
+from unittest.mock import patch, mock_open
 
 def test_resolve_font_valid_fontfile(mocker):
     # Mock fitz.Font to simulate successful font loading
