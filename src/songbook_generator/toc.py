@@ -23,13 +23,9 @@ def load_toc_config():
     if os.path.exists(config_path):
         config = toml.load(config_path)
         return (
-            config.get("toc", {}).get(
-                "text-font", "helv"
-            ),
+            resolve_font(config.get("toc", {}).get("text-font", "helv"), "helv"),
             config.get("toc", {}).get("text-fontsize", 9),
-            config.get("toc", {}).get(
-                "title-font", "helv"
-            ),
+            resolve_font(config.get("toc", {}).get("title-font", "helv"), "helv"),
             config.get("toc", {}).get("title-fontsize", 16),
         )
     return "helv", 9
