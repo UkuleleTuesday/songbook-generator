@@ -1,7 +1,7 @@
 import click
 import fitz  # PyMuPDF
 
-from .config import load_config
+from config import load_config
 
 DEFAULT_FONT = "helv"
 

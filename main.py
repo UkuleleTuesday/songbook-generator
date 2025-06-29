@@ -1,4 +1,4 @@
-from . import generate_songbook
+from pdf import generate_songbook
 import functions_framework
 
 
