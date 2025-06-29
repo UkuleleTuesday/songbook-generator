@@ -57,11 +57,10 @@ jobs:
 
     - name: Generate requirements.txt
       run: |
-        uv export --no-emit-project --format requirements-txt > src/songbook_generator/requirements.txt
-        cat src/songbook_generator/requirements.txt
+        uv export --no-emit-project --format requirements-txt > requirements.txt
+        cat requirements.txt
 
     - name: Deploy to Cloud Functions
-      working-directory: ./src/songbook_generator
       run: |
         gcloud functions deploy ${{ vars.GCP_FUNCTION_NAME }} \
           --region=${{ vars.GCP_REGION }} \
