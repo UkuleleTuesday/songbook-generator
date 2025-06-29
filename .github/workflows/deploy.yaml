@@ -28,7 +28,7 @@ jobs:
       run: uv sync --locked --all-extras --dev
 
     - name: Run pre-commit hooks
-      run: uvx --from 'pre-commit<5' pre-commit run --all-files
+      run: uvx --from 'pre-commit<5' pre-commit run --all-files --verbose
   deploy:
     runs-on: ubuntu-latest
     permissions:
