@@ -56,7 +56,9 @@ jobs:
       run: uv sync --locked --all-extras --dev
 
     - name: Generate requirements.txt
-      run: uv export --format requirements-txt > src/songbook_generator/requirements.txt
+      run: |
+        uv export --format requirements-txt > src/songbook_generator/requirements.txt
+        cat src/songbook_generator/requirements.txt
 
     - name: Deploy to Cloud Functions
       working-directory: ./src/songbook_generator
