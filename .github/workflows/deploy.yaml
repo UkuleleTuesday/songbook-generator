@@ -57,8 +57,8 @@ jobs:
     - name: Deploy to Cloud Functions
       working-directory: ./src/songbook_generator
       run: |
-        gcloud functions deploy ${{ secrets.GCP_FUNCTION_NAME }} \
-          --region=${{ secrets.GCP_REGION }} \
+        gcloud functions deploy ${{ vars.GCP_FUNCTION_NAME }} \
+          --region=${{ vars.GCP_REGION }} \
           --runtime=python312 \
           --trigger-http \
           --source=function \
