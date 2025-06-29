@@ -11,9 +11,9 @@ def load_toc_config():
         config = toml.load(config_path)
         return (
             config.get("toc", {}).get(
-                "font", "helv"
+                "text-font", "helv"
             ),
-            config.get("toc", {}).get("fontsize", 9),
+            config.get("toc", {}).get("text-fontsize", 9),
             config.get("toc", {}).get(
                 "title-font", "helv"
             ),
