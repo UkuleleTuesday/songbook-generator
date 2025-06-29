@@ -57,7 +57,7 @@ jobs:
 
     - name: Generate requirements.txt
       run: |
-        uv export --format requirements-txt > src/songbook_generator/requirements.txt
+        uv export --no-emit-project --format requirements-txt > src/songbook_generator/requirements.txt
         cat src/songbook_generator/requirements.txt
 
     - name: Deploy to Cloud Functions
