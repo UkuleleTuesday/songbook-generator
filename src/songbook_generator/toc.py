@@ -5,6 +5,7 @@ from .config import load_config
 
 DEFAULT_FONT = "helv"
 
+
 def resolve_font(fontfile, fallback_font):
     """
     Try to build a Font() using the provided fontfile path.
@@ -19,7 +20,9 @@ def resolve_font(fontfile, fallback_font):
             return fontfile
         return fallback_font
     except Exception as e:
-        click.echo(f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}")
+        click.echo(
+            f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}"
+        )
         return fallback_font
 
 
@@ -27,9 +30,13 @@ def resolve_font(fontfile, fallback_font):
 def load_toc_config():
     config = load_config()
     return (
-        resolve_font(config.get("toc", {}).get("text-font", DEFAULT_FONT), DEFAULT_FONT),
+        resolve_font(
+            config.get("toc", {}).get("text-font", DEFAULT_FONT), DEFAULT_FONT
+        ),
         config.get("toc", {}).get("text-fontsize", 9),
-        resolve_font(config.get("toc", {}).get("title-font", DEFAULT_FONT), DEFAULT_FONT),
+        resolve_font(
+            config.get("toc", {}).get("title-font", DEFAULT_FONT), DEFAULT_FONT
+        ),
         config.get("toc", {}).get("title-fontsize", 16),
     )
 
