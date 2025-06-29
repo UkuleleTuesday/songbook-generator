@@ -42,7 +42,7 @@ uv run songbook-generator [--source-folder <FOLDER_ID>] [--limit <LIMIT>]
 This should just work, though:
 
 ```bash
-uv run songbook-generator 
+uv run songbook-generator
 ```
 
 ## Development

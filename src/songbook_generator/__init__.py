@@ -1,10 +1,7 @@
 import click
 import os
-import tempfile
-from datetime import datetime
 from google.auth import default
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
 import fitz  # PyMuPDF
 
 import toml
@@ -13,18 +10,21 @@ from . import toc, cover
 
 DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 
+
 def load_config_folder_ids():
     config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
     if os.path.exists(config_path):
         config = toml.load(config_path)
-        folder_ids = config.get("song-sheets", {}).get("folder-ids", [DEFAULT_GDRIVE_FOLDER_ID])
+        folder_ids = config.get("song-sheets", {}).get(
+            "folder-ids", [DEFAULT_GDRIVE_FOLDER_ID]
+        )
         return folder_ids if isinstance(folder_ids, list) else [folder_ids]
     return [DEFAULT_GDRIVE_FOLDER_ID]
 
 
 def authenticate_drive():
-    creds, _ = default(scopes=['https://www.googleapis.com/auth/drive.readonly'])
-    return build('drive', 'v3', credentials=creds)
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    return build("drive", "v3", credentials=creds)
 
 
 def query_drive_files(drive, source_folder, limit):
@@ -33,19 +33,22 @@ def query_drive_files(drive, source_folder, limit):
     files = []
     page_token = None
     while True:
-        resp = drive.files().list(
-            q=query,
-            pageSize=limit if limit else 1000,
-            fields="nextPageToken, files(id,name)",
-            orderBy="name_natural",
-            pageToken=page_token
-        ).execute()
-        files.extend(resp.get('files', []))
-        page_token = resp.get('nextPageToken')
+        resp = (
+            drive.files()
+            .list(
+                q=query,
+                pageSize=limit if limit else 1000,
+                fields="nextPageToken, files(id,name)",
+                orderBy="name_natural",
+                pageToken=page_token,
+            )
+            .execute()
+        )
+        files.extend(resp.get("files", []))
+        page_token = resp.get("nextPageToken")
         if not page_token or (limit and len(files) >= limit):
             break
     return files[:limit] if limit else files
-
 
 
 def merge_pdfs(pdf_paths, files, cache_dir, drive):
@@ -65,8 +68,20 @@ def merge_pdfs(pdf_paths, files, cache_dir, drive):
 
 
 @click.command()
-@click.option('--source-folder', '-s', multiple=True, default=load_config_folder_ids(), help='Drive folder IDs to read files from (can be passed multiple times)')
-@click.option('--limit', '-l', type=int, default=None, help='Limit the number of files to process (no limit by default)')
+@click.option(
+    "--source-folder",
+    "-s",
+    multiple=True,
+    default=load_config_folder_ids(),
+    help="Drive folder IDs to read files from (can be passed multiple times)",
+)
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    default=None,
+    help="Limit the number of files to process (no limit by default)",
+)
 def main(source_folder: str, limit: int):
     drive = authenticate_drive()
     click.echo("Authenticating with Google Drive...")
@@ -74,9 +89,11 @@ def main(source_folder: str, limit: int):
     for folder in source_folder:
         files.extend(query_drive_files(drive, folder, limit))
     if not files:
-        click.echo(f'No files found in folder {source_folder}.')
+        click.echo(f"No files found in folder {source_folder}.")
         return
-    cache_dir = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator", "cache")
+    cache_dir = os.path.join(
+        os.path.expanduser("~/.cache"), "songbook-generator", "cache"
+    )
     os.makedirs(cache_dir, exist_ok=True)
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     song_sheets_dir = os.path.join(cache_dir, "song-sheets")
@@ -106,5 +123,5 @@ def main(source_folder: str, limit: int):
         click.echo("Failed to save or locate the master PDF.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
