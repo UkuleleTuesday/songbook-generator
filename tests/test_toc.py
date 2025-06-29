@@ -3,6 +3,7 @@ import fitz
 from songbook_generator.toc import resolve_font, DEFAULT_FONT, load_toc_config
 from unittest.mock import patch, mock_open
 
+
 def test_resolve_font_valid_fontfile(mocker):
     # Mock fitz.Font to simulate successful font loading
     mock_font = mocker.patch("fitz.Font")
@@ -10,6 +11,7 @@ def test_resolve_font_valid_fontfile(mocker):
     result = resolve_font(fontfile, DEFAULT_FONT)
     assert result == fontfile
     mock_font.assert_called_once_with(fontfile=fontfile)
+
 
 def test_resolve_font_invalid_fontfile(mocker):
     # Mock fitz.Font to simulate font loading failure
@@ -19,12 +21,15 @@ def test_resolve_font_invalid_fontfile(mocker):
     assert result == DEFAULT_FONT
     mock_font.assert_called_once_with(fontfile=fontfile)
 
+
 def test_resolve_font_no_fontfile(mocker):
     # Test with no fontfile provided
     mock_font = mocker.patch("fitz.Font")
     result = resolve_font(None, DEFAULT_FONT)
     assert result == DEFAULT_FONT
     mock_font.assert_not_called()
+
+
 def test_load_toc_config_with_existing_file():
     mock_config = """
     [toc]
@@ -41,6 +46,7 @@ def test_load_toc_config_with_existing_file():
             assert title_font == "custom-title-font"
             assert title_fontsize == 18
 
+
 def test_load_toc_config_with_missing_file():
     with patch("os.path.exists", return_value=False):
         text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
@@ -48,6 +54,7 @@ def test_load_toc_config_with_missing_file():
         assert text_fontsize == 9
         assert title_font == DEFAULT_FONT
         assert title_fontsize == 16
+
 
 def test_load_toc_config_partial_override():
     mock_config = """
