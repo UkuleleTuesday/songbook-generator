@@ -65,6 +65,6 @@ jobs:
           --region=${{ vars.GCP_REGION }} \
           --runtime=python312 \
           --trigger-http \
-          --source=function \
+          --source=. \
           --entry-point=main \
           --allow-unauthenticated
