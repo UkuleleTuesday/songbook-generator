@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Songbook Generator</title>
+</head>
+<body>
+  <h1>Generate PDF Songbook</h1>
+  <form id="jobForm">
+    <label>Folder ID: <input name="source_folders" value="1lKPg2xYDrsm_N9q8SY4R0VPyBexspK7n" /></label><br/>
+    <label>Cover File ID: <input name="cover_file_id" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" /></label><br/>
+    <label>Limit: <input name="limit" type="number" value="10" /></label><br/>
+    <button type="submit">Generate PDF</button>
+  </form>
+  <script>
+    const endpoint = "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator";
+    document.getElementById("jobForm").onsubmit = async e => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      // Build JSON payload
+      const payload = {
+        source_folders: [form.get("source_folders")],
+        cover_file_id: form.get("cover_file_id"),
+        limit: Number(form.get("limit"))
+      };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return alert("Error: " + res.statusText);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "songbook.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,34 @@
+name: Deploy UI to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'ui/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Grab your code
+      - uses: actions/checkout@v4
+
+      # 2. (Optional) If you need a build step, do it here.
+      #    If it's plain HTML/JS you can skip this.
+      #- name: Build UI
+      #  run: |
+      #    cd ui
+      #    npm ci && npm run build
+      #    mv build ../public
+
+      # 3. Prepare your `ui/` directory as a Pages artifact
+      - name: Upload UI for Pages
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ui/
+
+      # 4. Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
