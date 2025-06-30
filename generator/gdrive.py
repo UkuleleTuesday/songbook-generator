@@ -37,7 +37,6 @@ def query_drive_files(drive, source_folder, limit):
     return files[:limit] if limit else files
 
 
-
 def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
     """
     Generator that yields the bytes of each file.
@@ -45,7 +44,6 @@ def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None,
     """
     for f in files:
         yield download_file_bytes(drive, f, cache)
-
 
 
 def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
@@ -57,16 +55,17 @@ def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
     file_id = file["id"]
     file_name = file["name"]
 
+    cache_key = f"song-sheets/{file_id}.pdf"
+
     # 1) Get the remote modified timestamp
     details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
     remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
 
     # 2) Attempt cache lookup with freshness check
-    cached_path = cache.get(file_id, newer_than=remote_ts)
-    if cached_path:
-        click.echo(f"Using cached version: {cached_path}")
-        with open(cached_path, "rb") as cached_file:
-            return cached_file.read()
+    cached = cache.get(cache_key, newer_than=remote_ts)
+    if cached:
+        click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+        return cached
 
     # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
@@ -80,5 +79,5 @@ def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
     pdf_data = buffer.getvalue()
 
     # 4) Store into cache and return the bytes
-    cache.put(file_id, pdf_data)
+    cache.put(cache_key, pdf_data)
     return pdf_data

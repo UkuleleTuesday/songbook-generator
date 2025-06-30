@@ -1,5 +1,7 @@
 import click
 
+from pathlib import Path
+
 from config import load_config_folder_ids, load_cover_config
 from pdf import generate_songbook
 
@@ -11,6 +13,17 @@ from pdf import generate_songbook
     multiple=True,
     default=load_config_folder_ids(),
     help="Drive folder IDs to read files from (can be passed multiple times)",
+)
+@click.option(
+    "--destination-path",
+    "-d",
+    required=True,
+    help="Where to save the generated pdf",
+)
+@click.option(
+    "--open-generated-pdf",
+    is_flag=True,
+    help="Open the generated pdf",
 )
 @click.option(
     "--cover-file-id",
@@ -25,10 +38,17 @@ from pdf import generate_songbook
     default=None,
     help="Limit the number of files to process (no limit by default)",
 )
-def cli(source_folder: str, cover_file_id: str, limit: int):
-    songbook_path = generate_songbook(source_folder, limit, cover_file_id)
-    click.echo(f"Opening generated songbook: {songbook_path}")
-    click.launch(songbook_path)
+def cli(
+    source_folder: str,
+    destination_path: Path,
+    open_generated_pdf,
+    cover_file_id: str,
+    limit: int,
+):
+    generate_songbook(source_folder, destination_path, limit, cover_file_id)
+    if open_generated_pdf:
+        click.echo(f"Opening generated songbook: {destination_path}")
+        click.launch(destination_path)
 
 
 cli()
