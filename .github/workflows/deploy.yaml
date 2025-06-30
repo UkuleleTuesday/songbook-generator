@@ -72,4 +72,5 @@ jobs:
           --source=generator \
           --entry-point=main \
           --memory=1Gi \
-          --allow-unauthenticated
+          --allow-unauthenticated \
+          --set-env-vars=GCS_CACHE_BUCKET=${{ vars.GCS_CACHE_BUCKET }},GCS_CACHE_REGION=${{ vars.GCP_REGION }}
