@@ -34,7 +34,12 @@ gcloud auth application-default login --scopes=https://www.googleapis.com/auth/d
 
 ### Running the generator locally
 
-The easiest way to run the generator locally is to use `functions-framework`.
+The easiest way to run the generator locally is to use the cli version:
+```
+uv run generator/cli.py -l 10
+```
+
+To run the generator exactly as it runs on google cloud functions, you can use `functions-framework`.
 
 ```
 uv run functions-framework --source generator --target main --debug
