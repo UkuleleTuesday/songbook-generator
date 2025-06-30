@@ -27,6 +27,8 @@ from pdf import generate_songbook
 )
 def cli(source_folder: str, cover_file_id: str, limit: int):
     songbook_path = generate_songbook(source_folder, limit, cover_file_id)
+    click.echo(f"Opening generated songbook: {songbook_path}")
+    click.launch(songbook_path)
 
 
 cli()
