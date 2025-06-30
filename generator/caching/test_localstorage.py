@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 import pytest
 from pathlib import Path
+from fsspec.implementations.local import LocalFileSystem
 
 from caching.localstorage import LocalStorageCache
 
@@ -13,7 +14,7 @@ def cache_dir(tmp_path):
 
 @pytest.fixture
 def cache(cache_dir):
-    return LocalStorageCache(str(cache_dir))
+    return LocalStorageCache(LocalFileSystem(), str(cache_dir))
 
 
 def test_put_and_get_basic(cache):
@@ -53,7 +54,7 @@ def test_get_with_newer_than(cache):
 
 
 def test_put_creates_nested_directories(cache_dir):
-    cache = LocalStorageCache(str(cache_dir))
+    cache = LocalStorageCache(LocalFileSystem(), str(cache_dir))
     key = "a/b/c/test.bin"
     data = b"x"
     path = cache.put(key, data)
@@ -65,5 +66,5 @@ def test_put_creates_nested_directories(cache_dir):
 def test_cache_dir_created_on_init(tmp_path):
     dirpath = tmp_path / "does_not_exist_yet"
     # instantiate should create the directory
-    LocalStorageCache(str(dirpath))
+    LocalStorageCache(LocalFileSystem(), str(dirpath))
     assert dirpath.is_dir()
