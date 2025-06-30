@@ -31,6 +31,7 @@ jobs:
       run: uvx --from 'pre-commit<5' pre-commit run --all-files --verbose
   deploy:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # Only run on main for now so we keep it working
     permissions:
       contents: read
 
@@ -61,7 +62,6 @@ jobs:
         cat generator/requirements.txt
 
     - name: Deploy to Cloud Functions
-      if: github.ref == 'refs/heads/main' # Only run on main for now so we keep it working
       run: |
         gcloud functions deploy ${{ vars.GCP_FUNCTION_NAME }} \
           --gen2 \
