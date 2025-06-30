@@ -4,17 +4,9 @@ from google.auth import default
 from googleapiclient.discovery import build
 import arrow
 import fitz  # PyMuPDF
-import toml
+import config
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
-
-
-def load_cover_config():
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        return config.get("cover", {}).get("file-id", None)
-    return None
 
 
 def create_cover_from_template(
@@ -73,7 +65,7 @@ def create_cover_from_template(
 
 def generate_cover(drive, cache_dir, cover_file_id=None):
     if not cover_file_id:
-        cover_file_id = load_cover_config()
+        cover_file_id = config.load_cover_config()
         if not cover_file_id:
             click.echo("No cover file ID configured. Skipping cover generation.")
             return
