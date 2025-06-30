@@ -69,4 +69,5 @@ jobs:
           --trigger-http \
           --source=. \
           --entry-point=main \
+          --memory=1Gi \
           --allow-unauthenticated
