@@ -5,6 +5,15 @@ from flask import make_response
 
 @functions_framework.http
 def main(request):
+    # CORS preflight handler
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+        return ("", 204, headers)
+
     body = request.json
     print(body)
     source_folders = body["source_folders"]
@@ -22,4 +31,6 @@ def main(request):
     resp = make_response(pdf_bytes)
     resp.headers["Content-Type"] = "application/pdf"
     resp.headers["Content-Disposition"] = 'attachment; filename="songbook.pdf"'
+    # **Include CORS on the real response too**
+    resp.headers["Access-Control-Allow-Origin"] = "*"
     return resp
