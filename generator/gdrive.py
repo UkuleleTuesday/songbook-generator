@@ -1,3 +1,5 @@
+from typing import Generator, List
+from typing import Dict
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
@@ -35,7 +37,6 @@ def query_drive_files(drive, source_folder, limit):
     return files[:limit] if limit else files
 
 
-from typing import Generator, List
 
 def download_files(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
     """
@@ -46,7 +47,6 @@ def download_files(drive, files: List[dict], cache) -> Generator[bytes, None, No
         yield download_file_bytes(drive, f, cache)
 
 
-from typing import Dict
 
 def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
     """
