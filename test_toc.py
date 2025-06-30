@@ -1,4 +1,4 @@
-from songbook_generator.toc import resolve_font, DEFAULT_FONT, load_toc_config
+from toc import resolve_font, DEFAULT_FONT, load_toc_config
 
 
 def test_resolve_font_valid_fontfile(mocker):
@@ -37,7 +37,7 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
         }
     }
     mock_load_config = mocker.patch(
-        "songbook_generator.toc.load_config", return_value=mock_config
+        "toc.load_config", return_value=mock_config
     )
     text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
     assert text_font == DEFAULT_FONT
@@ -49,7 +49,7 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
 
 def test_load_toc_config_with_missing_file(mocker):
     mock_load_config = mocker.patch(
-        "songbook_generator.toc.load_config", return_value={}
+        "toc.load_config", return_value={}
     )
     text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
     assert text_font == DEFAULT_FONT
@@ -66,7 +66,7 @@ def test_load_toc_config_partial_override(mocker):
         }
     }
     mock_load_config = mocker.patch(
-        "songbook_generator.toc.load_config", return_value=mock_config
+        "toc.load_config", return_value=mock_config
     )
     text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
     assert text_font == DEFAULT_FONT
