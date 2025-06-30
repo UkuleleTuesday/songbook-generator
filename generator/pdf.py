@@ -16,18 +16,11 @@ LOCAL_CACHE_DIR = os.path.join(os.path.expanduser("~/.cache"), "songbook-generat
 
 
 def init_cache():
-    if (
-        os.getenv("GOOGLE_CLOUD_PROJECT")
-        and os.getenv("GCS_CACHE_BUCKET")
-        and os.getenv("GCS_CACHE_REGION")
-    ):
+    if os.getenv("GCS_CACHE_BUCKET") and os.getenv("GCS_CACHE_REGION"):
         bucket = os.getenv("GCS_CACHE_BUCKET")
         region = os.getenv("GCS_CACHE_REGION")
-        project = os.getenv("GOOGLE_CLOUD_PROJECT")
         click.echo(f"Using GCS as cache: {bucket} {region}")
-        return LocalStorageCache(
-            gcsfs.GCSFileSystem(project=project, default_location=region), bucket
-        )
+        return LocalStorageCache(gcsfs.GCSFileSystem(default_location=region), bucket)
     else:
         click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
         return LocalStorageCache(LocalFileSystem(), LOCAL_CACHE_DIR)
