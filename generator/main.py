@@ -19,7 +19,7 @@ def main(request):
     cover_file_id = body["cover_file_id"]
     limit = body["limit"]
 
-
+    pdf_path = "/tmp/songbook.pdf"
     generate_songbook(source_folders, pdf_path, limit, cover_file_id)
 
     if not pdf_path:
