@@ -22,6 +22,9 @@ your songbook.
 
 ## Development
 
+### Frontend
+The frontend is a single-page app using vanilla HTML, JavaScript, and CSS, hosted on GitHub Pages. To run or test it locally, simply open `ui/index.html` in a browser.
+
 ### Requirements
 - Python 3.12+
 - [gcloud](https://cloud.google.com/sdk/docs/install) CLI installed for authentication
