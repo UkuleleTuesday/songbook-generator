@@ -73,4 +73,4 @@ jobs:
           --entry-point=main \
           --memory=1Gi \
           --allow-unauthenticated \
-          --set-env-vars=GCS_CACHE_BUCKET=${{ vars.GCS_CACHE_BUCKET }},GCS_CACHE_REGION=${{ vars.GCP_REGION }}
+          --set-env-vars=GCS_CACHE_BUCKET=${{ vars.GCS_CACHE_BUCKET }},GCS_CACHE_REGION=${{ vars.GCP_REGION }},GOOGLE_CLOUD_PROJECT=${{ env.GOOGLE_CLOUD_PROJECT }}
