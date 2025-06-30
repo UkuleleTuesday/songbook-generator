@@ -1,9 +1,11 @@
-import os
+from typing import Generator, List
+from typing import Dict
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
 from google.auth import default
 from googleapiclient.discovery import build
+import io
 
 
 def authenticate_drive():
@@ -35,37 +37,47 @@ def query_drive_files(drive, source_folder, limit):
     return files[:limit] if limit else files
 
 
-def download_files(drive, files, cache_dir):
-    pdf_paths = []
+def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
+    """
+    Generator that yields the bytes of each file.
+    Files are fetched from cache if available, otherwise downloaded from Drive.
+    """
     for f in files:
-        pdf_path = download_file(drive, f, cache_dir)
-        pdf_paths.append(pdf_path)
-    return pdf_paths
+        yield download_file_bytes(drive, f, cache)
 
 
-def download_file(drive, file, cache_dir):
+def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
+    """
+    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
+    Only re-downloads if remote modifiedTime is newer than the cached file.
+    Returns the bytes of the file.
+    """
     file_id = file["id"]
     file_name = file["name"]
-    file_details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-    os.makedirs(cache_dir, exist_ok=True)
-    cached_pdf_path = os.path.join(cache_dir, f"{file_id}.pdf")
-    if os.path.exists(cached_pdf_path):
-        local_creation_time = os.path.getmtime(cached_pdf_path)
-        remote_modified_time = file_details.get("modifiedTime")
-        remote_modified_timestamp = datetime.fromisoformat(
-            remote_modified_time.replace("Z", "+00:00")
-        )
-        local_creation_datetime = datetime.fromtimestamp(
-            local_creation_time
-        ).astimezone()
-        if remote_modified_timestamp <= local_creation_datetime:
-            click.echo(f"Using cached version: {cached_pdf_path}")
-            return cached_pdf_path
-    request = drive.files().export_media(fileId=file_id, mimeType="application/pdf")
-    with open(cached_pdf_path, "wb") as pdf_file:
-        downloader = MediaIoBaseDownload(pdf_file, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
+
+    cache_key = f"song-sheets/{file_id}.pdf"
+
+    # 1) Get the remote modified timestamp
+    details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+    remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
+
+    # 2) Attempt cache lookup with freshness check
+    cached = cache.get(cache_key, newer_than=remote_ts)
+    if cached:
+        click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+        return cached
+
+    # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
-    return cached_pdf_path
+    request = drive.files().export_media(fileId=file_id, mimeType="application/pdf")
+    buffer = io.BytesIO()
+    downloader = MediaIoBaseDownload(buffer, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+
+    pdf_data = buffer.getvalue()
+
+    # 4) Store into cache and return the bytes
+    cache.put(cache_key, pdf_data)
+    return pdf_data
