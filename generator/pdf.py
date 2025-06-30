@@ -6,6 +6,8 @@ from pathlib import Path
 import toc
 import cover
 from caching.localstorage import LocalStorageCache
+from fsspec.implementations.local import LocalFileSystem
+import gcsfs
 from gdrive import authenticate_drive, query_drive_files, stream_file_bytes
 
 from typing import List
@@ -13,12 +15,29 @@ from typing import List
 LOCAL_CACHE_DIR = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
 
 
+def init_cache():
+    if (
+        os.getenv("GOOGLE_CLOUD_PROJECT")
+        and os.getenv("GCS_CACHE_BUCKET")
+        and os.getenv("GCS_CACHE_REGION")
+    ):
+        bucket = os.getenv("GCS_CACHE_BUCKET")
+        region = os.getenv("GCS_CACHE_REGION")
+        project = os.getenv("GOOGLE_CLOUD_PROJECT")
+        click.echo(f"Using GCS as cache: {bucket} {region}")
+        return LocalStorageCache(
+            gcsfs.GCSFileSystem(project=project, default_location=region), bucket
+        )
+    else:
+        click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
+        return LocalStorageCache(LocalFileSystem(), LOCAL_CACHE_DIR)
+
+
 def generate_songbook(
     source_folders: List[str], destination_path: Path, limit: int, cover_file_id: str
 ):
-    click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
+    cache = init_cache()
     drive = authenticate_drive()
-    cache = LocalStorageCache(LOCAL_CACHE_DIR)
     click.echo("Authenticating with Google Drive...")
     files = []
     for folder in source_folders:
