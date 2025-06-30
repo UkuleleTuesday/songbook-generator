@@ -2,22 +2,23 @@
 
 ## Overview
 
-Songbook Generator is now deployed as a web app accessible at [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). It allows users to generate a master PDF from files stored in a specified Google Drive folder. The backend for PDF generation is powered by Google Cloud Functions.
+Songbook Generator is a web app accessible at
+[https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). It allows users to generate a
+song book, collating song sheets + a cover stored on google drive.
 
 ## Features
 
 - **Web Interface**: User-friendly web app for generating songbooks.
 - **Google Drive Integration**: Authenticate and query files from a Google Drive folder.
-- **PDF Download**: Download files as PDFs, with caching to avoid redundant downloads.
 - **PDF Merging**: Combine multiple PDFs into a single master PDF.
 - **Table of Contents**: Automatically generate a table of contents for the merged PDF.
 - **Cover Generation**: Dynamically generate a cover page using a Google Doc template, with placeholders replaced by real data.
-- **Caching**: Efficient caching mechanism to store downloaded files and generated covers locally, reducing redundant API calls.
-- **Configurable Settings**: Advanced settings for folder IDs, cover file IDs, and file limits.
 
 ## Usage
 
-Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). Use the interface to specify advanced settings like Folder ID, Cover File ID, and Limit, then click "Generate PDF" to create your songbook.
+Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). Use the
+interface to specify advanced settings like Folder ID, Cover File ID, and Limit, then click "Generate PDF" to create
+your songbook.
 
 ## Development
 
@@ -28,10 +29,8 @@ Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.g
 ### Authentication
 Before running the backend, authenticate with Google Cloud using the following command:
 ```bash
-gcloud auth application-default login --client-id-file=client-secret.json --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
+gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
 ```
-
-**Note**: The app is currently whitelisted for test users only. If you are not already whitelisted, please contact the project owner to request access.
 
 ### Configuration
 The backend uses a configuration file located at:
@@ -53,6 +52,9 @@ title-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
 title-fontsize = 16
 ```
 
+Note: a lot of these are vestigial remains from when the tool was mainly runnable as a standalone executable -- support
+for this may disappear...
+
 ### Caching
 The backend uses a caching mechanism to store downloaded files and generated covers locally. Cached files are stored in:
 ```bash
@@ -63,7 +65,8 @@ Subdirectories include:
 - `covers`: Cached cover PDFs.
 
 ### Testing
-Run the backend locally for testing:
+
+Run tests locally via:
 ```bash
-uv run songbook-generator -s 1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95 -l 3
+uv run pytest
 ```

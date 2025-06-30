@@ -144,7 +144,7 @@
     <h1>Songbook Generator</h1>
     <form id="jobForm">
       <details>
-        <summary>Advanced Settings ⚙️</summary>
+        <summary>Advanced Settings</summary>
         <label for="folders">Folder ID</label>
         <input id="folders" name="source_folders" type="text" value="1lKPg2xYDrsm_N9q8SY4R0VPyBexspK7n" required />
         <label for="cover">Cover File ID</label>
@@ -152,12 +152,11 @@
         <label for="limit">Limit</label>
         <input id="limit" name="limit" type="number" value="10" min="1" />
       </details>
-      <button type="submit">Generate PDF</button>
+      <button type="submit">Generate Songbook!</button>
     </form>
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner"></div>
     </div>
-    <div class="footer">Powered by Cloud Functions & GitHub Pages</div>
   </div>
   <script>
     const endpoint = "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator";
