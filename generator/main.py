@@ -1,6 +1,7 @@
 from pdf import generate_songbook
 import functions_framework
 from flask import make_response
+import os
 
 
 @functions_framework.http
@@ -13,6 +14,9 @@ def main(request):
             "Access-Control-Allow-Headers": "Content-Type",
         }
         return ("", 204, headers)
+
+    for k, v in os.environ.items():
+        print(f"{k}={v}")
 
     body = request.json
     source_folders = body["source_folders"]
