@@ -38,9 +38,9 @@ def query_drive_files(drive, source_folder, limit):
 
 
 
-def download_files(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
+def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
     """
-    Generator that yields the bytes of each downloaded file.
+    Generator that yields the bytes of each file.
     Files are fetched from cache if available, otherwise downloaded from Drive.
     """
     for f in files:
