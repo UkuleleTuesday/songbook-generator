@@ -1,4 +1,4 @@
-name: Run Tests
+name: Test & Deploy Cloud Function
 
 on:
   push:
