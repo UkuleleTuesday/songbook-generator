@@ -26,7 +26,7 @@ from pdf import generate_songbook
     help="Limit the number of files to process (no limit by default)",
 )
 def cli(source_folder: str, cover_file_id: str, limit: int):
-    generate_songbook(source_folder, limit, cover_file_id)
+    songbook_path = generate_songbook(source_folder, limit, cover_file_id)
 
 
 cli()
