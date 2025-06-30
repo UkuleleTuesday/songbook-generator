@@ -20,6 +20,12 @@ Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.g
 interface to specify advanced settings like Folder ID, Cover File ID, and Limit, then click "Generate PDF" to create
 your songbook.
 
+## Wanna help?
+
+While this is a workable proof of concept, there are still a fair amount of limitations. Help report issues, suggest enhancements -- or if you're a coder, roll up your sleeves and help improve this :-)
+
+Dev instructions are below. Check out [issues](https://github.com/jjst/songbook-generator/issues) for good first issues for inspipration on what to help out with.
+
 ## Development
 
 ### Frontend
