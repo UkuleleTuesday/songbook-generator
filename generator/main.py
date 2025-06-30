@@ -15,12 +15,12 @@ def main(request):
         return ("", 204, headers)
 
     body = request.json
-    print(body)
     source_folders = body["source_folders"]
     cover_file_id = body["cover_file_id"]
     limit = body["limit"]
 
-    pdf_path = generate_songbook(source_folders, limit, cover_file_id)
+
+    generate_songbook(source_folders, pdf_path, limit, cover_file_id)
 
     if not pdf_path:
         return ("Failed to generate PDF", 500)
