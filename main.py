@@ -6,7 +6,7 @@ import functions_framework
 def main(request):
     body = request.json
     print(body)
-    source_folder = body["source_folder"]
+    source_folders = body["source_folders"]
     limit = body["limit"]
-    generate_songbook(source_folder, limit)
+    generate_songbook(source_folders, limit)
     return "OK"
