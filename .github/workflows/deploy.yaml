@@ -57,8 +57,8 @@ jobs:
 
     - name: Generate requirements.txt
       run: |
-        uv export --no-emit-project --format requirements-txt > requirements.txt
-        cat requirements.txt
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
 
     - name: Deploy to Cloud Functions
       run: |
@@ -67,7 +67,7 @@ jobs:
           --region=${{ vars.GCP_REGION }} \
           --runtime=python312 \
           --trigger-http \
-          --source=. \
+          --source=generator \
           --entry-point=main \
           --memory=1Gi \
           --allow-unauthenticated
