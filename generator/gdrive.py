@@ -35,19 +35,24 @@ def query_drive_files(drive, source_folder, limit):
     return files[:limit] if limit else files
 
 
-def download_files(drive, files, cache_dir):
-    pdf_paths = []
+from typing import Generator, List
+
+def download_files(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
+    """
+    Generator that yields the bytes of each downloaded file.
+    Files are fetched from cache if available, otherwise downloaded from Drive.
+    """
     for f in files:
-        pdf_path = download_file(drive, f, cache_dir)
-        pdf_paths.append(pdf_path)
-    return pdf_paths
+        yield download_file_bytes(drive, f, cache)
 
 
-def download_file(drive, file, cache):
+from typing import Dict
+
+def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
     """
     Fetches the PDF export of a Google Doc, using a LocalStorageCache.
     Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns a local filesystem path.
+    Returns the bytes of the file.
     """
     file_id = file["id"]
     file_name = file["name"]
@@ -57,11 +62,11 @@ def download_file(drive, file, cache):
     remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
 
     # 2) Attempt cache lookup with freshness check
-    #    cache.get expects key (we'll use the file_id as key) and newer_than
     cached_path = cache.get(file_id, newer_than=remote_ts)
     if cached_path:
         click.echo(f"Using cached version: {cached_path}")
-        return cached_path
+        with open(cached_path, "rb") as cached_file:
+            return cached_file.read()
 
     # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
@@ -74,6 +79,6 @@ def download_file(drive, file, cache):
 
     pdf_data = buffer.getvalue()
 
-    # 4) Store into cache and return the new path
-    path = cache.put(file_id, pdf_data)
-    return path
+    # 4) Store into cache and return the bytes
+    cache.put(file_id, pdf_data)
+    return pdf_data
