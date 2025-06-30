@@ -24,7 +24,7 @@ your songbook.
 
 While this is a workable proof of concept, there are still a fair amount of limitations. Help report issues, suggest enhancements -- or if you're a coder, roll up your sleeves and help improve this :-)
 
-Dev instructions are below. Check out [issues](https://github.com/jjst/songbook-generator/issues) for good first issues for inspipration on what to help out with.
+Dev instructions are below. Check out [issues](https://github.com/jjst/songbook-generator/issues) for good first issues for inspiration on what to help out with.
 
 ## Development
 
