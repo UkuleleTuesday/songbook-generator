@@ -32,6 +32,14 @@ Before running the backend, authenticate with Google Cloud using the following c
 gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
 ```
 
+### Running the generator locally
+
+The easiest way to run the generator locally is to use `functions-framework`.
+
+```
+uv run functions-framework --source generator --target main --debug
+```
+
 ### Configuration
 The backend uses a configuration file located at:
 ```bash
