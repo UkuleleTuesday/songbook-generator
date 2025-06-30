@@ -71,11 +71,12 @@ def create_cover_from_template(
     return copy_id
 
 
-def generate_cover(drive, cache_dir):
-    cover_file_id = load_cover_config()
+def generate_cover(drive, cache_dir, cover_file_id=None):
     if not cover_file_id:
-        click.echo("No cover file ID configured. Skipping cover generation.")
-        return
+        cover_file_id = load_cover_config()
+        if not cover_file_id:
+            click.echo("No cover file ID configured. Skipping cover generation.")
+            return
 
     # Generate the formatted date
     today = arrow.now()

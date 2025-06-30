@@ -8,7 +8,7 @@ import cover
 from gdrive import authenticate_drive, query_drive_files, download_files
 
 
-def generate_songbook(source_folder: str, limit: int):
+def generate_songbook(source_folder: str, limit: int, cover_file_id: str):
     drive = authenticate_drive()
     click.echo("Authenticating with Google Drive...")
     files = []
@@ -29,7 +29,7 @@ def generate_songbook(source_folder: str, limit: int):
     merged_pdf = pdf.merge_pdfs(pdf_paths, files, cache_dir, drive)
     toc_pdf = toc.build_table_of_contents(files)
     merged_pdf.insert_pdf(toc_pdf, start_at=0)
-    cover_pdf = cover.generate_cover(drive, cache_dir)
+    cover_pdf = cover.generate_cover(drive, cache_dir, cover_file_id)
     merged_pdf.insert_pdf(cover_pdf, start_at=0)
 
     try:
@@ -40,13 +40,7 @@ def generate_songbook(source_folder: str, limit: int):
     except Exception as e:
         click.echo(f"Error saving master PDF: {e}")
         return None
-
-    if master_pdf_path and os.path.exists(master_pdf_path):
-        click.echo(f"Master PDF successfully saved at: {master_pdf_path}")
-        click.echo("Opening the master PDF...")
-        os.system(f"xdg-open {master_pdf_path}")
-    else:
-        click.echo("Failed to save or locate the master PDF.")
+    return master_pdf_path
 
 
 def merge_pdfs(pdf_paths, files, cache_dir, drive):
