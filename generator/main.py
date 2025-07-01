@@ -61,7 +61,9 @@ def main(cloud_event):
         result_url = blob.public_url  # or use signed URL if you need auth
 
         # 5) Update Firestore to COMPLETED
-        print(f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}")
+        print(
+            f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
+        )
         print(f"Marking job {job_id} as FAILED in Firestore")
         job_ref.update(
             {
