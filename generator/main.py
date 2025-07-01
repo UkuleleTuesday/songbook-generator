@@ -23,12 +23,15 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 @functions_framework.cloud_event
 def main(cloud_event):
     # 1) Decode Pub/Sub message
+    print("Received Cloud Event with data:", cloud_event.data)
     envelope = cloud_event.data
     if "message" not in envelope:
         abort(400, "No Pub/Sub message received")
+    print("Extracting Pub/Sub message from envelope")
     msg = envelope["message"]
 
     data_payload = base64.b64decode(msg["data"]).decode("utf-8")
+    print("Decoding and parsing Pub/Sub message payload")
     evt = json.loads(data_payload)
 
     print(f"Received event: {evt}")
@@ -38,6 +41,7 @@ def main(cloud_event):
     job_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
 
     # 2) Mark RUNNING
+    print(f"Marking job {job_id} as RUNNING in Firestore")
     job_ref.update({"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP})
 
     try:
@@ -47,14 +51,18 @@ def main(cloud_event):
 
         # 3) Generate into a temp file
         out_path = tempfile.mktemp(suffix=".pdf")
+        print(f"Generating songbook for job {job_id} with parameters: {params}")
         generate_songbook(source_folders, out_path, limit, cover_file_id)
 
         # 4) Upload to GCS
         blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")
+        print(f"Uploading generated songbook to GCS bucket: {GCS_CDN_BUCKET}")
         blob.upload_from_filename(out_path, content_type="application/pdf")
         result_url = blob.public_url  # or use signed URL if you need auth
 
         # 5) Update Firestore to COMPLETED
+        print(f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}")
+        print(f"Marking job {job_id} as FAILED in Firestore")
         job_ref.update(
             {
                 "status": "COMPLETED",
@@ -71,4 +79,5 @@ def main(cloud_event):
             }
         )
         print(f"Job failed: {job_id}")
+        print("Error details:")
         print(traceback.format_exc())
