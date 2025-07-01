@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+env:
+  BASE_FN: songbook-generator-worker
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -39,6 +42,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Load common env
+      run: |
+        sed 's/^/echo /' .env | bash
+
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
       with:
@@ -62,9 +69,18 @@ jobs:
         uv export --no-emit-project --format requirements-txt > generator/requirements.txt
         cat generator/requirements.txt
 
+    - name: Compute function name
+      id: fn-name
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
     - name: Deploy to Cloud Functions
       run: |
-        gcloud functions deploy songbook-generator-worker
+        gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
           --gen2 \
           --region=${{ vars.GCP_REGION }} \
           --runtime=python312 \

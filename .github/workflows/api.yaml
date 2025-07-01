@@ -34,13 +34,16 @@ jobs:
       run: uvx --from 'pre-commit<5' pre-commit run --all-files --verbose
   deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Only run on main for now so we keep it working
     permissions:
       contents: read
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    - name: Load common env
+      run: |
+        sed 's/^/echo /' .env | bash
 
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
@@ -78,17 +81,17 @@ jobs:
       run: |
         gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
           --gen2 \
-          --region=${{ vars.GCP_REGION }} \
+          --region=$GCP_REGION \
           --runtime=python312 \
           --trigger-http \
           --source=api \
           --entry-point=main \
           --allow-unauthenticated \
           --set-env-vars=\
-        GOOGLE_CLOUD_PROJECT=${{ vars.GCP_PROJECT_ID }},\
-        GCP_REGION=${{ vars.GCP_REGION }},\
-        PUBSUB_TOPIC=${{ vars.PUBSUB_TOPIC }},\
-        FIRESTORE_COLLECTION=${{ vars.FIRESTORE_COLLECTION }},\
-        GCS_CDN_BUCKET=${{ vars.GCS_CDN_BUCKET }},\
+        GOOGLE_CLOUD_PROJECT=GCP_PROJECT_ID,\
+        GCP_REGION=$GCP_REGION,\
+        PUBSUB_TOPIC=PUBSUB_TOPIC,\
+        FIRESTORE_COLLECTION=$FIRESTORE_COLLECTION,\
+        GCS_CDN_BUCKET=$GCS_CDN_BUCKET,\
         JOB_TTL_DAYS=3,\
         LOG_LEVEL=info
