@@ -1,40 +1,72 @@
+import os
+import json
+import base64
+import tempfile
 from pdf import generate_songbook
 import functions_framework
-from flask import make_response
-import os
+from google.cloud import firestore, storage
+from flask import abort
+
+# Initialized at cold start
+PROJECT_ID = os.environ["GCP_PROJECT_ID"]
+FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
+GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
+GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
+
+db = firestore.Client(project=PROJECT_ID)
+storage_client = storage.Client(project=PROJECT_ID)
+cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
+cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 
-@functions_framework.http
-def main(request):
-    # CORS preflight handler
-    if request.method == "OPTIONS":
-        headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
-        }
-        return ("", 204, headers)
+@functions_framework.cloud_event
+def main(cloud_event):
+    # 1) Decode Pub/Sub message
+    envelope = cloud_event.data
+    if "message" not in envelope:
+        abort(400, "No Pub/Sub message received")
+    msg = envelope["message"]
 
-    for k, v in os.environ.items():
-        print(f"{k}={v}")
+    data_payload = base64.b64decode(msg["data"]).decode("utf-8")
+    evt = json.loads(data_payload)
+    job_id = evt["job_id"]
+    params = evt["params"]
 
-    body = request.json
-    source_folders = body["source_folders"]
-    cover_file_id = body["cover_file_id"]
-    limit = body["limit"]
+    job_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
 
-    pdf_path = "/tmp/songbook.pdf"
-    generate_songbook(source_folders, pdf_path, limit, cover_file_id)
+    # 2) Mark RUNNING
+    job_ref.update({"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP})
 
-    if not pdf_path:
-        return ("Failed to generate PDF", 500)
+    try:
+        source_folders = params["source_folders"]
+        cover_file_id = params.get("cover_file_id")
+        limit = params.get("limit")
 
-    with open(pdf_path, "rb") as f:
-        pdf_bytes = f.read()
+        # 3) Generate into a temp file
+        out_path = tempfile.mktemp(suffix=".pdf")
+        generate_songbook(source_folders, out_path, limit, cover_file_id)
 
-    resp = make_response(pdf_bytes)
-    resp.headers["Content-Type"] = "application/pdf"
-    resp.headers["Content-Disposition"] = 'attachment; filename="songbook.pdf"'
-    # **Include CORS on the real response too**
-    resp.headers["Access-Control-Allow-Origin"] = "*"
-    return resp
+        # 4) Upload to GCS
+        blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")
+        blob.upload_from_filename(out_path, content_type="application/pdf")
+        result_url = blob.public_url  # or use signed URL if you need auth
+
+        # 5) Update Firestore to COMPLETED
+        job_ref.update(
+            {
+                "status": "COMPLETED",
+                "completed_at": firestore.SERVER_TIMESTAMP,
+                "result_url": result_url,
+            }
+        )
+    except Exception as e:
+        # on any failure, mark FAILED
+        job_ref.update(
+            {
+                "status": "FAILED",
+                "error": str(e),
+                "completed_at": firestore.SERVER_TIMESTAMP,
+            }
+        )
+        # re-raise so Cloud Run retries or logs appropriately
+        raise

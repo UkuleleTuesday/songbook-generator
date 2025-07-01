@@ -80,13 +80,18 @@ jobs:
 
     - name: Deploy to Cloud Functions
       run: |
-        gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
+        WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        gcloud functions deploy "$WORKER_FN_NAME" \
           --gen2 \
-          --region=$GCP_REGION \
+          --region="$GCP_REGION" \
           --runtime=python312 \
-          --trigger-http \
+          --trigger-topic="$PUBSUB_TOPIC" \
           --source=generator \
           --entry-point=main \
           --memory=1Gi \
           --allow-unauthenticated \
-          --set-env-vars=GCS_CACHE_BUCKET=$GCS_WORKER_CACHE_BUCKET,GCS_CACHE_REGION=$GCP_REGION,GOOGLE_CLOUD_PROJECT=$GOOGLE_CLOUD_PROJECT
+          --set-env-vars=\
+    GCP_PROJECT_ID=$GCP_PROJECT_ID,\
+    FIRESTORE_COLLECTION=$FIRESTORE_COLLECTION,\
+    GCS_CDN_BUCKET=$GCS_CDN_BUCKET,\
+    GCS_WORKER_CACHE_BUCKET=$GCS_WORKER_CACHE_BUCKET
