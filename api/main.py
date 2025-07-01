@@ -1,4 +1,3 @@
-from pdf import generate_songbook
 import functions_framework
 from flask import make_response
 import os
@@ -15,6 +14,9 @@ def main(request):
         }
         return ("", 204, headers)
 
+    for k, v in os.environ.items():
+        print(f"{k}={v}")
+
     # Handle GET request
     if request.method == "GET":
         headers = {
@@ -28,4 +30,3 @@ def main(request):
             "Access-Control-Allow-Origin": "*",
         }
         return make_response(("OK", 200, headers))
-
