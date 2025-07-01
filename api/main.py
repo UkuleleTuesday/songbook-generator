@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import functions_framework
+from datetime import datetime, timedelta
 from flask import make_response
 from google.cloud import pubsub_v1, firestore
 
@@ -29,7 +30,6 @@ def handle_post(req):
     job_id = uuid.uuid4().hex
 
     # 1) Create Firestore job doc
-    from datetime import datetime, timedelta
 
     job_doc = {
         "status": "QUEUED",
