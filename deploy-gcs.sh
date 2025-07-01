@@ -26,6 +26,13 @@ gcloud firestore databases create \
   --location="${GCP_REGION}" \
   --type=firestore-native || echo "Firestore DB may already exist, continuing…"
 
+echo "3b. Setting up ttl on Firestore..."
+gcloud firestore fields ttls update "expire_at" \
+  --project="${GCP_PROJECT_ID}" \
+  --collection-group="${FIRESTORE_COLLECTION}" \
+  --enable-ttl
+  --async # This can take a while...
+
 echo "4. Creating GCS buckets in ${GCP_REGION}…"
 # CDN bucket
 gsutil mb \

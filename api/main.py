@@ -33,7 +33,7 @@ def handle_post(req):
     job_doc = {
         "status": "QUEUED",
         "created_at": firestore.SERVER_TIMESTAMP,
-        "expire_at": datetime.utcnow() + timedelta(minutes=20),
+        "expire_at": datetime.utcnow() + timedelta(minutes=30),
         "params": payload,
     }
     db.collection(FIRESTORE_COLLECTION).document(job_id).set(job_doc)
