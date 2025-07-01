@@ -43,6 +43,8 @@ jobs:
 
     - name: Load dotenv
       uses: falti/dotenv-action@v1.1.4
+      with:
+        export-variables: true
 
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
