@@ -14,6 +14,7 @@ gcloud services enable \
   pubsub.googleapis.com \
   firestore.googleapis.com \
   storage.googleapis.com \
+  eventarc.googleapis.com \
   --project="${GCP_PROJECT_ID}"
 
 echo "2. Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
