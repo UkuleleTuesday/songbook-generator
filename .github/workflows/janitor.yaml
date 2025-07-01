@@ -1,0 +1,49 @@
+name: Clean up preview Cloud Run services
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    # Only run when the PR was merged (not just closed without merge)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (needed to get BASE_FN etc if you use repo vars)
+        uses: actions/checkout@v4
+
+      - name: Load dotenv
+        uses: falti/dotenv-action@v1.1.4
+        with:
+          path: .env
+          export-variables: true
+          keys-case: bypass
+
+      - name: Auth Cloud SDK
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          export_environment_variables: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          version: '431.0.0'
+
+      - name: Delete preview API service
+        run: |
+          NAME="${{ env.API_FUNCTION_NAME }}-pr-${{ github.event.pull_request.number }}"
+          echo "Deleting Cloud Run service $NAME (API)…"
+          gcloud run services delete "$NAME" \
+            --region="${{ env.GCP_REGION }}" \
+            --quiet || echo "Service $NAME not found, skipping."
+
+      - name: Delete preview worker service
+        run: |
+          NAME="${{ env.GENERATOR_WORKER_NAME }}-pr-${{ github.event.pull_request.number }}"
+          echo "Deleting Cloud Run service $NAME (Worker)…"
+          gcloud run services delete "$NAME" \
+            --region="${{ env.GCP_REGION }}" \
+            --quiet || echo "Service $NAME not found, skipping."
