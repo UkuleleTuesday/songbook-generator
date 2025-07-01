@@ -30,6 +30,8 @@ def main(cloud_event):
 
     data_payload = base64.b64decode(msg["data"]).decode("utf-8")
     evt = json.loads(data_payload)
+
+    print(f"Received event: {evt}")
     job_id = evt["job_id"]
     params = evt["params"]
 
