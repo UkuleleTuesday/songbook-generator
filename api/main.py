@@ -22,3 +22,10 @@ def main(request):
         }
         return make_response(("OK", 200, headers))
 
+    # Handle POST request
+    if request.method == "POST":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+        }
+        return make_response(("OK", 200, headers))
+
