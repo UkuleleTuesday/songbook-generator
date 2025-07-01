@@ -6,6 +6,7 @@ from pdf import generate_songbook
 import functions_framework
 from google.cloud import firestore, storage
 from flask import abort
+import traceback
 
 # Initialized at cold start
 PROJECT_ID = os.environ["GCP_PROJECT_ID"]
@@ -59,14 +60,13 @@ def main(cloud_event):
                 "result_url": result_url,
             }
         )
-    except Exception as e:
+    except Exception:
         # on any failure, mark FAILED
         job_ref.update(
             {
                 "status": "FAILED",
-                "error": str(e),
                 "completed_at": firestore.SERVER_TIMESTAMP,
             }
         )
-        # re-raise so Cloud Run retries or logs appropriately
-        raise
+        print(f"Job failed: {job_id}")
+        print(traceback.format_exc())
