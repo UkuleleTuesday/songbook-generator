@@ -28,9 +28,12 @@ def handle_post(req):
     job_id = uuid.uuid4().hex
 
     # 1) Create Firestore job doc
+    from datetime import datetime, timedelta
+
     job_doc = {
         "status": "QUEUED",
         "created_at": firestore.SERVER_TIMESTAMP,
+        "expire_at": datetime.utcnow() + timedelta(minutes=20),
         "params": payload,
     }
     db.collection(FIRESTORE_COLLECTION).document(job_id).set(job_doc)
