@@ -43,7 +43,8 @@ def handle_post(req):
     # 2) Publish Pub/Sub event
     message = {"job_id": job_id, "params": payload}
     print(f"Publishing message to Pub/Sub topic: {topic_path}")
-    publisher.publish(topic_path, json.dumps(message).encode("utf-8"))
+    future = publisher.publish(topic_path, json.dumps(message).encode("utf-8"))
+    future.result()
 
     # 3) Return job ID
     body = json.dumps({"job_id": job_id, "status": "queued"})
