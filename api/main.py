@@ -24,6 +24,7 @@ def _cors_headers():
 
 
 def handle_post(req):
+    print("Received POST request with payload:", req.get_data(as_text=True))
     payload = req.get_json(silent=True) or {}
     job_id = uuid.uuid4().hex
 
@@ -36,10 +37,12 @@ def handle_post(req):
         "expire_at": datetime.utcnow() + timedelta(minutes=30),
         "params": payload,
     }
+    print(f"Creating Firestore job document with ID: {job_id}")
     db.collection(FIRESTORE_COLLECTION).document(job_id).set(job_doc)
 
     # 2) Publish Pub/Sub event
     message = {"job_id": job_id, "params": payload}
+    print(f"Publishing message to Pub/Sub topic: {topic_path}")
     publisher.publish(topic_path, json.dumps(message).encode("utf-8"))
 
     # 3) Return job ID
@@ -50,8 +53,10 @@ def handle_post(req):
 
 
 def handle_get_job(job_id):
+    print(f"Fetching Firestore document for job ID: {job_id}")
     doc_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
     snapshot = doc_ref.get()
+    print(f"Firestore document exists: {snapshot.exists}")
     if not snapshot.exists:
         body = json.dumps({"error": "job not found", "job_id": job_id})
         return make_response(
@@ -85,15 +90,18 @@ def main(req):
         return ("", 204, _cors_headers())
 
     # Echo env for debug
+    print("Environment variables:")
     for k, v in os.environ.items():
         print(f"{k}={v}")
 
     # POST to enqueue new job
     if req.method == "POST" and req.path == "/":
+        print("Handling POST request at root path")
         return handle_post(req)
 
     # GET healthcheck at root
     if req.method == "GET" and req.path == "/":
+        print("Handling GET healthcheck at root path")
         return make_response(("OK", 200, _cors_headers()))
 
     # GET job status at /{job_id}
@@ -101,6 +109,8 @@ def main(req):
         # strip leading slash
         job_id = req.path.lstrip("/")
         if job_id:
+            print(f"Handling GET request for job ID: {job_id}")
             return handle_get_job(job_id)
 
+    print(f"Unhandled request method: {req.method}, path: {req.path}")
     return make_response(("Method Not Allowed", 405, _cors_headers()))
