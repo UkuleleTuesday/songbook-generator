@@ -31,7 +31,7 @@ echo "3b. Setting up ttl on Firestore..."
 gcloud firestore fields ttls update "expire_at" \
   --project="${GCP_PROJECT_ID}" \
   --collection-group="${FIRESTORE_COLLECTION}" \
-  --enable-ttl
+  --enable-ttl \
   --async # This can take a while...
 
 echo "4. Creating GCS buckets in ${GCP_REGION}…"
@@ -45,6 +45,11 @@ gsutil mb \
   -p "${GCP_PROJECT_ID}" \
   -l "${GCP_REGION}" \
   "gs://${GCS_WORKER_CACHE_BUCKET}" || echo "Worker cache bucket may already exist, continuing…"
+
+echo "4b. Setting bucket permissions"
+gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
+gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_CDN_BUCKET
+
 
 echo "5. Setting lifecycle policies (7-day TTL) on buckets…"
 # prepare lifecycle config
