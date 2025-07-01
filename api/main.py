@@ -12,7 +12,6 @@ FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
-
 db = firestore.Client()
 
 
@@ -47,14 +46,7 @@ def handle_post(req):
     )
 
 
-def handle_get(req):
-    job_id = req.args.get("job_id")
-    if not job_id:
-        body = json.dumps({"error": "missing job_id query parameter"})
-        return make_response(
-            (body, 400, {**_cors_headers(), "Content-Type": "application/json"})
-        )
-
+def handle_get_job(job_id):
     doc_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
     snapshot = doc_ref.get()
     if not snapshot.exists:
@@ -71,7 +63,6 @@ def handle_get(req):
     if "result_url" in data:
         response["result_url"] = data["result_url"]
     if "created_at" in data:
-        # Firestore returns a Timestamp; convert to ISO string if present
         ts = data["created_at"]
         try:
             response["created_at"] = ts.isoformat()
@@ -94,10 +85,19 @@ def main(req):
     for k, v in os.environ.items():
         print(f"{k}={v}")
 
-    if req.method == "POST":
+    # POST to enqueue new job
+    if req.method == "POST" and req.path == "/":
         return handle_post(req)
 
+    # GET healthcheck at root
+    if req.method == "GET" and req.path == "/":
+        return make_response(("OK", 200, _cors_headers()))
+
+    # GET job status at /{job_id}
     if req.method == "GET":
-        return handle_get(req)
+        # strip leading slash
+        job_id = req.path.lstrip("/")
+        if job_id:
+            return handle_get_job(job_id)
 
     return make_response(("Method Not Allowed", 405, _cors_headers()))
