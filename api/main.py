@@ -15,3 +15,10 @@ def main(request):
         }
         return ("", 204, headers)
 
+    # Handle GET request
+    if request.method == "GET":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+        }
+        return make_response(("OK", 200, headers))
+
