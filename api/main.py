@@ -1,0 +1,17 @@
+from pdf import generate_songbook
+import functions_framework
+from flask import make_response
+import os
+
+
+@functions_framework.http
+def main(request):
+    # CORS preflight handler
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+        return ("", 204, headers)
+
