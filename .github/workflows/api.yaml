@@ -41,9 +41,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Load common env
-      run: |
-        sed 's/^/echo /' .env | bash
+    - name: Load dotenv
+      uses: falti/dotenv-action@v1.1.4
 
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
@@ -88,7 +87,7 @@ jobs:
           --entry-point=main \
           --allow-unauthenticated \
           --set-env-vars=\
-        GOOGLE_CLOUD_PROJECT=GCP_PROJECT_ID,\
+        GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID,\
         GCP_REGION=$GCP_REGION,\
         PUBSUB_TOPIC=PUBSUB_TOPIC,\
         FIRESTORE_COLLECTION=$FIRESTORE_COLLECTION,\

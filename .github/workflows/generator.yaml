@@ -42,9 +42,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Load common env
-      run: |
-        sed 's/^/echo /' .env | bash
+    - name: Load dotenv
+      uses: falti/dotenv-action@v1.1.4
 
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
@@ -82,7 +81,7 @@ jobs:
       run: |
         gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
           --gen2 \
-          --region=${{ vars.GCP_REGION }} \
+          --region=${GCP_REGION \
           --runtime=python312 \
           --trigger-http \
           --source=generator \
