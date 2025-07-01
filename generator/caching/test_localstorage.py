@@ -34,23 +34,58 @@ def test_get_nonexistent_returns_none(cache):
     assert cache.get("does_not_exist") is None
 
 
-def test_get_with_newer_than(cache):
+def test_get_with_newer_than_older_cutoff(cache):
     key = "nested/dir/bar.bin"
     data = b"payload"
-    # Put the file
     path = cache.put(key, data)
 
-    # Ensure mtime is now, create a cutoff before now
+    mtime = Path(path).stat().st_mtime
+    file_dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
+    older_cutoff = file_dt - timedelta(seconds=10)
+
+    # newer_than older → should return bytes
+    assert cache.get(key, newer_than=older_cutoff) == data
+
+
+def test_get_with_newer_than_newer_cutoff(cache):
+    key = "nested/dir/bar.bin"
+    data = b"payload"
+    path = cache.put(key, data)
+
+    mtime = Path(path).stat().st_mtime
+    file_dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
+    newer_cutoff = file_dt + timedelta(seconds=10)
+
+    # newer_than newer → stale, should return None
+    assert cache.get(key, newer_than=newer_cutoff) is None
+
+
+def test_get_with_raw_timestamp(cache):
+    key = "nested/dir/bar.bin"
+    data = b"payload"
+    path = cache.put(key, data)
+
     mtime = Path(path).stat().st_mtime
     file_dt = datetime.fromtimestamp(mtime, tz=timezone.utc)
     older_cutoff = file_dt - timedelta(seconds=10)
     newer_cutoff = file_dt + timedelta(seconds=10)
 
-    # newer_than older → should return bytes
-    assert cache.get(key, newer_than=older_cutoff) == data
+    class MockFileSystem:
+        def exists(self, path):
+            return True
 
-    # newer_than newer → stale, should return None
-    assert cache.get(key, newer_than=newer_cutoff) is None
+        def stat(self, path):
+            return {"mtime": mtime}  # raw timestamp
+
+        def makedirs(self, path, exist_ok=False):
+            os.makedirs(path, exist_ok=exist_ok)
+
+        def open(self, path, mode):
+            return open(path, mode)
+
+    mock_cache = LocalStorageCache(MockFileSystem(), str(cache.cache_dir))
+    assert mock_cache.get(key, newer_than=older_cutoff) == data
+    assert mock_cache.get(key, newer_than=newer_cutoff) is None
 
 
 def test_put_creates_nested_directories(cache_dir):

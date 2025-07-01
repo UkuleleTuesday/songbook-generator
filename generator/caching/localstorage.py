@@ -30,8 +30,15 @@ class LocalStorageCache:
 
         if newer_than:
             info = self.fs.stat(path)
-            # fsspec returns mtime in seconds since epoch
-            mtime = datetime.fromtimestamp(info.get("mtime", 0).timestamp(), tz=newer_than.tzinfo)
+            # different fsspec backends are inconsistent in return type here:
+            try:
+                mtime = datetime.fromtimestamp(
+                    info.get("mtime", 0).timestamp(), tz=newer_than.tzinfo
+                )
+            except AttributeError:
+                mtime = datetime.fromtimestamp(
+                    info.get("mtime", 0), tz=newer_than.tzinfo
+                )
             if mtime < newer_than:
                 return None
 
