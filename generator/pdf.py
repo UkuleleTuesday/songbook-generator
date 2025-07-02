@@ -48,13 +48,6 @@ def generate_songbook(
     click.echo("Merging downloaded PDFs into a single master PDF...")
 
     with fitz.open() as songbook_pdf:
-        with reporter.step(len(files), "Downloading and merging PDFs...") as step:
-            for file, _ in zip(files, merge_pdfs(songbook_pdf, files, cache, drive)):
-                step.increment(1, f"Added {file['name']}")
-
-        with reporter.step(1, "Adding page numbers..."):
-            add_page_numbers(songbook_pdf)
-
         with reporter.step(1, "Generating table of contents..."):
             toc_pdf = toc.build_table_of_contents(files)
             songbook_pdf.insert_pdf(toc_pdf, start_at=0)
@@ -62,6 +55,13 @@ def generate_songbook(
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+
+        # Calculate page offset after cover and TOC
+        page_offset = len(songbook_pdf)
+
+        with reporter.step(len(files), "Downloading and merging PDFs...") as step:
+            for file, _ in zip(files, merge_pdfs(songbook_pdf, files, cache, drive, page_offset)):
+                step.increment(1, f"Added {file['name']}")
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
@@ -71,10 +71,20 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, on_progress=None):
+def merge_pdfs(destination_pdf, files, cache, drive, page_offset=0):
+    current_page = page_offset
     for i, pdf_bytes in enumerate(stream_file_bytes(drive, files, cache), start=1):
         with fitz.open(stream=pdf_bytes) as pdf_document:
+            # Add page numbers before inserting
+            for page_num in range(len(pdf_document)):
+                page = pdf_document[page_num]
+                text = str(current_page + page_num + 1)
+                x = page.rect.width - 50
+                y = 30
+                page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+            
             destination_pdf.insert_pdf(pdf_document)
+            current_page += len(pdf_document)
         yield i
 
 
