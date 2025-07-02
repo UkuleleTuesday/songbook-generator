@@ -142,8 +142,8 @@ def test_progress_reporter_empty_steps():
     with reporter.step(1, "Empty step 2"):
         pass
 
-    # Should still report progress even with empty steps
-    assert len(progress_updates) == 2
+    # Should have 4 progress updates: 2 for step starts, 2 for auto-completion
+    assert len(progress_updates) == 4
     assert progress_updates[-1][0] == 1.0
 
 def test_progress_reporter_partial_completion():
