@@ -25,9 +25,13 @@ def init_cache():
         click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
         return LocalStorageCache(LocalFileSystem(), LOCAL_CACHE_DIR)
 
+def update_progress(current_progress: int, total_progress: int, message: str, on_progress_callback=None):
+    pass
+
+
 
 def generate_songbook(
-    source_folders: List[str], destination_path: Path, limit: int, cover_file_id: str
+    source_folders: List[str], destination_path: Path, limit: int, cover_file_id: str, on_progress=None
 ):
     cache = init_cache()
     drive = authenticate_drive()
@@ -40,27 +44,35 @@ def generate_songbook(
         return
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     click.echo("Merging downloaded PDFs into a single master PDF...")
+    total_progress = 10 + len(files) + 5 + 10 + 10
     with fitz.open() as songbook_pdf:
-        merge_pdfs(songbook_pdf, files, cache, drive)
+        for i in merge_pdfs(songbook_pdf, files, cache, drive):
+            on_progress(...) # 10 to 80
+        add_page_numbers(songbook_pdf)
+        on_progress(...) # 85
         toc_pdf = toc.build_table_of_contents(files)
         songbook_pdf.insert_pdf(toc_pdf, start_at=0)
+        on_progress(...) # 90
         cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
         songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+        on_progress(...)# 100
 
         songbook_pdf.save(destination_path)  # Save the merged PDF
         if not os.path.exists(destination_path):
             raise FileNotFoundError(f"Failed to save master PDF at {destination_path}")
 
 
-def merge_pdfs(destination_pdf, files, cache, drive):
-    for pdf_bytes in stream_file_bytes(drive, files, cache):
+def merge_pdfs(destination_pdf, files, cache, drive, on_progress=None):
+    for i, pdf_bytes in enumerate(stream_file_bytes(drive, files, cache), start=1):
         with fitz.open(stream=pdf_bytes) as pdf_document:
             destination_pdf.insert_pdf(pdf_document)
+        yield i
+
+
+def add_page_numbers(destination_pdf):
     for page_number in range(len(destination_pdf)):
         page = destination_pdf[page_number]
         text = str(page_number + 1)
         x = page.rect.width - 50
         y = 30
         page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
-
-    return destination_pdf

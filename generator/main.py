@@ -20,6 +20,19 @@ cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
 cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 
+def make_progress_callback(job_ref):
+    """Return a callback that writes progress info into Firestore."""
+    def _callback(percent: float, message: str = None):
+        update = {
+            "status":        "RUNNING",
+            "progress":      percent,
+            "last_message":  message or "",
+            "updated_at":    firestore.SERVER_TIMESTAMP,
+        }
+        job_ref.update(update)
+    return _callback
+
+
 @functions_framework.cloud_event
 def main(cloud_event):
     # 1) Decode Pub/Sub message
