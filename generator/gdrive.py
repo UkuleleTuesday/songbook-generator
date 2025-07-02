@@ -8,36 +8,45 @@ import io
 
 
 def authenticate_drive():
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    creds, _ = default(
+        scopes=[
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.metadata.readonly",
+        ]
+    )
     return build("drive", "v3", credentials=creds)
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
     """
     Build Google Drive API query filters for custom properties.
-    
+
     Args:
         property_filters: Dict of property_name -> value pairs to filter by
-        
+
     Returns:
         String of property filter conditions to append to the main query
     """
     if not property_filters:
         return ""
-    
+
     filters = []
     for prop_name, prop_value in property_filters.items():
         # Escape single quotes in property values
         escaped_value = prop_value.replace("'", "\\'")
-        filters.append(f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}")
-    
+        filters.append(
+            f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}"
+        )
+
     return " and " + " and ".join(filters) if filters else ""
 
 
-def query_drive_files(drive, source_folder, limit, property_filters: Optional[Dict[str, str]] = None):
+def query_drive_files(
+    drive, source_folder, limit, property_filters: Optional[Dict[str, str]] = None
+):
     """
     Query Google Drive files with optional property filtering.
-    
+
     Args:
         drive: Authenticated Google Drive service
         source_folder: Folder ID to search in
@@ -47,11 +56,11 @@ def query_drive_files(drive, source_folder, limit, property_filters: Optional[Di
     base_query = f"'{source_folder}' in parents and trashed = false"
     property_query = build_property_filters(property_filters)
     query = base_query + property_query
-    
+
     click.echo(f"Executing Drive API query: {query}")
     if property_filters:
         click.echo(f"Filtering by properties: {property_filters}")
-    
+
     files = []
     page_token = None
     while True:
