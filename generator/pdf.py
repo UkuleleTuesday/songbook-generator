@@ -78,18 +78,13 @@ def merge_pdfs(destination_pdf, files, cache, drive, page_offset=0):
     ):
         with fitz.open(stream=pdf_bytes) as pdf_document:
             page = pdf_document[0]
-            text = str(page_index)
-            x = page.rect.width - 50
-            y = 30
-            page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+            add_page_number(page, page_index)
             destination_pdf.insert_pdf(pdf_document)
             yield page_index
 
 
-def add_page_numbers(destination_pdf):
-    for page_number in range(len(destination_pdf)):
-        page = destination_pdf[page_number]
-        text = str(page_number + 1)
-        x = page.rect.width - 50
-        y = 30
-        page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+def add_page_number(page, page_index):
+    text = str(page_index)
+    x = page.rect.width - 50
+    y = 30
+    page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
