@@ -1,4 +1,4 @@
-name: Generator Worker
+name: Generator
 
 on:
   push:
