@@ -47,13 +47,6 @@ jobs:
 
         # Override environment variables for PR environment
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        echo "API_FUNCTION_NAME=${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        echo "WORKER_FUNCTION_NAME=${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}" >> $GITHUB_ENV
-
-        # Keep other variables the same
-        echo "GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" >> $GITHUB_ENV
-        echo "GCP_REGION=${{ env.GCP_REGION }}" >> $GITHUB_ENV
-        echo "SA=${{ env.SA }}" >> $GITHUB_ENV
 
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
@@ -70,22 +63,17 @@ jobs:
         project_id: ${{ env.GCP_PROJECT_ID }}
         version: '431.0.0'
 
-    - name: Make deploy script executable
-      run: chmod +x ./deploy-gcs.sh
-
-    - name: Run GCS deployment script
-      run: ./deploy-gcs.sh
-      env:
-        FORCE_RECREATE: ${{ github.event.inputs.force_recreate }}
+    - name: Create Pub/Sub topic
+      run: |
+        echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
     - name: Deployment completed
       run: |
         echo "✅ Infrastructure deployment completed successfully!"
         echo "The following resources have been set up:"
         echo "- Pub/Sub topic: ${{ env.PUBSUB_TOPIC }}"
-        echo "- Firestore collection: ${{ env.FIRESTORE_COLLECTION }}"
-        echo "- GCS CDN bucket: ${{ env.GCS_CDN_BUCKET }}"
-        echo "- GCS worker cache bucket: ${{ env.GCS_WORKER_CACHE_BUCKET }}"
 
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo ""
