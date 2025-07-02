@@ -35,7 +35,40 @@ jobs:
 
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
-    uses: ./.github/workflows/deploy-gcs.yaml
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Override environment variables for PR environment
+      if: github.event_name == 'pull_request'
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        echo "Setting up PR-specific environment variables for PR #${PR_NUM}"
+
+        # Override environment variables for PR environment
+        echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+
+        echo "PR environment variables set:"
+        echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+
+    - name: Create Pub/Sub topic
+      run: |
+        echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
   deploy-api:
     name: Deploy API
