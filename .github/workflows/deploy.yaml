@@ -24,9 +24,11 @@ concurrency:
 
 jobs:
   test:
+    name: Run Tests and Linting
     uses: ./.github/workflows/test.yaml
 
   deploy-api:
+    name: Deploy API Function
     needs: test
     runs-on: ubuntu-latest
 
@@ -152,6 +154,7 @@ jobs:
           }
 
   deploy-generator:
+    name: Deploy Generator Worker Function
     needs: test
     runs-on: ubuntu-latest
 
@@ -263,6 +266,7 @@ jobs:
           }
 
   deploy-ui:
+    name: Deploy UI to GitHub Pages
     needs: test
     environment:
       name: ${{ github.event_name == 'pull_request' && format('github-pages-pr-{0}', github.event.pull_request.number) || 'github-pages' }}
