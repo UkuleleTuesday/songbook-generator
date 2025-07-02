@@ -64,18 +64,18 @@ jobs:
   generate-daily-songbook:
     name: Generate Daily Songbook
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Load environment variables
       uses: falti/dotenv-action@v1.1.4
       with:
         path: .env
         export-variables: true
         keys-case: bypass
-    
+
     - name: Trigger songbook generation
       run: |
         # Use inputs with their defaults
@@ -83,7 +83,7 @@ jobs:
         COVER_FILE_ID="${{ github.event.inputs.cover_file_id || '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740' }}"
         LIMIT="${{ github.event.inputs.limit || '100' }}"
         SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || '' }}"
-        
+
         # Prepare the payload for the API
         PAYLOAD=$(jq -n \
           --arg folder_id "$FOLDER_ID" \
@@ -94,52 +94,52 @@ jobs:
             cover_file_id: $cover_id,
             limit: $limit
           }')
-        
+
         # Add filter for songbook edition if specified
         if [[ -n "$SONGBOOK_EDITION" ]]; then
           FILTER="specialbooks:contains:$SONGBOOK_EDITION"
           PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"filters\": \"$FILTER\"}")
         fi
-        
+
         echo "Triggering daily songbook generation with payload: $PAYLOAD"
-        
+
         # Get the API endpoint URL
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
-        
+
         # Trigger the job
         RESPONSE=$(curl -s -X POST \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD" \
           "$API_URL")
-        
+
         echo "API Response: $RESPONSE"
-        
+
         # Extract job ID
         JOB_ID=$(echo "$RESPONSE" | jq -r '.job_id')
-        
+
         if [[ "$JOB_ID" == "null" || -z "$JOB_ID" ]]; then
           echo "Failed to create job"
           exit 1
         fi
-        
+
         echo "Created job with ID: $JOB_ID"
-        
+
         # Poll for completion (with timeout)
         TIMEOUT=1800  # 30 minutes
         ELAPSED=0
         POLL_INTERVAL=30
-        
+
         while [[ $ELAPSED -lt $TIMEOUT ]]; do
           sleep $POLL_INTERVAL
           ELAPSED=$((ELAPSED + POLL_INTERVAL))
-          
+
           STATUS_RESPONSE=$(curl -s "$API_URL/$JOB_ID")
           STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
           PROGRESS=$(echo "$STATUS_RESPONSE" | jq -r '.progress // 0')
           MESSAGE=$(echo "$STATUS_RESPONSE" | jq -r '.last_message // ""')
-          
+
           echo "[$ELAPSED/${TIMEOUT}s] Status: $STATUS, Progress: ${PROGRESS}%, Message: $MESSAGE"
-          
+
           if [[ "$STATUS" == "completed" ]]; then
             RESULT_URL=$(echo "$STATUS_RESPONSE" | jq -r '.result_url')
             echo "✅ Songbook generation completed successfully!"
@@ -151,6 +151,6 @@ jobs:
             exit 1
           fi
         done
-        
+
         echo "⏰ Timeout reached after ${TIMEOUT} seconds"
         exit 1
