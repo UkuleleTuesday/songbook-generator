@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
 
     steps:
     - name: Checkout repository
@@ -71,7 +72,7 @@ jobs:
     - name: Compute function name
       id: fn-name
       run: |
-        BASE_FN=$WORKER_FUNCTION_NAME
+        BASE_FN=${{ env.WORKER_FUNCTION_NAME }}
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
         else
@@ -79,15 +80,62 @@ jobs:
         fi
 
     - name: Deploy to Cloud Functions
+      id: deploy
       run: |
         WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
         gcloud functions deploy "$WORKER_FN_NAME" \
           --gen2 \
-          --region="$GCP_REGION" \
+          --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="$PUBSUB_TOPIC" \
+          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
           --memory=1Gi \
           --allow-unauthenticated \
-          --set-env-vars=GCP_PROJECT_ID=$GCP_PROJECT_ID,FIRESTORE_COLLECTION=$FIRESTORE_COLLECTION,GCS_CDN_BUCKET=$GCS_CDN_BUCKET,GCS_WORKER_CACHE_BUCKET=$GCS_WORKER_CACHE_BUCKET,LOG_LEVEL=info
+          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }},LOG_LEVEL=info
+        
+        # Output the function URL for PR comments
+        FUNCTION_URL=$(gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
+        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Comment PR with preview function info
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = context.payload.pull_request.number;
+          const functionName = `${{ steps.fn-name.outputs.name }}`;
+          
+          // Find existing preview comment
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+          
+          const existingComment = comments.data.find(
+            comment => comment.body.includes('🔧 Generator Worker preview deployed!')
+          );
+          
+          const commentBody = `🔧 Generator Worker preview deployed!
+          
+          Function name: \`${functionName}\`
+          Region: \`${{ env.GCP_REGION }}\`
+          
+          _This preview function will be automatically cleaned up when the PR is merged or closed._`;
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: commentBody
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }

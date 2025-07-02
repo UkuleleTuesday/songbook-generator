@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
 
     steps:
     - name: Checkout repository
@@ -73,7 +74,7 @@ jobs:
     - name: Compute function name
       id: fn-name
       run: |
-        BASE_FN=$API_FUNCTION_NAME
+        BASE_FN=${{ env.API_FUNCTION_NAME }}
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
         else
@@ -81,20 +82,68 @@ jobs:
         fi
 
     - name: Deploy to Cloud Functions
+      id: deploy
       run: |
         gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
           --gen2 \
-          --region=$GCP_REGION \
+          --region=${{ env.GCP_REGION }} \
           --runtime=python312 \
           --trigger-http \
           --source=api \
           --entry-point=main \
           --allow-unauthenticated \
           --set-env-vars=\
-        GOOGLE_CLOUD_PROJECT=$GCP_PROJECT_ID,\
-        GCP_REGION=$GCP_REGION,\
-        PUBSUB_TOPIC=$PUBSUB_TOPIC,\
-        FIRESTORE_COLLECTION=$FIRESTORE_COLLECTION,\
-        GCS_CDN_BUCKET=$GCS_CDN_BUCKET,\
+        GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},\
+        GCP_REGION=${{ env.GCP_REGION }},\
+        PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }},\
+        FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},\
+        GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},\
         JOB_TTL_DAYS=3,\
         LOG_LEVEL=info
+        
+        # Output the function URL for PR comments
+        FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
+        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Comment PR with preview URL
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = context.payload.pull_request.number;
+          const functionUrl = `${{ steps.deploy.outputs.function_url }}`;
+          const functionName = `${{ steps.fn-name.outputs.name }}`;
+          
+          // Find existing preview comment
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+          
+          const existingComment = comments.data.find(
+            comment => comment.body.includes('🚀 API preview deployed!')
+          );
+          
+          const commentBody = `🚀 API preview deployed!
+          
+          Preview URL: ${functionUrl}
+          Function name: \`${functionName}\`
+          
+          _This preview function will be automatically cleaned up when the PR is merged or closed._`;
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: commentBody
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }
