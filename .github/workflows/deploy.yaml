@@ -77,7 +77,7 @@ jobs:
           --set-env-vars=\
         GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},\
         GCP_REGION=${{ env.GCP_REGION }},\
-        PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }},\
+        PUBSUB_TOPIC=${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }},\
         FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},\
         GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},\
         JOB_TTL_DAYS=3,\
@@ -132,7 +132,7 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
+          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
           --memory=1Gi \
