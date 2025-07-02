@@ -1,4 +1,4 @@
-from typing import Generator, List, Dict, Optional
+from typing import Generator, List, Dict, Optional, Union
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
@@ -6,6 +6,8 @@ from googleapiclient.errors import HttpError
 from google.auth import default
 from googleapiclient.discovery import build
 import io
+
+from filters import PropertyFilter, FilterGroup
 
 
 def authenticate_drive():
@@ -109,6 +111,41 @@ def query_drive_files(
             break
 
     return files[:limit] if limit else files
+
+
+def query_drive_files_with_client_filter(
+    drive, source_folder, limit, client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None
+):
+    """
+    Query Google Drive files and apply client-side filtering.
+    
+    Args:
+        drive: Authenticated Google Drive service
+        source_folder: Folder ID to search in
+        limit: Maximum number of files to return after filtering
+        client_filter: Client-side filter to apply after fetching files
+        
+    Returns:
+        List of files matching the client-side filter
+    """
+    # First, get all files from Drive (no server-side property filtering)
+    click.echo("Fetching all files from Drive for client-side filtering...")
+    all_files = query_drive_files(drive, source_folder, None, None)
+    
+    if not client_filter:
+        return all_files[:limit] if limit else all_files
+    
+    # Apply client-side filtering
+    filtered_files = []
+    for file in all_files:
+        properties = file.get('properties', {})
+        if client_filter.matches(properties):
+            filtered_files.append(file)
+            if limit and len(filtered_files) >= limit:
+                break
+    
+    click.echo(f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total")
+    return filtered_files
 
 
 def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:

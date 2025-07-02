@@ -1,9 +1,10 @@
 import click
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional, Union
 
 from config import load_config_folder_ids, load_cover_config
 from pdf import generate_songbook
+from filters import FilterParser, PropertyFilter, FilterGroup
 
 
 def make_cli_progress_callback():
@@ -14,32 +15,6 @@ def make_cli_progress_callback():
         click.echo(f"[{percentage:3d}%] {message or ''}")
 
     return _callback
-
-
-def parse_property_filters(filter_strings) -> Optional[Dict[str, str]]:
-    """
-    Parse property filter strings into a dictionary.
-
-    Args:
-        filter_strings: Tuple of strings in format "key=value"
-
-    Returns:
-        Dict of property filters, or None if empty
-    """
-    if not filter_strings:
-        return None
-
-    filters = {}
-    for filter_str in filter_strings:
-        if "=" not in filter_str:
-            raise click.BadParameter(
-                f"Invalid filter format: {filter_str}. Use key=value format."
-            )
-
-        key, value = filter_str.split("=", 1)
-        filters[key.strip()] = value.strip()
-
-    return filters
 
 
 @click.command()
@@ -77,9 +52,7 @@ def parse_property_filters(filter_strings) -> Optional[Dict[str, str]]:
 @click.option(
     "--filter",
     "-f",
-    "filters",
-    multiple=True,
-    help="Filter files by custom properties. Format: key=value (can be used multiple times). Example: --filter artist=Beatles --filter difficulty=easy",
+    help="Filter files using property syntax. Examples: 'specialbooks:contains:regular', 'year:gte:2000', 'artist:equals:Beatles', 'difficulty:in:easy,medium'",
 )
 def cli(
     source_folder: str,
@@ -87,17 +60,16 @@ def cli(
     open_generated_pdf,
     cover_file_id: str,
     limit: int,
-    filters,
+    filter,
 ):
-    # Parse property filters
-    try:
-        property_filters = parse_property_filters(filters)
-    except click.BadParameter as e:
-        click.echo(f"Error: {e}")
-        return
-
-    if property_filters:
-        click.echo(f"Applying filters: {property_filters}")
+    client_filter = None
+    if filter:
+        try:
+            client_filter = FilterParser.parse_simple_filter(filter)
+            click.echo(f"Applying client-side filter: {filter}")
+        except ValueError as e:
+            click.echo(f"Error parsing filter: {e}")
+            return
 
     progress_callback = make_cli_progress_callback()
     generate_songbook(
@@ -105,7 +77,7 @@ def cli(
         destination_path,
         limit,
         cover_file_id,
-        property_filters,
+        client_filter,
         progress_callback,
     )
     if open_generated_pdf:

@@ -2,13 +2,14 @@ import fitz
 import click
 import os
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 import progress
 
 import toc
 import cover
 import caching
-from gdrive import authenticate_drive, query_drive_files, download_file_bytes
+from gdrive import authenticate_drive, query_drive_files_with_client_filter, download_file_bytes
+from filters import PropertyFilter, FilterGroup
 
 
 def generate_songbook(
@@ -16,7 +17,7 @@ def generate_songbook(
     destination_path: Path,
     limit: int,
     cover_file_id: str,
-    property_filters: Optional[Dict[str, str]] = None,
+    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     on_progress=None,
 ):
     reporter = progress.ProgressReporter(on_progress)
@@ -30,7 +31,7 @@ def generate_songbook(
     with reporter.step(1, "Querying files...") as step:
         files = []
         for i, folder in enumerate(source_folders):
-            folder_files = query_drive_files(drive, folder, limit, property_filters)
+            folder_files = query_drive_files_with_client_filter(drive, folder, limit, client_filter)
             files.extend(folder_files)
             step.increment(
                 1 / len(source_folders),
@@ -38,15 +39,15 @@ def generate_songbook(
             )
 
         if not files:
-            if property_filters:
+            if client_filter:
                 click.echo(
-                    f"No files found in folders {source_folders} matching filters {property_filters}."
+                    f"No files found in folders {source_folders} matching client-side filter."
                 )
             else:
                 click.echo(f"No files found in folders {source_folders}.")
             return
 
-        filter_msg = f" (with filters: {property_filters})" if property_filters else ""
+        filter_msg = f" (with client-side filter)" if client_filter else ""
         click.echo(
             f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
         )
