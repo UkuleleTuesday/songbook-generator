@@ -19,7 +19,7 @@ from difflib import get_close_matches
 
 def authenticate_drive():
     """Authenticate with Google Drive API."""
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.file"])
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.metadata"])
     return build("drive", "v3", credentials=creds)
 
 
