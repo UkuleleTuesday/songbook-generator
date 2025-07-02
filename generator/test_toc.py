@@ -1,4 +1,4 @@
-from toc import resolve_font, DEFAULT_FONT, load_toc_config
+from toc import resolve_font, DEFAULT_FONT, load_toc_config, TocLayout
 
 
 def test_resolve_font_valid_fontfile(mocker):
@@ -37,21 +37,21 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
         }
     }
     mock_load_config = mocker.patch("toc.load_config", return_value=mock_config)
-    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-    assert text_font == DEFAULT_FONT
-    assert text_fontsize == 12
-    assert title_font == DEFAULT_FONT
-    assert title_fontsize == 18
+    config = load_toc_config()
+    assert config.text_font == DEFAULT_FONT
+    assert config.text_fontsize == 12
+    assert config.title_font == DEFAULT_FONT
+    assert config.title_fontsize == 18
     mock_load_config.assert_called_once()
 
 
 def test_load_toc_config_with_missing_file(mocker):
     mock_load_config = mocker.patch("toc.load_config", return_value={})
-    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-    assert text_font == DEFAULT_FONT
-    assert text_fontsize == 9
-    assert title_font == DEFAULT_FONT
-    assert title_fontsize == 16
+    config = load_toc_config()
+    assert config.text_font == DEFAULT_FONT
+    assert config.text_fontsize == 9
+    assert config.title_font == DEFAULT_FONT
+    assert config.title_fontsize == 16
     mock_load_config.assert_called_once()
 
 
@@ -62,9 +62,9 @@ def test_load_toc_config_partial_override(mocker):
         }
     }
     mock_load_config = mocker.patch("toc.load_config", return_value=mock_config)
-    text_font, text_fontsize, title_font, title_fontsize = load_toc_config()
-    assert text_font == DEFAULT_FONT
-    assert text_fontsize == 14
-    assert title_font == DEFAULT_FONT
-    assert title_fontsize == 16
+    config = load_toc_config()
+    assert config.text_font == DEFAULT_FONT
+    assert config.text_fontsize == 14
+    assert config.title_font == DEFAULT_FONT
+    assert config.title_fontsize == 16
     mock_load_config.assert_called_once()
