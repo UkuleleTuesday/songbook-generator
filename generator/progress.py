@@ -4,41 +4,45 @@ from typing import Optional
 
 class ProgressStep:
     """Context manager for a single progress step."""
-    
-    def __init__(self, reporter: 'ProgressReporter', weight: float, message: str):
+
+    def __init__(self, reporter: "ProgressReporter", weight: float, message: str):
         self.reporter = reporter
         self.weight = weight
         self.message = message
         self.step_progress = 0.0
-        
+
     def __enter__(self):
         self.reporter._start_step(self.weight, self.message)
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         # Auto-complete the step to 100% when exiting
         if self.step_progress < self.weight:
-            self.increment(self.weight - self.step_progress, f"Completed {self.message}")
+            self.increment(
+                self.weight - self.step_progress, f"Completed {self.message}"
+            )
         self.reporter._complete_step()
-        
+
     def increment(self, amount: float = 1.0, message: Optional[str] = None):
         """
         Increment progress within this step.
-        
+
         Args:
             amount: Amount to increment (typically 1.0 for each item processed)
             message: Optional message to report with this increment
         """
         self.step_progress += amount
         # Calculate progress as percentage of this step's weight
-        step_percentage = min(1.0, self.step_progress / self.weight) if self.weight > 0 else 1.0
+        step_percentage = (
+            min(1.0, self.step_progress / self.weight) if self.weight > 0 else 1.0
+        )
         self.reporter._update_current_step(step_percentage, message or self.message)
 
 
 class ProgressReporter:
     """
     A robust progress reporter using context managers for steps.
-    
+
     Usage:
         reporter = ProgressReporter(callback)
         with reporter.step(10, "Authenticating..."):
@@ -59,11 +63,11 @@ class ProgressReporter:
     def step(self, weight: float, message: str) -> ProgressStep:
         """
         Create a progress step context manager.
-        
+
         Args:
             weight: Relative weight of this step (e.g., number of items to process)
             message: Message to display when starting this step
-            
+
         Returns:
             ProgressStep context manager
         """
@@ -94,8 +98,10 @@ class ProgressReporter:
         else:
             # Calculate overall progress as:
             # (completed steps + current step progress) / total weight
-            current_progress = self._completed_weight + (self._current_step_weight * self._current_step_progress)
+            current_progress = self._completed_weight + (
+                self._current_step_weight * self._current_step_progress
+            )
             percentage = current_progress / self._total_weight
-        
+
         if self._callback:
             self._callback(percentage, message)

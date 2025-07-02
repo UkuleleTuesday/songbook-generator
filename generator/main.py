@@ -22,14 +22,16 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 def make_progress_callback(job_ref):
     """Return a callback that writes progress info into Firestore."""
+
     def _callback(percent: float, message: str = None):
         update = {
-            "status":        "RUNNING",
-            "progress":      percent,
-            "last_message":  message or "",
-            "updated_at":    firestore.SERVER_TIMESTAMP,
+            "status": "RUNNING",
+            "progress": percent,
+            "last_message": message or "",
+            "updated_at": firestore.SERVER_TIMESTAMP,
         }
         job_ref.update(update)
+
     return _callback
 
 
@@ -65,10 +67,12 @@ def main(cloud_event):
         # 3) Generate into a temp file
         out_path = tempfile.mktemp(suffix=".pdf")
         print(f"Generating songbook for job {job_id} with parameters: {params}")
-        
+
         # Create progress callback and pass it to generate_songbook
         progress_callback = make_progress_callback(job_ref)
-        generate_songbook(source_folders, out_path, limit, cover_file_id, progress_callback)
+        generate_songbook(
+            source_folders, out_path, limit, cover_file_id, progress_callback
+        )
 
         # 4) Upload to GCS
         blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")

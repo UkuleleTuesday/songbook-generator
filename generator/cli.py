@@ -8,9 +8,11 @@ from pdf import generate_songbook
 
 def make_cli_progress_callback():
     """Return a callback that displays progress updates to the console."""
+
     def _callback(percent: float, message: str = None):
         percentage = int(percent * 100)
         click.echo(f"[{percentage:3d}%] {message or ''}")
+
     return _callback
 
 
@@ -54,7 +56,9 @@ def cli(
     limit: int,
 ):
     progress_callback = make_cli_progress_callback()
-    generate_songbook(source_folder, destination_path, limit, cover_file_id, progress_callback)
+    generate_songbook(
+        source_folder, destination_path, limit, cover_file_id, progress_callback
+    )
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
         click.launch(destination_path)
