@@ -16,6 +16,9 @@ class ProgressStep:
         return self
         
     def __exit__(self, exc_type, exc_val, exc_tb):
+        # Auto-complete the step to 100% when exiting
+        if self.step_progress < self.weight:
+            self.increment(self.weight - self.step_progress, f"Completed {self.message}")
         self.reporter._complete_step()
         
     def increment(self, amount: float = 1.0, message: Optional[str] = None):
