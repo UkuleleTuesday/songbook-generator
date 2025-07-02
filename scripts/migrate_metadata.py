@@ -7,7 +7,6 @@ by matching the expected filename pattern "<song title> - <artist>".
 """
 
 import csv
-import sys
 import re
 from typing import Dict, List, Optional
 import click
@@ -19,7 +18,12 @@ from difflib import get_close_matches
 
 def authenticate_drive():
     """Authenticate with Google Drive API."""
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.metadata"])
+    creds, _ = default(
+        scopes=[
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.metadata",
+        ]
+    )
     return build("drive", "v3", credentials=creds)
 
 
@@ -27,11 +31,12 @@ def normalize_filename(text: str) -> str:
     """
     Normalize text for filename matching by removing special characters
     and converting to lowercase.
+    FIXME: might be unnecesary!! Verify
     """
     # Remove/replace characters that might cause filename issues
-    normalized = re.sub(r'[<>:"/\\|?*]', '', text)
-    normalized = re.sub(r'[^\w\s\-\(\)\'&,.]', '', normalized)
-    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    normalized = re.sub(r'[<>:"/\\|?*]', "", text)
+    normalized = re.sub(r"[^\w\s\-\(\)\'&,.]", "", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
     return normalized.lower()
 
 
@@ -43,7 +48,7 @@ def construct_expected_filename(song: str, artist: str) -> str:
 def load_csv_data(csv_path: str, limit: Optional[int] = None) -> List[Dict]:
     """Load and parse the tabdb CSV file."""
     songs = []
-    with open(csv_path, 'r', encoding='utf-8') as file:
+    with open(csv_path, "r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for i, row in enumerate(reader):
             if limit and i >= limit:
@@ -66,12 +71,16 @@ def get_drive_files(drive, folder_ids: List[str]) -> Dict[str, dict]:
 
         while True:
             try:
-                resp = drive.files().list(
-                    q=query,
-                    pageSize=1000,
-                    fields="nextPageToken, files(id,name,properties)",
-                    pageToken=page_token,
-                ).execute()
+                resp = (
+                    drive.files()
+                    .list(
+                        q=query,
+                        pageSize=1000,
+                        fields="nextPageToken, files(id,name,properties)",
+                        pageToken=page_token,
+                    )
+                    .execute()
+                )
 
                 folder_files.extend(resp.get("files", []))
                 page_token = resp.get("nextPageToken")
@@ -85,15 +94,15 @@ def get_drive_files(drive, folder_ids: List[str]) -> Dict[str, dict]:
         click.echo(f"Found {len(folder_files)} files in folder {folder_id}")
 
         for file in folder_files:
-            # Remove .pdf extension and normalize for matching
-            name_without_ext = file['name'].replace('.pdf', '')
-            normalized_name = normalize_filename(name_without_ext)
+            normalized_name = normalize_filename(file["name"])
             files[normalized_name] = file
 
     return files
 
 
-def find_matching_file(expected_filename: str, drive_files: Dict[str, dict]) -> Optional[dict]:
+def find_matching_file(
+    expected_filename: str, drive_files: Dict[str, dict]
+) -> Optional[dict]:
     """Find the best matching Drive file for the expected filename."""
     normalized_expected = normalize_filename(expected_filename)
 
@@ -117,43 +126,42 @@ def convert_metadata_for_drive(song_data: Dict) -> Dict[str, str]:
     properties = {}
 
     # Basic metadata
-    if song_data.get('artist'):
-        properties['artist'] = song_data['artist']
-    if song_data.get('year'):
-        properties['year'] = song_data['year']
-    if song_data.get('difficulty'):
-        properties['difficulty'] = song_data['difficulty']
-    if song_data.get('duration'):
-        properties['duration'] = song_data['duration']
-    if song_data.get('language'):
-        properties['language'] = song_data['language']
-    if song_data.get('gender'):
-        properties['gender'] = song_data['gender']
-    if song_data.get('type'):
-        properties['type'] = song_data['type']
-    if song_data.get('tabber'):
-        properties['tabber'] = song_data['tabber']
-    if song_data.get('source'):
-        properties['source'] = song_data['source']
-    if song_data.get('date'):
-        properties['date'] = song_data['date']
-    if song_data.get('specialbooks'):
-        properties['specialbooks'] = song_data['specialbooks']
+    if song_data.get("artist"):
+        properties["artist"] = song_data["artist"]
+    if song_data.get("year"):
+        properties["year"] = song_data["year"]
+    if song_data.get("difficulty"):
+        properties["difficulty"] = song_data["difficulty"]
+    if song_data.get("duration"):
+        properties["duration"] = song_data["duration"]
+    if song_data.get("language"):
+        properties["language"] = song_data["language"]
+    if song_data.get("gender"):
+        properties["gender"] = song_data["gender"]
+    if song_data.get("type"):
+        properties["type"] = song_data["type"]
+    if song_data.get("tabber"):
+        properties["tabber"] = song_data["tabber"]
+    if song_data.get("source"):
+        properties["source"] = song_data["source"]
+    if song_data.get("date"):
+        properties["date"] = song_data["date"]
+    if song_data.get("specialbooks"):
+        properties["specialbooks"] = song_data["specialbooks"]
 
     return properties
 
 
-def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_run: bool = False) -> bool:
+def apply_metadata_to_file(
+    drive, file_id: str, properties: Dict[str, str], dry_run: bool = False
+) -> bool:
     """Apply custom properties to a Google Drive file."""
     if dry_run:
         click.echo(f"  [DRY RUN] Would apply properties: {properties}")
         return True
 
     try:
-        drive.files().update(
-            fileId=file_id,
-            body={'properties': properties}
-        ).execute()
+        drive.files().update(fileId=file_id, body={"properties": properties}).execute()
         return True
     except HttpError as e:
         click.echo(f"  Error applying metadata: {e}")
@@ -161,29 +169,35 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
 
 
 @click.command()
-@click.argument('csv_path', type=click.Path(exists=True))
+@click.argument("csv_path", type=click.Path(exists=True))
 @click.option(
     "--folder-id",
     multiple=True,
     required=True,
-    help="Google Drive folder ID(s) containing the song files (can be specified multiple times)"
+    help="Google Drive folder ID(s) containing the song files (can be specified multiple times)",
 )
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Show what would be done without actually applying changes"
+    help="Show what would be done without actually applying changes",
 )
 @click.option(
     "--show-unmatched",
     is_flag=True,
-    help="Show songs from CSV that couldn't be matched to Drive files during processing"
+    help="Show songs from CSV that couldn't be matched to Drive files during processing",
 )
 @click.option(
     "--limit",
     type=int,
-    help="Limit the number of songs to process from the CSV (useful for testing)"
+    help="Limit the number of songs to process from the CSV (useful for testing)",
 )
-def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_unmatched: bool, limit: Optional[int]):
+def migrate_metadata(
+    csv_path: str,
+    folder_id: List[str],
+    dry_run: bool,
+    show_unmatched: bool,
+    limit: Optional[int],
+):
     """Migrate metadata from tabdb.csv to Google Drive file custom properties."""
 
     click.echo("Starting metadata migration...")
@@ -194,16 +208,21 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
     # Authenticate and get Drive files
     click.echo("Authenticating with Google Drive...")
     drive = authenticate_drive()
-    
-    # Debug: Check what credentials are being used
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.metadata"])
-    if hasattr(creds, 'service_account_email'):
+
+    # Check what credentials are being used
+    creds, _ = default(
+        scopes=[
+            "https://www.googleapis.com/auth/drive.readonly",
+            "https://www.googleapis.com/auth/drive.metadata",
+        ]
+    )
+    if hasattr(creds, "service_account_email"):
         click.echo(f"Using service account: {creds.service_account_email}")
-    elif hasattr(creds, '_service_account_email'):
+    elif hasattr(creds, "_service_account_email"):
         click.echo(f"Using service account: {creds._service_account_email}")
     else:
         click.echo(f"Using credentials type: {type(creds)}")
-        if hasattr(creds, 'token'):
+        if hasattr(creds, "token"):
             click.echo(f"Token present: {bool(creds.token)}")
 
     drive_files = get_drive_files(drive, list(folder_id))
@@ -215,21 +234,23 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
     errors = 0
 
     for song_data in songs:
-        song_title = song_data['song']
-        artist = song_data['artist']
+        song_title = song_data["song"]
+        artist = song_data["artist"]
         expected_filename = construct_expected_filename(song_title, artist)
 
         # Find matching Drive file
         matching_file = find_matching_file(expected_filename, drive_files)
 
         if matching_file:
-            click.echo(f"✓ Matched: {expected_filename} → {matching_file['name']} (ID: {matching_file['id']})")
+            click.echo(
+                f"✓ Matched: {expected_filename} → {matching_file['name']} (ID: {matching_file['id']})"
+            )
 
             # Convert metadata to Drive properties format
             properties = convert_metadata_for_drive(song_data)
 
             # Apply metadata
-            if apply_metadata_to_file(drive, matching_file['id'], properties, dry_run):
+            if apply_metadata_to_file(drive, matching_file["id"], properties, dry_run):
                 matched += 1
             else:
                 errors += 1
@@ -239,9 +260,9 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
                 click.echo(f"✗ No match found for: {expected_filename}")
 
     # Summary
-    click.echo("\n" + "="*50)
+    click.echo("\n" + "=" * 50)
     click.echo("MIGRATION SUMMARY")
-    click.echo("="*50)
+    click.echo("=" * 50)
     click.echo(f"Total songs in CSV: {len(songs)}")
     click.echo(f"Successfully matched: {matched}")
     click.echo(f"Unmatched songs: {len(unmatched)}")
