@@ -205,7 +205,7 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
         matching_file = find_matching_file(expected_filename, drive_files)
 
         if matching_file:
-            click.echo(f"✓ Matched: {expected_filename} → {matching_file['name']}")
+            click.echo(f"✓ Matched: {expected_filename} → {matching_file['name']} (ID: {matching_file['id']})")
 
             # Convert metadata to Drive properties format
             properties = convert_metadata_for_drive(song_data)
