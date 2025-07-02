@@ -34,3 +34,4 @@ class ProgressReporter:
         percentage = (self.current_progress / self.total_progress) * 100
         if self.callback:
             self.callback(percentage, message)
+from typing import Callable
