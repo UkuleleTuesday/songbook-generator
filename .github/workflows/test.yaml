@@ -22,24 +22,10 @@ jobs:
     - name: Install the project
       run: uv sync --locked --all-extras --dev
 
-    - name: Run tests with coverage
+    - name: Run tests
       run: |
         uv run pytest \
-          --junitxml=pytest-results.xml \
-          --cov=. \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term-missing
-
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: |
-          pytest-results.xml
-          coverage.xml
-          htmlcov/
+          --junitxml=pytest-results.xml
 
     - name: Publish test results
       uses: dorny/test-reporter@v1
@@ -48,12 +34,6 @@ jobs:
         name: pytest
         path: pytest-results.xml
         reporter: java-junit
-
-    - name: Comment coverage on PR
-      if: github.event_name == 'pull_request'
-      uses: py-cov-action/python-coverage-comment-action@v3
-      with:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lint:
     name: Run Linting
