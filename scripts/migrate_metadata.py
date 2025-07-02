@@ -161,7 +161,7 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
 @click.command()
 @click.option(
     "--csv-path",
-    default="tabdb.csv",
+    required=True,
     help="Path to the tabdb CSV file"
 )
 @click.option(
