@@ -60,7 +60,7 @@ jobs:
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            
+
             // Create a new deployment to remove the preview
             // This effectively "cleans up" by redeploying main without the PR content
             try {
@@ -71,27 +71,27 @@ jobs:
                 workflow_id: 'ui.yaml',
                 ref: 'main'
               });
-              
+
               console.log(`Triggered cleanup deployment for UI preview PR #${prNumber}`);
             } catch (error) {
               console.log(`Failed to trigger cleanup: ${error.message}`);
             }
-            
+
       - name: Comment on PR about cleanup
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
               body: `🧹 Preview deployments cleaned up!
-              
+
               - API preview function deleted
-              - Worker preview function deleted  
+              - Worker preview function deleted
               - UI preview removed from GitHub Pages
-              
+
               Thanks for your contribution! 🎉`
             });

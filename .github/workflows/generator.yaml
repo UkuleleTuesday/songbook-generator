@@ -78,7 +78,7 @@ jobs:
           --memory=1Gi \
           --allow-unauthenticated \
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }},LOG_LEVEL=info
-        
+
         # Output the function URL for PR comments
         FUNCTION_URL=$(gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
         echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
@@ -90,18 +90,18 @@ jobs:
         script: |
           const prNumber = context.payload.pull_request.number;
           const functionName = `${{ steps.fn-name.outputs.name }}`;
-          
+
           // Find existing preview comment
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: prNumber,
           });
-          
+
           const existingComment = comments.data.find(
             comment => comment.body.includes('## 🚀 Preview Deployments')
           );
-          
+
           let commentBody;
           if (existingComment) {
             // Update existing comment to mark Generator as deployed
@@ -115,10 +115,10 @@ jobs:
           - [ ] API: ⏳ Deploying...
           - [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)
           - [ ] UI: ⏳ Deploying...
-          
+
           _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
           }
-          
+
           if (existingComment) {
             await github.rest.issues.updateComment({
               owner: context.repo.owner,

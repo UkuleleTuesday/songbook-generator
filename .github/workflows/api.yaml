@@ -84,7 +84,7 @@ jobs:
         GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},\
         JOB_TTL_DAYS=3,\
         LOG_LEVEL=info
-        
+
         # Output the function URL for PR comments
         FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
         echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
@@ -97,18 +97,18 @@ jobs:
           const prNumber = context.payload.pull_request.number;
           const functionUrl = `${{ steps.deploy.outputs.function_url }}`;
           const functionName = `${{ steps.fn-name.outputs.name }}`;
-          
+
           // Find existing preview comment
           const comments = await github.rest.issues.listComments({
             owner: context.repo.owner,
             repo: context.repo.repo,
             issue_number: prNumber,
           });
-          
+
           const existingComment = comments.data.find(
             comment => comment.body.includes('## 🚀 Preview Deployments')
           );
-          
+
           let commentBody;
           if (existingComment) {
             // Update existing comment to mark API as deployed
@@ -122,10 +122,10 @@ jobs:
           - [x] API: [${functionUrl}](${functionUrl})
           - [ ] Generator Worker: ⏳ Deploying...
           - [ ] UI: ⏳ Deploying...
-          
+
           _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
           }
-          
+
           if (existingComment) {
             await github.rest.issues.updateComment({
               owner: context.repo.owner,
