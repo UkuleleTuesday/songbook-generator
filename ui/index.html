@@ -97,14 +97,14 @@
         }
         const data = await res.json();
         const { status, result_url, progress, last_message } = data;
-        
+
         // Update progress if available
         if (typeof progress === 'number') {
           updateProgress(progress, last_message || `Status: ${status}`);
         } else {
           progressText.textContent = `Status: ${status}`;
         }
-        
+
         if (status === 'completed') {
           updateProgress(1.0, 'Completed! Starting download...');
           return result_url;
@@ -119,7 +119,7 @@
 
     document.getElementById("jobForm").onsubmit = async (e) => {
       e.preventDefault();
-      
+
       // Disable submit button and show progress
       disableSubmitButton();
       showProgress();
@@ -156,7 +156,7 @@
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        
+
         updateProgress(1.0, 'Download started!');
 
       } catch (err) {
