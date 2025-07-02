@@ -20,24 +20,24 @@ jobs:
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Load environment variables
       uses: falti/dotenv-action@v1.1.4
       with:
         path: .env
         export-variables: true
         keys-case: bypass
-    
+
     - name: Override environment variables for PR environment
       if: github.event.inputs.pr_number != ''
       run: |
         PR_NUM="${{ github.event.inputs.pr_number }}"
         echo "Setting up PR-specific environment variables for PR #${PR_NUM}"
-        
+
         # Override environment variables for PR environment
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
@@ -45,37 +45,37 @@ jobs:
         echo "FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }}" >> $GITHUB_ENV
         echo "API_FUNCTION_NAME=${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "WORKER_FUNCTION_NAME=${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        
+
         # Keep other variables the same
         echo "GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}" >> $GITHUB_ENV
         echo "GCP_REGION=${{ env.GCP_REGION }}" >> $GITHUB_ENV
         echo "SA=${{ env.SA }}" >> $GITHUB_ENV
-        
+
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- GCS_CDN_BUCKET: ${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}"
         echo "- GCS_WORKER_CACHE_BUCKET: ${{ env.GCS_WORKER_CACHE_BUCKET }}-pr-${PR_NUM}"
-    
+
     - name: Auth Cloud SDK
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
         export_environment_variables: true
-    
+
     - name: Set up gcloud
       uses: google-github-actions/setup-gcloud@v1
       with:
         project_id: ${{ env.GCP_PROJECT_ID }}
         version: '431.0.0'
-    
+
     - name: Make deploy script executable
       run: chmod +x ./deploy-gcs.sh
-    
+
     - name: Run GCS deployment script
       run: ./deploy-gcs.sh
       env:
         FORCE_RECREATE: ${{ github.event.inputs.force_recreate }}
-    
+
     - name: Deployment completed
       run: |
         echo "✅ Infrastructure deployment completed successfully!"
@@ -84,7 +84,7 @@ jobs:
         echo "- Firestore collection: ${{ env.FIRESTORE_COLLECTION }}"
         echo "- GCS CDN bucket: ${{ env.GCS_CDN_BUCKET }}"
         echo "- GCS worker cache bucket: ${{ env.GCS_WORKER_CACHE_BUCKET }}"
-        
+
         if [[ -n "${{ github.event.inputs.pr_number }}" ]]; then
           echo ""
           echo "🔧 PR-specific resources created for PR #${{ github.event.inputs.pr_number }}"
