@@ -1,6 +1,17 @@
 name: Deploy GCS Infrastructure
 
 on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
   workflow_dispatch:
     inputs:
       force_recreate:
@@ -8,10 +19,6 @@ on:
         required: false
         type: boolean
         default: false
-      pr_number:
-        description: 'PR number for preview environment (optional)'
-        required: false
-        type: string
 
 permissions:
   contents: read
@@ -33,9 +40,9 @@ jobs:
         keys-case: bypass
 
     - name: Override environment variables for PR environment
-      if: github.event.inputs.pr_number != ''
+      if: github.event_name == 'pull_request'
       run: |
-        PR_NUM="${{ github.event.inputs.pr_number }}"
+        PR_NUM="${{ github.event.pull_request.number }}"
         echo "Setting up PR-specific environment variables for PR #${PR_NUM}"
 
         # Override environment variables for PR environment
@@ -85,8 +92,8 @@ jobs:
         echo "- GCS CDN bucket: ${{ env.GCS_CDN_BUCKET }}"
         echo "- GCS worker cache bucket: ${{ env.GCS_WORKER_CACHE_BUCKET }}"
 
-        if [[ -n "${{ github.event.inputs.pr_number }}" ]]; then
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           echo ""
-          echo "🔧 PR-specific resources created for PR #${{ github.event.inputs.pr_number }}"
+          echo "🔧 PR-specific resources created for PR #${{ github.event.pull_request.number }}"
           echo "These resources will need to be cleaned up when the PR is closed."
         fi
