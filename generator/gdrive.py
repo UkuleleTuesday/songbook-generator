@@ -1,5 +1,4 @@
-from typing import Generator, List
-from typing import Dict
+from typing import Generator, List, Dict, Optional
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
@@ -13,9 +12,46 @@ def authenticate_drive():
     return build("drive", "v3", credentials=creds)
 
 
-def query_drive_files(drive, source_folder, limit):
-    query = f"'{source_folder}' in parents and trashed = false"
+def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
+    """
+    Build Google Drive API query filters for custom properties.
+    
+    Args:
+        property_filters: Dict of property_name -> value pairs to filter by
+        
+    Returns:
+        String of property filter conditions to append to the main query
+    """
+    if not property_filters:
+        return ""
+    
+    filters = []
+    for prop_name, prop_value in property_filters.items():
+        # Escape single quotes in property values
+        escaped_value = prop_value.replace("'", "\\'")
+        filters.append(f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}")
+    
+    return " and " + " and ".join(filters) if filters else ""
+
+
+def query_drive_files(drive, source_folder, limit, property_filters: Optional[Dict[str, str]] = None):
+    """
+    Query Google Drive files with optional property filtering.
+    
+    Args:
+        drive: Authenticated Google Drive service
+        source_folder: Folder ID to search in
+        limit: Maximum number of files to return
+        property_filters: Optional dict of property_name -> value pairs to filter by
+    """
+    base_query = f"'{source_folder}' in parents and trashed = false"
+    property_query = build_property_filters(property_filters)
+    query = base_query + property_query
+    
     click.echo(f"Executing Drive API query: {query}")
+    if property_filters:
+        click.echo(f"Filtering by properties: {property_filters}")
+    
     files = []
     page_token = None
     while True:
@@ -24,7 +60,7 @@ def query_drive_files(drive, source_folder, limit):
             .list(
                 q=query,
                 pageSize=limit if limit else 1000,
-                fields="nextPageToken, files(id,name)",
+                fields="nextPageToken, files(id,name,properties)",
                 orderBy="name_natural",
                 pageToken=page_token,
             )

@@ -2,6 +2,7 @@ import fitz
 import click
 import os
 from pathlib import Path
+from typing import List, Dict, Optional
 import progress
 
 import toc
@@ -9,14 +10,13 @@ import cover
 import caching
 from gdrive import authenticate_drive, query_drive_files, download_file_bytes
 
-from typing import List
-
 
 def generate_songbook(
     source_folders: List[str],
     destination_path: Path,
     limit: int,
     cover_file_id: str,
+    property_filters: Optional[Dict[str, str]] = None,
     on_progress=None,
 ):
     reporter = progress.ProgressReporter(on_progress)
@@ -30,7 +30,7 @@ def generate_songbook(
     with reporter.step(1, "Querying files...") as step:
         files = []
         for i, folder in enumerate(source_folders):
-            folder_files = query_drive_files(drive, folder, limit)
+            folder_files = query_drive_files(drive, folder, limit, property_filters)
             files.extend(folder_files)
             step.increment(
                 1 / len(source_folders),
@@ -38,11 +38,15 @@ def generate_songbook(
             )
 
         if not files:
-            click.echo(f"No files found in folders {source_folders}.")
+            if property_filters:
+                click.echo(f"No files found in folders {source_folders} matching filters {property_filters}.")
+            else:
+                click.echo(f"No files found in folders {source_folders}.")
             return
 
+        filter_msg = f" (with filters: {property_filters})" if property_filters else ""
         click.echo(
-            f"Found {len(files)} files in the source folder. Starting download..."
+            f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
         )
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
