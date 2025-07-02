@@ -17,11 +17,6 @@ on:
         required: false
         type: string
         default: '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740'
-      source_folder_id:
-        description: 'Source folder ID'
-        required: false
-        type: string
-        default: '1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95'
       songbook_edition:
         description: 'Songbook edition filter'
         required: false
@@ -79,18 +74,16 @@ jobs:
     - name: Trigger songbook generation
       run: |
         # Use inputs with their defaults
-        FOLDER_ID="${{ github.event.inputs.source_folder_id || '1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95' }}"
         COVER_FILE_ID="${{ github.event.inputs.cover_file_id || '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740' }}"
         LIMIT="${{ github.event.inputs.limit || '100' }}"
         SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || '' }}"
 
         # Prepare the payload for the API
         PAYLOAD=$(jq -n \
-          --arg folder_id "$FOLDER_ID" \
           --arg cover_id "$COVER_FILE_ID" \
           --argjson limit "$LIMIT" \
           '{
-            source_folders: [$folder_id],
+            source_folders: ["1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95", "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"],
             cover_file_id: $cover_id,
             limit: $limit
           }')
