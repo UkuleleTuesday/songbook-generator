@@ -141,6 +141,7 @@ jobs:
           --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \
           --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
+          --set-env-vars=GCP_REGION=${{ env.GCP_REGION }} \
           --set-env-vars=LOG_LEVEL=info
 
     - name: Update PR preview status
