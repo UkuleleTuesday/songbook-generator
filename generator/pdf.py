@@ -2,13 +2,17 @@ import fitz
 import click
 import os
 from pathlib import Path
-from typing import List, Dict, Optional, Union
+from typing import List, Optional, Union
 import progress
 
 import toc
 import cover
 import caching
-from gdrive import authenticate_drive, query_drive_files_with_client_filter, download_file_bytes
+from gdrive import (
+    authenticate_drive,
+    query_drive_files_with_client_filter,
+    download_file_bytes,
+)
 from filters import PropertyFilter, FilterGroup
 
 
@@ -31,7 +35,9 @@ def generate_songbook(
     with reporter.step(1, "Querying files...") as step:
         files = []
         for i, folder in enumerate(source_folders):
-            folder_files = query_drive_files_with_client_filter(drive, folder, limit, client_filter)
+            folder_files = query_drive_files_with_client_filter(
+                drive, folder, limit, client_filter
+            )
             files.extend(folder_files)
             step.increment(
                 1 / len(source_folders),
@@ -47,7 +53,7 @@ def generate_songbook(
                 click.echo(f"No files found in folders {source_folders}.")
             return
 
-        filter_msg = f" (with client-side filter)" if client_filter else ""
+        filter_msg = " (with client-side filter)" if client_filter else ""
         click.echo(
             f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
         )

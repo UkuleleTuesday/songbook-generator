@@ -206,7 +206,9 @@ def test_query_drive_files_multiple_pages_with_exact_limit(mock_drive):
 def test_query_drive_files_with_property_filters(mock_drive):
     """Test property filtering functionality."""
     mock_response = {
-        "files": [{"id": "file1", "name": "Song 1", "properties": {"artist": "Beatles"}}],
+        "files": [
+            {"id": "file1", "name": "Song 1", "properties": {"artist": "Beatles"}}
+        ],
         "nextPageToken": None,
     }
 
@@ -219,10 +221,12 @@ def test_query_drive_files_with_property_filters(mock_drive):
     assert result[0]["id"] == "file1"
 
     # Verify the API was called with property filters
-    expected_query = ("'folder123' in parents and trashed = false and "
-                     "properties has { key='artist' and value='Beatles' } and "
-                     "properties has { key='difficulty' and value='easy' }")
-    
+    expected_query = (
+        "'folder123' in parents and trashed = false and "
+        "properties has { key='artist' and value='Beatles' } and "
+        "properties has { key='difficulty' and value='easy' }"
+    )
+
     mock_drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=1000,
@@ -249,7 +253,9 @@ def test_query_drive_files_logs_property_filters(mock_echo, mock_drive):
     assert mock_echo.call_count == 2
     calls = [call.args[0] for call in mock_echo.call_args_list]
     assert any("Executing Drive API query:" in call for call in calls)
-    assert any("Filtering by properties: {'artist': 'Beatles'}" in call for call in calls)
+    assert any(
+        "Filtering by properties: {'artist': 'Beatles'}" in call for call in calls
+    )
 
 
 def test_build_property_filters():
@@ -257,21 +263,25 @@ def test_build_property_filters():
     # Test with no filters
     assert build_property_filters(None) == ""
     assert build_property_filters({}) == ""
-    
+
     # Test with single filter
     result = build_property_filters({"artist": "Beatles"})
     expected = " and properties has { key='artist' and value='Beatles' }"
     assert result == expected
-    
+
     # Test with multiple filters
     result = build_property_filters({"artist": "Beatles", "difficulty": "easy"})
     # Since dict order may vary, check both possible orders
-    expected1 = (" and properties has { key='artist' and value='Beatles' } and "
-                "properties has { key='difficulty' and value='easy' }")
-    expected2 = (" and properties has { key='difficulty' and value='easy' } and "
-                "properties has { key='artist' and value='Beatles' }")
+    expected1 = (
+        " and properties has { key='artist' and value='Beatles' } and "
+        "properties has { key='difficulty' and value='easy' }"
+    )
+    expected2 = (
+        " and properties has { key='difficulty' and value='easy' } and "
+        "properties has { key='artist' and value='Beatles' }"
+    )
     assert result in [expected1, expected2]
-    
+
     # Test escaping single quotes
     result = build_property_filters({"song": "Don't Stop Me Now"})
     expected = " and properties has { key='song' and value='Don\\'t Stop Me Now' }"

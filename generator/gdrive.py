@@ -95,7 +95,9 @@ def query_drive_files(
             error_msg = str(e)
 
             if error_code == 403:
-                click.echo(f"Permission denied accessing folder {source_folder}. Check your access rights.")
+                click.echo(
+                    f"Permission denied accessing folder {source_folder}. Check your access rights."
+                )
             elif error_code == 404:
                 click.echo(f"Folder {source_folder} not found. Check the folder ID.")
             elif error_code == 429:
@@ -114,37 +116,42 @@ def query_drive_files(
 
 
 def query_drive_files_with_client_filter(
-    drive, source_folder, limit, client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None
+    drive,
+    source_folder,
+    limit,
+    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
 ):
     """
     Query Google Drive files and apply client-side filtering.
-    
+
     Args:
         drive: Authenticated Google Drive service
         source_folder: Folder ID to search in
         limit: Maximum number of files to return after filtering
         client_filter: Client-side filter to apply after fetching files
-        
+
     Returns:
         List of files matching the client-side filter
     """
     # First, get all files from Drive (no server-side property filtering)
     click.echo("Fetching all files from Drive for client-side filtering...")
     all_files = query_drive_files(drive, source_folder, None, None)
-    
+
     if not client_filter:
         return all_files[:limit] if limit else all_files
-    
+
     # Apply client-side filtering
     filtered_files = []
     for file in all_files:
-        properties = file.get('properties', {})
+        properties = file.get("properties", {})
         if client_filter.matches(properties):
             filtered_files.append(file)
             if limit and len(filtered_files) >= limit:
                 break
-    
-    click.echo(f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total")
+
+    click.echo(
+        f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
+    )
     return filtered_files
 
 
