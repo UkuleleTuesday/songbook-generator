@@ -4,6 +4,10 @@ Migration script to apply metadata from tabdb.csv to Google Drive files as custo
 
 This script reads the tabdb.csv file and applies metadata to corresponding Google Drive files
 by matching the expected filename pattern "<song title> - <artist>".
+
+It uses the Google Drive API to read and update file properties. You WILL NEED
+WRITE ACCESS to the corresponding files/folders for this script to be able to
+write file properties.
 """
 
 import csv
