@@ -1,4 +1,4 @@
-from toc import resolve_font, DEFAULT_FONT, load_toc_config, TocLayout
+from toc import resolve_font, DEFAULT_FONT, load_toc_config
 
 
 def test_resolve_font_valid_fontfile(mocker):
