@@ -194,6 +194,17 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
     # Authenticate and get Drive files
     click.echo("Authenticating with Google Drive...")
     drive = authenticate_drive()
+    
+    # Debug: Check what credentials are being used
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly", "https://www.googleapis.com/auth/drive.metadata"])
+    if hasattr(creds, 'service_account_email'):
+        click.echo(f"Using service account: {creds.service_account_email}")
+    elif hasattr(creds, '_service_account_email'):
+        click.echo(f"Using service account: {creds._service_account_email}")
+    else:
+        click.echo(f"Using credentials type: {type(creds)}")
+        if hasattr(creds, 'token'):
+            click.echo(f"Token present: {bool(creds.token)}")
 
     drive_files = get_drive_files(drive, list(folder_id))
     click.echo(f"Total Drive files found: {len(drive_files)}")
