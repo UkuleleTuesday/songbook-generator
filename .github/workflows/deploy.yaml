@@ -136,7 +136,7 @@ jobs:
           --source=generator \
           --entry-point=main \
           --memory=1Gi \
-          --cpu=2000m \
+          --cpu=2 \
           --allow-unauthenticated \
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \

@@ -41,7 +41,7 @@ def load_toc_config():
     )
 
 
-def build_table_of_contents(files):
+def build_table_of_contents(files, page_offset=0):
     toc_pdf = fitz.open()
     toc_page = toc_pdf.new_page()
     toc_text = "Table of Contents\n\n"
@@ -55,7 +55,7 @@ def build_table_of_contents(files):
     toc_font, toc_fontsize, title_font, title_fontsize = load_toc_config()
 
     current_y += 10
-    for page_number, file in enumerate(files, start=1):
+    for page_number, file in enumerate(files, start=(1 + page_offset)):
         current_y += 10  # Line spacing
         file_name = file["name"]
         toc_text_line = f"{page_number}. {file_name}"

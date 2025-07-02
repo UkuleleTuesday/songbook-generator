@@ -29,7 +29,7 @@ runs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
-        version: '431.0.0'
+        version: '529.0.0'
         project_id: ${{ inputs.gcp_project_id }}
 
     - name: Install uv
