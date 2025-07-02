@@ -54,14 +54,14 @@ def load_csv_data(csv_path: str) -> List[Dict]:
 def get_drive_files(drive, folder_ids: List[str]) -> Dict[str, dict]:
     """Get all files from the specified Drive folders, indexed by normalized name."""
     files = {}
-    
+
     for folder_id in folder_ids:
         click.echo(f"Fetching files from folder {folder_id}...")
         query = f"'{folder_id}' in parents and trashed = false"
-        
+
         page_token = None
         folder_files = []
-        
+
         while True:
             try:
                 resp = drive.files().list(
@@ -70,42 +70,42 @@ def get_drive_files(drive, folder_ids: List[str]) -> Dict[str, dict]:
                     fields="nextPageToken, files(id,name,properties)",
                     pageToken=page_token,
                 ).execute()
-                
+
                 folder_files.extend(resp.get("files", []))
                 page_token = resp.get("nextPageToken")
                 if not page_token:
                     break
-                    
+
             except HttpError as e:
                 click.echo(f"Error fetching files from folder {folder_id}: {e}")
                 break
-        
+
         click.echo(f"Found {len(folder_files)} files in folder {folder_id}")
-        
+
         for file in folder_files:
             # Remove .pdf extension and normalize for matching
             name_without_ext = file['name'].replace('.pdf', '')
             normalized_name = normalize_filename(name_without_ext)
             files[normalized_name] = file
-    
+
     return files
 
 
 def find_matching_file(expected_filename: str, drive_files: Dict[str, dict]) -> Optional[dict]:
     """Find the best matching Drive file for the expected filename."""
     normalized_expected = normalize_filename(expected_filename)
-    
+
     # Try exact match first
     if normalized_expected in drive_files:
         return drive_files[normalized_expected]
-    
+
     # Try fuzzy matching
     file_names = list(drive_files.keys())
     matches = get_close_matches(normalized_expected, file_names, n=1, cutoff=0.8)
-    
+
     if matches:
         return drive_files[matches[0]]
-    
+
     return None
 
 
@@ -113,7 +113,7 @@ def convert_metadata_for_drive(song_data: Dict) -> Dict[str, str]:
     """Convert CSV row data to Google Drive custom properties format."""
     # Google Drive custom properties must be strings
     properties = {}
-    
+
     # Basic metadata
     if song_data.get('artist'):
         properties['artist'] = song_data['artist']
@@ -137,7 +137,7 @@ def convert_metadata_for_drive(song_data: Dict) -> Dict[str, str]:
         properties['date'] = song_data['date']
     if song_data.get('specialbooks'):
         properties['specialbooks'] = song_data['specialbooks']
-    
+
     return properties
 
 
@@ -146,7 +146,7 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
     if dry_run:
         click.echo(f"  [DRY RUN] Would apply properties: {properties}")
         return True
-    
+
     try:
         drive.files().update(
             fileId=file_id,
@@ -178,38 +178,38 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
 )
 def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_unmatched: bool):
     """Migrate metadata from tabdb.csv to Google Drive file custom properties."""
-    
+
     click.echo("Starting metadata migration...")
-    
+
     # Load CSV data
     songs = load_csv_data(csv_path)
-    
+
     # Authenticate and get Drive files
     click.echo("Authenticating with Google Drive...")
     drive = authenticate_drive()
-    
+
     drive_files = get_drive_files(drive, list(folder_id))
     click.echo(f"Total Drive files found: {len(drive_files)}")
-    
+
     # Process each song
     matched = 0
     unmatched = []
     errors = 0
-    
+
     for song_data in songs:
         song_title = song_data['song']
         artist = song_data['artist']
         expected_filename = construct_expected_filename(song_title, artist)
-        
+
         # Find matching Drive file
         matching_file = find_matching_file(expected_filename, drive_files)
-        
+
         if matching_file:
             click.echo(f"✓ Matched: {expected_filename} → {matching_file['name']}")
-            
+
             # Convert metadata to Drive properties format
             properties = convert_metadata_for_drive(song_data)
-            
+
             # Apply metadata
             if apply_metadata_to_file(drive, matching_file['id'], properties, dry_run):
                 matched += 1
@@ -219,7 +219,7 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
             unmatched.append(expected_filename)
             if show_unmatched:
                 click.echo(f"✗ No match found for: {expected_filename}")
-    
+
     # Summary
     click.echo("\n" + "="*50)
     click.echo("MIGRATION SUMMARY")
@@ -228,10 +228,10 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
     click.echo(f"Successfully matched: {matched}")
     click.echo(f"Unmatched songs: {len(unmatched)}")
     click.echo(f"Errors: {errors}")
-    
+
     if dry_run:
         click.echo("\n[DRY RUN] No changes were actually applied.")
-    
+
     if unmatched and not show_unmatched:
         click.echo(f"\nUse --show-unmatched to see the {len(unmatched)} unmatched songs.")
 
