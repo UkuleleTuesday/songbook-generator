@@ -8,17 +8,25 @@ on:
     # Allow manual triggering for testing
     inputs:
       limit:
-        description: 'Limit number of files (optional)'
+        description: 'Limit number of files'
         required: false
         type: number
+        default: 100
       cover_file_id:
-        description: 'Cover file ID (optional)'
+        description: 'Cover file ID'
         required: false
         type: string
+        default: '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740'
+      source_folder_id:
+        description: 'Source folder ID'
+        required: false
+        type: string
+        default: '1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95'
       songbook_edition:
-        description: 'Songbook edition filter (optional)'
+        description: 'Songbook edition filter'
         required: false
         type: choice
+        default: ''
         options:
           - ''
           - regular
@@ -70,33 +78,26 @@ jobs:
     
     - name: Trigger songbook generation
       run: |
-        # Use defaults from UI
-        DEFAULT_FOLDER_ID="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
-        DEFAULT_COVER_FILE_ID="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
-        DEFAULT_LIMIT=100
+        # Use inputs with their defaults
+        FOLDER_ID="${{ github.event.inputs.source_folder_id || '1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95' }}"
+        COVER_FILE_ID="${{ github.event.inputs.cover_file_id || '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740' }}"
+        LIMIT="${{ github.event.inputs.limit || '100' }}"
+        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || '' }}"
         
-        # Prepare the payload for the API with defaults
+        # Prepare the payload for the API
         PAYLOAD=$(jq -n \
-          --arg folder_id "$DEFAULT_FOLDER_ID" \
-          --arg cover_id "$DEFAULT_COVER_FILE_ID" \
-          --argjson limit "$DEFAULT_LIMIT" \
+          --arg folder_id "$FOLDER_ID" \
+          --arg cover_id "$COVER_FILE_ID" \
+          --argjson limit "$LIMIT" \
           '{
             source_folders: [$folder_id],
             cover_file_id: $cover_id,
             limit: $limit
           }')
         
-        # Override with manual inputs if provided
-        if [[ -n "${{ github.event.inputs.limit }}" ]]; then
-          PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"limit\": ${{ github.event.inputs.limit }}}")
-        fi
-        
-        if [[ -n "${{ github.event.inputs.cover_file_id }}" ]]; then
-          PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"cover_file_id\": \"${{ github.event.inputs.cover_file_id }}\"}")
-        fi
-        
-        if [[ -n "${{ github.event.inputs.songbook_edition }}" ]]; then
-          FILTER="specialbooks:contains:${{ github.event.inputs.songbook_edition }}"
+        # Add filter for songbook edition if specified
+        if [[ -n "$SONGBOOK_EDITION" ]]; then
+          FILTER="specialbooks:contains:$SONGBOOK_EDITION"
           PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"filters\": \"$FILTER\"}")
         fi
         
