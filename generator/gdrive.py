@@ -53,7 +53,7 @@ def query_drive_files(
         source_folder: Folder ID to search in
         limit: Maximum number of files to return
         property_filters: Optional dict of property_name -> value pairs to filter by
-        
+
     Returns:
         List of files, or empty list if error occurs
     """
@@ -67,7 +67,7 @@ def query_drive_files(
 
     files = []
     page_token = None
-    
+
     while True:
         try:
             resp = (
@@ -81,17 +81,17 @@ def query_drive_files(
                 )
                 .execute()
             )
-            
+
             files.extend(resp.get("files", []))
             page_token = resp.get("nextPageToken")
-            
+
             if not page_token or (limit and len(files) >= limit):
                 break
-                
+
         except HttpError as e:
             error_code = e.resp.status if e.resp else "unknown"
             error_msg = str(e)
-            
+
             if error_code == 403:
                 click.echo(f"Permission denied accessing folder {source_folder}. Check your access rights.")
             elif error_code == 404:
@@ -100,14 +100,14 @@ def query_drive_files(
                 click.echo("API quota exceeded. Please try again later.")
             else:
                 click.echo(f"Error querying Drive API (HTTP {error_code}): {error_msg}")
-            
+
             # Return partial results if we have any, otherwise empty list
             break
-            
+
         except Exception as e:
             click.echo(f"Unexpected error querying Drive files: {str(e)}")
             break
-    
+
     return files[:limit] if limit else files
 
 

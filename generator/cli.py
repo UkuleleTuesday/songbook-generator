@@ -19,24 +19,26 @@ def make_cli_progress_callback():
 def parse_property_filters(filter_strings) -> Optional[Dict[str, str]]:
     """
     Parse property filter strings into a dictionary.
-    
+
     Args:
         filter_strings: Tuple of strings in format "key=value"
-        
+
     Returns:
         Dict of property filters, or None if empty
     """
     if not filter_strings:
         return None
-    
+
     filters = {}
     for filter_str in filter_strings:
         if "=" not in filter_str:
-            raise click.BadParameter(f"Invalid filter format: {filter_str}. Use key=value format.")
-        
+            raise click.BadParameter(
+                f"Invalid filter format: {filter_str}. Use key=value format."
+            )
+
         key, value = filter_str.split("=", 1)
         filters[key.strip()] = value.strip()
-    
+
     return filters
 
 
@@ -93,13 +95,18 @@ def cli(
     except click.BadParameter as e:
         click.echo(f"Error: {e}")
         return
-    
+
     if property_filters:
         click.echo(f"Applying filters: {property_filters}")
-    
+
     progress_callback = make_cli_progress_callback()
     generate_songbook(
-        source_folder, destination_path, limit, cover_file_id, property_filters, progress_callback
+        source_folder,
+        destination_path,
+        limit,
+        cover_file_id,
+        property_filters,
+        progress_callback,
     )
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")

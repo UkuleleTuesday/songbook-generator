@@ -39,7 +39,9 @@ def generate_songbook(
 
         if not files:
             if property_filters:
-                click.echo(f"No files found in folders {source_folders} matching filters {property_filters}.")
+                click.echo(
+                    f"No files found in folders {source_folders} matching filters {property_filters}."
+                )
             else:
                 click.echo(f"No files found in folders {source_folders}.")
             return
