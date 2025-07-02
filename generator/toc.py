@@ -51,8 +51,18 @@ def build_table_of_contents(files, page_offset=0):
     column_height = toc_page.rect.height - 25  # Adjust for margins
     current_y = 50
     current_x = 50
+    current_column = 1  # Track which column we're in (1 or 2)
 
     toc_font, toc_fontsize, title_font, title_fontsize = load_toc_config()
+
+    # Add title to first page
+    toc_page.insert_text(
+        (50, 50),
+        toc_text,
+        fontsize=title_fontsize,
+        fontfile=title_font,
+        color=(0, 0, 0),
+    )
 
     current_y += 10
     for page_number, file in enumerate(files, start=(1 + page_offset)):
@@ -67,15 +77,23 @@ def build_table_of_contents(files, page_offset=0):
             fontfile=toc_font,
             color=(0, 0, 0),
         )
-        if current_y > column_height:  # Move to next column if overspills
-            current_y = 50
-            current_x += column_width + column_spacing
+        if current_y > column_height:  # Column is full
+            if current_column == 1:  # Move to second column
+                current_y = 60  # Reset Y position (below title)
+                current_x += column_width + column_spacing
+                current_column = 2
+            else:  # Create new page
+                toc_page = toc_pdf.new_page()
+                # Add title to new page
+                toc_page.insert_text(
+                    (50, 50),
+                    toc_text,
+                    fontsize=title_fontsize,
+                    fontfile=title_font,
+                    color=(0, 0, 0),
+                )
+                current_y = 60  # Reset Y position (below title)
+                current_x = 50   # Reset X position (first column)
+                current_column = 1
 
-    toc_page.insert_text(
-        (50, 50),
-        toc_text,
-        fontsize=title_fontsize,
-        fontfile=title_font,
-        color=(0, 0, 0),
-    )
     return toc_pdf
