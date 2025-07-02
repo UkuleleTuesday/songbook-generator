@@ -7,7 +7,7 @@ import progress
 import toc
 import cover
 import caching
-from gdrive import authenticate_drive, query_drive_files, stream_file_bytes
+from gdrive import authenticate_drive, query_drive_files, download_file_bytes
 
 from typing import List
 
@@ -59,10 +59,7 @@ def generate_songbook(
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
-            for file, _ in zip(
-                files, merge_pdfs(songbook_pdf, files, cache, drive, page_offset)
-            ):
-                step.increment(1, f"Added {file['name']}")
+            merge_pdfs(songbook_pdf, files, cache, drive, page_offset, step)
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
@@ -72,15 +69,19 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, page_offset=0):
-    for page_index, pdf_bytes in enumerate(
-        stream_file_bytes(drive, files, cache), start=(1 + page_offset)
-    ):
+def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step):
+    current_page = 1 + page_offset
+    
+    for file in files:
+        pdf_bytes = download_file_bytes(drive, file, cache)
+        
         with fitz.open(stream=pdf_bytes) as pdf_document:
             page = pdf_document[0]
-            add_page_number(page, page_index)
+            add_page_number(page, current_page)
             destination_pdf.insert_pdf(pdf_document)
-            yield page_index
+            
+        progress_step.increment(1, f"Added {file['name']}")
+        current_page += 1
 
 
 def add_page_number(page, page_index):
