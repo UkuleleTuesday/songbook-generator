@@ -5,15 +5,15 @@ class ProgressReporter:
     A helper class to report progress.
 
     Attributes:
-        total_progress (int): The total progress value.
-        callback (Callable[float, str] | None): A callback function to report progress.
-        current_progress (int): The current progress value.
+        _total_progress (int): The total progress value.
+        _callback (Callable[float, str] | None): A callback function to report progress.
+        _current_progress (int): The current progress value.
     """
 
     def __init__(self, total_progress: int, callback: Callable[[float, str], None] | None = None):
-        self.total_progress = total_progress
-        self.callback = callback
-        self.current_progress = 0
+        self._total_progress = total_progress
+        self._callback = callback
+        self._current_progress = 0
 
     def increment_progress(self, increment: int, message: str):
         """
@@ -23,7 +23,7 @@ class ProgressReporter:
             increment (int): The value to increment the progress by.
             message (str): A message to include in the callback.
         """
-        self.current_progress += increment
-        percentage = (float(self.current_progress) / float(self.total_progress))
-        if self.callback:
-            self.callback(percentage, message)
+        self._current_progress += increment
+        percentage = (float(self._current_progress) / float(self._total_progress))
+        if self._callback:
+            self._callback(percentage, message)
