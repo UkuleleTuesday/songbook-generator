@@ -137,7 +137,11 @@ jobs:
           --entry-point=main \
           --memory=1Gi \
           --allow-unauthenticated \
-          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }},LOG_LEVEL=info
+          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
+          --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \
+          --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
+          --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
+          --set-env-vars=LOG_LEVEL=info
 
     - name: Update PR preview status
       if: github.event_name == 'pull_request'
