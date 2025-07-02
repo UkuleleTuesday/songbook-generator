@@ -1,0 +1,175 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  issues: write
+  pull-requests: write
+  checks: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}"
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test and Lint
+    uses: ./.github/workflows/test.yaml
+
+  deploy-api:
+    name: Deploy API
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Compute function name
+      id: fn-name
+      run: |
+        BASE_FN=${{ env.API_FUNCTION_NAME }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > api/requirements.txt
+        cat api/requirements.txt
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      run: |
+        gcloud functions deploy "${{ steps.fn-name.outputs.name }}" \
+          --gen2 \
+          --region=${{ env.GCP_REGION }} \
+          --runtime=python312 \
+          --trigger-http \
+          --source=api \
+          --entry-point=main \
+          --allow-unauthenticated \
+          --set-env-vars=\
+        GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},\
+        GCP_REGION=${{ env.GCP_REGION }},\
+        PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }},\
+        FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},\
+        GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},\
+        JOB_TTL_DAYS=3,\
+        LOG_LEVEL=info
+
+        # Output the function URL for PR comments
+        FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
+        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: 'API'
+        url: ${{ steps.deploy.outputs.function_url }}
+
+  deploy-generator:
+    name: Deploy Generator
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Compute function name
+      id: fn-name
+      run: |
+        BASE_FN=${{ env.WORKER_FUNCTION_NAME }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      run: |
+        WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        gcloud functions deploy "$WORKER_FN_NAME" \
+          --gen2 \
+          --region="${{ env.GCP_REGION }}" \
+          --runtime=python312 \
+          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
+          --source=generator \
+          --entry-point=main \
+          --memory=1Gi \
+          --allow-unauthenticated \
+          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }},LOG_LEVEL=info
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: 'Generator Worker'
+        function_name: ${{ steps.fn-name.outputs.name }}
+
+  deploy-ui:
+    name: Deploy UI
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to GitHub Pages (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: ui
+          clean-exclude: pr-preview/
+
+      - name: Deploy PR Preview (PRs only)
+        if: github.event_name == 'pull_request'
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ui
+
+      - name: Update PR preview status
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/update-pr-comment
+        with:
+          component: 'UI'
+          url: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/'

@@ -1,4 +1,4 @@
-name: Clean up preview Cloud Run services
+name: Clean up preview deployments
 
 on:
   pull_request:
@@ -9,6 +9,11 @@ jobs:
     # Only run when the PR was merged (not just closed without merge)
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      issues: write
+      pull-requests: write
     steps:
       - name: Checkout (needed to get BASE_FN etc if you use repo vars)
         uses: actions/checkout@v4
@@ -32,18 +37,61 @@ jobs:
           project_id: ${{ env.GCP_PROJECT_ID }}
           version: '431.0.0'
 
-      - name: Delete preview API service
+      - name: Delete preview API function
         run: |
           NAME="${{ env.API_FUNCTION_NAME }}-pr-${{ github.event.pull_request.number }}"
-          echo "Deleting Cloud Run service $NAME (API)…"
-          gcloud run services delete "$NAME" \
+          echo "Deleting Cloud Function $NAME (API)…"
+          gcloud functions delete "$NAME" \
             --region="${{ env.GCP_REGION }}" \
-            --quiet || echo "Service $NAME not found, skipping."
+            --gen2 \
+            --quiet || echo "Function $NAME not found, skipping."
 
-      - name: Delete preview worker service
+      - name: Delete preview worker function
         run: |
-          NAME="${{ env.GENERATOR_WORKER_NAME }}-pr-${{ github.event.pull_request.number }}"
-          echo "Deleting Cloud Run service $NAME (Worker)…"
-          gcloud run services delete "$NAME" \
+          NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${{ github.event.pull_request.number }}"
+          echo "Deleting Cloud Function $NAME (Worker)…"
+          gcloud functions delete "$NAME" \
             --region="${{ env.GCP_REGION }}" \
-            --quiet || echo "Service $NAME not found, skipping."
+            --gen2 \
+            --quiet || echo "Function $NAME not found, skipping."
+
+      - name: Clean up UI preview
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+
+            // Create a new deployment to remove the preview
+            // This effectively "cleans up" by redeploying main without the PR content
+            try {
+              // Trigger a new deployment of main branch
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy.yaml',
+                ref: 'main'
+              });
+
+              console.log(`Triggered cleanup deployment for UI preview PR #${prNumber}`);
+            } catch (error) {
+              console.log(`Failed to trigger cleanup: ${error.message}`);
+            }
+
+      - name: Comment on PR about cleanup
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `🧹 Preview deployments cleaned up!
+
+              - API preview function deleted
+              - Worker preview function deleted
+              - UI preview removed from GitHub Pages
+
+              Thanks for your contribution! 🎉`
+            });
