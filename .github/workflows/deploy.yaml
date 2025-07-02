@@ -163,8 +163,9 @@ jobs:
             cp -r ui/* preview/pr-${{ github.event.pull_request.number }}/
             echo "Prepared preview for PR #${{ github.event.pull_request.number }}"
           else
-            # For main branch, use ui directly
-            cp -r ui preview
+            # For main branch, copy ui contents directly to preview
+            mkdir -p preview
+            cp -r ui/* preview/
             echo "Prepared main deployment"
           fi
 
