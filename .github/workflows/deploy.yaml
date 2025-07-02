@@ -33,9 +33,39 @@ jobs:
     name: Test and Lint
     uses: ./.github/workflows/test.yaml
 
+  deploy-infrastructure:
+    name: Deploy GCS Infrastructure
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Override environment variables for PR environment
+      if: github.event_name == 'pull_request'
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        echo "Setting up PR-specific environment variables for PR #${PR_NUM}"
+
+        # Override environment variables for PR environment
+        echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+
+        echo "PR environment variables set:"
+        echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
+
+    - name: Create Pub/Sub topic
+      run: |
+        echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
   deploy-api:
     name: Deploy API
-    needs: test
+    needs: [test, deploy-infrastructure]
     runs-on: ubuntu-latest
 
     steps:
@@ -77,7 +107,7 @@ jobs:
           --set-env-vars=\
         GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }},\
         GCP_REGION=${{ env.GCP_REGION }},\
-        PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }},\
+        PUBSUB_TOPIC=${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }},\
         FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},\
         GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},\
         JOB_TTL_DAYS=3,\
@@ -96,7 +126,7 @@ jobs:
 
   deploy-generator:
     name: Deploy Generator
-    needs: test
+    needs: [test, deploy-infrastructure]
     runs-on: ubuntu-latest
 
     steps:
@@ -132,7 +162,7 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
+          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
           --memory=1Gi \

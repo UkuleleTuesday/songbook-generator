@@ -19,7 +19,6 @@ runs:
         log-variables: true
         export-variables: true
         keys-case: bypass
-
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
       with:
