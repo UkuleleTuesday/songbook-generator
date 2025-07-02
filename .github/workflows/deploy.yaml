@@ -144,43 +144,19 @@ jobs:
   deploy-ui:
     name: Deploy UI
     needs: test
-    environment:
-      name: ${{ github.event_name == 'pull_request' && format('github-pages-pr-{0}', github.event.pull_request.number) || 'github-pages' }}
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Prepare UI content
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs, create a subdirectory structure
-            mkdir -p preview/pr-${{ github.event.pull_request.number }}
-            cp -r ui/* preview/pr-${{ github.event.pull_request.number }}/
-            echo "Prepared preview for PR #${{ github.event.pull_request.number }}"
-          else
-            # For main branch, copy ui contents directly to preview
-            mkdir -p preview
-            cp -r ui/* preview/
-            echo "Prepared main deployment"
-          fi
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy PR Preview
+        uses: rossjrw/pr-preview-action@v1
         with:
-          path: 'preview'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          source-dir: ui
 
       - name: Update PR preview status
         if: github.event_name == 'pull_request'
         uses: ./.github/actions/update-pr-comment
         with:
           component: 'UI'
-          url: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.pull_request.number }}/
+          url: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/'
