@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from gdrive import query_drive_files
+from gdrive import query_drive_files, build_property_filters
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def test_query_drive_files_basic(mock_drive):
     mock_drive.files.return_value.list.assert_called_once_with(
         q="'folder123' in parents and trashed = false",
         pageSize=1000,
-        fields="nextPageToken, files(id,name)",
+        fields="nextPageToken, files(id,name,properties)",
         orderBy="name_natural",
         pageToken=None,
     )
@@ -61,7 +61,7 @@ def test_query_drive_files_with_limit(mock_drive):
     mock_drive.files.return_value.list.assert_called_once_with(
         q="'folder123' in parents and trashed = false",
         pageSize=2,
-        fields="nextPageToken, files(id,name)",
+        fields="nextPageToken, files(id,name,properties)",
         orderBy="name_natural",
         pageToken=None,
     )
@@ -201,3 +201,78 @@ def test_query_drive_files_multiple_pages_with_exact_limit(mock_drive):
 
     # Should make two API calls to get all files
     assert mock_drive.files.return_value.list.call_count == 2
+
+
+def test_query_drive_files_with_property_filters(mock_drive):
+    """Test property filtering functionality."""
+    mock_response = {
+        "files": [{"id": "file1", "name": "Song 1", "properties": {"artist": "Beatles"}}],
+        "nextPageToken": None,
+    }
+
+    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    property_filters = {"artist": "Beatles", "difficulty": "easy"}
+    result = query_drive_files(mock_drive, "folder123", None, property_filters)
+
+    assert len(result) == 1
+    assert result[0]["id"] == "file1"
+
+    # Verify the API was called with property filters
+    expected_query = ("'folder123' in parents and trashed = false and "
+                     "properties has { key='artist' and value='Beatles' } and "
+                     "properties has { key='difficulty' and value='easy' }")
+    
+    mock_drive.files.return_value.list.assert_called_once_with(
+        q=expected_query,
+        pageSize=1000,
+        fields="nextPageToken, files(id,name,properties)",
+        orderBy="name_natural",
+        pageToken=None,
+    )
+
+
+@patch("gdrive.click.echo")
+def test_query_drive_files_logs_property_filters(mock_echo, mock_drive):
+    """Test that property filters are logged."""
+    mock_response = {
+        "files": [{"id": "file1", "name": "Song 1"}],
+        "nextPageToken": None,
+    }
+
+    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    property_filters = {"artist": "Beatles"}
+    query_drive_files(mock_drive, "folder123", None, property_filters)
+
+    # Verify both the query and filters were logged
+    assert mock_echo.call_count == 2
+    calls = [call.args[0] for call in mock_echo.call_args_list]
+    assert any("Executing Drive API query:" in call for call in calls)
+    assert any("Filtering by properties: {'artist': 'Beatles'}" in call for call in calls)
+
+
+def test_build_property_filters():
+    """Test the build_property_filters function."""
+    # Test with no filters
+    assert build_property_filters(None) == ""
+    assert build_property_filters({}) == ""
+    
+    # Test with single filter
+    result = build_property_filters({"artist": "Beatles"})
+    expected = " and properties has { key='artist' and value='Beatles' }"
+    assert result == expected
+    
+    # Test with multiple filters
+    result = build_property_filters({"artist": "Beatles", "difficulty": "easy"})
+    # Since dict order may vary, check both possible orders
+    expected1 = (" and properties has { key='artist' and value='Beatles' } and "
+                "properties has { key='difficulty' and value='easy' }")
+    expected2 = (" and properties has { key='difficulty' and value='easy' } and "
+                "properties has { key='artist' and value='Beatles' }")
+    assert result in [expected1, expected2]
+    
+    # Test escaping single quotes
+    result = build_property_filters({"song": "Don't Stop Me Now"})
+    expected = " and properties has { key='song' and value='Don\\'t Stop Me Now' }"
+    assert result == expected
