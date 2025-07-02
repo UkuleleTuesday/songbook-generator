@@ -127,7 +127,7 @@ jobs:
         # Poll for completion (with timeout)
         TIMEOUT=1800  # 30 minutes
         ELAPSED=0
-        POLL_INTERVAL=30
+        POLL_INTERVAL=5  # seconds
 
         while [[ $ELAPSED -lt $TIMEOUT ]]; do
           sleep $POLL_INTERVAL
