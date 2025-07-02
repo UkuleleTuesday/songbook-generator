@@ -68,7 +68,7 @@ jobs:
               await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                workflow_id: 'ui.yaml',
+                workflow_id: 'deploy.yaml',
                 ref: 'main'
               });
 
