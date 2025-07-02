@@ -6,6 +6,14 @@ from config import load_config_folder_ids, load_cover_config
 from pdf import generate_songbook
 
 
+def make_cli_progress_callback():
+    """Return a callback that displays progress updates to the console."""
+    def _callback(percent: float, message: str = None):
+        percentage = int(percent * 100)
+        click.echo(f"[{percentage:3d}%] {message or ''}")
+    return _callback
+
+
 @click.command()
 @click.option(
     "--source-folder",
@@ -45,7 +53,8 @@ def cli(
     cover_file_id: str,
     limit: int,
 ):
-    generate_songbook(source_folder, destination_path, limit, cover_file_id)
+    progress_callback = make_cli_progress_callback()
+    generate_songbook(source_folder, destination_path, limit, cover_file_id, progress_callback)
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
         click.launch(destination_path)
