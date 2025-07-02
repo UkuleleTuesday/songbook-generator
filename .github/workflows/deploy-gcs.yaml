@@ -12,6 +12,7 @@ on:
       - reopened
       - synchronize
       - closed
+  workflow_call:
   workflow_dispatch:
     inputs:
       force_recreate:
