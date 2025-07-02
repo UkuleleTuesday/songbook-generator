@@ -1,17 +1,6 @@
 name: Deploy GCS Infrastructure
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
   workflow_call:
   workflow_dispatch:
     inputs:
