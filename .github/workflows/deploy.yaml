@@ -57,13 +57,6 @@ jobs:
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
-    - name: Setup GCP and dependencies
-      uses: ./.github/actions/setup-gcp-deps
-      with:
-        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
-        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
-
-
     - name: Create Pub/Sub topic
       run: |
         echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
