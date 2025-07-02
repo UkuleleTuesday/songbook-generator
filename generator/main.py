@@ -20,6 +20,21 @@ cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
 cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 
+def make_progress_callback(job_ref):
+    """Return a callback that writes progress info into Firestore."""
+
+    def _callback(percent: float, message: str = None):
+        update = {
+            "status": "RUNNING",
+            "progress": percent,
+            "last_message": message or "",
+            "updated_at": firestore.SERVER_TIMESTAMP,
+        }
+        job_ref.update(update)
+
+    return _callback
+
+
 @functions_framework.cloud_event
 def main(cloud_event):
     # 1) Decode Pub/Sub message
@@ -52,7 +67,12 @@ def main(cloud_event):
         # 3) Generate into a temp file
         out_path = tempfile.mktemp(suffix=".pdf")
         print(f"Generating songbook for job {job_id} with parameters: {params}")
-        generate_songbook(source_folders, out_path, limit, cover_file_id)
+
+        # Create progress callback and pass it to generate_songbook
+        progress_callback = make_progress_callback(job_ref)
+        generate_songbook(
+            source_folders, out_path, limit, cover_file_id, progress_callback
+        )
 
         # 4) Upload to GCS
         blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")
@@ -64,7 +84,6 @@ def main(cloud_event):
         print(
             f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
         )
-        print(f"Marking job {job_id} as FAILED in Firestore")
         job_ref.update(
             {
                 "status": "COMPLETED",

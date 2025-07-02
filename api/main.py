@@ -69,6 +69,14 @@ def handle_get_job(job_id):
         "job_id": job_id,
         "status": data.get("status", "").lower(),
     }
+
+    # Add progress information if available
+    if "progress" in data:
+        response["progress"] = data["progress"]
+
+    if "last_message" in data:
+        response["last_message"] = data["last_message"]
+
     if "result_url" in data:
         response["result_url"] = data["result_url"]
     if "created_at" in data:
