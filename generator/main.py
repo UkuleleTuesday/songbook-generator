@@ -65,7 +65,10 @@ def main(cloud_event):
         # 3) Generate into a temp file
         out_path = tempfile.mktemp(suffix=".pdf")
         print(f"Generating songbook for job {job_id} with parameters: {params}")
-        generate_songbook(source_folders, out_path, limit, cover_file_id)
+        
+        # Create progress callback and pass it to generate_songbook
+        progress_callback = make_progress_callback(job_ref)
+        generate_songbook(source_folders, out_path, limit, cover_file_id, progress_callback)
 
         # 4) Upload to GCS
         blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")
@@ -77,7 +80,6 @@ def main(cloud_event):
         print(
             f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
         )
-        print(f"Marking job {job_id} as FAILED in Firestore")
         job_ref.update(
             {
                 "status": "COMPLETED",
