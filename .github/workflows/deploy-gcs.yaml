@@ -41,17 +41,12 @@ jobs:
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
-    - name: Auth Cloud SDK
-      uses: google-github-actions/auth@v2
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        export_environment_variables: true
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Set up gcloud
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        project_id: ${{ env.GCP_PROJECT_ID }}
-        version: '431.0.0'
 
     - name: Create Pub/Sub topic
       run: |
