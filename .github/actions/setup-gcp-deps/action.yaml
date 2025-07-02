@@ -1,6 +1,14 @@
 name: 'Setup GCP and Dependencies'
 description: 'Common setup for GCP authentication and project dependencies'
 
+inputs:
+  gcp_sa_key:
+    description: 'GCP Service Account Key JSON'
+    required: true
+  gcp_project_id:
+    description: 'GCP Project ID'
+    required: true
+
 runs:
   using: 'composite'
   steps:
@@ -15,14 +23,14 @@ runs:
     - name: Auth Cloud SDK
       uses: 'google-github-actions/auth@v2'
       with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        credentials_json: ${{ inputs.gcp_sa_key }}
         export_environment_variables: true
 
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
         version: '431.0.0'
-        project_id: ${{ vars.GCP_PROJECT_ID }}
+        project_id: ${{ inputs.gcp_project_id }}
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
