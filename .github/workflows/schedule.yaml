@@ -15,6 +15,39 @@ on:
         description: 'Cover file ID (optional)'
         required: false
         type: string
+      songbook_edition:
+        description: 'Songbook edition filter (optional)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - regular
+          - halloween
+          - usa
+          - womens
+          - pride
+          - valentines
+          - uk
+          - scotland
+          - ireland
+          - france
+          - germany
+          - australia
+          - xmas
+          - canada
+          - italy
+          - netherlands
+          - spain
+          - sweden
+          - norway
+          - russia
+          - brazil
+          - puerto rico
+          - hawaii
+          - peace
+          - can2025
+          - nocan2025
+          - wales
 
 permissions:
   contents: read
@@ -37,16 +70,34 @@ jobs:
     
     - name: Trigger songbook generation
       run: |
-        # Prepare the payload for the API
-        PAYLOAD="{}"
+        # Use defaults from UI
+        DEFAULT_FOLDER_ID="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
+        DEFAULT_COVER_FILE_ID="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+        DEFAULT_LIMIT=100
         
-        # Add optional parameters if provided
+        # Prepare the payload for the API with defaults
+        PAYLOAD=$(jq -n \
+          --arg folder_id "$DEFAULT_FOLDER_ID" \
+          --arg cover_id "$DEFAULT_COVER_FILE_ID" \
+          --argjson limit "$DEFAULT_LIMIT" \
+          '{
+            source_folders: [$folder_id],
+            cover_file_id: $cover_id,
+            limit: $limit
+          }')
+        
+        # Override with manual inputs if provided
         if [[ -n "${{ github.event.inputs.limit }}" ]]; then
           PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"limit\": ${{ github.event.inputs.limit }}}")
         fi
         
         if [[ -n "${{ github.event.inputs.cover_file_id }}" ]]; then
           PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"cover_file_id\": \"${{ github.event.inputs.cover_file_id }}\"}")
+        fi
+        
+        if [[ -n "${{ github.event.inputs.songbook_edition }}" ]]; then
+          FILTER="specialbooks:contains:${{ github.event.inputs.songbook_edition }}"
+          PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"filters\": \"$FILTER\"}")
         fi
         
         echo "Triggering daily songbook generation with payload: $PAYLOAD"
