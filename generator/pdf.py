@@ -2,6 +2,7 @@ import fitz
 import click
 import os
 from pathlib import Path
+import progress
 
 import toc
 import cover
@@ -25,10 +26,6 @@ def init_cache():
         click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
         return LocalStorageCache(LocalFileSystem(), LOCAL_CACHE_DIR)
 
-def update_progress(current_progress: int, total_progress: int, message: str, on_progress_callback=None):
-    pass
-
-
 
 def generate_songbook(
     source_folders: List[str], destination_path: Path, limit: int, cover_file_id: str, on_progress=None
@@ -45,17 +42,29 @@ def generate_songbook(
     click.echo(f"Found {len(files)} files in the source folder. Starting download...")
     click.echo("Merging downloaded PDFs into a single master PDF...")
     total_progress = 10 + len(files) + 5 + 10 + 10
+    reporter = progress.ProgressReporter(total_progress, on_progress)
     with fitz.open() as songbook_pdf:
-        for i in merge_pdfs(songbook_pdf, files, cache, drive):
-            on_progress(...) # 10 to 80
+        for file, _ in zip(files, merge_pdfs(songbook_pdf, files, cache, drive)):
+            reporter.increment_progress(
+                1, f"Adding {file['name']}"
+            )
+        reporter.increment_progress(
+            5, "Adding page numbers..."
+        )
         add_page_numbers(songbook_pdf)
-        on_progress(...) # 85
+        reporter.increment_progress(
+            5, "Generating TOC..."
+        )
         toc_pdf = toc.build_table_of_contents(files)
         songbook_pdf.insert_pdf(toc_pdf, start_at=0)
-        on_progress(...) # 90
+        reporter.increment_progress(
+            5, "Generating cover..."
+        )
         cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
         songbook_pdf.insert_pdf(cover_pdf, start_at=0)
-        on_progress(...)# 100
+        reporter.increment_progress(
+            5, "Exporting generated PDF..."
+        )
 
         songbook_pdf.save(destination_path)  # Save the merged PDF
         if not os.path.exists(destination_path):
