@@ -176,7 +176,7 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
 @click.option(
     "--show-unmatched",
     is_flag=True,
-    help="Show songs from CSV that couldn't be matched to Drive files"
+    help="Show songs from CSV that couldn't be matched to Drive files during processing"
 )
 @click.option(
     "--limit",
@@ -239,8 +239,12 @@ def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_un
     if dry_run:
         click.echo("\n[DRY RUN] No changes were actually applied.")
 
-    if unmatched and not show_unmatched:
-        click.echo(f"\nUse --show-unmatched to see the {len(unmatched)} unmatched songs.")
+    # Always print unmatched songs at the end
+    if unmatched:
+        click.echo("\nUNMATCHED SONGS:")
+        click.echo("-" * 30)
+        for song in unmatched:
+            click.echo(f"  - {song}")
 
 
 if __name__ == "__main__":
