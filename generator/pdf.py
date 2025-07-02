@@ -78,13 +78,13 @@ def merge_pdfs(destination_pdf, files, cache, drive, page_offset=0):
             # Add page numbers before inserting
             for page_num in range(len(pdf_document)):
                 page = pdf_document[page_num]
-                text = str(current_page + page_num + 1)
+                text = str(current_page + 1)
                 x = page.rect.width - 50
                 y = 30
                 page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+                current_page += 1
             
             destination_pdf.insert_pdf(pdf_document)
-            current_page += len(pdf_document)
         yield i
 
 
