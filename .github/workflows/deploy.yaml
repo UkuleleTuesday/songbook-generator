@@ -33,9 +33,13 @@ jobs:
     name: Test and Lint
     uses: ./.github/workflows/test.yaml
 
+  deploy-infrastructure:
+    name: Deploy GCS Infrastructure
+    uses: ./.github/workflows/deploy-gcs.yaml
+
   deploy-api:
     name: Deploy API
-    needs: test
+    needs: [test, deploy-infrastructure]
     runs-on: ubuntu-latest
 
     steps:
@@ -96,7 +100,7 @@ jobs:
 
   deploy-generator:
     name: Deploy Generator
-    needs: test
+    needs: [test, deploy-infrastructure]
     runs-on: ubuntu-latest
 
     steps:
