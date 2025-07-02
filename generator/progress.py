@@ -10,7 +10,7 @@ class ProgressReporter:
         current_progress (int): The current progress value.
     """
 
-    def __init__(self, total_progress: int, callback: Optional[Callable[[float, str], None]] = None):
+    def __init__(self, total_progress: int, callback: Union[Callable[[float, str], None], None] = None):
         """
         Initialize the ProgressReporter.
 
@@ -34,4 +34,4 @@ class ProgressReporter:
         percentage = (self.current_progress / self.total_progress) * 100
         if self.callback:
             self.callback(percentage, message)
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
