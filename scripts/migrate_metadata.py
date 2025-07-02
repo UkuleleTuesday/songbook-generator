@@ -40,14 +40,16 @@ def construct_expected_filename(song: str, artist: str) -> str:
     return f"{song} - {artist}"
 
 
-def load_csv_data(csv_path: str) -> List[Dict]:
+def load_csv_data(csv_path: str, limit: Optional[int] = None) -> List[Dict]:
     """Load and parse the tabdb CSV file."""
     songs = []
     with open(csv_path, 'r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
-        for row in reader:
+        for i, row in enumerate(reader):
+            if limit and i >= limit:
+                break
             songs.append(row)
-    click.echo(f"Loaded {len(songs)} songs from CSV")
+    click.echo(f"Loaded {len(songs)} songs from CSV{' (limited)' if limit else ''}")
     return songs
 
 
@@ -176,13 +178,18 @@ def apply_metadata_to_file(drive, file_id: str, properties: Dict[str, str], dry_
     is_flag=True,
     help="Show songs from CSV that couldn't be matched to Drive files"
 )
-def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_unmatched: bool):
+@click.option(
+    "--limit",
+    type=int,
+    help="Limit the number of songs to process from the CSV (useful for testing)"
+)
+def migrate_metadata(csv_path: str, folder_id: List[str], dry_run: bool, show_unmatched: bool, limit: Optional[int]):
     """Migrate metadata from tabdb.csv to Google Drive file custom properties."""
 
     click.echo("Starting metadata migration...")
 
     # Load CSV data
-    songs = load_csv_data(csv_path)
+    songs = load_csv_data(csv_path, limit)
 
     # Authenticate and get Drive files
     click.echo("Authenticating with Google Drive...")
