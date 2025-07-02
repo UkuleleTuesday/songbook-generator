@@ -46,13 +46,9 @@
       <div id="progressText" style="font-size: 0.9rem; color: #666;">Starting...</div>
       <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
     </div>
-    <div class="loading-overlay" id="loadingOverlay">
-      <div class="spinner"></div>
-    </div>
   </div>
   <script>
     const apiBase = "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
-    const overlay = document.getElementById('loadingOverlay');
     const submitButton = document.getElementById('submitButton');
     const progressContainer = document.getElementById('progressContainer');
     const progressFill = document.getElementById('progressFill');
@@ -123,7 +119,6 @@
       // Disable submit button and show progress
       disableSubmitButton();
       showProgress();
-      overlay.style.visibility = 'visible';
 
       const form = new FormData(e.target);
       const payload = {
@@ -163,7 +158,6 @@
         updateProgress(0, `Error: ${err.message}`);
         alert("Error: " + err.message);
       } finally {
-        overlay.style.visibility = 'hidden';
         enableSubmitButton();
         // Hide progress after a delay to let user see final status
         setTimeout(() => {
