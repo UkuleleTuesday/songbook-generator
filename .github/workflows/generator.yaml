@@ -98,7 +98,7 @@ jobs:
         FUNCTION_URL=$(gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
         echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
 
-    - name: Comment PR with preview function info
+    - name: Update PR preview status
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
       with:
@@ -114,15 +114,25 @@ jobs:
           });
           
           const existingComment = comments.data.find(
-            comment => comment.body.includes('🔧 Generator Worker preview deployed!')
+            comment => comment.body.includes('## 🚀 Preview Deployments')
           );
           
-          const commentBody = `🔧 Generator Worker preview deployed!
+          let commentBody;
+          if (existingComment) {
+            // Update existing comment to mark Generator as deployed
+            let body = existingComment.body;
+            body = body.replace(/- \[ \] Generator Worker:.*/, `- [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)`);
+            commentBody = body;
+          } else {
+            // Create new comment with Generator status
+            commentBody = `## 🚀 Preview Deployments
+
+          - [ ] API: ⏳ Deploying...
+          - [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)
+          - [ ] UI: ⏳ Deploying...
           
-          Function name: \`${functionName}\`
-          Region: \`${{ env.GCP_REGION }}\`
-          
-          _This preview function will be automatically cleaned up when the PR is merged or closed._`;
+          _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
+          }
           
           if (existingComment) {
             await github.rest.issues.updateComment({

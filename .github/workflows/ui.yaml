@@ -18,6 +18,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  issues: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -61,7 +62,7 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
         
-      - name: Comment PR with preview URL
+      - name: Update PR preview status
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
@@ -77,14 +78,25 @@ jobs:
             });
             
             const existingComment = comments.data.find(
-              comment => comment.body.includes('🚀 UI Preview deployed!')
+              comment => comment.body.includes('## 🚀 Preview Deployments')
             );
             
-            const commentBody = `🚀 UI Preview deployed!
+            let commentBody;
+            if (existingComment) {
+              // Update existing comment to mark UI as deployed
+              let body = existingComment.body;
+              body = body.replace(/- \[ \] UI:.*/, `- [x] UI: [${previewUrl}](${previewUrl})`);
+              commentBody = body;
+            } else {
+              // Create new comment with UI status
+              commentBody = `## 🚀 Preview Deployments
+
+            - [ ] API: ⏳ Deploying...
+            - [ ] Generator Worker: ⏳ Deploying...
+            - [x] UI: [${previewUrl}](${previewUrl})
             
-            Preview URL: ${previewUrl}
-            
-            _This preview will be automatically cleaned up when the PR is merged or closed._`;
+            _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
+            }
             
             if (existingComment) {
               await github.rest.issues.updateComment({
