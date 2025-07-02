@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Songbook Chef</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Songbook Chef</h1>
+    <img src="img/logo.png" alt="Songbook Chef Logo" style="width: 50%; height: auto; margin: 1rem 0;" />
+    <p>
+      Songbook Chef is a songbook generator for Ukulele Tuesday. It pulls song
+      sheets straight out of Google Drive and merges them into a single
+      songbook PDF, adding a table of contents and cover. This is experimental!
+      Issue reports, pull requests or improvement suggestions are welcome on <a
+      href="https://github.com/jjst/songbook-generator"
+    target="_blank">GitHub</a>.
+    </p>
+    <form id="jobForm">
+      <details>
+        <summary>Advanced Settings</summary>
+        <label for="folders" title="Google Drive folder ID containing song sheets">
+          Folder ID
+          <span class="tooltip-icon" title="Google Drive folder ID containing song sheets. The songbook generator needs to have read access to this folder to work!">❓</span>
+        </label>
+        <input id="folders" name="source_folders" type="text" value="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95" required />
+        <label for="cover" title="Google Drive file ID for the cover template">
+          Cover File ID
+          <span class="tooltip-icon" title="Google Drive file ID for the cover template. The songbook generator needs to have read access to this folder to work!">❓</span>
+        </label>
+        <input id="cover" name="cover_file_id" type="text" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" required />
+        <label for="limit" title="Maximum number of song sheets to include in the songbook">
+          Limit
+          <span class="tooltip-icon" title="Maximum number of song sheets to include in the songbook. Set to a reasonable value while testing :-)">❓</span>
+        </label>
+        <input id="limit" name="limit" type="number" value="100" min="1" max="200" />
+        <label for="songbook-edition" title="Filter songs by songbook edition">
+          Songbook Edition
+          <span class="tooltip-icon" title="Filter songs to include only those tagged for a specific songbook edition">❓</span>
+        </label>
+        <select id="songbook-edition" name="songbook_edition">
+          <option value="">All editions</option>
+          <option value="regular">Regular</option>
+          <option value="halloween">Halloween</option>
+          <option value="usa">USA</option>
+          <option value="womens">Women's</option>
+          <option value="pride">Pride</option>
+          <option value="valentines">Valentine's</option>
+          <option value="uk">UK</option>
+          <option value="scotland">Scotland</option>
+          <option value="ireland">Ireland</option>
+          <option value="france">France</option>
+          <option value="germany">Germany</option>
+          <option value="australia">Australia</option>
+          <option value="xmas">Christmas</option>
+          <option value="canada">Canada</option>
+          <option value="italy">Italy</option>
+          <option value="netherlands">Netherlands</option>
+          <option value="spain">Spain</option>
+          <option value="sweden">Sweden</option>
+          <option value="norway">Norway</option>
+          <option value="russia">Russia</option>
+          <option value="brazil">Brazil</option>
+          <option value="puerto rico">Puerto Rico</option>
+          <option value="hawaii">Hawaii</option>
+          <option value="peace">Peace</option>
+          <option value="can2025">Canada 2025</option>
+          <option value="nocan2025">No Canada 2025</option>
+          <option value="wales">Wales</option>
+        </select>
+      </details>
+      <button type="submit" id="submitButton">Generate Songbook!</button>
+    </form>
+    <div id="progressContainer" style="display: none; margin-top: 1rem;">
+      <div id="progressBar" style="width: 100%; background-color: #f0f0f0; border-radius: 4px; height: 20px; margin-bottom: 0.5rem;">
+        <div id="progressFill" style="width: 0%; background-color: #4CAF50; height: 100%; border-radius: 4px; transition: width 0.3s ease;"></div>
+      </div>
+      <div id="progressText" style="font-size: 0.9rem; color: #666;">Starting...</div>
+      <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
+    </div>
+  </div>
+  <script>
+    const apiBase = "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
+    const submitButton = document.getElementById('submitButton');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const progressPercentage = document.getElementById('progressPercentage');
+
+    function updateProgress(progress, message) {
+      const percentage = Math.round(progress * 100);
+      progressFill.style.width = percentage + '%';
+      progressPercentage.textContent = percentage + '%';
+      if (message) {
+        progressText.textContent = message;
+      }
+    }
+
+    function showProgress() {
+      progressContainer.style.display = 'block';
+      updateProgress(0, 'Starting...');
+    }
+
+    function hideProgress() {
+      progressContainer.style.display = 'none';
+    }
+
+    function enableSubmitButton() {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Generate Songbook!';
+    }
+
+    function disableSubmitButton() {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Generating...';
+    }
+
+    async function pollStatus(jobId) {
+      const statusUrl = `${apiBase}/${jobId}`;
+      while (true) {
+        const res = await fetch(statusUrl, { method: 'GET' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const { status, result_url, progress, last_message } = data;
+
+        // Update progress if available
+        if (typeof progress === 'number') {
+          updateProgress(progress, last_message || `Status: ${status}`);
+        } else {
+          progressText.textContent = `Status: ${status}`;
+        }
+
+        if (status === 'completed') {
+          updateProgress(1.0, 'Completed! Starting download...');
+          return result_url;
+        }
+        if (status === 'failed') {
+          throw new Error('Job failed on server');
+        }
+        // wait before next poll
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    document.getElementById("jobForm").onsubmit = async (e) => {
+      e.preventDefault();
+
+      // Disable submit button and show progress
+      disableSubmitButton();
+      showProgress();
+
+      const form = new FormData(e.target);
+      const payload = {
+        source_folders: [ form.get("source_folders") ],
+        cover_file_id: form.get("cover_file_id"),
+        limit: form.get("limit") ? Number(form.get("limit")) : undefined
+      };
+
+      // Add filter for songbook edition if selected
+      const songbookEdition = form.get("songbook_edition");
+      if (songbookEdition) {
+        payload.filters = `specialbooks:contains:${songbookEdition}`;
+      }
+
+      try {
+        // submit job
+        updateProgress(0, 'Submitting job...');
+        const submitRes = await fetch(apiBase, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!submitRes.ok) throw new Error(submitRes.statusText);
+        const { job_id } = await submitRes.json();
+
+        updateProgress(0, 'Job submitted, waiting for processing...');
+
+        // poll until done
+        const downloadUrl = await pollStatus(job_id);
+
+        // download PDF
+        updateProgress(1.0, 'Downloading PDF...');
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "songbook.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        updateProgress(1.0, 'Download started!');
+
+      } catch (err) {
+        updateProgress(0, `Error: ${err.message}`);
+        alert("Error: " + err.message);
+      } finally {
+        enableSubmitButton();
+        // Hide progress after a delay to let user see final status
+        setTimeout(() => {
+          hideProgress();
+        }, 3000);
+      }
+    };
+  </script>
+</body>
+</html>
