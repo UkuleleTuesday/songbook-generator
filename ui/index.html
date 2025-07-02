@@ -37,8 +37,15 @@
         </label>
         <input id="limit" name="limit" type="number" value="20" min="1" />
       </details>
-      <button type="submit">Generate Songbook!</button>
+      <button type="submit" id="submitButton">Generate Songbook!</button>
     </form>
+    <div id="progressContainer" style="display: none; margin-top: 1rem;">
+      <div id="progressBar" style="width: 100%; background-color: #f0f0f0; border-radius: 4px; height: 20px; margin-bottom: 0.5rem;">
+        <div id="progressFill" style="width: 0%; background-color: #4CAF50; height: 100%; border-radius: 4px; transition: width 0.3s ease;"></div>
+      </div>
+      <div id="progressText" style="font-size: 0.9rem; color: #666;">Starting...</div>
+      <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
+    </div>
     <div class="loading-overlay" id="loadingOverlay">
       <div class="spinner"></div>
     </div>
@@ -46,6 +53,39 @@
   <script>
     const apiBase = "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
     const overlay = document.getElementById('loadingOverlay');
+    const submitButton = document.getElementById('submitButton');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const progressPercentage = document.getElementById('progressPercentage');
+
+    function updateProgress(progress, message) {
+      const percentage = Math.round(progress * 100);
+      progressFill.style.width = percentage + '%';
+      progressPercentage.textContent = percentage + '%';
+      if (message) {
+        progressText.textContent = message;
+      }
+    }
+
+    function showProgress() {
+      progressContainer.style.display = 'block';
+      updateProgress(0, 'Starting...');
+    }
+
+    function hideProgress() {
+      progressContainer.style.display = 'none';
+    }
+
+    function enableSubmitButton() {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Generate Songbook!';
+    }
+
+    function disableSubmitButton() {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Generating...';
+    }
 
     async function pollStatus(jobId) {
       const statusUrl = `${apiBase}/${jobId}`;
@@ -55,8 +95,18 @@
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error || res.statusText);
         }
-        const { status, result_url } = await res.json();
+        const data = await res.json();
+        const { status, result_url, progress, last_message } = data;
+        
+        // Update progress if available
+        if (typeof progress === 'number') {
+          updateProgress(progress, last_message || `Status: ${status}`);
+        } else {
+          progressText.textContent = `Status: ${status}`;
+        }
+        
         if (status === 'completed') {
+          updateProgress(1.0, 'Completed! Starting download...');
           return result_url;
         }
         if (status === 'failed') {
@@ -69,6 +119,10 @@
 
     document.getElementById("jobForm").onsubmit = async (e) => {
       e.preventDefault();
+      
+      // Disable submit button and show progress
+      disableSubmitButton();
+      showProgress();
       overlay.style.visibility = 'visible';
 
       const form = new FormData(e.target);
@@ -80,6 +134,7 @@
 
       try {
         // submit job
+        updateProgress(0, 'Submitting job...');
         const submitRes = await fetch(apiBase, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -88,21 +143,32 @@
         if (!submitRes.ok) throw new Error(submitRes.statusText);
         const { job_id } = await submitRes.json();
 
+        updateProgress(0, 'Job submitted, waiting for processing...');
+
         // poll until done
         const downloadUrl = await pollStatus(job_id);
 
         // download PDF
+        updateProgress(1.0, 'Downloading PDF...');
         const a = document.createElement("a");
         a.href = downloadUrl;
         a.download = "songbook.pdf";
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        
+        updateProgress(1.0, 'Download started!');
 
       } catch (err) {
+        updateProgress(0, `Error: ${err.message}`);
         alert("Error: " + err.message);
       } finally {
         overlay.style.visibility = 'hidden';
+        enableSubmitButton();
+        // Hide progress after a delay to let user see final status
+        setTimeout(() => {
+          hideProgress();
+        }, 3000);
       }
     };
   </script>
