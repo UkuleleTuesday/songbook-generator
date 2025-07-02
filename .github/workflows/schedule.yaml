@@ -138,7 +138,10 @@ jobs:
           PROGRESS=$(echo "$STATUS_RESPONSE" | jq -r '.progress // 0')
           MESSAGE=$(echo "$STATUS_RESPONSE" | jq -r '.last_message // ""')
 
-          echo "[$ELAPSED/${TIMEOUT}s] Status: $STATUS, Progress: ${PROGRESS}%, Message: $MESSAGE"
+          # Convert progress to percentage and round up
+          PROGRESS_PERCENT=$(echo "$PROGRESS * 100" | bc -l | awk '{printf "%.0f", $1 + 0.5}')
+
+          echo "[$ELAPSED/${TIMEOUT}s] Status: $STATUS, Progress: ${PROGRESS_PERCENT}%, Message: $MESSAGE"
 
           if [[ "$STATUS" == "completed" ]]; then
             RESULT_URL=$(echo "$STATUS_RESPONSE" | jq -r '.result_url')
