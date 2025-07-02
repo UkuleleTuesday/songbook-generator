@@ -36,6 +36,40 @@
           <span class="tooltip-icon" title="Maximum number of song sheets to include in the songbook. Set to a reasonable value while testing :-)">❓</span>
         </label>
         <input id="limit" name="limit" type="number" value="100" min="1" max="200" />
+        <label for="songbook-edition" title="Filter songs by songbook edition">
+          Songbook Edition
+          <span class="tooltip-icon" title="Filter songs to include only those tagged for a specific songbook edition">❓</span>
+        </label>
+        <select id="songbook-edition" name="songbook_edition">
+          <option value="">All editions</option>
+          <option value="regular">Regular</option>
+          <option value="halloween">Halloween</option>
+          <option value="usa">USA</option>
+          <option value="womens">Women's</option>
+          <option value="pride">Pride</option>
+          <option value="valentines">Valentine's</option>
+          <option value="uk">UK</option>
+          <option value="scotland">Scotland</option>
+          <option value="ireland">Ireland</option>
+          <option value="france">France</option>
+          <option value="germany">Germany</option>
+          <option value="australia">Australia</option>
+          <option value="xmas">Christmas</option>
+          <option value="canada">Canada</option>
+          <option value="italy">Italy</option>
+          <option value="netherlands">Netherlands</option>
+          <option value="spain">Spain</option>
+          <option value="sweden">Sweden</option>
+          <option value="norway">Norway</option>
+          <option value="russia">Russia</option>
+          <option value="brazil">Brazil</option>
+          <option value="puerto rico">Puerto Rico</option>
+          <option value="hawaii">Hawaii</option>
+          <option value="peace">Peace</option>
+          <option value="can2025">Canada 2025</option>
+          <option value="nocan2025">No Canada 2025</option>
+          <option value="wales">Wales</option>
+        </select>
       </details>
       <button type="submit" id="submitButton">Generate Songbook!</button>
     </form>
@@ -126,6 +160,12 @@
         cover_file_id: form.get("cover_file_id"),
         limit: form.get("limit") ? Number(form.get("limit")) : undefined
       };
+
+      // Add filter for songbook edition if selected
+      const songbookEdition = form.get("songbook_edition");
+      if (songbookEdition) {
+        payload.filters = `specialbooks:contains:${songbookEdition}`;
+      }
 
       try {
         // submit job
