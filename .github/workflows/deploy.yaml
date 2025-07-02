@@ -36,36 +36,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Load dotenv
-      uses: falti/dotenv-action@v1.1.4
-      with:
-        path: .env
-        log-variables: true
-        export-variables: true
-        keys-case: bypass
-
-    - name: Auth Cloud SDK
-      uses: 'google-github-actions/auth@v2'
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        export_environment_variables: true
-
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        version: '431.0.0'
-        project_id: ${{ vars.GCP_PROJECT_ID }}
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-
-    - name: Install the project
-      run: uv sync --locked --all-extras --dev
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > api/requirements.txt
-        cat api/requirements.txt
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
 
     - name: Compute function name
       id: fn-name
@@ -76,6 +48,11 @@ jobs:
         else
           echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
         fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > api/requirements.txt
+        cat api/requirements.txt
 
     - name: Deploy to Cloud Functions
       id: deploy
@@ -101,57 +78,12 @@ jobs:
         FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
         echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
 
-    - name: Update PR preview status (API)
+    - name: Update PR preview status
       if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
+      uses: ./.github/actions/update-pr-comment
       with:
-        script: |
-          const prNumber = context.payload.pull_request.number;
-          const functionUrl = `${{ steps.deploy.outputs.function_url }}`;
-
-          // Find existing preview comment
-          const comments = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: prNumber,
-          });
-
-          const existingComment = comments.data.find(
-            comment => comment.body.includes('## 🚀 Preview Deployments')
-          );
-
-          let commentBody;
-          if (existingComment) {
-            // Update existing comment to mark API as deployed
-            let body = existingComment.body;
-            body = body.replace(/- \[ \] API:.*/, `- [x] API: [${functionUrl}](${functionUrl})`);
-            commentBody = body;
-          } else {
-            // Create new comment with API status
-            commentBody = `## 🚀 Preview Deployments
-
-          - [x] API: [${functionUrl}](${functionUrl})
-          - [ ] Generator Worker: ⏳ Deploying...
-          - [ ] UI: ⏳ Deploying...
-
-          _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
-          }
-
-          if (existingComment) {
-            await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: existingComment.id,
-              body: commentBody
-            });
-          } else {
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: commentBody
-            });
-          }
+        component: 'API'
+        url: ${{ steps.deploy.outputs.function_url }}
 
   deploy-generator:
     name: Deploy Generator Worker Function
@@ -162,35 +94,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Load dotenv
-      uses: falti/dotenv-action@v1.1.4
-      with:
-        path: .env
-        export-variables: true
-        keys-case: bypass
-
-    - name: Auth Cloud SDK
-      uses: 'google-github-actions/auth@v2'
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-        export_environment_variables: true
-
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v1
-      with:
-        version: '431.0.0'
-        project_id: ${{ vars.GCP_PROJECT_ID }}
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-
-    - name: Install the project
-      run: uv sync --locked --all-extras --dev
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
-        cat generator/requirements.txt
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
 
     - name: Compute function name
       id: fn-name
@@ -201,6 +106,11 @@ jobs:
         else
           echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
         fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
 
     - name: Deploy to Cloud Functions
       id: deploy
@@ -217,53 +127,12 @@ jobs:
           --allow-unauthenticated \
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }},GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }},GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }},LOG_LEVEL=info
 
-    - name: Update PR preview status (Generator)
+    - name: Update PR preview status
       if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
+      uses: ./.github/actions/update-pr-comment
       with:
-        script: |
-          const prNumber = context.payload.pull_request.number;
-          const functionName = `${{ steps.fn-name.outputs.name }}`;
-
-          // Find existing preview comment
-          const comments = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: prNumber,
-          });
-
-          const existingComment = comments.data.find(
-            comment => comment.body.includes('## 🚀 Preview Deployments')
-          );
-
-          if (existingComment) {
-            // Update existing comment to mark Generator as deployed
-            let body = existingComment.body;
-            body = body.replace(/- \[ \] Generator Worker:.*/, `- [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)`);
-            
-            await github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: existingComment.id,
-              body: body
-            });
-          } else {
-            // If no comment exists yet, create one (shouldn't happen since API deploys first)
-            const commentBody = `## 🚀 Preview Deployments
-
-          - [ ] API: ⏳ Deploying...
-          - [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)
-          - [ ] UI: ⏳ Deploying...
-
-          _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
-            
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: commentBody
-            });
-          }
+        component: 'Generator Worker'
+        function_name: ${{ steps.fn-name.outputs.name }}
 
   deploy-ui:
     name: Deploy UI to GitHub Pages
@@ -301,50 +170,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Update PR preview status (UI)
+      - name: Update PR preview status
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: ./.github/actions/update-pr-comment
         with:
-          script: |
-            const prNumber = context.payload.pull_request.number;
-            const previewUrl = `${{ steps.deployment.outputs.page_url }}pr-${prNumber}/`;
-
-            // Find existing preview comment
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-            });
-
-            const existingComment = comments.data.find(
-              comment => comment.body.includes('## 🚀 Preview Deployments')
-            );
-
-            if (existingComment) {
-              // Update existing comment to mark UI as deployed
-              let body = existingComment.body;
-              body = body.replace(/- \[ \] UI:.*/, `- [x] UI: [${previewUrl}](${previewUrl})`);
-              
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: body
-              });
-            } else {
-              // Create new comment with UI status (shouldn't happen often)
-              const commentBody = `## 🚀 Preview Deployments
-
-            - [ ] API: ⏳ Deploying...
-            - [ ] Generator Worker: ⏳ Deploying...
-            - [x] UI: [${previewUrl}](${previewUrl})
-
-            _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
-              
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: prNumber,
-                body: commentBody
-              });
-            }
+          component: 'UI'
+          url: ${{ steps.deployment.outputs.page_url }}pr-${{ github.event.pull_request.number }}/

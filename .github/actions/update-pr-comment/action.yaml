@@ -1,0 +1,88 @@
+name: 'Update PR Comment'
+description: 'Update the consolidated PR preview comment'
+
+inputs:
+  component:
+    description: 'Component name (API, Generator Worker, UI)'
+    required: true
+  url:
+    description: 'URL for the deployed component'
+    required: false
+  function_name:
+    description: 'Function name for Pub/Sub triggered components'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Update PR preview status
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = context.payload.pull_request.number;
+          const component = `${{ inputs.component }}`;
+          const url = `${{ inputs.url }}`;
+          const functionName = `${{ inputs.function_name }}`;
+
+          // Find existing preview comment
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+
+          const existingComment = comments.data.find(
+            comment => comment.body.includes('## 🚀 Preview Deployments')
+          );
+
+          let componentLine;
+          if (component === 'API' && url) {
+            componentLine = `- [x] API: [${url}](${url})`;
+          } else if (component === 'Generator Worker' && functionName) {
+            componentLine = `- [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)`;
+          } else if (component === 'UI' && url) {
+            componentLine = `- [x] UI: [${url}](${url})`;
+          }
+
+          let commentBody;
+          if (existingComment) {
+            // Update existing comment
+            let body = existingComment.body;
+            if (component === 'API') {
+              body = body.replace(/- \[ \] API:.*/, componentLine);
+            } else if (component === 'Generator Worker') {
+              body = body.replace(/- \[ \] Generator Worker:.*/, componentLine);
+            } else if (component === 'UI') {
+              body = body.replace(/- \[ \] UI:.*/, componentLine);
+            }
+            commentBody = body;
+          } else {
+            // Create new comment
+            const apiLine = component === 'API' ? componentLine : '- [ ] API: ⏳ Deploying...';
+            const generatorLine = component === 'Generator Worker' ? componentLine : '- [ ] Generator Worker: ⏳ Deploying...';
+            const uiLine = component === 'UI' ? componentLine : '- [ ] UI: ⏳ Deploying...';
+
+            commentBody = `## 🚀 Preview Deployments
+
+          ${apiLine}
+          ${generatorLine}
+          ${uiLine}
+
+          _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
+          }
+
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: commentBody
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: commentBody
+            });
+          }

@@ -1,0 +1,32 @@
+name: 'Setup GCP and Dependencies'
+description: 'Common setup for GCP authentication and project dependencies'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Load dotenv
+      uses: falti/dotenv-action@v1.1.4
+      with:
+        path: .env
+        log-variables: true
+        export-variables: true
+        keys-case: bypass
+
+    - name: Auth Cloud SDK
+      uses: 'google-github-actions/auth@v2'
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+        export_environment_variables: true
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: '431.0.0'
+        project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Install the project
+      shell: bash
+      run: uv sync --locked --all-extras --dev
