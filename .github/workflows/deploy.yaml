@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   test:
-    name: Tests and Lint
+    name: Test and Lint
     uses: ./.github/workflows/test.yaml
 
   deploy-api:
