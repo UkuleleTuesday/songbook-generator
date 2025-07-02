@@ -36,6 +36,17 @@
           <span class="tooltip-icon" title="Maximum number of song sheets to include in the songbook. Set to a reasonable value while testing :-)">❓</span>
         </label>
         <input id="limit" name="limit" type="number" value="100" min="1" max="200" />
+        <label for="songbook-edition" title="Filter songs by songbook edition">
+          Songbook Edition
+          <span class="tooltip-icon" title="Filter songs to include only those tagged for a specific songbook edition">❓</span>
+        </label>
+        <select id="songbook-edition" name="songbook_edition">
+          <option value="">All editions</option>
+          <option value="regular">Regular</option>
+          <option value="us">US</option>
+          <option value="halloween">Halloween</option>
+          <option value="pride">Pride</option>
+        </select>
       </details>
       <button type="submit" id="submitButton">Generate Songbook!</button>
     </form>
@@ -126,6 +137,12 @@
         cover_file_id: form.get("cover_file_id"),
         limit: form.get("limit") ? Number(form.get("limit")) : undefined
       };
+
+      // Add filter for songbook edition if selected
+      const songbookEdition = form.get("songbook_edition");
+      if (songbookEdition) {
+        payload.filters = `specialbooks:contains:${songbookEdition}`;
+      }
 
       try {
         // submit job
