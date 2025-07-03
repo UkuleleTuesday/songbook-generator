@@ -17,6 +17,7 @@ dependencies = [
     "google-auth>=2.40.3",
     "google-cloud-firestore>=2.21.0",
     "google-cloud-pubsub>=2.30.0",
+    "psutil>=7.0.0",
     "pymupdf>=1.26.1",
     "toml>=0.10.2",
 ]
@@ -26,6 +27,7 @@ songbook-generator = "songbook_generator:main"
 
 [dependency-groups]
 dev = [
+    "psutil>=7.0.0",
     "pytest>=8.4.1",
     "pytest-mock>=3.14.1",
 ]
