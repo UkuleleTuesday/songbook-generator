@@ -54,7 +54,7 @@ def generate_songbook(
             return
 
         # Sort files alphabetically by name after aggregating from all folders
-        files.sort(key=lambda f: f['name'])
+        files.sort(key=lambda f: f["name"])
 
         filter_msg = " (with client-side filter)" if client_filter else ""
         click.echo(
