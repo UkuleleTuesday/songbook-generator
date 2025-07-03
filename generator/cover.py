@@ -55,10 +55,11 @@ def create_cover_from_template(
     )
     total = 0
     for reply in result.get("replies", []):
-        if "replaceAllText" in reply:
-            # Check if occurrencesChanged exists before accessing it
-            if "occurrencesChanged" in reply["replaceAllText"]:
-                total += reply["replaceAllText"]["occurrencesChanged"]
+        try:
+            total += reply["replaceAllText"]["occurrencesChanged"]
+        except KeyError:
+            # Skip replies that don't have occurrencesChanged (e.g., no replacements made)
+            pass
     print(f"Replaced {total} occurrences in the copy.")
 
     return copy_id
