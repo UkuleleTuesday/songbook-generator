@@ -19,7 +19,6 @@ def test_collect_and_sort_files_single_folder(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1"],
-        limit=10,
     )
 
     # Should be sorted alphabetically by name
@@ -31,7 +30,7 @@ def test_collect_and_sort_files_single_folder(mocker):
     assert result == expected
 
     # Verify the query was called correctly
-    mock_query.assert_called_once_with(mock_drive, "folder1", 10, None)
+    mock_query.assert_called_once_with(mock_drive, "folder1", None)
 
 
 def test_collect_and_sort_files_multiple_folders(mocker):
@@ -48,7 +47,7 @@ def test_collect_and_sort_files_multiple_folders(mocker):
         {"name": "cherry.pdf", "id": "4"},
     ]
 
-    def mock_query_side_effect(drive, folder, limit, filter):
+    def mock_query_side_effect(drive, folder, filter):
         if folder == "folder1":
             return folder1_files
         elif folder == "folder2":
@@ -61,7 +60,6 @@ def test_collect_and_sort_files_multiple_folders(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1", "folder2"],
-        limit=10,
     )
 
     # Should be sorted alphabetically across all folders
@@ -90,12 +88,11 @@ def test_collect_and_sort_files_with_client_filter(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1"],
-        limit=5,
         client_filter=mock_filter,
     )
 
     assert result == mock_files
-    mock_query.assert_called_once_with(mock_drive, "folder1", 5, mock_filter)
+    mock_query.assert_called_once_with(mock_drive, "folder1", mock_filter)
 
 
 def test_collect_and_sort_files_empty_folders(mocker):
@@ -108,7 +105,6 @@ def test_collect_and_sort_files_empty_folders(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["empty_folder"],
-        limit=10,
     )
 
     assert result == []
@@ -122,7 +118,7 @@ def test_collect_and_sort_files_with_progress_step(mocker):
     folder1_files = [{"name": "file1.pdf", "id": "1"}]
     folder2_files = [{"name": "file2.pdf", "id": "2"}]
 
-    def mock_query_side_effect(drive, folder, limit, filter):
+    def mock_query_side_effect(drive, folder, filter):
         if folder == "folder1":
             return folder1_files
         elif folder == "folder2":
@@ -135,7 +131,6 @@ def test_collect_and_sort_files_with_progress_step(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1", "folder2"],
-        limit=10,
         progress_step=mock_progress_step,
     )
 
@@ -165,7 +160,6 @@ def test_collect_and_sort_files_no_progress_step(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1"],
-        limit=10,
         progress_step=None,
     )
 
@@ -189,7 +183,6 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1"],
-        limit=10,
     )
 
     # Should be sorted alphabetically (case-sensitive by default in Python)
@@ -215,7 +208,6 @@ def test_collect_and_sort_files_progress_increment_calculation(mocker):
     collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1", "folder2", "folder3"],
-        limit=10,
         progress_step=mock_progress_step,
     )
 
@@ -232,7 +224,7 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
     """Test handling of mixed empty and non-empty folders."""
     mock_drive = mocker.Mock()
 
-    def mock_query_side_effect(drive, folder, limit, filter):
+    def mock_query_side_effect(drive, folder, filter):
         if folder == "folder1":
             return [{"name": "file1.pdf", "id": "1"}]
         elif folder == "folder2":
@@ -247,7 +239,6 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
     result = collect_and_sort_files(
         drive=mock_drive,
         source_folders=["folder1", "folder2", "folder3"],
-        limit=10,
     )
 
     # Should only return files from non-empty folders, sorted
