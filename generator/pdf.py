@@ -36,13 +36,18 @@ def generate_songbook(
         files = []
         for i, folder in enumerate(source_folders):
             folder_files = query_drive_files_with_client_filter(
-                drive, folder, limit, client_filter
+                drive, folder, client_filter
             )
             files.extend(folder_files)
             step.increment(
                 1 / len(source_folders),
                 f"Found {len(folder_files)} files in folder {i + 1}",
             )
+
+        # Apply limit after collecting files from all folders
+        if limit and len(files) > limit:
+            click.echo(f"Limiting to {limit} files out of {len(files)} total files found")
+            files = files[:limit]
 
         if not files:
             if client_filter:
@@ -54,8 +59,9 @@ def generate_songbook(
             return
 
         filter_msg = " (with client-side filter)" if client_filter else ""
+        limit_msg = f" (limited to {limit})" if limit else ""
         click.echo(
-            f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
+            f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting download..."
         )
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
