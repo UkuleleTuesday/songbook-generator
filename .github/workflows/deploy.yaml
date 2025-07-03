@@ -166,7 +166,7 @@ jobs:
           --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
-          --memory=1Gi \
+          --memory=4Gi \
           --cpu=2 \
           --allow-unauthenticated \
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
