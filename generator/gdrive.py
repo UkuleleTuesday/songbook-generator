@@ -45,7 +45,7 @@ def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 
 def query_drive_files(
-    drive, source_folder, limit, property_filters: Optional[Dict[str, str]] = None
+    drive, source_folder, property_filters: Optional[Dict[str, str]] = None
 ):
     """
     Query Google Drive files with optional property filtering.
@@ -53,7 +53,6 @@ def query_drive_files(
     Args:
         drive: Authenticated Google Drive service
         source_folder: Folder ID to search in
-        limit: Maximum number of files to return
         property_filters: Optional dict of property_name -> value pairs to filter by
 
     Returns:
@@ -76,7 +75,7 @@ def query_drive_files(
                 drive.files()
                 .list(
                     q=query,
-                    pageSize=limit if limit else 1000,
+                    pageSize=1000,
                     fields="nextPageToken, files(id,name,properties)",
                     orderBy="name_natural",
                     pageToken=page_token,
@@ -87,7 +86,7 @@ def query_drive_files(
             files.extend(resp.get("files", []))
             page_token = resp.get("nextPageToken")
 
-            if not page_token or (limit and len(files) >= limit):
+            if not page_token:
                 break
 
         except HttpError as e:
@@ -112,13 +111,12 @@ def query_drive_files(
             click.echo(f"Unexpected error querying Drive files: {str(e)}")
             break
 
-    return files[:limit] if limit else files
+    return files
 
 
 def query_drive_files_with_client_filter(
     drive,
     source_folder,
-    limit,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
 ):
     """
@@ -127,7 +125,6 @@ def query_drive_files_with_client_filter(
     Args:
         drive: Authenticated Google Drive service
         source_folder: Folder ID to search in
-        limit: Maximum number of files to return after filtering
         client_filter: Client-side filter to apply after fetching files
 
     Returns:
@@ -135,10 +132,10 @@ def query_drive_files_with_client_filter(
     """
     # First, get all files from Drive (no server-side property filtering)
     click.echo("Fetching all files from Drive for client-side filtering...")
-    all_files = query_drive_files(drive, source_folder, None, None)
+    all_files = query_drive_files(drive, source_folder, None)
 
     if not client_filter:
-        return all_files[:limit] if limit else all_files
+        return all_files
 
     # Apply client-side filtering
     filtered_files = []
@@ -146,8 +143,6 @@ def query_drive_files_with_client_filter(
         properties = file.get("properties", {})
         if client_filter.matches(properties):
             filtered_files.append(file)
-            if limit and len(filtered_files) >= limit:
-                break
 
     click.echo(
         f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"

@@ -21,7 +21,6 @@ from filters import PropertyFilter, FilterGroup
 def collect_and_sort_files(
     drive,
     source_folders: List[str],
-    limit: int,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
 ):
@@ -41,14 +40,13 @@ def collect_and_sort_files(
     files = []
     for i, folder in enumerate(source_folders):
         folder_files = query_drive_files_with_client_filter(
-            drive, folder, limit, client_filter
+            drive, folder, client_filter
         )
         files.extend(folder_files)
-        if progress_step:
-            progress_step.increment(
-                1 / len(source_folders),
-                f"Found {len(folder_files)} files in folder {i + 1}",
-            )
+        step.increment(
+            1 / len(source_folders),
+            f"Found {len(folder_files)} files in folder {i + 1}",
+        )
 
     # Sort files alphabetically by name after aggregating from all folders
     files.sort(key=lambda f: f["name"])
@@ -73,8 +71,15 @@ def generate_songbook(
 
     with reporter.step(1, "Querying files...") as step:
         files = collect_and_sort_files(
-            drive, source_folders, limit, client_filter, step
+            drive, source_folders, client_filter, step
         )
+
+        # Apply limit after collecting files from all folders
+        if limit and len(files) > limit:
+            click.echo(
+                f"Limiting to {limit} files out of {len(files)} total files found"
+            )
+            files = files[:limit]
 
         if not files:
             if client_filter:
@@ -86,8 +91,9 @@ def generate_songbook(
             return
 
         filter_msg = " (with client-side filter)" if client_filter else ""
+        limit_msg = f" (limited to {limit})" if limit else ""
         click.echo(
-            f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
+            f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting download..."
         )
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
@@ -114,8 +120,8 @@ def generate_songbook(
                 drive,
                 page_offset,
                 step,
-                20,
-                add_page_numbers,
+                batch_size=20,
+                add_page_numbers=add_page_numbers,
             )
 
         with reporter.step(1, "Exporting generated PDF..."):
