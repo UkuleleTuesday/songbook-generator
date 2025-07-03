@@ -55,10 +55,16 @@ def create_cover_from_template(
     )
     total = 0
     for reply in result.get("replies", []):
+        if reply is None:
+            continue
         try:
-            total += reply["replaceAllText"]["occurrencesChanged"]
-        except KeyError:
-            # Skip replies that don't have occurrencesChanged (e.g., no replacements made)
+            replace_all_text = reply.get("replaceAllText")
+            if replace_all_text is not None and isinstance(replace_all_text, dict):
+                occurrences = replace_all_text.get("occurrencesChanged")
+                if isinstance(occurrences, int):
+                    total += occurrences
+        except (KeyError, TypeError, AttributeError):
+            # Skip replies that have malformed structure
             pass
     print(f"Replaced {total} occurrences in the copy.")
 
