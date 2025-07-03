@@ -49,6 +49,53 @@ Before running the backend, authenticate with Google Cloud using the following c
 gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
 ```
 
+### Code Quality and Pre-commit Hooks
+
+This repository uses pre-commit hooks to maintain code quality and consistency. The hooks run automatically on every commit and include:
+
+- **ruff**: Python linting for code quality issues
+- **ruff-format**: Python code formatting
+- **pytest**: Run the test suite
+- **Various file checks**: Check for trailing whitespace, end of files, Python AST validation, etc.
+
+#### Setting up pre-commit hooks
+
+To set up pre-commit hooks locally:
+
+```bash
+# Install dependencies (includes pre-commit)
+uv sync
+
+# Install the pre-commit hooks
+uvx pre-commit install
+```
+
+#### Running pre-commit hooks manually
+
+You can run all hooks manually on all files:
+
+```bash
+uvx pre-commit run --all-files
+```
+
+Or run specific hooks:
+
+```bash
+uvx ruff check .
+uvx ruff format .
+uv run pytest
+```
+
+#### Fixing formatting issues
+
+If the `ruff-format` hook fails, you may need to run the formatter manually to fix the issues:
+
+```bash
+uvx ruff format
+```
+
+This will automatically format your code according to the project's style guidelines. After running this command, stage and commit the formatted files.
+
 ### Local Development with CLI
 
 The easiest way to test the PDF generation functionality locally is to use the CLI:
