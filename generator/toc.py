@@ -248,7 +248,9 @@ class TocGenerator:
             )
 
             # Target page is the file's position in the final PDF
-            target_page = file_index  # 0-based index for the file in the content section
+            target_page = (
+                file_index  # 0-based index for the file in the content section
+            )
 
             # Store the entry for later processing
             toc_entry = TocEntry(
@@ -304,7 +306,11 @@ def add_toc_links_to_merged_pdf(
 
         # Calculate the target page in the merged PDF
         # The target page is after all TOC pages plus the file's index
-        target_page_index = toc_page_offset + len({e.toc_page_index for e in toc_entries}) + entry.target_page
+        target_page_index = (
+            toc_page_offset
+            + len({e.toc_page_index for e in toc_entries})
+            + entry.target_page
+        )
         if target_page_index >= len(merged_pdf):
             continue
 

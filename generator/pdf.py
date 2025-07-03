@@ -120,7 +120,9 @@ def generate_songbook(
     with fitz.open() as songbook_pdf:
         # We need to calculate TOC size first to properly set page offsets
         with reporter.step(1, "Pre-calculating table of contents..."):
-            toc_pdf, toc_entries = toc.build_table_of_contents(files, 0)  # Temporary offset
+            toc_pdf, toc_entries = toc.build_table_of_contents(
+                files, 0
+            )  # Temporary offset
             toc_page_count = len(toc_pdf)
             toc_pdf.close()  # Close temporary TOC
 
