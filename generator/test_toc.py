@@ -88,7 +88,7 @@ def test_generate_toc_title_truncate_with_ellipsis():
 def test_generate_toc_title_preserves_important_parentheses():
     """Test that important parentheses in titles are preserved."""
     # From the TOC - parentheses that are part of the actual title
-    title = "(Don't Fear) The Reaper - Blue Öyster Cult" 
+    title = "(Don't Fear) The Reaper - Blue Öyster Cult"
     result = generate_toc_title(title, max_length=60)
     assert result == "(Don't Fear) The Reaper - Blue Öyster Cult"
 
@@ -127,7 +127,7 @@ def test_generate_toc_title_basic_functionality():
     title = "Simple Song Title - Artist"
     result = generate_toc_title(title, max_length=60)
     assert result == "Simple Song Title - Artist"
-    
+
     # Test truncation
     long_title = "This is an extremely long song title that definitely exceeds our limit"
     result = generate_toc_title(long_title, max_length=20)
