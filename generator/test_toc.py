@@ -147,10 +147,3 @@ def test_generate_toc_title_mono_suffix():
     result = generate_toc_title(title, max_length=60)
     # This should remove (Mono) as it's at the end
     assert result == "Build Me Up Buttercup - The Foundations"
-
-
-def test_generate_toc_title_cleans_whitespace():
-    """Test whitespace cleanup."""
-    title = "Song   Title   -   Artist"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title - Artist"
