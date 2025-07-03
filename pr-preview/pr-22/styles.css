@@ -65,7 +65,8 @@ label {
 }
 
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+select {
 	width: 100%;
 	padding: 0.5rem;
 	border: 1px solid #ccc;
@@ -74,7 +75,8 @@ input[type="number"] {
 	transition: border-color 0.2s;
 }
 
-input:focus {
+input:focus,
+select:focus {
 	outline: none;
 	border-color: #3498db;
 }
