@@ -85,14 +85,14 @@
     // Determine API endpoint based on current location
     function getApiBase() {
       const currentPath = window.location.pathname;
-      
+
       // Check if we're in a PR preview environment
       const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
       if (prMatch) {
         const prNumber = prMatch[1];
         return `https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api-pr-${prNumber}`;
       }
-      
+
       // Default to production API
       return "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
     }
