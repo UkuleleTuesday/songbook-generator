@@ -108,7 +108,14 @@ def generate_songbook(
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
             merge_pdfs(
-                songbook_pdf, files, cache, drive, page_offset, step, 20, add_page_numbers
+                songbook_pdf,
+                files,
+                cache,
+                drive,
+                page_offset,
+                step,
+                20,
+                add_page_numbers,
             )
 
         with reporter.step(1, "Exporting generated PDF..."):
@@ -133,9 +140,10 @@ def merge_pdfs(
 
     for batch in batched(files, batch_size):
         for file in batch:
-            with (download_file_stream(drive, file, cache) as pdf_stream,
-                  fitz.open(stream=pdf_stream) as pdf_document):
-
+            with (
+                download_file_stream(drive, file, cache) as pdf_stream,
+                fitz.open(stream=pdf_stream) as pdf_document,
+            ):
                 if add_page_numbers:
                     add_page_number(pdf_document[0], current_page)
 
