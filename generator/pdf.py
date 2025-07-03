@@ -25,14 +25,14 @@ def collect_and_sort_files(
 ):
     """
     Collect files from multiple Google Drive folders and sort them alphabetically by name.
-    
+
     Args:
         drive: Authenticated Google Drive service
         source_folders: List of Google Drive folder IDs
         limit: Maximum number of files to collect per folder
         client_filter: Optional filter to apply to files
         progress_step: Optional progress step for reporting
-        
+
     Returns:
         List of file dictionaries sorted alphabetically by name
     """
