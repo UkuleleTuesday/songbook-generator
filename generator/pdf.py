@@ -30,7 +30,6 @@ def collect_and_sort_files(
     Args:
         drive: Authenticated Google Drive service
         source_folders: List of Google Drive folder IDs
-        limit: Maximum number of files to collect per folder
         client_filter: Optional filter to apply to files
         progress_step: Optional progress step for reporting
 
@@ -71,9 +70,7 @@ def generate_songbook(
         drive = authenticate_drive()
 
     with reporter.step(1, "Querying files...") as step:
-        files = collect_and_sort_files(
-            drive, source_folders, client_filter, step
-        )
+        files = collect_and_sort_files(drive, source_folders, client_filter, step)
 
         # Apply limit after collecting files from all folders
         if limit and len(files) > limit:
