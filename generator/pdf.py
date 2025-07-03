@@ -15,6 +15,7 @@ from gdrive import (
     authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
+    get_files_metadata_by_ids,
 )
 from filters import PropertyFilter, FilterGroup
 
@@ -46,7 +47,7 @@ def collect_and_sort_files(
         if progress_step:
             progress_step.increment(
                 1 / len(source_folders),
-                f"Found {len(folder_files)} files in folder {folder_index + 1}",
+                f"Found {len(folder_files)} files in folder {folder_index + 1}: {folder}",
             )
 
     # Sort files alphabetically by name after aggregating from all folders
@@ -60,6 +61,8 @@ def generate_songbook(
     limit: int,
     cover_file_id: str,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    preface_file_ids: Optional[List[str]] = None,
+    postface_file_ids: Optional[List[str]] = None,
     on_progress=None,
 ):
     reporter = progress.ProgressReporter(on_progress)
@@ -95,21 +98,65 @@ def generate_songbook(
             f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting download..."
         )
 
+    # Get preface and postface files
+    preface_files = []
+    postface_files = []
+
+    if preface_file_ids:
+        with reporter.step(1, "Retrieving preface files...") as step:
+            preface_files = get_files_metadata_by_ids(drive, preface_file_ids, step)
+            click.echo(f"Found {len(preface_files)} preface files.")
+
+    if postface_file_ids:
+        with reporter.step(1, "Retrieving postface files...") as step:
+            postface_files = get_files_metadata_by_ids(drive, postface_file_ids, step)
+            click.echo(f"Found {len(postface_files)} postface files.")
+
     click.echo("Merging downloaded PDFs into a single master PDF...")
 
     # Load environment variable for page numbering
     add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     with fitz.open() as songbook_pdf:
-        # FIXME: simplistic, won't work for multiple pages TOCs.
-        page_offset = 2
-        with reporter.step(1, "Generating table of contents..."):
-            toc_pdf = toc.build_table_of_contents(files, page_offset)
-            songbook_pdf.insert_pdf(toc_pdf, start_at=0)
+        # We need to calculate TOC size first to properly set page offsets
+        with reporter.step(1, "Pre-calculating table of contents..."):
+            toc_pdf, toc_entries = toc.build_table_of_contents(
+                files, 0
+            )  # Temporary offset
+            toc_page_count = len(toc_pdf)
+            toc_pdf.close()  # Close temporary TOC
+
+        # Calculate page offset based on cover + preface pages + TOC pages
+        page_offset = 1 + len(preface_files) + toc_page_count
 
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+
+        # Add preface files after cover
+        if preface_files:
+            with reporter.step(len(preface_files), "Adding preface files...") as step:
+                for file in preface_files:
+                    with (
+                        download_file_stream(drive, file, cache) as pdf_stream,
+                        fitz.open(stream=pdf_stream) as pdf_document,
+                    ):
+                        songbook_pdf.insert_pdf(
+                            pdf_document,
+                            from_page=0,
+                            to_page=0,
+                            links=False,
+                            annots=False,
+                            widgets=False,
+                            final=0,
+                        )
+                        step.increment(1, f"Added preface: {file['name']}")
+
+        # Generate TOC with correct page offset
+        with reporter.step(1, "Generating table of contents..."):
+            toc_pdf, toc_entries = toc.build_table_of_contents(files, page_offset)
+            toc_start_page = len(songbook_pdf)  # Remember where TOC starts
+            songbook_pdf.insert_pdf(toc_pdf)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
             merge_pdfs(
@@ -122,6 +169,37 @@ def generate_songbook(
                 batch_size=20,
                 add_page_numbers=add_page_numbers,
             )
+
+        # Add postface files at the end
+        if postface_files:
+            with reporter.step(len(postface_files), "Adding postface files...") as step:
+                for i, file in enumerate(postface_files):
+                    with (
+                        download_file_stream(drive, file, cache) as pdf_stream,
+                        fitz.open(stream=pdf_stream) as pdf_document,
+                    ):
+                        is_last_postface = i == len(postface_files) - 1
+                        final_value = 1 if is_last_postface else 0
+
+                        if final_value == 1:
+                            print(
+                                f"Passing final=1 for last postface file: {file['name']}"
+                            )
+
+                        songbook_pdf.insert_pdf(
+                            pdf_document,
+                            from_page=0,
+                            to_page=0,
+                            links=False,
+                            annots=False,
+                            widgets=False,
+                            final=final_value,
+                        )
+                        step.increment(1, f"Added postface: {file['name']}")
+
+        # Add TOC links after all content is in place
+        with reporter.step(1, "Adding table of contents links..."):
+            toc.add_toc_links_to_merged_pdf(songbook_pdf, toc_entries, toc_start_page)
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF

@@ -150,6 +150,45 @@ def query_drive_files_with_client_filter(
     return filtered_files
 
 
+def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
+    """
+    Get file metadata by their Google Drive IDs.
+
+    Args:
+        drive: Authenticated Google Drive service
+        file_ids: List of Google Drive file IDs
+        progress_step: Optional progress step for reporting
+
+    Returns:
+        List of file dictionaries with metadata
+    """
+    files = []
+    for file_id in file_ids:
+        try:
+            # Get file metadata from Drive
+            file_metadata = drive.files().get(fileId=file_id).execute()
+            file_dict = {
+                "id": file_id,
+                "name": file_metadata.get("name", f"file_{file_id}"),
+            }
+            files.append(file_dict)
+
+            if progress_step:
+                progress_step.increment(
+                    1 / len(file_ids),
+                    f"Retrieved metadata for {file_dict['name']}",
+                )
+        except Exception as e:
+            click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
+            if progress_step:
+                progress_step.increment(
+                    1 / len(file_ids),
+                    f"Failed to retrieve file {file_id}",
+                )
+
+    return files
+
+
 def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
     """
     Generator that yields the bytes of each file.

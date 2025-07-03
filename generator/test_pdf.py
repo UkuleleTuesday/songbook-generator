@@ -136,8 +136,12 @@ def test_collect_and_sort_files_with_progress_step(mocker):
 
     # Verify progress was reported for each folder
     assert mock_progress_step.increment.call_count == 2
-    mock_progress_step.increment.assert_any_call(0.5, "Found 1 files in folder 1")
-    mock_progress_step.increment.assert_any_call(0.5, "Found 1 files in folder 2")
+    mock_progress_step.increment.assert_any_call(
+        0.5, "Found 1 files in folder 1: folder1"
+    )
+    mock_progress_step.increment.assert_any_call(
+        0.5, "Found 1 files in folder 2: folder2"
+    )
 
     # Verify files are still sorted correctly
     expected = [
@@ -217,7 +221,7 @@ def test_collect_and_sort_files_progress_increment_calculation(mocker):
     for i in range(3):
         args, kwargs = mock_progress_step.increment.call_args_list[i]
         assert args[0] == expected_increment
-        assert f"Found 1 files in folder {i + 1}" in args[1]
+        assert f"Found 1 files in folder {i + 1}: folder{i + 1}" in args[1]
 
 
 def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):

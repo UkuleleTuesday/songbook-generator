@@ -53,6 +53,16 @@ def make_cli_progress_callback():
     "-f",
     help="Filter files using property syntax. Examples: 'specialbooks:contains:regular', 'year:gte:2000', 'artist:equals:Beatles', 'difficulty:in:easy,medium'",
 )
+@click.option(
+    "--preface-file-id",
+    multiple=True,
+    help="Google Drive file IDs for preface pages (after cover, before TOC). Can be specified multiple times.",
+)
+@click.option(
+    "--postface-file-id",
+    multiple=True,
+    help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
+)
 def cli(
     source_folder: str,
     destination_path: Path,
@@ -60,6 +70,8 @@ def cli(
     cover_file_id: str,
     limit: int,
     filter,
+    preface_file_id,
+    postface_file_id,
 ):
     client_filter = None
     if filter:
@@ -70,6 +82,15 @@ def cli(
             click.echo(f"Error parsing filter: {e}")
             return
 
+    # Convert tuples to lists
+    preface_file_ids = list(preface_file_id) if preface_file_id else None
+    postface_file_ids = list(postface_file_id) if postface_file_id else None
+
+    if preface_file_ids:
+        click.echo(f"Using {len(preface_file_ids)} preface file(s)")
+    if postface_file_ids:
+        click.echo(f"Using {len(postface_file_ids)} postface file(s)")
+
     progress_callback = make_cli_progress_callback()
     generate_songbook(
         source_folder,
@@ -77,6 +98,8 @@ def cli(
         limit,
         cover_file_id,
         client_filter,
+        preface_file_ids,
+        postface_file_ids,
         progress_callback,
     )
     if open_generated_pdf:
