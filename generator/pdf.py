@@ -60,6 +60,9 @@ def generate_songbook(
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
 
+    # Load environment variable for page numbering
+    add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
+
     with fitz.open() as songbook_pdf:
         # Calculate page offset after cover and TOC
         page_offset = 2
@@ -72,7 +75,7 @@ def generate_songbook(
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
-            merge_pdfs(songbook_pdf, files, cache, drive, page_offset, step)
+            merge_pdfs(songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers)
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
@@ -82,9 +85,8 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step):
+def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step, add_page_numbers):
     current_page = 1 + page_offset
-    add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     for file in files:
         pdf_bytes = download_file_bytes(drive, file, cache)
