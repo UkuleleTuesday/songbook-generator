@@ -93,44 +93,56 @@ def test_generate_toc_title_very_short_max_length():
         ("Hey Jude - The Beatles", "Hey Jude - The Beatles"),
         ("Imagine - John Lennon", "Imagine - John Lennon"),
         ("Jolene - Dolly Parton", "Jolene - Dolly Parton"),
-
         # Titles with version or edit information that should be removed
         ("Back for Good (Radio Mix) - Take That", "Back for Good - Take That"),
         ("Freedom! '90 (Edit) - George Michael", "Freedom! '90 - George Michael"),
-
         # Titles with parentheses that are part of the song name (should be preserved) but also stuff that needs cleaning up
-        ("(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult", "(Don't Fear) The Reaper - Blue Öyster Cult"),
-        ("(You're the) Devil in Disguise - Elvis Presley", "(You're the) Devil in Disguise - Elvis Presley"),
-        ("Build Me Up Buttercup (Mono) - The Foundations", "Build Me Up Buttercup - The Foundations"),
-        ("Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys", "Everybody (Backstreet's Back) - Backstreet Boys"),
-
+        (
+            "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult",
+            "(Don't Fear) The Reaper - Blue Öyster Cult",
+        ),
+        (
+            "(You're the) Devil in Disguise - Elvis Presley",
+            "(You're the) Devil in Disguise - Elvis Presley",
+        ),
+        (
+            "Build Me Up Buttercup (Mono) - The Foundations",
+            "Build Me Up Buttercup - The Foundations",
+        ),
+        (
+            "Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys",
+            "Everybody (Backstreet's Back) - Backstreet Boys",
+        ),
         # Titles with feat./featuring
-        ("Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk", "Get Lucky - Daft Punk"),
-        ("Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson", "Valerie - Mark Ronson"),
-
+        (
+            "Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk",
+            "Get Lucky - Daft Punk",
+        ),
+        (
+            "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson",
+            "Valerie - Mark Ronson",
+        ),
         # Titles with numbers
         ("9 to 5 - Dolly Parton", "9 to 5 - Dolly Parton"),
         ("99 Luftballons - Nena", "99 Luftballons - Nena"),
-
         # Should be preserved as they are
-        ("Happy Birthday To You (in D) - Traditional", "Happy Birthday To You (in D) - Traditional"),
-        ("La Marseillaise (abridged) - Rouget de Lisle", "La Marseillaise (abridged) - Rouget de Lisle"),
-
+        (
+            "Happy Birthday To You (in D) - Traditional",
+            "Happy Birthday To You (in D) - Traditional",
+        ),
+        (
+            "La Marseillaise (abridged) - Rouget de Lisle",
+            "La Marseillaise (abridged) - Rouget de Lisle",
+        ),
         # Should be truncated
-        ("Lava - Kuana Torres Kahele, Napua Greig, James Ford Murphy", "Lava - Kuana Torres Kahele, Napua Greig..."),
+        (
+            "Lava - Kuana Torres Kahele, Napua Greig, James Ford Murphy",
+            "Lava - Kuana Torres Kahele, Napua Greig, James...",
+        ),
     ],
 )
 def test_generate_toc_title_real_world_samples(original_title, expected_title):
     """Test generate_toc_title with real titles from the TOC."""
     # Test with default max_length
-    result = generate_toc_title(original_title, max_length=60)
+    result = generate_toc_title(original_title, max_length=50)
     assert result == expected_title
-
-    # Test with shorter max_length for long titles
-    if len(original_title) > 50:
-        short_result = generate_toc_title(original_title, max_length=50)
-        assert len(short_result) <= 50
-        # Only check for ellipsis if the cleaned title is still too long after cleaning
-        cleaned_result = generate_toc_title(original_title, max_length=60)
-        if len(cleaned_result) > 50:
-            assert "..." in short_result

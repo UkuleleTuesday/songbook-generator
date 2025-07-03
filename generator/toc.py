@@ -46,7 +46,7 @@ def generate_toc_title(original_title: str, max_length: int = 60) -> str:
     if len(title) <= max_length:
         # Still apply cleaning for consistency
         pass
-    
+
     # Remove featuring information in both parentheses and brackets
     # This regex matches parentheses or brackets containing feat./featuring
     title = re.sub(
