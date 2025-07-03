@@ -46,7 +46,9 @@ def generate_songbook(
 
         # Apply limit after collecting files from all folders
         if limit and len(files) > limit:
-            click.echo(f"Limiting to {limit} files out of {len(files)} total files found")
+            click.echo(
+                f"Limiting to {limit} files out of {len(files)} total files found"
+            )
             files = files[:limit]
 
         if not files:
@@ -81,7 +83,9 @@ def generate_songbook(
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
-            merge_pdfs(songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers)
+            merge_pdfs(
+                songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers
+            )
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
@@ -91,7 +95,15 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step, add_page_numbers=True):
+def merge_pdfs(
+    destination_pdf,
+    files,
+    cache,
+    drive,
+    page_offset,
+    progress_step,
+    add_page_numbers=True,
+):
     current_page = 1 + page_offset
 
     for file in files:
