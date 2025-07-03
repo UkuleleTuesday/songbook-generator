@@ -225,26 +225,26 @@ class TocGenerator:
             # Create clickable link
             text_width = self._estimate_text_width(toc_text_line)
             text_height = self.layout.text_fontsize
-            
+
             # Create rectangle for the clickable area
             link_rect = fitz.Rect(
-                x, 
+                x,
                 y - text_height * 0.8,  # Slightly above baseline
-                x + text_width, 
-                y + text_height * 0.2   # Slightly below baseline
+                x + text_width,
+                y + text_height * 0.2,  # Slightly below baseline
             )
-            
+
             # Create link dictionary for internal navigation
             # Target page is the file's position in the final PDF
             target_page = page_number - 1  # Convert to 0-based for PDF internal linking
-            
+
             link_dict = {
                 "kind": fitz.LINK_GOTO,
                 "from": link_rect,
                 "page": target_page,
-                "to": fitz.Point(0, 0)  # Jump to top-left of target page
+                "to": fitz.Point(0, 0),  # Jump to top-left of target page
             }
-            
+
             # Insert the link
             self.current_page.insert_link(link_dict)
 
