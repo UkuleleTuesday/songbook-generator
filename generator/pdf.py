@@ -85,7 +85,7 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step, add_page_numbers):
+def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step, add_page_numbers=True):
     current_page = 1 + page_offset
 
     for file in files:
