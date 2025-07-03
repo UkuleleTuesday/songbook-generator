@@ -77,7 +77,7 @@ def download_files_by_ids(drive, file_ids: List[str], cache, progress_step=None)
                 "name": file_metadata.get("name", f"file_{file_id}"),
             }
             files.append(file_dict)
-            
+
             if progress_step:
                 progress_step.increment(
                     1 / len(file_ids),
@@ -90,7 +90,7 @@ def download_files_by_ids(drive, file_ids: List[str], cache, progress_step=None)
                     1 / len(file_ids),
                     f"Failed to retrieve file {file_id}",
                 )
-    
+
     return files
 
 
@@ -140,12 +140,12 @@ def generate_songbook(
     # Get preface and postface files
     preface_files = []
     postface_files = []
-    
+
     if preface_file_ids:
         with reporter.step(1, "Retrieving preface files...") as step:
             preface_files = download_files_by_ids(drive, preface_file_ids, cache, step)
             click.echo(f"Found {len(preface_files)} preface files.")
-    
+
     if postface_file_ids:
         with reporter.step(1, "Retrieving postface files...") as step:
             postface_files = download_files_by_ids(drive, postface_file_ids, cache, step)
@@ -160,7 +160,7 @@ def generate_songbook(
         # Calculate page offset based on cover + preface pages
         # FIXME: simplistic, won't work for multiple pages TOCs or multi-page preface files
         page_offset = 1 + len(preface_files) + 1  # cover + preface + TOC
-        
+
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
@@ -210,10 +210,10 @@ def generate_songbook(
                     ):
                         is_last_postface = i == len(postface_files) - 1
                         final_value = 1 if is_last_postface else 0
-                        
+
                         if final_value == 1:
                             print(f"Passing final=1 for last postface file: {file['name']}")
-                        
+
                         songbook_pdf.insert_pdf(
                             pdf_document,
                             from_page=0,
