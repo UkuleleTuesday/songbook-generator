@@ -70,7 +70,9 @@ def generate_songbook(
         drive = authenticate_drive()
 
     with reporter.step(1, "Querying files...") as step:
-        files = collect_and_sort_files(drive, source_folders, limit, client_filter, step)
+        files = collect_and_sort_files(
+            drive, source_folders, limit, client_filter, step
+        )
 
         if not files:
             if client_filter:
