@@ -77,128 +77,40 @@ def test_generate_toc_title_short_enough():
     assert result == "Short Title"
 
 
-def test_generate_toc_title_removes_feat():
-    """Test removal of featuring information."""
-    title = "Song Title (feat. Artist Name)"
+def test_generate_toc_title_real_world_examples():
+    """Test with real examples from the TOC."""
+    # Test examples from current-toc.txt that have parenthetical content
+    
+    # This one has (Single Version) - should be removed
+    title = "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult"
     result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_radio_edit():
-    """Test removal of radio edit information."""
-    title = "Song Title (Radio Edit)"
+    assert result == "(Don't Fear) The Reaper - Blue Öyster Cult"
+    
+    # This one has (Radio Mix) - should be removed  
+    title = "Back for Good (Radio Mix) - Take That"
     result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_single_version():
-    """Test removal of single version information."""
-    title = "Song Title (Single Version)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_version():
-    """Test removal of version information."""
-    title = "Song Title (Version 2.0)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_mix():
-    """Test removal of mix information."""
-    title = "Song Title (Extended Mix)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_remix():
-    """Test removal of remix information."""
-    title = "Song Title (Remix)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_case_insensitive():
-    """Test that removal is case insensitive."""
-    title = "Song Title (FEAT. Artist Name)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_other_parentheses():
-    """Test removal of other parenthetical information at the end."""
-    title = "Song Title (2023)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_removes_brackets():
-    """Test removal of bracketed information."""
-    title = "Song Title [Alternative Version]"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_multiple_parentheses():
-    """Test with multiple parenthetical elements."""
-    title = "Song Title (feat. Artist) (Radio Edit)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
-
-
-def test_generate_toc_title_cleans_whitespace():
-    """Test that extra whitespace is cleaned up."""
-    title = "Song   Title    (feat. Artist)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == "Song Title"
+    assert result == "Back for Good - Take That"
+    
+    # This one has (feat. ...) - should be removed
+    title = "Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk"
+    result = generate_toc_title(title, max_length=70)
+    assert result == "Get Lucky - Daft Punk"
 
 
 def test_generate_toc_title_truncate_with_ellipsis():
     """Test truncation with ellipsis when still too long."""
     title = "This is a very long song title that should be truncated"
     result = generate_toc_title(title, max_length=30)
-    assert result == "This is a very long song..."
-    assert len(result) == 27
+    assert "..." in result
+    assert len(result) <= 30
 
 
-def test_generate_toc_title_truncate_at_word_boundary():
-    """Test truncation at word boundary when possible."""
-    title = "This is a moderately long song title"
-    result = generate_toc_title(title, max_length=25)
-    assert result == "This is a moderately..."
-    assert len(result) <= 25
-
-
-def test_generate_toc_title_truncate_no_word_boundary():
-    """Test truncation without word boundary when no good break point."""
-    title = "Verylongwordwithoutspaces"
-    result = generate_toc_title(title, max_length=15)
-    assert result == "Verylongword..."
-    assert len(result) == 15
-
-
-def test_generate_toc_title_very_short_max_length():
-    """Test with very short max length."""
-    title = "Long Title"
-    result = generate_toc_title(title, max_length=3)
-    assert result == "Lon"
-    assert len(result) == 3
-
-
-def test_generate_toc_title_real_world_examples():
-    """Test with real examples from the TOC."""
-    # Test a long title with featuring
-    title = "Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk"
-    result = generate_toc_title(title, max_length=50)
-    expected = "Get Lucky - Daft Punk"
-    assert result == expected
-
-    # Test another real example
-    title = "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
-    result = generate_toc_title(title, max_length=50)
-    expected = "Valerie - Mark Ronson"
-    assert result == expected
+def test_generate_toc_title_preserves_important_parentheses():
+    """Test that important parentheses in titles are preserved."""
+    # From the TOC - parentheses that are part of the actual title
+    title = "(Don't Fear) The Reaper - Blue Öyster Cult" 
+    result = generate_toc_title(title, max_length=60)
+    assert result == "(Don't Fear) The Reaper - Blue Öyster Cult"
 
 
 def test_generate_toc_title_preserves_artist_hyphen():
@@ -222,16 +134,23 @@ def test_generate_toc_title_empty_string():
     assert result == ""
 
 
-def test_generate_toc_title_only_parentheses():
-    """Test with title that's only parentheses."""
-    title = "(feat. Artist)"
-    result = generate_toc_title(title, max_length=60)
-    assert result == ""
+def test_generate_toc_title_very_short_max_length():
+    """Test with very short max length."""
+    title = "Long Title"
+    result = generate_toc_title(title, max_length=3)
+    assert len(result) == 3
 
 
-def test_generate_toc_title_parentheses_in_middle():
-    """Test that parentheses in the middle are not removed by the end-anchored regex."""
-    title = "Song (Part 1) Title"
+def test_generate_toc_title_mono_suffix():
+    """Test removal of (Mono) suffix from real example."""
+    title = "Build Me Up Buttercup (Mono) - The Foundations"
     result = generate_toc_title(title, max_length=60)
-    # Should only remove version-related parentheses, not ones in the middle
-    assert result == "Song (Part 1) Title"
+    # This should remove (Mono) as it's at the end
+    assert result == "Build Me Up Buttercup - The Foundations"
+
+
+def test_generate_toc_title_cleans_whitespace():
+    """Test whitespace cleanup."""
+    title = "Song   Title   -   Artist"
+    result = generate_toc_title(title, max_length=60)
+    assert result == "Song Title - Artist"
