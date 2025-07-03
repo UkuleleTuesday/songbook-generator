@@ -161,14 +161,15 @@ def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None,
     Files are fetched from cache if available, otherwise downloaded from Drive.
     """
     for f in files:
-        yield download_file_bytes(drive, f, cache)
+        with download_file_stream(drive, f, cache) as stream:
+            yield stream.getvalue()
 
 
-def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
+def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     """
     Fetches the PDF export of a Google Doc, using a LocalStorageCache.
     Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns the bytes of the file.
+    Returns a BytesIO stream of the file.
     """
     file_id = file["id"]
     file_name = file["name"]
@@ -183,7 +184,7 @@ def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
     cached = cache.get(cache_key, newer_than=remote_ts)
     if cached:
         click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-        return cached
+        return io.BytesIO(cached)
 
     # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
@@ -196,6 +197,15 @@ def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
 
     pdf_data = buffer.getvalue()
 
-    # 4) Store into cache and return the bytes
+    # 4) Store into cache and return a new BytesIO stream
     cache.put(cache_key, pdf_data)
-    return pdf_data
+    return io.BytesIO(pdf_data)
+
+
+def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
+    """
+    Legacy function for backward compatibility.
+    Fetches the PDF export and returns raw bytes.
+    """
+    with download_file_stream(drive, file, cache) as stream:
+        return stream.getvalue()
