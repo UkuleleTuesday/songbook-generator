@@ -48,26 +48,33 @@ def generate_toc_title(original_title: str, max_length: int = 60) -> str:
 
     # Remove featuring information and version details in parentheses
     # Patterns like (feat. ...), (Radio Edit), (Single Version), etc.
-    title = re.sub(r'\s*\([^)]*(?:feat\.|Radio|Single|Edit|Version|Mix|Remix)[^)]*\)', '', title, flags=re.IGNORECASE)
+    title = re.sub(
+        r"\s*\([^)]*(?:feat\.|Radio|Single|Edit|Version|Mix|Remix)[^)]*\)",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
 
     # Remove other parenthetical information that might be version/format related
-    title = re.sub(r'\s*\([^)]*\)\s*$', '', title)
+    title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
 
     # Remove bracketed information
-    title = re.sub(r'\s*\[[^\]]*\]', '', title, flags=re.IGNORECASE)
+    title = re.sub(r"\s*\[[^\]]*\]", "", title, flags=re.IGNORECASE)
 
     # Clean up any extra whitespace
-    title = re.sub(r'\s+', ' ', title).strip()
+    title = re.sub(r"\s+", " ", title).strip()
 
     # If still too long, truncate with ellipsis
     if len(title) > max_length:
         # Try to cut at a word boundary if possible
         if max_length > 3:
             truncate_length = max_length - 3  # Reserve space for "..."
-            if ' ' in title[:truncate_length]:
+            if " " in title[:truncate_length]:
                 # Find the last space before the truncation point
-                last_space = title[:truncate_length].rfind(' ')
-                if last_space > max_length // 2:  # Only use word boundary if it's not too short
+                last_space = title[:truncate_length].rfind(" ")
+                if (
+                    last_space > max_length // 2
+                ):  # Only use word boundary if it's not too short
                     title = title[:last_space] + "..."
                 else:
                     title = title[:truncate_length] + "..."
