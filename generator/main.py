@@ -114,6 +114,8 @@ def main(cloud_event):
         source_folders = params["source_folders"]
         cover_file_id = params.get("cover_file_id")
         limit = params.get("limit")
+        preface_file_ids = params.get("preface_file_ids")
+        postface_file_ids = params.get("postface_file_ids")
 
         # Parse filters parameter
         filters_param = params.get("filters")
@@ -136,6 +138,10 @@ def main(cloud_event):
         # 3) Generate into a temp file
         out_path = tempfile.mktemp(suffix=".pdf")
         print(f"Generating songbook for job {job_id} with parameters: {params}")
+        if preface_file_ids:
+            print(f"Using {len(preface_file_ids)} preface files")
+        if postface_file_ids:
+            print(f"Using {len(postface_file_ids)} postface files")
 
         # Create progress callback and pass it to generate_songbook
         progress_callback = make_progress_callback(job_ref)
@@ -145,6 +151,8 @@ def main(cloud_event):
             limit,
             cover_file_id,
             client_filter,
+            preface_file_ids,
+            postface_file_ids,
             progress_callback,
         )
 

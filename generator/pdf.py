@@ -54,12 +54,54 @@ def collect_and_sort_files(
     return files
 
 
+def download_files_by_ids(drive, file_ids: List[str], cache, progress_step=None):
+    """
+    Download files by their Google Drive IDs.
+
+    Args:
+        drive: Authenticated Google Drive service
+        file_ids: List of Google Drive file IDs
+        cache: Cache instance for storing downloaded files
+        progress_step: Optional progress step for reporting
+
+    Returns:
+        List of file dictionaries with downloaded content
+    """
+    files = []
+    for i, file_id in enumerate(file_ids):
+        try:
+            # Get file metadata from Drive
+            file_metadata = drive.files().get(fileId=file_id).execute()
+            file_dict = {
+                "id": file_id,
+                "name": file_metadata.get("name", f"file_{file_id}"),
+            }
+            files.append(file_dict)
+            
+            if progress_step:
+                progress_step.increment(
+                    1 / len(file_ids),
+                    f"Retrieved metadata for {file_dict['name']}",
+                )
+        except Exception as e:
+            click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
+            if progress_step:
+                progress_step.increment(
+                    1 / len(file_ids),
+                    f"Failed to retrieve file {file_id}",
+                )
+    
+    return files
+
+
 def generate_songbook(
     source_folders: List[str],
     destination_path: Path,
     limit: int,
     cover_file_id: str,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    preface_file_ids: Optional[List[str]] = None,
+    postface_file_ids: Optional[List[str]] = None,
     on_progress=None,
 ):
     reporter = progress.ProgressReporter(on_progress)
@@ -95,21 +137,56 @@ def generate_songbook(
             f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting download..."
         )
 
+    # Get preface and postface files
+    preface_files = []
+    postface_files = []
+    
+    if preface_file_ids:
+        with reporter.step(1, "Retrieving preface files...") as step:
+            preface_files = download_files_by_ids(drive, preface_file_ids, cache, step)
+            click.echo(f"Found {len(preface_files)} preface files.")
+    
+    if postface_file_ids:
+        with reporter.step(1, "Retrieving postface files...") as step:
+            postface_files = download_files_by_ids(drive, postface_file_ids, cache, step)
+            click.echo(f"Found {len(postface_files)} postface files.")
+
     click.echo("Merging downloaded PDFs into a single master PDF...")
 
     # Load environment variable for page numbering
     add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     with fitz.open() as songbook_pdf:
-        # FIXME: simplistic, won't work for multiple pages TOCs.
-        page_offset = 2
-        with reporter.step(1, "Generating table of contents..."):
-            toc_pdf = toc.build_table_of_contents(files, page_offset)
-            songbook_pdf.insert_pdf(toc_pdf, start_at=0)
-
+        # Calculate page offset based on cover + preface pages
+        # FIXME: simplistic, won't work for multiple pages TOCs or multi-page preface files
+        page_offset = 1 + len(preface_files) + 1  # cover + preface + TOC
+        
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+
+        # Add preface files after cover
+        if preface_files:
+            with reporter.step(len(preface_files), "Adding preface files...") as step:
+                for file in preface_files:
+                    with (
+                        download_file_stream(drive, file, cache) as pdf_stream,
+                        fitz.open(stream=pdf_stream) as pdf_document,
+                    ):
+                        songbook_pdf.insert_pdf(
+                            pdf_document,
+                            from_page=0,
+                            to_page=0,
+                            links=False,
+                            annots=False,
+                            widgets=False,
+                            final=0,
+                        )
+                        step.increment(1, f"Added preface: {file['name']}")
+
+        with reporter.step(1, "Generating table of contents..."):
+            toc_pdf = toc.build_table_of_contents(files, page_offset)
+            songbook_pdf.insert_pdf(toc_pdf)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
             merge_pdfs(
@@ -122,6 +199,31 @@ def generate_songbook(
                 batch_size=20,
                 add_page_numbers=add_page_numbers,
             )
+
+        # Add postface files at the end
+        if postface_files:
+            with reporter.step(len(postface_files), "Adding postface files...") as step:
+                for i, file in enumerate(postface_files):
+                    with (
+                        download_file_stream(drive, file, cache) as pdf_stream,
+                        fitz.open(stream=pdf_stream) as pdf_document,
+                    ):
+                        is_last_postface = i == len(postface_files) - 1
+                        final_value = 1 if is_last_postface else 0
+                        
+                        if final_value == 1:
+                            print(f"Passing final=1 for last postface file: {file['name']}")
+                        
+                        songbook_pdf.insert_pdf(
+                            pdf_document,
+                            from_page=0,
+                            to_page=0,
+                            links=False,
+                            annots=False,
+                            widgets=False,
+                            final=final_value,
+                        )
+                        step.increment(1, f"Added postface: {file['name']}")
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
