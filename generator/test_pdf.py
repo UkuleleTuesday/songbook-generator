@@ -1,5 +1,5 @@
-from generator.pdf import collect_and_sort_files
-from generator.filters import PropertyFilter, FilterOperator
+from pdf import collect_and_sort_files
+from filters import PropertyFilter, FilterOperator
 
 
 def test_collect_and_sort_files_single_folder(mocker):
@@ -13,7 +13,7 @@ def test_collect_and_sort_files_single_folder(mocker):
         {"name": "banana.pdf", "id": "2"},
     ]
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = mock_files
     
     result = collect_and_sort_files(
