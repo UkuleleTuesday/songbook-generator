@@ -1,5 +1,6 @@
 import click
 import fitz  # PyMuPDF
+import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 
@@ -26,6 +27,56 @@ def resolve_font(fontfile, fallback_font):
             f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}"
         )
         return fallback_font
+
+
+def generate_toc_title(original_title: str, max_length: int = 60) -> str:
+    """
+    Generate a shortened title for TOC entries using simple heuristics.
+    
+    Args:
+        original_title: The original song title
+        max_length: Maximum allowed length for the title
+        
+    Returns:
+        Shortened title that fits within max_length
+    """
+    title = original_title.strip()
+    
+    # If already short enough, return as-is
+    if len(title) <= max_length:
+        return title
+    
+    # Remove featuring information and version details in parentheses
+    # Patterns like (feat. ...), (Radio Edit), (Single Version), etc.
+    title = re.sub(r'\s*\([^)]*(?:feat\.|Radio|Single|Edit|Version|Mix|Remix)[^)]*\)', '', title, flags=re.IGNORECASE)
+    
+    # Remove other parenthetical information that might be version/format related
+    title = re.sub(r'\s*\([^)]*\)\s*$', '', title)
+    
+    # Remove bracketed information
+    title = re.sub(r'\s*\[[^\]]*\]', '', title, flags=re.IGNORECASE)
+    
+    # Clean up any extra whitespace
+    title = re.sub(r'\s+', ' ', title).strip()
+    
+    # If still too long, truncate with ellipsis
+    if len(title) > max_length:
+        # Try to cut at a word boundary if possible
+        if max_length > 3:
+            truncate_length = max_length - 3  # Reserve space for "..."
+            if ' ' in title[:truncate_length]:
+                # Find the last space before the truncation point
+                last_space = title[:truncate_length].rfind(' ')
+                if last_space > max_length // 2:  # Only use word boundary if it's not too short
+                    title = title[:last_space] + "..."
+                else:
+                    title = title[:truncate_length] + "..."
+            else:
+                title = title[:truncate_length] + "..."
+        else:
+            title = title[:max_length]
+    
+    return title
 
 
 @dataclass
@@ -138,7 +189,9 @@ class TocGenerator:
 
         for page_number, file in enumerate(files, start=(1 + page_offset)):
             file_name = file["name"]
-            toc_text_line = f"{page_number}. {file_name}"
+            # Use the new function to generate a shortened title
+            shortened_title = generate_toc_title(file_name)
+            toc_text_line = f"{page_number}. {shortened_title}"
 
             # Insert text at current position
             x, y = self._get_current_position()
