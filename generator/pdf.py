@@ -142,15 +142,20 @@ def merge_pdfs(
     add_page_numbers=True,
 ):
     current_page = 1 + page_offset
+    total_files = len(files)
 
     for batch in batched(files, batch_size):
-        for file in batch:
+        for i, file in enumerate(batch):
             with (
                 download_file_stream(drive, file, cache) as pdf_stream,
                 fitz.open(stream=pdf_stream) as pdf_document,
             ):
                 if add_page_numbers:
                     add_page_number(pdf_document[0], current_page)
+
+                # Determine if this is the last file overall
+                file_index = current_page - page_offset - 1
+                is_last_file = file_index == total_files - 1
 
                 destination_pdf.insert_pdf(
                     pdf_document,
@@ -159,6 +164,7 @@ def merge_pdfs(
                     links=False,
                     annots=False,
                     widgets=False,
+                    final=1 if is_last_file else 0,
                 )
                 progress_step.increment(1, f"Added {file['name']}")
                 current_page += 1
