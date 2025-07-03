@@ -112,6 +112,7 @@ class TocLayout:
 @dataclass
 class TocEntry:
     """Information about a TOC entry for later link creation."""
+
     page_number: int
     target_page: int
     text: str
@@ -254,7 +255,7 @@ class TocGenerator:
                 target_page=target_page,
                 text=toc_text_line,
                 rect=link_rect,
-                toc_page_index=len(self.pdf) - 1  # Current page index in TOC PDF
+                toc_page_index=len(self.pdf) - 1,  # Current page index in TOC PDF
             )
             self.toc_entries.append(toc_entry)
 
@@ -282,7 +283,9 @@ def build_table_of_contents(
     return toc_pdf, generator.get_toc_entries()
 
 
-def add_toc_links_to_merged_pdf(merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int):
+def add_toc_links_to_merged_pdf(
+    merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int
+):
     """Add clickable links to TOC entries in the merged PDF.
 
     Args:
