@@ -148,7 +148,9 @@ def generate_songbook(
 
     if postface_file_ids:
         with reporter.step(1, "Retrieving postface files...") as step:
-            postface_files = download_files_by_ids(drive, postface_file_ids, cache, step)
+            postface_files = download_files_by_ids(
+                drive, postface_file_ids, cache, step
+            )
             click.echo(f"Found {len(postface_files)} postface files.")
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
@@ -212,7 +214,9 @@ def generate_songbook(
                         final_value = 1 if is_last_postface else 0
 
                         if final_value == 1:
-                            print(f"Passing final=1 for last postface file: {file['name']}")
+                            print(
+                                f"Passing final=1 for last postface file: {file['name']}"
+                            )
 
                         songbook_pdf.insert_pdf(
                             pdf_document,
