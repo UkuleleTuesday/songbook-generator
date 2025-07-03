@@ -29,7 +29,7 @@ def resolve_font(fontfile, fallback_font):
         return fallback_font
 
 
-def generate_toc_title(original_title: str, max_length: int = 60) -> str:
+def generate_toc_title(original_title: str, max_length: int) -> str:
     """
     Generate a shortened title for TOC entries using simple heuristics.
 
@@ -107,6 +107,10 @@ class TocLayout:
     text_fontsize: int = 9
     title_font: str = DEFAULT_FONT
     title_fontsize: int = 16
+    # With current font, fontsize and margins, this is the max length that fits and
+    # doesn't result in overlap between columns.
+    # Obviously highly dependent on the font and fontsize used.
+    max_toc_entry_length = 57
 
 
 @dataclass
@@ -222,8 +226,10 @@ class TocGenerator:
             page_number = file_index + 1 + page_offset
             file_name = file["name"]
             # Use the new function to generate a shortened title
-            shortened_title = generate_toc_title(file_name)
-            toc_text_line = f"{page_number}. {shortened_title}"
+            shortened_title = generate_toc_title(
+                file_name, max_length=self.layout.max_toc_entry_length
+            )
+            toc_text_line = f"{page_number} {shortened_title}"
 
             # Insert text at current position
             x, y = self._get_current_position()
