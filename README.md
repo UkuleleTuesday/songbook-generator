@@ -4,7 +4,7 @@
 
 Songbook Generator is a web app accessible at
 [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). It allows users to generate a
-song book, collating song sheets + a cover stored on google drive.
+song book based on a series of configurable parameters.
 
 ## Features
 
@@ -28,7 +28,7 @@ The application uses a microservices architecture deployed on Google Cloud:
 - **Frontend**: Static web app hosted on GitHub Pages
 - **API Service** (`api/main.py`): Handles job creation, queues work via Pub/Sub, and tracks job status in Firestore
 - **Worker Service** (`generator/main.py`): Processes PDF generation jobs asynchronously
-- **CLI Tool** (`generator/cli.py`): Standalone command-line interface for local development and testing
+- **CLI Tool** (`generator/cli.py`): Standalone command-line interface for local development and testing. It can also be used for songbook generation if command line is more your thing, and will generally run much faster than on GCP.
 
 ## Wanna help?
 
@@ -138,6 +138,8 @@ title-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
 title-fontsize = 16
 ```
 
+It's definitely not complete at this stage though and doesn't expose all possible config options.
+
 #### Cloud Functions Environment
 The Cloud Functions require these environment variables:
 - `GCP_PROJECT_ID`: Google Cloud Project ID
@@ -146,8 +148,10 @@ The Cloud Functions require these environment variables:
 - `GCS_WORKER_CACHE_BUCKET`: Storage bucket for caching intermediate files
 - `PUBSUB_TOPIC`: Pub/Sub topic for job queue
 
+... and probably a bunch more. Check `.env` for the 
+
 ### Caching
-The backend uses a caching mechanism to store downloaded files and generated covers locally. Cached files are stored in:
+The backend uses a caching mechanism to store downloaded files and generated covers locally. Supported caching implementations are the local file system when running locally, and GCS when running on the cloud. Locally, cached files are stored in:
 ```bash
 ~/.cache/songbook-generator/cache
 ```
@@ -177,6 +181,8 @@ export GCP_REGION="us-central1"
 # Run the setup script
 ./deploy-gcs.sh
 ```
+
+`.env` contains good defaults, excluding necessary exports for credential files you will need for interacting with Google services.
 
 This script will:
 - Enable required APIs (Pub/Sub, Firestore, Storage, Eventarc)
