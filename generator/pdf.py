@@ -158,7 +158,7 @@ def merge_pdfs(
                     to_page=0,
                     links=False,
                     annots=False,
-                    widgets=False
+                    widgets=False,
                 )
                 progress_step.increment(1, f"Added {file['name']}")
                 current_page += 1
