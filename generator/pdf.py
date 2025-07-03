@@ -16,6 +16,43 @@ from gdrive import (
 from filters import PropertyFilter, FilterGroup
 
 
+def collect_and_sort_files(
+    drive,
+    source_folders: List[str],
+    limit: int,
+    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    progress_step=None,
+):
+    """
+    Collect files from multiple Google Drive folders and sort them alphabetically by name.
+    
+    Args:
+        drive: Authenticated Google Drive service
+        source_folders: List of Google Drive folder IDs
+        limit: Maximum number of files to collect per folder
+        client_filter: Optional filter to apply to files
+        progress_step: Optional progress step for reporting
+        
+    Returns:
+        List of file dictionaries sorted alphabetically by name
+    """
+    files = []
+    for i, folder in enumerate(source_folders):
+        folder_files = query_drive_files_with_client_filter(
+            drive, folder, limit, client_filter
+        )
+        files.extend(folder_files)
+        if progress_step:
+            progress_step.increment(
+                1 / len(source_folders),
+                f"Found {len(folder_files)} files in folder {i + 1}",
+            )
+
+    # Sort files alphabetically by name after aggregating from all folders
+    files.sort(key=lambda f: f["name"])
+    return files
+
+
 def generate_songbook(
     source_folders: List[str],
     destination_path: Path,
@@ -33,16 +70,7 @@ def generate_songbook(
         drive = authenticate_drive()
 
     with reporter.step(1, "Querying files...") as step:
-        files = []
-        for i, folder in enumerate(source_folders):
-            folder_files = query_drive_files_with_client_filter(
-                drive, folder, limit, client_filter
-            )
-            files.extend(folder_files)
-            step.increment(
-                1 / len(source_folders),
-                f"Found {len(folder_files)} files in folder {i + 1}",
-            )
+        files = collect_and_sort_files(drive, source_folders, limit, client_filter, step)
 
         if not files:
             if client_filter:
@@ -52,9 +80,6 @@ def generate_songbook(
             else:
                 click.echo(f"No files found in folders {source_folders}.")
             return
-
-        # Sort files alphabetically by name after aggregating from all folders
-        files.sort(key=lambda f: f["name"])
 
         filter_msg = " (with client-side filter)" if client_filter else ""
         click.echo(
