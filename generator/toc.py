@@ -109,6 +109,16 @@ class TocLayout:
     title_fontsize: int = 16
 
 
+@dataclass
+class TocEntry:
+    """Information about a TOC entry for later link creation."""
+    page_number: int
+    target_page: int
+    text: str
+    rect: fitz.Rect
+    toc_page_index: int
+
+
 def load_toc_config() -> TocLayout:
     """Load TOC configuration from config file."""
     config = load_config()
@@ -135,6 +145,7 @@ class TocGenerator:
         self.current_line_in_column = 0
         self._column_positions = []
         self._lines_per_column = 0
+        self.toc_entries = []  # Store entries for later link creation
 
     def _calculate_layout_parameters(self) -> None:
         """Calculate layout parameters based on page dimensions."""
@@ -222,7 +233,7 @@ class TocGenerator:
                 color=(0, 0, 0),
             )
 
-            # Create clickable link
+            # Store entry information for later link creation
             text_width = self._estimate_text_width(toc_text_line)
             text_height = self.layout.text_fontsize
 
@@ -234,30 +245,71 @@ class TocGenerator:
                 y + text_height * 0.2,  # Slightly below baseline
             )
 
-            # Create link dictionary for internal navigation
             # Target page is the file's position in the final PDF
             target_page = page_number - 1  # Convert to 0-based for PDF internal linking
 
-            link_dict = {
-                "kind": fitz.LINK_GOTO,
-                "from": link_rect,
-                "page": target_page,
-                "to": fitz.Point(0, 0),  # Jump to top-left of target page
-            }
-
-            # Insert the link
-            self.current_page.insert_link(link_dict)
+            # Store the entry for later processing
+            toc_entry = TocEntry(
+                page_number=page_number,
+                target_page=target_page,
+                text=toc_text_line,
+                rect=link_rect,
+                toc_page_index=len(self.pdf) - 1  # Current page index in TOC PDF
+            )
+            self.toc_entries.append(toc_entry)
 
             # Advance to next position
             self._advance_position()
 
         return self.pdf
 
+    def get_toc_entries(self) -> List[TocEntry]:
+        """Return the list of TOC entries for link creation."""
+        return self.toc_entries
+
 
 def build_table_of_contents(
     files: List[Dict[str, Any]], page_offset: int = 0
-) -> fitz.Document:
-    """Build a table of contents PDF from a list of files."""
+) -> Tuple[fitz.Document, List[TocEntry]]:
+    """Build a table of contents PDF from a list of files.
+    
+    Returns:
+        Tuple of (TOC PDF document, list of TOC entries for link creation)
+    """
     layout = load_toc_config()
     generator = TocGenerator(layout)
-    return generator.generate(files, page_offset)
+    toc_pdf = generator.generate(files, page_offset)
+    return toc_pdf, generator.get_toc_entries()
+
+
+def add_toc_links_to_merged_pdf(merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int):
+    """Add clickable links to TOC entries in the merged PDF.
+    
+    Args:
+        merged_pdf: The complete merged PDF document
+        toc_entries: List of TOC entries with link information
+        toc_page_offset: Offset where TOC pages start in the merged PDF
+    """
+    for entry in toc_entries:
+        # Get the TOC page in the merged PDF
+        toc_page_index = toc_page_offset + entry.toc_page_index
+        if toc_page_index >= len(merged_pdf):
+            continue
+            
+        toc_page = merged_pdf[toc_page_index]
+        
+        # Calculate the target page in the merged PDF
+        target_page_index = toc_page_offset + len(toc_entries) + entry.target_page
+        if target_page_index >= len(merged_pdf):
+            continue
+        
+        # Create link dictionary for internal navigation
+        link_dict = {
+            "kind": fitz.LINK_GOTO,
+            "from": entry.rect,
+            "page": target_page_index,
+            "to": fitz.Point(0, 0),  # Jump to top-left of target page
+        }
+        
+        # Insert the link
+        toc_page.insert_link(link_dict)
