@@ -53,6 +53,9 @@ def generate_songbook(
                 click.echo(f"No files found in folders {source_folders}.")
             return
 
+        # Sort files alphabetically by name after aggregating from all folders
+        files.sort(key=lambda f: f['name'])
+
         filter_msg = " (with client-side filter)" if client_filter else ""
         click.echo(
             f"Found {len(files)} files in the source folder{filter_msg}. Starting download..."
