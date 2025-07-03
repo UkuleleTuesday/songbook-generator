@@ -47,7 +47,7 @@ def collect_and_sort_files(
         if progress_step:
             progress_step.increment(
                 1 / len(source_folders),
-                f"Found {len(folder_files)} files in folder {folder_index + 1}",
+                f"Found {len(folder_files)} files in folder {folder_index + 1}: {folder}",
             )
 
     # Sort files alphabetically by name after aggregating from all folders
