@@ -47,9 +47,9 @@ def generate_toc_title(original_title: str, max_length: int = 60) -> str:
         return title
 
     # Remove featuring information and version details in parentheses
-    # This regex matches parentheses containing feat., Radio, Single, Edit, Version, Mix, or Remix
+    # This regex matches parentheses containing specific keywords
     title = re.sub(
-        r"\s*\([^)]*(?:feat\.|featuring|Radio|Single|Edit|Version|Mix|Remix)[^)]*\)",
+        r"\s*\([^)]*(?:feat\.|featuring|Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
         "",
         title,
         flags=re.IGNORECASE,
