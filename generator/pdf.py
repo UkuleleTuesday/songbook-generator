@@ -130,19 +130,19 @@ def merge_pdfs(
     add_page_numbers=True,
 ):
     current_page = 1 + page_offset
-    
+
     for batch in batched(files, batch_size):
         for file in batch:
             with (download_file_stream(drive, file, cache) as pdf_stream,
                   fitz.open(stream=pdf_stream) as pdf_document):
-                
+
                 if add_page_numbers:
                     add_page_number(pdf_document[0], current_page)
-                
+
                 destination_pdf.insert_pdf(pdf_document)
                 progress_step.increment(1, f"Added {file['name']}")
                 current_page += 1
-        
+
         gc.collect()  # Clean up after each batch
 
 
