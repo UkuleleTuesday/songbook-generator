@@ -75,7 +75,9 @@ def generate_songbook(
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
-            merge_pdfs(songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers)
+            merge_pdfs(
+                songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers
+            )
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF
@@ -85,14 +87,22 @@ def generate_songbook(
                 )
 
 
-def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step, add_page_numbers=True):
+def merge_pdfs(
+    destination_pdf,
+    files,
+    cache,
+    drive,
+    page_offset,
+    progress_step,
+    add_page_numbers=True,
+):
     current_page = 1 + page_offset
 
     for file in files:
         with download_file_stream(drive, file, cache) as pdf_stream:
             with fitz.open(stream=pdf_stream) as pdf_document:
-                page = pdf_document[0]
                 if add_page_numbers:
+                    page = pdf_document[0]
                     add_page_number(page, current_page)
                 destination_pdf.insert_pdf(pdf_document)
 
