@@ -53,11 +53,12 @@ def create_cover_from_template(
         .batchUpdate(documentId=copy_id, body={"requests": requests})
         .execute()
     )
-    total = sum(
-        reply["replaceAllText"]["occurrencesChanged"]
-        for reply in result.get("replies", [])
-        if "replaceAllText" in reply
-    )
+    total = 0
+    for reply in result.get("replies", []):
+        if "replaceAllText" in reply:
+            # Check if occurrencesChanged exists before accessing it
+            if "occurrencesChanged" in reply["replaceAllText"]:
+                total += reply["replaceAllText"]["occurrencesChanged"]
     print(f"Replaced {total} occurrences in the copy.")
 
     return copy_id
