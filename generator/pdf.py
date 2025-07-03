@@ -101,7 +101,7 @@ def generate_songbook(
     add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     with fitz.open() as songbook_pdf:
-        # Calculate page offset after cover and TOC
+        # FIXME: simplistic, won't work for multiple pages TOCs.
         page_offset = 2
         with reporter.step(1, "Generating table of contents..."):
             toc_pdf = toc.build_table_of_contents(files, page_offset)
