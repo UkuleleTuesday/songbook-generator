@@ -32,33 +32,33 @@ def resolve_font(fontfile, fallback_font):
 def generate_toc_title(original_title: str, max_length: int = 60) -> str:
     """
     Generate a shortened title for TOC entries using simple heuristics.
-    
+
     Args:
         original_title: The original song title
         max_length: Maximum allowed length for the title
-        
+
     Returns:
         Shortened title that fits within max_length
     """
     title = original_title.strip()
-    
+
     # If already short enough, return as-is
     if len(title) <= max_length:
         return title
-    
+
     # Remove featuring information and version details in parentheses
     # Patterns like (feat. ...), (Radio Edit), (Single Version), etc.
     title = re.sub(r'\s*\([^)]*(?:feat\.|Radio|Single|Edit|Version|Mix|Remix)[^)]*\)', '', title, flags=re.IGNORECASE)
-    
+
     # Remove other parenthetical information that might be version/format related
     title = re.sub(r'\s*\([^)]*\)\s*$', '', title)
-    
+
     # Remove bracketed information
     title = re.sub(r'\s*\[[^\]]*\]', '', title, flags=re.IGNORECASE)
-    
+
     # Clean up any extra whitespace
     title = re.sub(r'\s+', ' ', title).strip()
-    
+
     # If still too long, truncate with ellipsis
     if len(title) > max_length:
         # Try to cut at a word boundary if possible
@@ -75,7 +75,7 @@ def generate_toc_title(original_title: str, max_length: int = 60) -> str:
                 title = title[:truncate_length] + "..."
         else:
             title = title[:max_length]
-    
+
     return title
 
 
