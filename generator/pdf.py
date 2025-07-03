@@ -43,10 +43,11 @@ def collect_and_sort_files(
             drive, folder, client_filter
         )
         files.extend(folder_files)
-        step.increment(
-            1 / len(source_folders),
-            f"Found {len(folder_files)} files in folder {i + 1}",
-        )
+        if progress_step:
+            progress_step.increment(
+                1 / len(source_folders),
+                f"Found {len(folder_files)} files in folder {i + 1}",
+            )
 
     # Sort files alphabetically by name after aggregating from all folders
     files.sort(key=lambda f: f["name"])
