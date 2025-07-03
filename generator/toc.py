@@ -225,7 +225,7 @@ class TocGenerator:
         for file_index, file in enumerate(files):
             page_number = file_index + 1 + page_offset
             file_name = file["name"]
-            # Use the new function to generate a shortened title
+            # Generate a title short enough to fit in the TOC entry.
             shortened_title = generate_toc_title(
                 file_name, max_length=self.layout.max_toc_entry_length
             )
