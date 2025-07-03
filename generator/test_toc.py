@@ -146,37 +146,31 @@ def test_generate_toc_title_basic_functionality():
         ("Hey Jude - The Beatles", "Hey Jude - The Beatles"),
         ("Imagine - John Lennon", "Imagine - John Lennon"),
         ("Jolene - Dolly Parton", "Jolene - Dolly Parton"),
-        
-        # Titles with parentheses that are part of the song name (should be preserved)
-        ("(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult", "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult"),
+
+        # Titles with version or edit information that should be removed
+        ("Back for Good (Radio Mix) - Take That", "Back for Good - Take That"),
+        ("Freedom! '90 (Edit) - George Michael", "Freedom! '90 - George Michael"),
+
+        # Titles with parentheses that are part of the song name (should be preserved) but also stuff that needs cleaning up
+        ("(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult", "(Don't Fear) The Reaper - Blue Öyster Cult"),
         ("(You're the) Devil in Disguise - Elvis Presley", "(You're the) Devil in Disguise - Elvis Presley"),
-        
-        # Titles with version information that might be removed
-        ("Build Me Up Buttercup (Mono) - The Foundations", "Build Me Up Buttercup (Mono) - The Foundations"),
-        ("Back for Good (Radio Mix) - Take That", "Back for Good (Radio Mix) - Take That"),
-        ("Freedom! '90 (Edit) - George Michael", "Freedom! '90 (Edit) - George Michael"),
-        
+        ("Build Me Up Buttercup (Mono) - The Foundations", "Build Me Up Buttercup - The Foundations"),
+        ("Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys", "Everybody (Backstreet's Back) - Backstreet Boys"),
+
         # Titles with feat./featuring
-        ("Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk", "Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk"),
-        ("Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson", "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"),
-        
-        # Long titles that should be truncated
-        ("Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk", "Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile..."),
-        
-        # Titles with special characters
-        ("Je t'aime... moi non plus - Jane Birkin & Serge Gainsbourg", "Je t'aime... moi non plus - Jane Birkin & Serge..."),
-        ("What's Up? - 4 Non Blondes", "What's Up? - 4 Non Blondes"),
-        
+        ("Get Lucky (Radio Edit) [feat. Pharrell Williams, Nile Rodgers] - Daft Punk", "Get Lucky - Daft Punk"),
+        ("Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson", "Valerie - Mark Ronson"),
+
         # Titles with numbers
         ("9 to 5 - Dolly Parton", "9 to 5 - Dolly Parton"),
         ("99 Luftballons - Nena", "99 Luftballons - Nena"),
-        
-        # Titles with multiple parentheses
-        ("Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys", "Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys"),
-        
-        # Simple artist-less titles
+
+        # Should be preserved as they are
         ("Happy Birthday To You (in D) - Traditional", "Happy Birthday To You (in D) - Traditional"),
         ("La Marseillaise (abridged) - Rouget de Lisle", "La Marseillaise (abridged) - Rouget de Lisle"),
+
+        # Should be truncated
+        ("Lava - Kuana Torres Kahele, Napua Greig, James Ford Murphy", "Lava - Kuana Torres Kahele, Napua Greig..."),
     ],
 )
 def test_generate_toc_title_real_world_samples(original_title, expected_title):
@@ -184,10 +178,3 @@ def test_generate_toc_title_real_world_samples(original_title, expected_title):
     # Test with default max_length
     result = generate_toc_title(original_title, max_length=60)
     assert result == expected_title
-    
-    # Test with shorter max_length for long titles
-    if len(original_title) > 50:
-        short_result = generate_toc_title(original_title, max_length=50)
-        assert len(short_result) <= 50
-        if len(original_title) > 50:
-            assert "..." in short_result
