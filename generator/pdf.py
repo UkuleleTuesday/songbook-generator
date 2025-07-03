@@ -157,6 +157,10 @@ def merge_pdfs(
                 file_index = current_page - page_offset - 1
                 is_last_file = file_index == total_files - 1
 
+                final_value = 1 if is_last_file else 0
+                if final_value == 1:
+                    print(f"Passing final=1 for last file: {file['name']}")
+
                 destination_pdf.insert_pdf(
                     pdf_document,
                     from_page=0,
@@ -164,7 +168,7 @@ def merge_pdfs(
                     links=False,
                     annots=False,
                     widgets=False,
-                    final=1 if is_last_file else 0,
+                    final=final_value,
                 )
                 progress_step.increment(1, f"Added {file['name']}")
                 current_page += 1
