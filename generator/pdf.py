@@ -118,9 +118,14 @@ def generate_songbook(
     add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     with fitz.open() as songbook_pdf:
-        # Calculate page offset based on cover + preface pages
-        # FIXME: simplistic, won't work for multiple pages TOCs or multi-page preface files
-        page_offset = 1 + len(preface_files) + 1  # cover + preface + TOC
+        # We need to calculate TOC size first to properly set page offsets
+        with reporter.step(1, "Pre-calculating table of contents..."):
+            toc_pdf, toc_entries = toc.build_table_of_contents(files, 0)  # Temporary offset
+            toc_page_count = len(toc_pdf)
+            toc_pdf.close()  # Close temporary TOC
+
+        # Calculate page offset based on cover + preface pages + TOC pages
+        page_offset = 1 + len(preface_files) + toc_page_count
 
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
@@ -145,8 +150,10 @@ def generate_songbook(
                         )
                         step.increment(1, f"Added preface: {file['name']}")
 
+        # Generate TOC with correct page offset
         with reporter.step(1, "Generating table of contents..."):
-            toc_pdf = toc.build_table_of_contents(files, page_offset)
+            toc_pdf, toc_entries = toc.build_table_of_contents(files, page_offset)
+            toc_start_page = len(songbook_pdf)  # Remember where TOC starts
             songbook_pdf.insert_pdf(toc_pdf)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
@@ -187,6 +194,10 @@ def generate_songbook(
                             final=final_value,
                         )
                         step.increment(1, f"Added postface: {file['name']}")
+
+        # Add TOC links after all content is in place
+        with reporter.step(1, "Adding table of contents links..."):
+            toc.add_toc_links_to_merged_pdf(songbook_pdf, toc_entries, toc_start_page)
 
         with reporter.step(1, "Exporting generated PDF..."):
             songbook_pdf.save(destination_path)  # Save the merged PDF

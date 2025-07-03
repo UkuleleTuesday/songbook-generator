@@ -218,7 +218,8 @@ class TocGenerator:
         self._calculate_layout_parameters()
         self.current_page = self._create_new_page()
 
-        for page_number, file in enumerate(files, start=(1 + page_offset)):
+        for file_index, file in enumerate(files):
+            page_number = file_index + 1 + page_offset
             file_name = file["name"]
             # Use the new function to generate a shortened title
             shortened_title = generate_toc_title(file_name)
@@ -247,7 +248,7 @@ class TocGenerator:
             )
 
             # Target page is the file's position in the final PDF
-            target_page = page_number - 1  # Convert to 0-based for PDF internal linking
+            target_page = file_index  # 0-based index for the file in the content section
 
             # Store the entry for later processing
             toc_entry = TocEntry(
@@ -302,7 +303,8 @@ def add_toc_links_to_merged_pdf(
         toc_page = merged_pdf[toc_page_index]
 
         # Calculate the target page in the merged PDF
-        target_page_index = toc_page_offset + len(toc_entries) + entry.target_page
+        # The target page is after all TOC pages plus the file's index
+        target_page_index = toc_page_offset + len({e.toc_page_index for e in toc_entries}) + entry.target_page
         if target_page_index >= len(merged_pdf):
             continue
 
