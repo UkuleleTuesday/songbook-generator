@@ -55,7 +55,7 @@ def test_collect_and_sort_files_multiple_folders(mocker):
             return folder2_files
         return []
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.side_effect = mock_query_side_effect
     
     result = collect_and_sort_files(
@@ -84,7 +84,7 @@ def test_collect_and_sort_files_with_client_filter(mocker):
     
     mock_files = [{"name": "test.pdf", "id": "1"}]
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = mock_files
     
     result = collect_and_sort_files(
@@ -102,7 +102,7 @@ def test_collect_and_sort_files_empty_folders(mocker):
     """Test that empty folders return an empty list."""
     mock_drive = mocker.Mock()
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = []
     
     result = collect_and_sort_files(
@@ -129,7 +129,7 @@ def test_collect_and_sort_files_with_progress_step(mocker):
             return folder2_files
         return []
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.side_effect = mock_query_side_effect
     
     result = collect_and_sort_files(
@@ -158,7 +158,7 @@ def test_collect_and_sort_files_no_progress_step(mocker):
     
     mock_files = [{"name": "test.pdf", "id": "1"}]
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = mock_files
     
     # Should not raise any errors when progress_step is None
@@ -183,7 +183,7 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
         {"name": "Banana.pdf", "id": "3"},
     ]
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = mock_files
     
     result = collect_and_sort_files(
@@ -209,7 +209,7 @@ def test_collect_and_sort_files_progress_increment_calculation(mocker):
     # Test with 3 folders
     folder_files = [{"name": "file.pdf", "id": "1"}]
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.return_value = folder_files
     
     collect_and_sort_files(
@@ -241,7 +241,7 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
             return [{"name": "file2.pdf", "id": "2"}]
         return []
     
-    mock_query = mocker.patch("generator.pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
     mock_query.side_effect = mock_query_side_effect
     
     result = collect_and_sort_files(
