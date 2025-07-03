@@ -101,28 +101,15 @@ def generate_songbook(
     add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     with fitz.open() as songbook_pdf:
+        # Calculate page offset after cover and TOC
+        page_offset = 2
         with reporter.step(1, "Generating table of contents..."):
-            toc_pdf = toc.build_table_of_contents(
-                files, 0
-            )  # Use 0 temporarily for TOC generation
+            toc_pdf = toc.build_table_of_contents(files, page_offset)
             songbook_pdf.insert_pdf(toc_pdf, start_at=0)
 
         with reporter.step(1, "Generating cover..."):
             cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
             songbook_pdf.insert_pdf(cover_pdf, start_at=0)
-
-        # Calculate page offset after cover and TOC have been inserted
-        page_offset = len(songbook_pdf)
-
-        # Regenerate TOC with correct page offset
-        with reporter.step(
-            1, "Updating table of contents with correct page numbers..."
-        ):
-            # Remove the old TOC
-            songbook_pdf.delete_page(1)  # TOC was inserted at position 1 (after cover)
-            # Generate new TOC with correct page offset
-            toc_pdf = toc.build_table_of_contents(files, page_offset)
-            songbook_pdf.insert_pdf(toc_pdf, start_at=1)
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
             merge_pdfs(
