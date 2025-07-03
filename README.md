@@ -18,7 +18,7 @@ song book based on a series of configurable parameters.
 ## Usage
 
 Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). Use the
-interface to specify advanced settings like Folder ID, Cover File ID, and Limit, then click "Generate PDF" to create
+interface to tweak which songs get included, and tweak the advanced parameters if you feel adventurous. Then click "Generate PDF" to create
 your songbook. The app will show progress updates and provide a download link when complete.
 
 ## Architecture
