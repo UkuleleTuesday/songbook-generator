@@ -153,11 +153,11 @@ def merge_pdfs(
                     add_page_number(pdf_document[0], current_page)
 
                 destination_pdf.insert_pdf(
-                    pdf_document, 
-                    from_page=0, 
+                    pdf_document,
+                    from_page=0,
                     to_page=0,
-                    links=False, 
-                    annots=False, 
+                    links=False,
+                    annots=False,
                     widgets=False
                 )
                 progress_step.increment(1, f"Added {file['name']}")
