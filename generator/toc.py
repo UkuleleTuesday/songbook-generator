@@ -194,6 +194,11 @@ class TocGenerator:
                 self.current_page = self._create_new_page()
                 self.current_column = 0
 
+    def _estimate_text_width(self, text: str) -> float:
+        """Estimate the width of text based on font size."""
+        # Rough estimation: assume each character is about 0.6 * fontsize width
+        return len(text) * self.layout.text_fontsize * 0.6
+
     def generate(
         self, files: List[Dict[str, Any]], page_offset: int = 0
     ) -> fitz.Document:
@@ -216,6 +221,32 @@ class TocGenerator:
                 fontfile=self.layout.text_font,
                 color=(0, 0, 0),
             )
+
+            # Create clickable link
+            text_width = self._estimate_text_width(toc_text_line)
+            text_height = self.layout.text_fontsize
+            
+            # Create rectangle for the clickable area
+            link_rect = fitz.Rect(
+                x, 
+                y - text_height * 0.8,  # Slightly above baseline
+                x + text_width, 
+                y + text_height * 0.2   # Slightly below baseline
+            )
+            
+            # Create link dictionary for internal navigation
+            # Target page is the file's position in the final PDF
+            target_page = page_number - 1  # Convert to 0-based for PDF internal linking
+            
+            link_dict = {
+                "kind": fitz.LINK_GOTO,
+                "from": link_rect,
+                "page": target_page,
+                "to": fitz.Point(0, 0)  # Jump to top-left of target page
+            }
+            
+            # Insert the link
+            self.current_page.insert_link(link_dict)
 
             # Advance to next position
             self._advance_position()
