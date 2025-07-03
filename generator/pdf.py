@@ -1,8 +1,10 @@
 import fitz
 import click
 import os
+import gc
 from pathlib import Path
 from typing import List, Optional, Union
+from itertools import batched
 import progress
 
 import toc
@@ -106,7 +108,7 @@ def generate_songbook(
 
         with reporter.step(len(files), "Downloading and merging PDFs...") as step:
             merge_pdfs(
-                songbook_pdf, files, cache, drive, page_offset, step, add_page_numbers
+                songbook_pdf, files, cache, drive, page_offset, step, 20, add_page_numbers
             )
 
         with reporter.step(1, "Exporting generated PDF..."):
@@ -124,20 +126,24 @@ def merge_pdfs(
     drive,
     page_offset,
     progress_step,
+    batch_size=20,
     add_page_numbers=True,
 ):
     current_page = 1 + page_offset
-
-    for file in files:
-        with download_file_stream(drive, file, cache) as pdf_stream:
-            with fitz.open(stream=pdf_stream) as pdf_document:
+    
+    for batch in batched(files, batch_size):
+        for file in batch:
+            with (download_file_stream(drive, file, cache) as pdf_stream,
+                  fitz.open(stream=pdf_stream) as pdf_document):
+                
                 if add_page_numbers:
-                    page = pdf_document[0]
-                    add_page_number(page, current_page)
+                    add_page_number(pdf_document[0], current_page)
+                
                 destination_pdf.insert_pdf(pdf_document)
-
-        progress_step.increment(1, f"Added {file['name']}")
-        current_page += 1
+                progress_step.increment(1, f"Added {file['name']}")
+                current_page += 1
+        
+        gc.collect()  # Clean up after each batch
 
 
 def add_page_number(page, page_index):
