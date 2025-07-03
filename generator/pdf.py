@@ -84,13 +84,15 @@ def generate_songbook(
 
 def merge_pdfs(destination_pdf, files, cache, drive, page_offset, progress_step):
     current_page = 1 + page_offset
+    add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
 
     for file in files:
         pdf_bytes = download_file_bytes(drive, file, cache)
 
         with fitz.open(stream=pdf_bytes) as pdf_document:
             page = pdf_document[0]
-            add_page_number(page, current_page)
+            if add_page_numbers:
+                add_page_number(page, current_page)
             destination_pdf.insert_pdf(pdf_document)
 
         progress_step.increment(1, f"Added {file['name']}")
