@@ -272,7 +272,7 @@ def build_table_of_contents(
     files: List[Dict[str, Any]], page_offset: int = 0
 ) -> Tuple[fitz.Document, List[TocEntry]]:
     """Build a table of contents PDF from a list of files.
-    
+
     Returns:
         Tuple of (TOC PDF document, list of TOC entries for link creation)
     """
@@ -284,7 +284,7 @@ def build_table_of_contents(
 
 def add_toc_links_to_merged_pdf(merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int):
     """Add clickable links to TOC entries in the merged PDF.
-    
+
     Args:
         merged_pdf: The complete merged PDF document
         toc_entries: List of TOC entries with link information
@@ -295,14 +295,14 @@ def add_toc_links_to_merged_pdf(merged_pdf: fitz.Document, toc_entries: List[Toc
         toc_page_index = toc_page_offset + entry.toc_page_index
         if toc_page_index >= len(merged_pdf):
             continue
-            
+
         toc_page = merged_pdf[toc_page_index]
-        
+
         # Calculate the target page in the merged PDF
         target_page_index = toc_page_offset + len(toc_entries) + entry.target_page
         if target_page_index >= len(merged_pdf):
             continue
-        
+
         # Create link dictionary for internal navigation
         link_dict = {
             "kind": fitz.LINK_GOTO,
@@ -310,6 +310,6 @@ def add_toc_links_to_merged_pdf(merged_pdf: fitz.Document, toc_entries: List[Toc
             "page": target_page_index,
             "to": fitz.Point(0, 0),  # Jump to top-left of target page
         }
-        
+
         # Insert the link
         toc_page.insert_link(link_dict)
