@@ -38,7 +38,7 @@ def collect_and_sort_files(
         List of file dictionaries sorted alphabetically by name
     """
     files = []
-    for i, folder in enumerate(source_folders):
+    for folder_index, folder in enumerate(source_folders):
         folder_files = query_drive_files_with_client_filter(
             drive, folder, client_filter
         )
@@ -46,7 +46,7 @@ def collect_and_sort_files(
         if progress_step:
             progress_step.increment(
                 1 / len(source_folders),
-                f"Found {len(folder_files)} files in folder {i + 1}",
+                f"Found {len(folder_files)} files in folder {folder_index + 1}",
             )
 
     # Sort files alphabetically by name after aggregating from all folders
@@ -145,7 +145,7 @@ def merge_pdfs(
     total_files = len(files)
 
     for batch in batched(files, batch_size):
-        for i, file in enumerate(batch):
+        for file in batch:
             with (
                 download_file_stream(drive, file, cache) as pdf_stream,
                 fitz.open(stream=pdf_stream) as pdf_document,
