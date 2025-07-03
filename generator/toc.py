@@ -55,11 +55,11 @@ def generate_toc_title(original_title: str, max_length: int = 60) -> str:
         flags=re.IGNORECASE,
     )
 
-    # Remove other parenthetical information that might be version/format related
-    title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
-
     # Remove bracketed information
     title = re.sub(r"\s*\[[^\]]*\]", "", title, flags=re.IGNORECASE)
+
+    # Remove other parenthetical information that might be version/format related
+    title = re.sub(r"\s*\([^)]*\)\s*$", "", title)
 
     # Clean up any extra whitespace
     title = re.sub(r"\s+", " ", title).strip()

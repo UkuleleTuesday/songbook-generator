@@ -159,7 +159,7 @@ def test_generate_toc_title_truncate_with_ellipsis():
     title = "This is a very long song title that should be truncated"
     result = generate_toc_title(title, max_length=30)
     assert result == "This is a very long song..."
-    assert len(result) == 30
+    assert len(result) == 27
 
 
 def test_generate_toc_title_truncate_at_word_boundary():
@@ -174,7 +174,7 @@ def test_generate_toc_title_truncate_no_word_boundary():
     """Test truncation without word boundary when no good break point."""
     title = "Verylongwordwithoutspaces"
     result = generate_toc_title(title, max_length=15)
-    assert result == "Verylongwor..."
+    assert result == "Verylongword..."
     assert len(result) == 15
 
 
