@@ -129,7 +129,9 @@ def test_generate_toc_title_basic_functionality():
     assert result == "Simple Song Title - Artist"
 
     # Test truncation
-    long_title = "This is an extremely long song title that definitely exceeds our limit"
+    long_title = (
+        "This is an extremely long song title that definitely exceeds our limit"
+    )
     result = generate_toc_title(long_title, max_length=20)
     assert len(result) <= 20
     assert "..." in result
