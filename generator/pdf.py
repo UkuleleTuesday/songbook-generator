@@ -15,6 +15,7 @@ from gdrive import (
     authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
+    get_files_metadata_by_ids,
 )
 from filters import PropertyFilter, FilterGroup
 
@@ -51,46 +52,6 @@ def collect_and_sort_files(
 
     # Sort files alphabetically by name after aggregating from all folders
     files.sort(key=lambda f: f["name"])
-    return files
-
-
-def download_files_by_ids(drive, file_ids: List[str], cache, progress_step=None):
-    """
-    Download files by their Google Drive IDs.
-
-    Args:
-        drive: Authenticated Google Drive service
-        file_ids: List of Google Drive file IDs
-        cache: Cache instance for storing downloaded files
-        progress_step: Optional progress step for reporting
-
-    Returns:
-        List of file dictionaries with downloaded content
-    """
-    files = []
-    for i, file_id in enumerate(file_ids):
-        try:
-            # Get file metadata from Drive
-            file_metadata = drive.files().get(fileId=file_id).execute()
-            file_dict = {
-                "id": file_id,
-                "name": file_metadata.get("name", f"file_{file_id}"),
-            }
-            files.append(file_dict)
-
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Retrieved metadata for {file_dict['name']}",
-                )
-        except Exception as e:
-            click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Failed to retrieve file {file_id}",
-                )
-
     return files
 
 
@@ -143,14 +104,12 @@ def generate_songbook(
 
     if preface_file_ids:
         with reporter.step(1, "Retrieving preface files...") as step:
-            preface_files = download_files_by_ids(drive, preface_file_ids, cache, step)
+            preface_files = get_files_metadata_by_ids(drive, preface_file_ids, step)
             click.echo(f"Found {len(preface_files)} preface files.")
 
     if postface_file_ids:
         with reporter.step(1, "Retrieving postface files...") as step:
-            postface_files = download_files_by_ids(
-                drive, postface_file_ids, cache, step
-            )
+            postface_files = get_files_metadata_by_ids(drive, postface_file_ids, step)
             click.echo(f"Found {len(postface_files)} postface files.")
 
     click.echo("Merging downloaded PDFs into a single master PDF...")
