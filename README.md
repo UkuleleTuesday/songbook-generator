@@ -3,7 +3,7 @@
 ## Overview
 
 Songbook Generator is a web app accessible at
-[https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). It allows users to generate a
+[https://ukuleletuesday.github.io/songbook-generator/](https://ukuleletuesday.github.io/songbook-generator/). It allows users to generate a
 song book based on a series of configurable parameters.
 
 ## Features
@@ -17,7 +17,7 @@ song book based on a series of configurable parameters.
 
 ## Usage
 
-Visit the web app at [https://jjst.github.io/songbook-generator/](https://jjst.github.io/songbook-generator/). Use the
+Visit the web app at [https://ukuleletuesday.github.io/songbook-generator/](https://ukuleletuesday.github.io/songbook-generator/). Use the
 interface to tweak which songs get included, and tweak the advanced parameters if you feel adventurous. Then click "Generate PDF" to create
 your songbook. The app will show progress updates and provide a download link when complete.
 
@@ -34,7 +34,7 @@ The application uses a microservices architecture deployed on Google Cloud:
 
 While this is a workable proof of concept, there are still a fair amount of limitations. Help report issues, suggest enhancements -- or if you're a coder, roll up your sleeves and help improve this :-)
 
-Dev instructions are below. Check out [issues](https://github.com/jjst/songbook-generator/issues) for good first issues for inspiration on what to help out with.
+Dev instructions are below. Check out [issues](https://github.com/ukuleletuesday/songbook-generator/issues) for good first issues for inspiration on what to help out with.
 
 ## Development
 
