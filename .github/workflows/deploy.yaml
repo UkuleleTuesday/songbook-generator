@@ -53,9 +53,9 @@ jobs:
         PR_NUM="${{ github.event.pull_request.number }}"
         API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
-        
+
         echo "Cleaning up PR #${PR_NUM} resources..."
-        
+
         # Delete API function
         if gcloud functions describe "$API_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
           echo "Deleting API function: $API_FN_NAME"
@@ -63,7 +63,7 @@ jobs:
         else
           echo "API function $API_FN_NAME not found, skipping"
         fi
-        
+
         # Delete Worker function
         if gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
           echo "Deleting Worker function: $WORKER_FN_NAME"
@@ -76,7 +76,7 @@ jobs:
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
         TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
-        
+
         if gcloud pubsub topics describe "$TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
           echo "Deleting Pub/Sub topic: $TOPIC_NAME"
           gcloud pubsub topics delete "$TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
