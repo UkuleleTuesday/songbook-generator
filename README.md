@@ -148,7 +148,7 @@ The Cloud Functions require these environment variables:
 - `GCS_WORKER_CACHE_BUCKET`: Storage bucket for caching intermediate files
 - `PUBSUB_TOPIC`: Pub/Sub topic for job queue
 
-... and probably a bunch more. Check `.env` for the 
+... and probably a bunch more. Check `.env` for the
 
 ### Caching
 The backend uses a caching mechanism to store downloaded files and generated covers locally. Supported caching implementations are the local file system when running locally, and GCS when running on the cloud. Locally, cached files are stored in:
