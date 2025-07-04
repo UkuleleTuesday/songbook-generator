@@ -102,6 +102,51 @@ button:active {
 	transform: scale(0.98);
 }
 
+/* Custom tooltip styling */
+.tooltip {
+	position: relative;
+	display: inline-block;
+	cursor: help;
+	margin-left: 0.5rem;
+	color: #3498db;
+}
+
+.tooltip .tooltip-text {
+	visibility: hidden;
+	width: 250px;
+	background-color: #333;
+	color: #fff;
+	text-align: left;
+	border-radius: 6px;
+	padding: 8px;
+	position: absolute;
+	z-index: 1;
+	bottom: 125%;
+	left: 50%;
+	margin-left: -125px;
+	opacity: 0;
+	transition: opacity 0.3s;
+	font-size: 0.875rem;
+	font-weight: normal;
+	box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.tooltip .tooltip-text::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: #333 transparent transparent transparent;
+}
+
+.tooltip:hover .tooltip-text {
+	visibility: visible;
+	opacity: 1;
+}
+
 /* Loading overlay */
 .loading-overlay {
 	position: absolute;
