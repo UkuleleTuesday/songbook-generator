@@ -33,7 +33,7 @@ def handle_post(req):
         print("Received POST request with payload:", req.get_data(as_text=True))
         payload = req.get_json(silent=True) or {}
         job_id = uuid.uuid4().hex
-        
+
         span.set_attribute("job_id", job_id)
         span.set_attribute("payload_size", len(json.dumps(payload)))
 
@@ -70,16 +70,16 @@ def handle_post(req):
 def handle_get_job(job_id):
     with tracer.start_as_current_span("handle_get_job") as span:
         span.set_attribute("job_id", job_id)
-        
+
         print(f"Fetching Firestore document for job ID: {job_id}")
-        
+
         with tracer.start_as_current_span("fetch_firestore_document") as firestore_span:
             doc_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
             snapshot = doc_ref.get()
             firestore_span.set_attribute("firestore.collection", FIRESTORE_COLLECTION)
             firestore_span.set_attribute("firestore.document_id", job_id)
             firestore_span.set_attribute("firestore.document_exists", snapshot.exists)
-        
+
         print(f"Firestore document exists: {snapshot.exists}")
         if not snapshot.exists:
             body = json.dumps({"error": "job not found", "job_id": job_id})
@@ -126,7 +126,7 @@ def main(req):
     with tracer.start_as_current_span("main") as span:
         span.set_attribute("http.method", req.method)
         span.set_attribute("http.path", req.path)
-        
+
         # CORS preflight
         if req.method == "OPTIONS":
             span.set_attribute("request.type", "cors_preflight")
