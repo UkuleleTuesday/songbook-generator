@@ -8,7 +8,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.resourcedetector.gcp_resource_detector import GoogleCloudResourceDetector
-from opentelemetry.propagators.cloud_trace import CloudTraceFormatPropagator
+from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
 from opentelemetry import propagate
 
 
