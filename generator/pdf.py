@@ -63,14 +63,13 @@ def collect_and_sort_files(
     """
     with tracer.start_as_current_span("collect_and_sort_files") as span:
         span.set_attribute("source_folders_count", len(source_folders))
-        span.set_attribute("has_client_filter", client_filter is not None)
+        span.set_attribute("filter", client_filter)
 
         files = []
         for folder_index, folder in enumerate(source_folders):
-            with tracer.start_as_current_span(
-                f"query_folder_{folder_index}"
-            ) as folder_span:
+            with tracer.start_as_current_span("query_gdrive_folder") as folder_span:
                 folder_span.set_attribute("folder_id", folder)
+                folder_span.set_attribute("filter", client_filter)
                 folder_files = query_drive_files_with_client_filter(
                     drive, folder, client_filter
                 )
