@@ -15,7 +15,7 @@ from opentelemetry import propagate
 def setup_tracing():
     """Set up OpenTelemetry tracing with Google Cloud Trace."""
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
-    
+
     # Detect GCP resource information
     gcp_resource_detector = GoogleCloudResourceDetector()
     resource = gcp_resource_detector.detect()
