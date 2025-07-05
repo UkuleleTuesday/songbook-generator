@@ -122,7 +122,9 @@ def main(cloud_event):
         # 2) Mark RUNNING
         with tracer.start_as_current_span("update_job_status") as status_span:
             print(f"Marking job {job_id} as RUNNING in Firestore")
-            job_ref.update({"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP})
+            job_ref.update(
+                {"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP}
+            )
             status_span.set_attribute("status", "RUNNING")
 
         try:
@@ -149,7 +151,9 @@ def main(cloud_event):
                         client_filter = parse_filters(filters_param)
                         print(f"Parsed client filter: {client_filter}")
                         filter_span.set_attribute("has_filters", True)
-                        filter_span.set_attribute("filter_type", type(client_filter).__name__)
+                        filter_span.set_attribute(
+                            "filter_type", type(client_filter).__name__
+                        )
                     except Exception as e:
                         print(f"Error parsing filters: {e}")
                         filter_span.set_attribute("error", str(e))

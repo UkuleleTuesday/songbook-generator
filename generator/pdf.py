@@ -22,6 +22,7 @@ from filters import PropertyFilter, FilterGroup
 # Import tracing - only if running in cloud environment
 try:
     from common.tracing import get_tracer
+
     tracer = get_tracer(__name__)
 except ImportError:
     # Running locally (CLI), create a no-op tracer
@@ -32,8 +33,10 @@ except ImportError:
     class NoOpSpan:
         def __enter__(self):
             return self
+
         def __exit__(self, *args):
             pass
+
         def set_attribute(self, key, value):
             pass
 
@@ -64,7 +67,9 @@ def collect_and_sort_files(
 
         files = []
         for folder_index, folder in enumerate(source_folders):
-            with tracer.start_as_current_span(f"query_folder_{folder_index}") as folder_span:
+            with tracer.start_as_current_span(
+                f"query_folder_{folder_index}"
+            ) as folder_span:
                 folder_span.set_attribute("folder_id", folder)
                 folder_files = query_drive_files_with_client_filter(
                     drive, folder, client_filter
@@ -150,21 +155,33 @@ def generate_songbook(
         if preface_file_ids:
             with reporter.step(1, "Retrieving preface files...") as step:
                 with tracer.start_as_current_span("get_preface_files") as preface_span:
-                    preface_files = get_files_metadata_by_ids(drive, preface_file_ids, step)
-                    preface_span.set_attribute("preface_files_retrieved", len(preface_files))
+                    preface_files = get_files_metadata_by_ids(
+                        drive, preface_file_ids, step
+                    )
+                    preface_span.set_attribute(
+                        "preface_files_retrieved", len(preface_files)
+                    )
                     click.echo(f"Found {len(preface_files)} preface files.")
 
         if postface_file_ids:
             with reporter.step(1, "Retrieving postface files...") as step:
-                with tracer.start_as_current_span("get_postface_files") as postface_span:
-                    postface_files = get_files_metadata_by_ids(drive, postface_file_ids, step)
-                    postface_span.set_attribute("postface_files_retrieved", len(postface_files))
+                with tracer.start_as_current_span(
+                    "get_postface_files"
+                ) as postface_span:
+                    postface_files = get_files_metadata_by_ids(
+                        drive, postface_file_ids, step
+                    )
+                    postface_span.set_attribute(
+                        "postface_files_retrieved", len(postface_files)
+                    )
                     click.echo(f"Found {len(postface_files)} postface files.")
 
         click.echo("Merging downloaded PDFs into a single master PDF...")
 
         # Load environment variable for page numbering
-        add_page_numbers = os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
+        add_page_numbers = (
+            os.getenv("GENERATOR_ADD_PAGE_NUMBERS", "true").lower() == "true"
+        )
         span.set_attribute("add_page_numbers", add_page_numbers)
 
         with tracer.start_as_current_span("create_songbook_pdf") as pdf_span:
@@ -189,11 +206,17 @@ def generate_songbook(
 
                 # Add preface files after cover
                 if preface_files:
-                    with reporter.step(len(preface_files), "Adding preface files...") as step:
-                        with tracer.start_as_current_span("add_preface_files") as preface_span:
+                    with reporter.step(
+                        len(preface_files), "Adding preface files..."
+                    ) as step:
+                        with tracer.start_as_current_span(
+                            "add_preface_files"
+                        ) as preface_span:
                             for file in preface_files:
                                 with (
-                                    download_file_stream(drive, file, cache) as pdf_stream,
+                                    download_file_stream(
+                                        drive, file, cache
+                                    ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
                                     songbook_pdf.insert_pdf(
@@ -206,16 +229,22 @@ def generate_songbook(
                                         final=0,
                                     )
                                     step.increment(1, f"Added preface: {file['name']}")
-                            preface_span.set_attribute("preface_files_added", len(preface_files))
+                            preface_span.set_attribute(
+                                "preface_files_added", len(preface_files)
+                            )
 
                 # Generate TOC with correct page offset
                 with reporter.step(1, "Generating table of contents..."):
                     with tracer.start_as_current_span("generate_toc"):
-                        toc_pdf, toc_entries = toc.build_table_of_contents(files, page_offset)
+                        toc_pdf, toc_entries = toc.build_table_of_contents(
+                            files, page_offset
+                        )
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)
 
-                with reporter.step(len(files), "Downloading and merging PDFs...") as step:
+                with reporter.step(
+                    len(files), "Downloading and merging PDFs..."
+                ) as step:
                     merge_pdfs(
                         songbook_pdf,
                         files,
@@ -229,11 +258,17 @@ def generate_songbook(
 
                 # Add postface files at the end
                 if postface_files:
-                    with reporter.step(len(postface_files), "Adding postface files...") as step:
-                        with tracer.start_as_current_span("add_postface_files") as postface_span:
+                    with reporter.step(
+                        len(postface_files), "Adding postface files..."
+                    ) as step:
+                        with tracer.start_as_current_span(
+                            "add_postface_files"
+                        ) as postface_span:
                             for i, file in enumerate(postface_files):
                                 with (
-                                    download_file_stream(drive, file, cache) as pdf_stream,
+                                    download_file_stream(
+                                        drive, file, cache
+                                    ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
                                     is_last_postface = i == len(postface_files) - 1
@@ -254,17 +289,23 @@ def generate_songbook(
                                         final=final_value,
                                     )
                                     step.increment(1, f"Added postface: {file['name']}")
-                            postface_span.set_attribute("postface_files_added", len(postface_files))
+                            postface_span.set_attribute(
+                                "postface_files_added", len(postface_files)
+                            )
 
                 # Add TOC links after all content is in place
                 with reporter.step(1, "Adding table of contents links..."):
                     with tracer.start_as_current_span("add_toc_links"):
-                        toc.add_toc_links_to_merged_pdf(songbook_pdf, toc_entries, toc_start_page)
+                        toc.add_toc_links_to_merged_pdf(
+                            songbook_pdf, toc_entries, toc_start_page
+                        )
 
                 with reporter.step(1, "Exporting generated PDF..."):
                     with tracer.start_as_current_span("save_pdf") as save_span:
                         songbook_pdf.save(destination_path)  # Save the merged PDF
-                        save_span.set_attribute("output_file_size", os.path.getsize(destination_path))
+                        save_span.set_attribute(
+                            "output_file_size", os.path.getsize(destination_path)
+                        )
                         if not os.path.exists(destination_path):
                             raise FileNotFoundError(
                                 f"Failed to save master PDF at {destination_path}"
@@ -290,7 +331,9 @@ def merge_pdfs(
         total_files = len(files)
 
         for batch_index, batch in enumerate(batched(files, batch_size)):
-            with tracer.start_as_current_span(f"process_batch_{batch_index}") as batch_span:
+            with tracer.start_as_current_span(
+                f"process_batch_{batch_index}"
+            ) as batch_span:
                 batch_span.set_attribute("batch_size", len(batch))
                 batch_span.set_attribute("batch_index", batch_index)
 
