@@ -482,6 +482,21 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-trace"
+version = "1.16.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c5/ea/0e42e2196fb2bc8c7b25f081a0b46b5053d160b34d5322e7eac2d5f7a742/google_cloud_trace-1.16.2.tar.gz", hash = "sha256:89bef223a512465951eb49335be6d60bee0396d576602dbf56368439d303cab4", size = 97826, upload-time = "2025-06-12T00:53:02.12Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/96/7a8d271e91effa9ccc2fd7cfd5cf287a2d7900080a475477c2ac0c7a331d/google_cloud_trace-1.16.2-py3-none-any.whl", hash = "sha256:40fb74607752e4ee0f3d7e5fc6b8f6eb1803982254a1507ba918172484131456", size = 103755, upload-time = "2025-06-12T00:53:00.672Z" },
+]
+
+[[package]]
 name = "google-crc32c"
 version = "1.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -785,6 +800,48 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-exporter-gcp-trace"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-cloud-trace" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-resourcedetector-gcp" },
+    { name = "opentelemetry-sdk" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c3/15/7556d54b01fb894497f69a98d57faa9caa45ffa59896e0bba6847a7f0d15/opentelemetry_exporter_gcp_trace-1.9.0.tar.gz", hash = "sha256:c3fc090342f6ee32a0cc41a5716a6bb716b4422d19facefcb22dc4c6b683ece8", size = 18568, upload-time = "2025-02-04T19:45:08.185Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/cd/6d7fbad05771eb3c2bace20f6360ce5dac5ca751c6f2122853e43830c32e/opentelemetry_exporter_gcp_trace-1.9.0-py3-none-any.whl", hash = "sha256:0a8396e8b39f636eeddc3f0ae08ddb40c40f288bc8c5544727c3581545e77254", size = 13973, upload-time = "2025-02-04T19:44:59.148Z" },
+]
+
+[[package]]
+name = "opentelemetry-propagator-gcp"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/08/2a/a4f67888d24f9e7483f8860958eb14ae418e0297749d9c3eb1f1add2e202/opentelemetry_propagator_gcp-1.9.0.tar.gz", hash = "sha256:ddc08b7742b17bd36668b042dbf43e1205aaa61e98f05c2040bc7612caa6dc87", size = 10516, upload-time = "2025-02-04T19:45:09.882Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/22/f6ceae4240ce62d8c4f9c8939204440fd04cf465e9f5aa2bad06bc557686/opentelemetry_propagator_gcp-1.9.0-py3-none-any.whl", hash = "sha256:80affc99d5dde26fdf2b1c9bf1daafee3bb56c399172e1cc64aa3e0911d6fcf8", size = 9605, upload-time = "2025-02-04T19:45:00.321Z" },
+]
+
+[[package]]
+name = "opentelemetry-resourcedetector-gcp"
+version = "1.9.0a0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e1/86/f0693998817779802525a5bcc885a3cdb68d05b636bc6faae5c9ade4bee4/opentelemetry_resourcedetector_gcp-1.9.0a0.tar.gz", hash = "sha256:6860a6649d1e3b9b7b7f09f3918cc16b72aa0c0c590d2a72ea6e42b67c9a42e7", size = 20730, upload-time = "2025-02-04T19:45:10.693Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/04/7e33228c88422a5518e1774a836c9ec68f10f51bde0f1d5dd5f3054e612a/opentelemetry_resourcedetector_gcp-1.9.0a0-py3-none-any.whl", hash = "sha256:4e5a0822b0f0d7647b7ceb282d7aa921dd7f45466540bd0a24f954f90db8fde8", size = 20378, upload-time = "2025-02-04T19:45:03.898Z" },
+]
+
+[[package]]
 name = "opentelemetry-sdk"
 version = "1.34.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1084,7 +1141,11 @@ dependencies = [
     { name = "google-auth" },
     { name = "google-cloud-firestore" },
     { name = "google-cloud-pubsub" },
+    { name = "google-cloud-trace" },
     { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-gcp-trace" },
+    { name = "opentelemetry-propagator-gcp" },
+    { name = "opentelemetry-resourcedetector-gcp" },
     { name = "opentelemetry-sdk" },
     { name = "psutil" },
     { name = "pymupdf" },
@@ -1109,7 +1170,11 @@ requires-dist = [
     { name = "google-auth", specifier = ">=2.40.3" },
     { name = "google-cloud-firestore", specifier = ">=2.21.0" },
     { name = "google-cloud-pubsub", specifier = ">=2.30.0" },
+    { name = "google-cloud-trace", specifier = ">=1.14.2" },
     { name = "opentelemetry-api", specifier = ">=1.34.1" },
+    { name = "opentelemetry-exporter-gcp-trace", specifier = ">=1.7.0" },
+    { name = "opentelemetry-propagator-gcp", specifier = ">=1.7.0" },
+    { name = "opentelemetry-resourcedetector-gcp", specifier = ">=1.7.0" },
     { name = "opentelemetry-sdk", specifier = ">=1.34.1" },
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pymupdf", specifier = ">=1.26.1" },
