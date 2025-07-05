@@ -53,11 +53,12 @@ def handle_post(req):
         # 2) Publish Pub/Sub event
         with tracer.start_as_current_span("publish_pubsub_message") as pubsub_span:
             message = {"job_id": job_id, "params": payload}
+            serialized_message = json.dumps(message)
             print(f"Publishing message to Pub/Sub topic: {topic_path}")
-            future = publisher.publish(topic_path, json.dumps(message).encode("utf-8"))
+            future = publisher.publish(topic_path, serialized_message.encode("utf-8"))
             future.result()
             pubsub_span.set_attribute("pubsub.topic", PUBSUB_TOPIC)
-            pubsub_span.set_attribute("pubsub.message_size", len(json.dumps(message)))
+            pubsub_span.set_attribute("pubsub.message_size", len(serialized_message))
 
         # 3) Return job ID
         body = json.dumps({"job_id": job_id, "status": "queued"})
