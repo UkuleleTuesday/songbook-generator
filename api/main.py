@@ -5,12 +5,54 @@ import functions_framework
 from datetime import datetime, timedelta
 from flask import make_response
 from google.cloud import pubsub_v1, firestore
+
+# Initialize OpenTelemetry for Google Cloud Trace
 from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.resourcedetector.gcp import GoogleCloudResourceDetector
+from opentelemetry.propagators.cloud_trace import CloudTraceFormatPropagator
+from opentelemetry import propagate
 
 # Initialize clients once at cold start
 PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
 PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
 FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
+
+# Set up OpenTelemetry tracing
+def setup_tracing():
+    # Detect GCP resource information
+    gcp_resource_detector = GoogleCloudResourceDetector()
+    resource = gcp_resource_detector.detect()
+    
+    # Merge with service-specific attributes
+    resource = resource.merge(Resource.create({
+        "service.name": "songbook-generator-api",
+        "service.version": "0.1.0",
+    }))
+    
+    # Create tracer provider with sampling
+    tracer_provider = TracerProvider(
+        resource=resource,
+        sampler=TraceIdRatioBased(1.0)  # Sample all traces for now
+    )
+    
+    # Add Cloud Trace exporter
+    cloud_trace_exporter = CloudTraceSpanExporter(project_id=PROJECT_ID)
+    span_processor = BatchSpanProcessor(cloud_trace_exporter)
+    tracer_provider.add_span_processor(span_processor)
+    
+    # Set the tracer provider
+    trace.set_tracer_provider(tracer_provider)
+    
+    # Set up Cloud Trace propagator
+    propagate.set_global_textmap(CloudTraceFormatPropagator())
+
+# Initialize tracing
+setup_tracing()
 
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
