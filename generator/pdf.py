@@ -331,9 +331,7 @@ def merge_pdfs(
         total_files = len(files)
 
         for batch_index, batch in enumerate(batched(files, batch_size)):
-            with tracer.start_as_current_span(
-                f"process_batch_{batch_index}"
-            ) as batch_span:
+            with tracer.start_as_current_span("process_pdf_merge_batch") as batch_span:
                 batch_span.set_attribute("batch_size", len(batch))
                 batch_span.set_attribute("batch_index", batch_index)
 
