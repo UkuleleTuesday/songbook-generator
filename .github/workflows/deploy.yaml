@@ -142,6 +142,12 @@ jobs:
           echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
         fi
 
+    - name: Copy common directory to api
+      run: |
+        echo "Copying common directory to api for deployment..."
+        cp -r common api/
+        ls -la api/
+
     - name: Generate requirements.txt
       run: |
         uv export --no-emit-project --format requirements-txt > api/requirements.txt
@@ -203,6 +209,12 @@ jobs:
         else
           echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
         fi
+
+    - name: Copy common directory to generator
+      run: |
+        echo "Copying common directory to generator for deployment..."
+        cp -r common generator/
+        ls -la generator/
 
     - name: Generate requirements.txt
       run: |
