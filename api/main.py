@@ -27,27 +27,27 @@ def setup_tracing():
     # Detect GCP resource information
     gcp_resource_detector = GoogleCloudResourceDetector()
     resource = gcp_resource_detector.detect()
-    
+
     # Merge with service-specific attributes
     resource = resource.merge(Resource.create({
         "service.name": "songbook-generator-api",
         "service.version": "0.1.0",
     }))
-    
+
     # Create tracer provider with sampling
     tracer_provider = TracerProvider(
         resource=resource,
         sampler=TraceIdRatioBased(1.0)  # Sample all traces for now
     )
-    
+
     # Add Cloud Trace exporter
     cloud_trace_exporter = CloudTraceSpanExporter(project_id=PROJECT_ID)
     span_processor = BatchSpanProcessor(cloud_trace_exporter)
     tracer_provider.add_span_processor(span_processor)
-    
+
     # Set the tracer provider
     trace.set_tracer_provider(tracer_provider)
-    
+
     # Set up Cloud Trace propagator
     propagate.set_global_textmap(CloudTraceFormatPropagator())
 
