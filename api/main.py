@@ -22,6 +22,7 @@ PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
 PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
 FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
+
 # Set up OpenTelemetry tracing
 def setup_tracing():
     # Detect GCP resource information
@@ -29,15 +30,19 @@ def setup_tracing():
     resource = gcp_resource_detector.detect()
 
     # Merge with service-specific attributes
-    resource = resource.merge(Resource.create({
-        "service.name": "songbook-generator-api",
-        "service.version": "0.1.0",
-    }))
+    resource = resource.merge(
+        Resource.create(
+            {
+                "service.name": "songbook-generator-api",
+                "service.version": "0.1.0",
+            }
+        )
+    )
 
     # Create tracer provider with sampling
     tracer_provider = TracerProvider(
         resource=resource,
-        sampler=TraceIdRatioBased(1.0)  # Sample all traces for now
+        sampler=TraceIdRatioBased(1.0),  # Sample all traces for now
     )
 
     # Add Cloud Trace exporter
@@ -50,6 +55,7 @@ def setup_tracing():
 
     # Set up Cloud Trace propagator
     propagate.set_global_textmap(CloudTraceFormatPropagator())
+
 
 # Initialize tracing
 setup_tracing()
