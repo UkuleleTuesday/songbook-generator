@@ -5,12 +5,12 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
-@patch('tracing.GoogleCloudResourceDetector')
-@patch('tracing.CloudTraceSpanExporter')
-@patch('tracing.BatchSpanProcessor')
-@patch('tracing.TracerProvider')
-@patch('tracing.trace.set_tracer_provider')
-@patch('tracing.propagate.set_global_textmap')
+@patch("tracing.GoogleCloudResourceDetector")
+@patch("tracing.CloudTraceSpanExporter")
+@patch("tracing.BatchSpanProcessor")
+@patch("tracing.TracerProvider")
+@patch("tracing.trace.set_tracer_provider")
+@patch("tracing.propagate.set_global_textmap")
 def test_setup_tracing_success(
     mock_set_global_textmap,
     mock_set_tracer_provider,
@@ -21,7 +21,7 @@ def test_setup_tracing_success(
 ):
     """Test that setup_tracing configures all components correctly."""
     # Mock environment
-    with patch.dict(os.environ, {'GOOGLE_CLOUD_PROJECT': 'test-project'}):
+    with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test-project"}):
         # Mock the resource detector and resource
         mock_resource_detector = MagicMock()
         mock_resource = MagicMock()
@@ -43,6 +43,7 @@ def test_setup_tracing_success(
 
         # Import and call setup_tracing
         from tracing import setup_tracing
+
         setup_tracing()
 
         # Verify resource detector was called
@@ -63,7 +64,9 @@ def test_setup_tracing_success(
         assert call_kwargs["sampler"] is not None
 
         # Verify exporter was created with project ID
-        mock_cloud_trace_exporter_class.assert_called_once_with(project_id='test-project')
+        mock_cloud_trace_exporter_class.assert_called_once_with(
+            project_id="test-project"
+        )
 
         # Verify processor was created with exporter
         mock_batch_span_processor_class.assert_called_once_with(mock_exporter)
@@ -87,7 +90,7 @@ def test_setup_tracing_missing_project_id():
             setup_tracing()
 
 
-@patch('tracing.trace.get_tracer')
+@patch("tracing.trace.get_tracer")
 def test_get_tracer(mock_get_tracer):
     """Test that get_tracer calls the OpenTelemetry get_tracer function."""
     mock_tracer = MagicMock()
@@ -108,4 +111,4 @@ def test_get_tracer_returns_callable():
     tracer = get_tracer("test-service")
 
     # Should have tracer methods
-    assert hasattr(tracer, 'start_span') or hasattr(tracer, 'start_as_current_span')
+    assert hasattr(tracer, "start_span") or hasattr(tracer, "start_as_current_span")
