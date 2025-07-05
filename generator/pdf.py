@@ -28,7 +28,7 @@ except ImportError:
     class NoOpTracer:
         def start_as_current_span(self, name):
             return NoOpSpan()
-    
+
     class NoOpSpan:
         def __enter__(self):
             return self
@@ -36,7 +36,7 @@ except ImportError:
             pass
         def set_attribute(self, key, value):
             pass
-    
+
     tracer = NoOpTracer()
 
 
@@ -61,7 +61,7 @@ def collect_and_sort_files(
     with tracer.start_as_current_span("collect_and_sort_files") as span:
         span.set_attribute("source_folders_count", len(source_folders))
         span.set_attribute("has_client_filter", client_filter is not None)
-        
+
         files = []
         for folder_index, folder in enumerate(source_folders):
             with tracer.start_as_current_span(f"query_folder_{folder_index}") as folder_span:
@@ -71,7 +71,7 @@ def collect_and_sort_files(
                 )
                 files.extend(folder_files)
                 folder_span.set_attribute("files_found", len(folder_files))
-                
+
                 if progress_step:
                     progress_step.increment(
                         1 / len(source_folders),
@@ -105,7 +105,7 @@ def generate_songbook(
             span.set_attribute("preface_files_count", len(preface_file_ids))
         if postface_file_ids:
             span.set_attribute("postface_files_count", len(postface_file_ids))
-        
+
         reporter = progress.ProgressReporter(on_progress)
 
         with reporter.step(1, "Initializing cache..."):
@@ -285,7 +285,7 @@ def merge_pdfs(
         span.set_attribute("files_count", len(files))
         span.set_attribute("batch_size", batch_size)
         span.set_attribute("add_page_numbers", add_page_numbers)
-        
+
         current_page = 1 + page_offset
         total_files = len(files)
 
@@ -293,7 +293,7 @@ def merge_pdfs(
             with tracer.start_as_current_span(f"process_batch_{batch_index}") as batch_span:
                 batch_span.set_attribute("batch_size", len(batch))
                 batch_span.set_attribute("batch_index", batch_index)
-                
+
                 for file in batch:
                     with (
                         download_file_stream(drive, file, cache) as pdf_stream,

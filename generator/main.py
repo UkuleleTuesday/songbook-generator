@@ -213,7 +213,7 @@ def main(cloud_event):
             # on any failure, mark FAILED
             main_span.set_attribute("error", str(e))
             main_span.set_attribute("status", "FAILED")
-            
+
             job_ref.update(
                 {
                     "status": "FAILED",
