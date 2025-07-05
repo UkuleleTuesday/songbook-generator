@@ -5,19 +5,19 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
-@patch("tracing.GoogleCloudResourceDetector")
-@patch("tracing.CloudTraceSpanExporter")
-@patch("tracing.BatchSpanProcessor")
-@patch("tracing.TracerProvider")
-@patch("tracing.trace.set_tracer_provider")
 @patch("tracing.propagate.set_global_textmap")
+@patch("tracing.trace.set_tracer_provider")
+@patch("tracing.TracerProvider")
+@patch("tracing.BatchSpanProcessor")
+@patch("tracing.CloudTraceSpanExporter")
+@patch("tracing.GoogleCloudResourceDetector")
 def test_setup_tracing_success(
-    mock_set_global_textmap,
-    mock_set_tracer_provider,
-    mock_tracer_provider_class,
-    mock_batch_span_processor_class,
-    mock_cloud_trace_exporter_class,
     mock_resource_detector_class,
+    mock_cloud_trace_exporter_class,
+    mock_batch_span_processor_class,
+    mock_tracer_provider_class,
+    mock_set_tracer_provider,
+    mock_set_global_textmap,
 ):
     """Test that setup_tracing configures all components correctly."""
     # Mock environment
@@ -44,7 +44,7 @@ def test_setup_tracing_success(
         # Import and call setup_tracing
         from tracing import setup_tracing
 
-        setup_tracing()
+        setup_tracing("test-service")
 
         # Verify resource detector was called
         mock_resource_detector_class.assert_called_once()
@@ -54,7 +54,7 @@ def test_setup_tracing_success(
         mock_resource.merge.assert_called_once()
         merge_call_args = mock_resource.merge.call_args[0][0]
         assert "service.name" in merge_call_args.attributes
-        assert merge_call_args.attributes["service.name"] == "songbook-generator-api"
+        assert merge_call_args.attributes["service.name"] == "test-service"
         assert merge_call_args.attributes["service.version"] == "0.1.0"
 
         # Verify tracer provider was created with correct parameters
@@ -87,7 +87,7 @@ def test_setup_tracing_missing_project_id():
         from tracing import setup_tracing
 
         with pytest.raises(KeyError):
-            setup_tracing()
+            setup_tracing("test-service")
 
 
 @patch("tracing.trace.get_tracer")
