@@ -27,20 +27,20 @@ def authenticate_drive():
 def query_drive_files(drive, folder_id):
     """
     Query all PDF files in a Google Drive folder.
-    
+
     Args:
         drive: Authenticated Google Drive service
         folder_id: Google Drive folder ID
-        
+
     Returns:
         List of file dictionaries with 'id' and 'name' keys
     """
     files = []
     page_token = None
-    
+
     while True:
         query = f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false"
-        
+
         try:
             results = drive.files().list(
                 q=query,
@@ -48,18 +48,18 @@ def query_drive_files(drive, folder_id):
                 pageToken=page_token,
                 pageSize=1000
             ).execute()
-            
+
             items = results.get("files", [])
             files.extend(items)
-            
+
             page_token = results.get("nextPageToken")
             if not page_token:
                 break
-                
+
         except Exception as e:
             print(f"Error querying Drive files: {e}")
             break
-    
+
     return files
 
 
