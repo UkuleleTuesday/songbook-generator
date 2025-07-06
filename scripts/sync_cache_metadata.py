@@ -223,7 +223,9 @@ def main():
     if not bucket_name:
         bucket_name = os.environ.get("GCS_WORKER_CACHE_BUCKET")
         if not bucket_name:
-            print("Error: No bucket specified. Use --bucket argument or set GCS_WORKER_CACHE_BUCKET environment variable.")
+            print(
+                "Error: No bucket specified. Use --bucket argument or set GCS_WORKER_CACHE_BUCKET environment variable."
+            )
             sys.exit(1)
 
     try:
