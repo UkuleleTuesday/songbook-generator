@@ -51,17 +51,21 @@ def fetch_and_merge_pdfs():
             downloaded_files = []
 
             # Download each PDF file
-            with tracer.start_as_current_span("download_files") as download_span:
+            with tracer.start_as_current_span("download_files") as downloads_span:
                 for blob in pdf_blobs:
                     # Replace path separators with underscores for local filename
                     filename = blob.name.replace("/", "_")
                     local_path = os.path.join(temp_dir, filename)
 
                     print(f"Downloading {blob.name} to {filename}")
-                    blob.download_to_filename(local_path)
+                    with tracer.start_as_current_span("download_file") as download_span:
+                        download_span.set_attribute("blob_name", blob.name)
+                        download_span.set_attribute("local_path", local_path)
+                        blob.download_to_filename(local_path)
+                        print(f"Downloading {blob.name} to {filename}")
                     downloaded_files.append(local_path)
 
-                download_span.set_attribute("downloaded_count", len(downloaded_files))
+                downloads_span.set_attribute("downloaded_count", len(downloaded_files))
 
             # Sort files for consistent ordering
             downloaded_files.sort()

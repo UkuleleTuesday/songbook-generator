@@ -26,6 +26,7 @@ dependencies = [
     "psutil>=7.0.0",
     "pymupdf>=1.26.1",
     "toml>=0.10.2",
+    "pypdf2>=3.0.1",
 ]
 
 [project.scripts]
