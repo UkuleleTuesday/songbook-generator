@@ -1,6 +1,7 @@
 import os
 import tempfile
 import PyPDF2
+import fitz
 import functions_framework
 from google.cloud import storage
 import traceback
@@ -52,8 +53,9 @@ def fetch_and_merge_pdfs(output_path):
                 return None
 
             downloaded_files = []
+            file_metadata = []
 
-            # Download each PDF file
+            # Download each PDF file and collect metadata
             with tracer.start_as_current_span("download_files") as downloads_span:
                 for blob in pdf_blobs:
                     # Replace path separators with underscores for local filename
@@ -66,21 +68,43 @@ def fetch_and_merge_pdfs(output_path):
                         download_span.set_attribute("local_path", local_path)
                         blob.download_to_filename(local_path)
                         print(f"Downloading {blob.name} to {filename}")
+
                     downloaded_files.append(local_path)
+                    
+                    # Extract metadata for TOC
+                    blob_metadata = blob.metadata or {}
+                    song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
+                    file_metadata.append({
+                        "path": local_path,
+                        "name": song_name,
+                        "blob_name": blob.name
+                    })
 
                 downloads_span.set_attribute("downloaded_count", len(downloaded_files))
 
-            # Sort files for consistent ordering
-            downloaded_files.sort()
+            # Sort files and metadata for consistent ordering
+            file_metadata.sort(key=lambda x: x["name"])
 
             # Merge PDFs
             with tracer.start_as_current_span("merge_pdfs") as merge_span:
-                print(f"Merging {len(downloaded_files)} PDF files...")
+                print(f"Merging {len(file_metadata)} PDF files...")
                 merger = PyPDF2.PdfMerger()
+                toc_entries = []
+                current_page = 0
 
-                for file_path in downloaded_files:
-                    print(f"Adding {os.path.basename(file_path)} to merger")
-                    merger.append(file_path)
+                for file_info in file_metadata:
+                    print(f"Adding {file_info['name']} to merger")
+                    
+                    # Count pages in this PDF to track TOC positions
+                    with open(file_info["path"], "rb") as pdf_file:
+                        pdf_reader = PyPDF2.PdfReader(pdf_file)
+                        page_count = len(pdf_reader.pages)
+                    
+                    # Add to TOC (page numbers are 1-based for user display)
+                    toc_entries.append([1, file_info["name"], current_page + 1])
+                    current_page += page_count
+                    
+                    merger.append(file_info["path"])
 
                 # Write combined PDF to temporary file
                 temp_output_path = os.path.join(temp_dir, "combined.pdf")
@@ -88,9 +112,27 @@ def fetch_and_merge_pdfs(output_path):
                 merger.close()
 
                 merge_span.set_attribute("temp_output_path", temp_output_path)
-                merge_span.set_attribute("merged_files", len(downloaded_files))
+                merge_span.set_attribute("merged_files", len(file_metadata))
+                merge_span.set_attribute("toc_entries", len(toc_entries))
 
                 print(f"Successfully created combined PDF: {temp_output_path}")
+
+                # Add table of contents using PyMuPDF
+                with tracer.start_as_current_span("add_toc") as toc_span:
+                    print("Adding table of contents to merged PDF...")
+                    
+                    # Open the merged PDF with PyMuPDF
+                    doc = fitz.open(temp_output_path)
+                    
+                    # Set the table of contents
+                    doc.set_toc(toc_entries)
+                    
+                    # Save the PDF with TOC
+                    doc.save(temp_output_path, incremental=False)
+                    doc.close()
+                    
+                    toc_span.set_attribute("toc_entries_added", len(toc_entries))
+                    print(f"Added {len(toc_entries)} entries to table of contents")
 
                 # Copy the file to the final output location
                 import shutil
