@@ -26,7 +26,8 @@ dependencies = [
     "pymupdf>=1.26.1",
     "toml>=0.10.2",
     "pypdf2>=3.0.1",
-    "opentelemetry-exporter-otlp-proto-http>=1.34.1",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.34.1",
+    "grpcio>=1.73.1",
 ]
 
 [project.scripts]
