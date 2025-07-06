@@ -17,7 +17,7 @@ from opentelemetry import propagate
 def setup_tracing(service_name: str):
     """Set up OpenTelemetry tracing with Google Cloud Trace."""
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    
+
     if not project_id:
         # Running locally, don't set up tracing
         print(f"No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for {service_name}")
@@ -58,9 +58,5 @@ def setup_tracing(service_name: str):
 def get_tracer(name: str):
     """Get a tracer instance."""
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-    
-    if not project_id:
-        # Return OpenTelemetry's built-in no-op tracer for local development
-        return trace.NoOpTracer()
-    
+
     return trace.get_tracer(name)

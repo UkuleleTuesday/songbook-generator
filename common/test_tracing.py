@@ -1,7 +1,6 @@
 """Tests for the tracing module."""
 
 import os
-import pytest
 from unittest.mock import patch, MagicMock
 
 
@@ -88,7 +87,7 @@ def test_setup_tracing_missing_project_id(capsys):
 
         # Should not raise an exception, just print a message
         setup_tracing("test-service")
-        
+
         # Verify the expected message was printed
         captured = capsys.readouterr()
         assert "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for test-service" in captured.out
