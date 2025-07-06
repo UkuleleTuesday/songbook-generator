@@ -13,6 +13,7 @@ import google.auth.transport.requests
 import grpc
 from google.auth.transport.grpc import AuthMetadataPlugin
 
+
 def setup_tracing():
     # Retrieve and store Google application-default credentials
     credentials, project_id = google.auth.default()
@@ -21,9 +22,7 @@ def setup_tracing():
 
     # Supply the request and credentials to AuthMetadataPlugin
     # AuthMeatadataPlugin inserts credentials into each request
-    auth_metadata_plugin = AuthMetadataPlugin(
-        credentials=credentials, request=request
-    )
+    auth_metadata_plugin = AuthMetadataPlugin(credentials=credentials, request=request)
 
     # Initialize gRPC channel credentials using the AuthMetadataPlugin
     channel_creds = grpc.composite_channel_credentials(
