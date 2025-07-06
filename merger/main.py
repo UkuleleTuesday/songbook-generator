@@ -21,9 +21,14 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 tracer = get_tracer(__name__)
 
 
-def fetch_and_merge_pdfs():
+def fetch_and_merge_pdfs(output_path=None):
     """
     Fetch all song sheet PDFs from GCS cache bucket and merge them into a single PDF.
+
+    Args:
+        output_path: Optional path where the merged PDF should be saved.
+                    If None, returns path to temporary file (Cloud Function mode).
+                    If provided, copies the file there (CLI mode).
 
     Returns:
         str: Path to the merged PDF file
@@ -80,15 +85,26 @@ def fetch_and_merge_pdfs():
                     merger.append(file_path)
 
                 # Write combined PDF to temporary file
-                output_path = os.path.join(temp_dir, "combined.pdf")
-                merger.write(output_path)
+                temp_output_path = os.path.join(temp_dir, "combined.pdf")
+                merger.write(temp_output_path)
                 merger.close()
 
-                merge_span.set_attribute("output_path", output_path)
+                merge_span.set_attribute("temp_output_path", temp_output_path)
                 merge_span.set_attribute("merged_files", len(downloaded_files))
 
-                print(f"Successfully created combined PDF: {output_path}")
-                return output_path
+                print(f"Successfully created combined PDF: {temp_output_path}")
+
+                # If output_path is specified, copy the file there before temp dir is cleaned up
+                if output_path:
+                    import shutil
+                    print(f"Copying merged PDF to: {output_path}")
+                    shutil.copy2(temp_output_path, output_path)
+                    merge_span.set_attribute("final_output_path", output_path)
+                    return output_path
+                else:
+                    # For Cloud Function mode, we need to return the temp path
+                    # and handle reading the file before the context exits
+                    return temp_output_path
 
 
 @functions_framework.http
@@ -98,7 +114,7 @@ def main(request):
         try:
             print("Starting PDF merge operation")
 
-            # Fetch and merge PDFs
+            # Fetch and merge PDFs (Cloud Function mode - no output_path)
             with tracer.start_as_current_span("merge_operation") as merge_span:
                 merged_pdf_path = fetch_and_merge_pdfs()
 
@@ -108,11 +124,12 @@ def main(request):
 
                 merge_span.set_attribute("merged_pdf_path", merged_pdf_path)
 
-            # Read the merged PDF and return it
-            with tracer.start_as_current_span("return_pdf") as return_span:
+                # Read the merged PDF data while the temp file still exists
                 with open(merged_pdf_path, "rb") as pdf_file:
                     pdf_data = pdf_file.read()
 
+            # Return the PDF data
+            with tracer.start_as_current_span("return_pdf") as return_span:
                 return_span.set_attribute("pdf_size_bytes", len(pdf_data))
                 main_span.set_attribute("status", "success")
 
@@ -153,18 +170,14 @@ def cli_main():
     try:
         print("Starting PDF merge operation (CLI mode)")
 
-        merged_pdf_path = fetch_and_merge_pdfs()
+        # Pass the output path so the file is copied before temp cleanup
+        result_path = fetch_and_merge_pdfs(output_path=args.output)
 
-        if not merged_pdf_path:
+        if not result_path:
             print("Error: No PDF files found to merge")
             return 1
 
-        # Copy the merged PDF to the specified output location
-        import shutil
-
-        shutil.copy2(merged_pdf_path, args.output)
-
-        print(f"Successfully created merged PDF: {args.output}")
+        print(f"Successfully created merged PDF: {result_path}")
         return 0
 
     except Exception as e:
