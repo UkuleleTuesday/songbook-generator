@@ -207,8 +207,7 @@ def main():
     parser.add_argument("folder_id", help="Google Drive folder ID to sync from")
     parser.add_argument(
         "--bucket",
-        default="songbook-generator-worker-cache",
-        help="GCS bucket name (default: songbook-generator-worker-cache)",
+        help="GCS bucket name",
     )
     parser.add_argument(
         "--dry-run",
