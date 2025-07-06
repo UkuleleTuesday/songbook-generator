@@ -106,16 +106,20 @@ def main(request):
 
             # Read the merged PDF and return it
             with tracer.start_as_current_span("return_pdf") as return_span:
-                with open(merged_pdf_path, 'rb') as pdf_file:
+                with open(merged_pdf_path, "rb") as pdf_file:
                     pdf_data = pdf_file.read()
 
                 return_span.set_attribute("pdf_size_bytes", len(pdf_data))
                 main_span.set_attribute("status", "success")
 
-                return pdf_data, 200, {
-                    'Content-Type': 'application/pdf',
-                    'Content-Disposition': 'attachment; filename="merged-songbook.pdf"'
-                }
+                return (
+                    pdf_data,
+                    200,
+                    {
+                        "Content-Type": "application/pdf",
+                        "Content-Disposition": 'attachment; filename="merged-songbook.pdf"',
+                    },
+                )
 
         except Exception as e:
             main_span.set_attribute("error", str(e))
