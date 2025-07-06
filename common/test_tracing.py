@@ -37,7 +37,7 @@ def test_setup_tracing_runs_without_error(monkeypatch):
     from tracing import setup_tracing
 
     # Should not raise any exceptions
-    setup_tracing()
+    setup_tracing("test-service")
 
 
 def test_get_tracer_with_project_id():

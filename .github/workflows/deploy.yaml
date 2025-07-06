@@ -180,7 +180,8 @@ jobs:
           --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \
           --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
           --set-env-vars=JOB_TTL_DAYS=3 \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=$API_FN_NAME" \
+          --set-env-vars=OTEL_SERVICE_NAME=songbook-api \
+          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api" \
           --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
           --set-env-vars=LOG_LEVEL=info
 
@@ -253,7 +254,8 @@ jobs:
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
           --set-env-vars=GCP_REGION=${{ env.GCP_REGION }} \
           --set-env-vars=GENERATOR_ADD_PAGE_NUMBERS=${{ env.GENERATOR_ADD_PAGE_NUMBERS }} \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=$WORKER_FN_NAME" \
+          --set-env-vars=OTEL_SERVICE_NAME=songbook-generator \
+          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator" \
           --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
           --set-env-vars=LOG_LEVEL=info
 
@@ -318,7 +320,8 @@ jobs:
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=$MERGER_FN_NAME" \
+          --set-env-vars=OTEL_SERVICE_NAME=songbook-merger \
+          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger" \
           --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
           --set-env-vars=LOG_LEVEL=info
 

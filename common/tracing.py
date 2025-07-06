@@ -32,10 +32,10 @@ def setup_tracing(service_name):
 
     resource = Resource.create(
         attributes={
+            SERVICE_NAME: service_name,
             # Use the PID as the service.instance.id to avoid duplicate timeseries
             # from different Gunicorn worker processes.
             SERVICE_INSTANCE_ID: f"worker-{os.getpid()}",
-            SERVICE_NAME: service_name
         }
     )
 
