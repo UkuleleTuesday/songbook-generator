@@ -4,7 +4,7 @@ import os
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, Resource
+from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, SERVICE_NAME, Resource
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
 import google.auth
@@ -14,7 +14,7 @@ import grpc
 from google.auth.transport.grpc import AuthMetadataPlugin
 
 
-def setup_tracing():
+def setup_tracing(service_name):
     # Retrieve and store Google application-default credentials
     credentials, project_id = google.auth.default()
     # Request used to refresh credentials upon expiry
@@ -35,6 +35,7 @@ def setup_tracing():
             # Use the PID as the service.instance.id to avoid duplicate timeseries
             # from different Gunicorn worker processes.
             SERVICE_INSTANCE_ID: f"worker-{os.getpid()}",
+            SERVICE_NAME: service_name
         }
     )
 
