@@ -24,11 +24,9 @@ def test_setup_tracing_success(
         # Mock the resource detector and resource
         mock_resource_detector = MagicMock()
         mock_resource = MagicMock()
-        mock_merged_resource = MagicMock()
 
         mock_resource_detector_class.return_value = mock_resource_detector
         mock_resource_detector.detect.return_value = mock_resource
-        mock_resource.merge.return_value = mock_merged_resource
 
         # Mock the tracer provider
         mock_tracer_provider = MagicMock()
@@ -43,23 +41,16 @@ def test_setup_tracing_success(
         # Import and call setup_tracing
         from tracing import setup_tracing
 
-        setup_tracing("test-service")
+        setup_tracing()
 
         # Verify resource detector was called
         mock_resource_detector_class.assert_called_once()
         mock_resource_detector.detect.assert_called_once()
 
-        # Verify resource was merged with service attributes
-        mock_resource.merge.assert_called_once()
-        merge_call_args = mock_resource.merge.call_args[0][0]
-        assert "service.name" in merge_call_args.attributes
-        assert merge_call_args.attributes["service.name"] == "test-service"
-        assert merge_call_args.attributes["service.version"] == "0.1.0"
-
         # Verify tracer provider was created with correct parameters
         mock_tracer_provider_class.assert_called_once()
         call_kwargs = mock_tracer_provider_class.call_args[1]
-        assert call_kwargs["resource"] == mock_merged_resource
+        assert call_kwargs["resource"] == mock_resource
         assert call_kwargs["sampler"] is not None
 
         # Verify exporter was created with project ID
@@ -86,12 +77,12 @@ def test_setup_tracing_missing_project_id(capsys):
         from tracing import setup_tracing
 
         # Should not raise an exception, just print a message
-        setup_tracing("test-service")
+        setup_tracing()
 
         # Verify the expected message was printed
         captured = capsys.readouterr()
         assert (
-            "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for test-service"
+            "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup"
             in captured.out
         )
 
