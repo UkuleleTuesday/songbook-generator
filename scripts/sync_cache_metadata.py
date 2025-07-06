@@ -39,15 +39,21 @@ def query_drive_files(drive, folder_id):
     page_token = None
 
     while True:
-        query = f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false"
+        query = (
+            f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false"
+        )
 
         try:
-            results = drive.files().list(
-                q=query,
-                fields="nextPageToken, files(id, name)",
-                pageToken=page_token,
-                pageSize=1000
-            ).execute()
+            results = (
+                drive.files()
+                .list(
+                    q=query,
+                    fields="nextPageToken, files(id, name)",
+                    pageToken=page_token,
+                    pageSize=1000,
+                )
+                .execute()
+            )
 
             items = results.get("files", [])
             files.extend(items)
