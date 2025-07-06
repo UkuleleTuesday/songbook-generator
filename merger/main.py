@@ -24,7 +24,7 @@ tracer = get_tracer(__name__)
 def fetch_and_merge_pdfs():
     """
     Fetch all song sheet PDFs from GCS cache bucket and merge them into a single PDF.
-    
+
     Returns:
         str: Path to the merged PDF file
     """
@@ -39,7 +39,7 @@ def fetch_and_merge_pdfs():
                 prefix = "song-sheets/"
                 blobs = list(cache_bucket.list_blobs(prefix=prefix))
                 pdf_blobs = [blob for blob in blobs if blob.name.endswith(".pdf")]
-                
+
                 list_span.set_attribute("total_blobs", len(blobs))
                 list_span.set_attribute("pdf_blobs", len(pdf_blobs))
                 main_span.set_attribute("pdf_count", len(pdf_blobs))
@@ -79,7 +79,7 @@ def fetch_and_merge_pdfs():
                 output_path = os.path.join(temp_dir, "combined.pdf")
                 merger.write(output_path)
                 merger.close()
-                
+
                 merge_span.set_attribute("output_path", output_path)
                 merge_span.set_attribute("merged_files", len(downloaded_files))
 
@@ -93,11 +93,11 @@ def main(request):
     with tracer.start_as_current_span("merger_main") as main_span:
         try:
             print("Starting PDF merge operation")
-            
+
             # Fetch and merge PDFs
             with tracer.start_as_current_span("merge_operation") as merge_span:
                 merged_pdf_path = fetch_and_merge_pdfs()
-                
+
                 if not merged_pdf_path:
                     main_span.set_attribute("status", "no_files")
                     return {"error": "No PDF files found to merge"}, 404
@@ -108,10 +108,10 @@ def main(request):
             with tracer.start_as_current_span("return_pdf") as return_span:
                 with open(merged_pdf_path, 'rb') as pdf_file:
                     pdf_data = pdf_file.read()
-                
+
                 return_span.set_attribute("pdf_size_bytes", len(pdf_data))
                 main_span.set_attribute("status", "success")
-                
+
                 return pdf_data, 200, {
                     'Content-Type': 'application/pdf',
                     'Content-Disposition': 'attachment; filename="merged-songbook.pdf"'
@@ -120,9 +120,9 @@ def main(request):
         except Exception as e:
             main_span.set_attribute("error", str(e))
             main_span.set_attribute("status", "failed")
-            
+
             print(f"Merge operation failed: {str(e)}")
             print("Error details:")
             print(traceback.format_exc())
-            
+
             return {"error": f"Internal error during PDF merge: {str(e)}"}, 500
