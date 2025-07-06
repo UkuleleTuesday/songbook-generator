@@ -146,25 +146,25 @@ def cli_main():
         default="merged-songbook.pdf",
         help="Output file path for merged PDF (default: merged-songbook.pdf)"
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
         print("Starting PDF merge operation (CLI mode)")
-        
+
         merged_pdf_path = fetch_and_merge_pdfs()
-        
+
         if not merged_pdf_path:
             print("Error: No PDF files found to merge")
             return 1
-        
+
         # Copy the merged PDF to the specified output location
         import shutil
         shutil.copy2(merged_pdf_path, args.output)
-        
+
         print(f"Successfully created merged PDF: {args.output}")
         return 0
-        
+
     except Exception as e:
         print(f"Merge operation failed: {str(e)}")
         print("Error details:")
