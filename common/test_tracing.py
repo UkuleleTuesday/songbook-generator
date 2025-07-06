@@ -4,19 +4,25 @@ import os
 from unittest.mock import patch, MagicMock
 
 
-@patch('tracing.google.auth.default')
-@patch('tracing.grpc.composite_channel_credentials')
-@patch('tracing.grpc.ssl_channel_credentials')
-@patch('tracing.grpc.metadata_call_credentials')
-@patch('tracing.AuthMetadataPlugin')
-@patch('tracing.trace.set_tracer_provider')
-@patch('tracing.TracerProvider')
-@patch('tracing.BatchSpanProcessor')
-@patch('tracing.OTLPSpanExporter')
+@patch("tracing.google.auth.default")
+@patch("tracing.grpc.composite_channel_credentials")
+@patch("tracing.grpc.ssl_channel_credentials")
+@patch("tracing.grpc.metadata_call_credentials")
+@patch("tracing.AuthMetadataPlugin")
+@patch("tracing.trace.set_tracer_provider")
+@patch("tracing.TracerProvider")
+@patch("tracing.BatchSpanProcessor")
+@patch("tracing.OTLPSpanExporter")
 def test_setup_tracing_runs_without_error(
-    mock_exporter, mock_processor, mock_provider, mock_set_provider,
-    mock_auth_plugin, mock_metadata_creds, mock_ssl_creds, mock_composite_creds,
-    mock_auth_default
+    mock_exporter,
+    mock_processor,
+    mock_provider,
+    mock_set_provider,
+    mock_auth_plugin,
+    mock_metadata_creds,
+    mock_ssl_creds,
+    mock_composite_creds,
+    mock_auth_default,
 ):
     """Test that setup_tracing can be called without raising exceptions."""
     # Mock the return values
