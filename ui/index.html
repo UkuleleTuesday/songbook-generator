@@ -9,7 +9,7 @@
 <body>
   <div class="container">
     <h1>Songbook Chef</h1>
-    <img src="img/logo.png" alt="Songbook Chef Logo" style="width: 50%; height: auto; margin: 1rem 0;" />
+    <img src="img/logo.png" alt="Songbook Chef Logo" style="width: 50%; height: auto;" />
     <p>
       Songbook Chef is an experimental songbook generator for Ukulele Tuesday.
       Issue reports, pull requests or improvement suggestions are welcome on <a
@@ -17,13 +17,13 @@
     target="_blank">GitHub</a>.
     </p>
     <form id="jobForm">
-      <label for="songbook-edition" title="Filter songs by songbook edition - this feature is experimental" style="margin-top: 1.5rem; display: block;">
+      <label for="songbook-edition" title="Filter songs by songbook edition - this feature is experimental" style="display: block;">
         Songbook Edition
         <span class="tooltip">❓
           <span class="tooltip-text">Filter songs to include only those tagged for a specific songbook edition. This is an experimental feature and may not work as expected.</span>
         </span>
       </label>
-      <select id="songbook-edition" name="songbook_edition" style="margin-bottom: 1.5rem;">
+      <select id="songbook-edition" name="songbook_edition">
         <option value="">All editions (**EXPERIMENTAL**)</option>
         <option value="regular" selected>Regular</option>
         <option value="halloween">Halloween</option>
@@ -42,13 +42,13 @@
         <option value="france">France</option>
         <option value="can2025">Canada 2025</option>
       </select>
-      <label for="decade" title="Filter songs by decade - this feature is experimental" style="margin-top: 1.5rem; display: block;">
+      <label for="decade" title="Filter songs by decade - this feature is experimental" style="display: block;">
         Decade
         <span class="tooltip">❓
           <span class="tooltip-text">Filter songs to include only those from a specific decade based on their release year. This is an experimental feature and may not work as expected.</span>
         </span>
       </label>
-      <select id="decade" name="decade" style="margin-bottom: 1.5rem;">
+      <select id="decade" name="decade" style="margin-bottom: 1rem;">
         <option value="">All decades</option>
         <option value="1950s">1950s</option>
         <option value="1960s">1960s</option>
@@ -59,7 +59,7 @@
         <option value="2010s">2010s</option>
         <option value="2020s">2020s</option>
       </select>
-      <details style="margin-bottom: 1.5rem;">
+      <details style="margin-bottom: 1rem;">
         <summary>Advanced Settings</summary>
         <label for="folders" title="Google Drive folder IDs containing song sheets (comma-separated for multiple folders)">
           Folder IDs
