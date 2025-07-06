@@ -70,7 +70,7 @@ def fetch_and_merge_pdfs(output_path):
                         print(f"Downloading {blob.name} to {filename}")
 
                     downloaded_files.append(local_path)
-                    
+
                     # Extract metadata for TOC
                     blob_metadata = blob.metadata or {}
                     song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
@@ -94,16 +94,16 @@ def fetch_and_merge_pdfs(output_path):
 
                 for file_info in file_metadata:
                     print(f"Adding {file_info['name']} to merger")
-                    
+
                     # Count pages in this PDF to track TOC positions
                     with open(file_info["path"], "rb") as pdf_file:
                         pdf_reader = PyPDF2.PdfReader(pdf_file)
                         page_count = len(pdf_reader.pages)
-                    
+
                     # Add to TOC (page numbers are 1-based for user display)
                     toc_entries.append([1, file_info["name"], current_page + 1])
                     current_page += page_count
-                    
+
                     merger.append(file_info["path"])
 
                 # Write combined PDF to temporary file
@@ -120,17 +120,17 @@ def fetch_and_merge_pdfs(output_path):
                 # Add table of contents using PyMuPDF
                 with tracer.start_as_current_span("add_toc") as toc_span:
                     print("Adding table of contents to merged PDF...")
-                    
+
                     # Open the merged PDF with PyMuPDF
                     doc = fitz.open(temp_output_path)
-                    
+
                     # Set the table of contents
                     doc.set_toc(toc_entries)
-                    
+
                     # Save the PDF with TOC
                     doc.save(temp_output_path, incremental=False)
                     doc.close()
-                    
+
                     toc_span.set_attribute("toc_entries_added", len(toc_entries))
                     print(f"Added {len(toc_entries)} entries to table of contents")
 

@@ -41,7 +41,7 @@ def query_drive_files(drive, folder_id):
 
     while True:
         query = (
-            f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false"
+            f"'{folder_id}' in parents and trashed=false"
         )
 
         try:
@@ -134,6 +134,7 @@ def sync_cache_metadata(folder_id, bucket_name, dry_run=False):
 
     # Create a mapping of file ID to file info
     drive_file_map = {file["id"]: file for file in drive_files}
+    print(drive_file_map)
 
     # Get cached files
     print("Fetching cached files from GCS...")
@@ -166,28 +167,28 @@ def sync_cache_metadata(folder_id, bucket_name, dry_run=False):
         expected_file_name = drive_file["name"]
 
         if (
-            current_metadata.get("gdrive_file_id") == expected_file_id
-            and current_metadata.get("gdrive_file_name") == expected_file_name
+            current_metadata.get("gdrive-file-id") == expected_file_id
+            and current_metadata.get("gdrive-file-name") == expected_file_name
         ):
             print(f"  OK: {blob.name} metadata already up to date")
             continue
 
         # Update metadata
         new_metadata = dict(current_metadata)
-        new_metadata["gdrive_file_id"] = expected_file_id
-        new_metadata["gdrive_file_name"] = expected_file_name
+        new_metadata["gdrive-file-id"] = expected_file_id
+        new_metadata["gdrive-file-name"] = expected_file_name
 
         if dry_run:
             print(f"  DRY-RUN: Would update {blob.name}")
-            print(f"    gdrive_file_id: {expected_file_id}")
-            print(f"    gdrive_file_name: {expected_file_name}")
+            print(f"    gdrive_file-id: {expected_file_id}")
+            print(f"    gdrive-file-name: {expected_file_name}")
         else:
             try:
                 blob.metadata = new_metadata
                 blob.patch()
                 print(f"  UPDATE: {blob.name}")
-                print(f"    gdrive_file_id: {expected_file_id}")
-                print(f"    gdrive_file_name: {expected_file_name}")
+                print(f"    gdrive-file-id: {expected_file_id}")
+                print(f"    gdrive-file-name: {expected_file_name}")
                 updated_count += 1
             except Exception as e:
                 print(f"  ERROR: Failed to update {blob.name}: {e}")
