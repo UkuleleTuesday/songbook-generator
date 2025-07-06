@@ -74,11 +74,9 @@ def fetch_and_merge_pdfs(output_path):
                     # Extract metadata for TOC
                     blob_metadata = blob.metadata or {}
                     song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
-                    file_metadata.append({
-                        "path": local_path,
-                        "name": song_name,
-                        "blob_name": blob.name
-                    })
+                    file_metadata.append(
+                        {"path": local_path, "name": song_name, "blob_name": blob.name}
+                    )
 
                 downloads_span.set_attribute("downloaded_count", len(downloaded_files))
 

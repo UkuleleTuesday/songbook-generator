@@ -40,9 +40,7 @@ def query_drive_files(drive, folder_id):
     page_token = None
 
     while True:
-        query = (
-            f"'{folder_id}' in parents and trashed=false"
-        )
+        query = f"'{folder_id}' in parents and trashed=false"
 
         try:
             results = (
