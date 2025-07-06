@@ -13,7 +13,7 @@ from common.tracing import setup_tracing, get_tracer
 GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
 
 # Set up tracing
-setup_tracing()
+setup_tracing("songbook-merger")
 
 storage_client = storage.Client()
 cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
