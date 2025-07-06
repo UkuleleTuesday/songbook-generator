@@ -14,7 +14,7 @@ from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPro
 from opentelemetry import propagate
 
 
-def setup_tracing():
+def setup_tracing(service_name: str):
     """Set up OpenTelemetry tracing with Google Cloud Trace."""
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
 
@@ -26,7 +26,7 @@ def setup_tracing():
     resource = resource.merge(
         Resource.create(
             {
-                "service.name": "songbook-generator-api",
+                "service.name": service_name,
                 "service.version": "0.1.0",
             }
         )

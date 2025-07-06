@@ -7,7 +7,7 @@ from flask import make_response
 from google.cloud import pubsub_v1, firestore
 
 # Initialize tracing
-from tracing import setup_tracing, get_tracer
+from common.tracing import setup_tracing, get_tracer
 
 # Initialize clients once at cold start
 PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
@@ -15,7 +15,7 @@ PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
 FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
 # Set up tracing
-setup_tracing()
+setup_tracing("songbook-generator-api")
 
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
