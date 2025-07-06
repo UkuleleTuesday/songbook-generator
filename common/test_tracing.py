@@ -23,7 +23,7 @@ def test_setup_tracing_runs_without_error(
     mock_credentials = MagicMock()
     mock_project_id = "test-project"
     mock_auth_default.return_value = (mock_credentials, mock_project_id)
-    
+
     mock_ssl_creds.return_value = MagicMock()
     mock_metadata_creds.return_value = MagicMock()
     mock_composite_creds.return_value = MagicMock()
@@ -31,12 +31,12 @@ def test_setup_tracing_runs_without_error(
     mock_exporter.return_value = MagicMock()
     mock_processor.return_value = MagicMock()
     mock_provider.return_value = MagicMock()
-    
+
     from tracing import setup_tracing
 
     # Should not raise any exceptions
     setup_tracing()
-    
+
     # Verify key functions were called
     mock_auth_default.assert_called_once()
     mock_set_provider.assert_called_once()
