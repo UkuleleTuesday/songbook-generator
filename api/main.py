@@ -15,7 +15,7 @@ PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
 FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
 # Set up tracing
-setup_tracing("songbook-generator-api")
+setup_tracing("songbook-api")
 
 publisher = pubsub_v1.PublisherClient()
 topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)

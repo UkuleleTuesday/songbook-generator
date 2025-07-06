@@ -3,53 +3,56 @@
 import os
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.resourcedetector.gcp_resource_detector import (
-    GoogleCloudResourceDetector,
-)
-from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
-from opentelemetry import propagate
+from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, SERVICE_NAME, Resource
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+import google.auth
+import google.auth.transport.grpc
+import google.auth.transport.requests
+import grpc
+from google.auth.transport.grpc import AuthMetadataPlugin
 
 
-def setup_tracing(service_name: str):
-    """Set up OpenTelemetry tracing with Google Cloud Trace."""
-    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+def setup_tracing(service_name):
+    # Retrieve and store Google application-default credentials
+    credentials, project_id = google.auth.default()
+    # Request used to refresh credentials upon expiry
+    request = google.auth.transport.requests.Request()
 
-    # Detect GCP resource information
-    gcp_resource_detector = GoogleCloudResourceDetector()
-    resource = gcp_resource_detector.detect()
+    # Supply the request and credentials to AuthMetadataPlugin
+    # AuthMeatadataPlugin inserts credentials into each request
+    auth_metadata_plugin = AuthMetadataPlugin(credentials=credentials, request=request)
 
-    # Merge with service-specific attributes
-    resource = resource.merge(
-        Resource.create(
-            {
-                "service.name": service_name,
-                "service.version": "0.1.0",
-            }
-        )
+    # Initialize gRPC channel credentials using the AuthMetadataPlugin
+    channel_creds = grpc.composite_channel_credentials(
+        grpc.ssl_channel_credentials(),
+        grpc.metadata_call_credentials(auth_metadata_plugin),
     )
 
-    # Create tracer provider with sampling
-    tracer_provider = TracerProvider(
-        resource=resource,
-        sampler=TraceIdRatioBased(1.0),  # Sample all traces for now
+    resource = Resource.create(
+        attributes={
+            SERVICE_NAME: service_name,
+            # Use the PID as the service.instance.id to avoid duplicate timeseries
+            # from different Gunicorn worker processes.
+            SERVICE_INSTANCE_ID: f"worker-{os.getpid()}",
+        }
     )
 
-    # Add Cloud Trace exporter
-    cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-    span_processor = BatchSpanProcessor(cloud_trace_exporter)
-    tracer_provider.add_span_processor(span_processor)
-
-    # Set the tracer provider
+    # Set up OpenTelemetry Python SDK
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(
+        BatchSpanProcessor(OTLPSpanExporter(credentials=channel_creds))
+    )
     trace.set_tracer_provider(tracer_provider)
-
-    # Set up Cloud Trace propagator
-    propagate.set_global_textmap(CloudTraceFormatPropagator())
 
 
 def get_tracer(name: str):
     """Get a tracer instance."""
+    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+
+    if not project_id:
+        # Return OpenTelemetry's built-in no-op tracer for local development
+        return trace.NoOpTracer()
+
     return trace.get_tracer(name)
