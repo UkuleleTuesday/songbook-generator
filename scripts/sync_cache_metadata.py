@@ -10,7 +10,57 @@ and name.
 import argparse
 import sys
 from google.cloud import storage
-from generator.gdrive import authenticate_drive, query_drive_files
+from googleapiclient.discovery import build
+from google.auth import default
+
+
+def authenticate_drive():
+    """Authenticate with Google Drive API using default credentials."""
+    credentials, _ = default(
+        scopes=[
+            "https://www.googleapis.com/auth/drive.readonly",
+        ]
+    )
+    return build("drive", "v3", credentials=credentials)
+
+
+def query_drive_files(drive, folder_id):
+    """
+    Query all PDF files in a Google Drive folder.
+    
+    Args:
+        drive: Authenticated Google Drive service
+        folder_id: Google Drive folder ID
+        
+    Returns:
+        List of file dictionaries with 'id' and 'name' keys
+    """
+    files = []
+    page_token = None
+    
+    while True:
+        query = f"'{folder_id}' in parents and mimeType='application/pdf' and trashed=false"
+        
+        try:
+            results = drive.files().list(
+                q=query,
+                fields="nextPageToken, files(id, name)",
+                pageToken=page_token,
+                pageSize=1000
+            ).execute()
+            
+            items = results.get("files", [])
+            files.extend(items)
+            
+            page_token = results.get("nextPageToken")
+            if not page_token:
+                break
+                
+        except Exception as e:
+            print(f"Error querying Drive files: {e}")
+            break
+    
+    return files
 
 
 def get_cached_files(storage_client, bucket_name, prefix="song-sheets/"):
