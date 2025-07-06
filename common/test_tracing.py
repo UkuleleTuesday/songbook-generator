@@ -81,27 +81,44 @@ def test_setup_tracing_success(
         mock_set_global_textmap.assert_called_once()
 
 
-def test_setup_tracing_missing_project_id():
-    """Test that setup_tracing fails gracefully when project ID is missing."""
+def test_setup_tracing_missing_project_id(capsys):
+    """Test that setup_tracing handles gracefully when project ID is missing."""
     with patch.dict(os.environ, {}, clear=True):
         from tracing import setup_tracing
 
-        with pytest.raises(KeyError):
-            setup_tracing("test-service")
+        # Should not raise an exception, just print a message
+        setup_tracing("test-service")
+        
+        # Verify the expected message was printed
+        captured = capsys.readouterr()
+        assert "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for test-service" in captured.out
 
 
 @patch("tracing.trace.get_tracer")
-def test_get_tracer(mock_get_tracer):
-    """Test that get_tracer calls the OpenTelemetry get_tracer function."""
+def test_get_tracer_with_project_id(mock_get_tracer):
+    """Test that get_tracer calls the OpenTelemetry get_tracer function when project ID is available."""
     mock_tracer = MagicMock()
     mock_get_tracer.return_value = mock_tracer
 
-    from tracing import get_tracer
+    with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": "test-project"}):
+        from tracing import get_tracer
 
-    result = get_tracer("test-service")
+        result = get_tracer("test-service")
 
-    mock_get_tracer.assert_called_once_with("test-service")
-    assert result == mock_tracer
+        mock_get_tracer.assert_called_once_with("test-service")
+        assert result == mock_tracer
+
+
+def test_get_tracer_no_project_id():
+    """Test that get_tracer returns a NoOpTracer when project ID is missing."""
+    with patch.dict(os.environ, {}, clear=True):
+        from tracing import get_tracer
+        from opentelemetry.trace import NoOpTracer
+
+        result = get_tracer("test-service")
+
+        # Should return a NoOpTracer instance
+        assert isinstance(result, NoOpTracer)
 
 
 def test_get_tracer_returns_callable():
