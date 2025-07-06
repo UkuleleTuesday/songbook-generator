@@ -255,7 +255,7 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
+          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
           --memory=4Gi \
@@ -325,7 +325,7 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}" \
+          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}" \
           --source=merger \
           --entry-point=main \
           --memory=2Gi \
