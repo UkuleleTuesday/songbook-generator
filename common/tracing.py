@@ -1,47 +1,46 @@
 """OpenTelemetry tracing setup for Google Cloud Trace."""
 
 import os
-from opentelemetry import trace
+from opentelemetry import _events as events
+from opentelemetry import _logs as logs
+from opentelemetry import metrics, trace
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.resourcedetector.gcp_resource_detector import (
-    GoogleCloudResourceDetector,
-)
-from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPropagator
-from opentelemetry import propagate
+from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, Resource
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._events import EventLoggerProvider
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
 
 def setup_tracing():
-    """Set up OpenTelemetry tracing with Google Cloud Trace."""
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
-
-    if not project_id:
-        # Running locally, don't set up tracing
-        print("No GOOGLE_CLOUD_PROJECT found, skipping tracing setup")
-        return
-
-    # Detect GCP resource information
-    gcp_resource_detector = GoogleCloudResourceDetector()
-    resource = gcp_resource_detector.detect()
-
-    # Create tracer provider with sampling
-    tracer_provider = TracerProvider(
-        resource=resource,
-        sampler=TraceIdRatioBased(1.0),  # Sample all traces for now
+    resource = Resource.create(
+        attributes={
+            # Use the PID as the service.instance.id to avoid duplicate timeseries
+            # from different Gunicorn worker processes.
+            SERVICE_INSTANCE_ID: f"worker-{os.getpid()}",
+        }
     )
 
-    # Add Cloud Trace exporter
-    cloud_trace_exporter = CloudTraceSpanExporter(project_id=project_id)
-    span_processor = BatchSpanProcessor(cloud_trace_exporter)
-    tracer_provider.add_span_processor(span_processor)
-
-    # Set the tracer provider
+    # Set up OpenTelemetry Python SDK
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     trace.set_tracer_provider(tracer_provider)
 
-    # Set up Cloud Trace propagator
-    propagate.set_global_textmap(CloudTraceFormatPropagator())
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    logs.set_logger_provider(logger_provider)
+
+    event_logger_provider = EventLoggerProvider(logger_provider)
+    events.set_event_logger_provider(event_logger_provider)
+
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+    meter_provider = MeterProvider(metric_readers=[reader], resource=resource)
+    metrics.set_meter_provider(meter_provider)
 
 
 def get_tracer(name: str):
