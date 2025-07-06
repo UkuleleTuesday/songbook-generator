@@ -98,7 +98,7 @@ def copy_pdfs(
 ):
     """
     Copy pages from the merged PDF cache based on TOC entries for the selected files.
-    
+
     Args:
         destination_pdf: PyMuPDF document to copy pages to
         files: List of file dictionaries with metadata
@@ -110,84 +110,95 @@ def copy_pdfs(
     with tracer.start_as_current_span("copy_pdfs") as span:
         span.set_attribute("files_count", len(files))
         span.set_attribute("add_page_numbers", add_page_numbers)
-        
+
         # Try to get the cached merged PDF
         try:
             cached_pdf_data = cache.get("merged-pdf/latest.pdf")
             if not cached_pdf_data:
                 span.set_attribute("cache_miss", True)
                 raise ValueError("Cached merged PDF not found")
-                
+
             span.set_attribute("cache_hit", True)
             span.set_attribute("cached_pdf_size", len(cached_pdf_data))
-            
+
             # Open the cached merged PDF
             with fitz.open(stream=cached_pdf_data) as cached_pdf:
                 cached_toc = cached_pdf.get_toc()
                 span.set_attribute("cached_toc_entries", len(cached_toc))
-                
+
                 if not cached_toc:
                     span.set_attribute("no_toc", True)
                     raise ValueError("Cached PDF has no table of contents")
-                
+
                 # Create a mapping from song names to TOC entries
                 toc_map = {}
                 for level, title, page_num in cached_toc:
                     # Page numbers in TOC are 1-based, convert to 0-based
                     toc_map[title] = page_num - 1
-                
+
                 current_page = page_offset
                 copied_pages = 0
-                
+
                 for file in files:
                     file_name = file["name"]
-                    
+
                     # Look for this file in the cached PDF's TOC
                     if file_name in toc_map:
                         source_page = toc_map[file_name]
-                        
+
                         # Determine how many pages this song has
                         # Find the next song's page or use the last page
                         next_page = len(cached_pdf)  # Default to end of document
                         current_toc_index = None
-                        
+
                         # Find current song in TOC to determine page range
                         for i, (level, title, page_num) in enumerate(cached_toc):
                             if title == file_name:
                                 current_toc_index = i
                                 break
-                        
-                        if current_toc_index is not None and current_toc_index + 1 < len(cached_toc):
+
+                        if (
+                            current_toc_index is not None
+                            and current_toc_index + 1 < len(cached_toc)
+                        ):
                             # Get the page number of the next song (convert from 1-based to 0-based)
                             next_page = cached_toc[current_toc_index + 1][2] - 1
-                        
+
                         page_count = next_page - source_page
-                        
+
                         # Copy the pages for this song
                         for page_offset_in_song in range(page_count):
                             source_page_num = source_page + page_offset_in_song
                             if source_page_num < len(cached_pdf):
                                 page = cached_pdf[source_page_num]
-                                
+
                                 # Create new page in destination
-                                dest_page = destination_pdf.new_page(width=page.rect.width, height=page.rect.height)
-                                dest_page.show_pdf_page(dest_page.rect, cached_pdf, source_page_num)
-                                
+                                dest_page = destination_pdf.new_page(
+                                    width=page.rect.width, height=page.rect.height
+                                )
+                                dest_page.show_pdf_page(
+                                    dest_page.rect, cached_pdf, source_page_num
+                                )
+
                                 # Add page number if requested and it's the first page of the song
                                 if add_page_numbers and page_offset_in_song == 0:
                                     add_page_number(dest_page, current_page + 1)
-                                
+
                                 copied_pages += 1
-                        
+
                         current_page += page_count
-                        progress_step.increment(1, f"Copied {file_name} ({page_count} pages)")
+                        progress_step.increment(
+                            1, f"Copied {file_name} ({page_count} pages)"
+                        )
                     else:
                         print(f"Warning: {file_name} not found in cached PDF TOC")
-                        progress_step.increment(1, f"Skipped {file_name} (not in cache)")
-                
+                        progress_step.increment(
+                            1, f"Skipped {file_name} (not in cache)"
+                        )
+
                 span.set_attribute("copied_pages", copied_pages)
                 span.set_attribute("final_page_count", current_page)
-                
+
         except Exception as e:
             span.set_attribute("copy_error", str(e))
             print(f"Error copying from cached PDF: {e}")
@@ -296,10 +307,14 @@ def generate_songbook(
             cached_pdf_data = cache.get("merged-pdf/latest.pdf")
             if not cached_pdf_data:
                 use_cache = False
-                click.echo("Cached merged PDF not found, falling back to individual file downloads")
+                click.echo(
+                    "Cached merged PDF not found, falling back to individual file downloads"
+                )
         except Exception as e:
             use_cache = False
-            click.echo(f"Error accessing cached PDF: {e}, falling back to individual file downloads")
+            click.echo(
+                f"Error accessing cached PDF: {e}, falling back to individual file downloads"
+            )
 
         span.set_attribute("use_cached_pdf", use_cache)
 
@@ -464,7 +479,7 @@ def merge_pdfs(
 ):
     """
     Fallback method: Download and merge individual PDF files.
-    
+
     This is used when the cached merged PDF is not available or copy_pdfs fails.
     """
     with tracer.start_as_current_span("merge_pdfs") as span:
