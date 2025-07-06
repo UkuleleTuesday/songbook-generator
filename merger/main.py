@@ -15,7 +15,7 @@ def fetch_and_merge_pdfs():
 
     # Set up GCS client
     storage_client = storage.Client()
-    bucket = storage_client.get_bucket(bucket_name=bucket_name)
+    bucket = storage_client.get_bucket(bucket_name)
 
     # Create temporary directory for downloads
     with tempfile.TemporaryDirectory() as temp_dir:
