@@ -349,6 +349,12 @@ jobs:
         component: 'Merger'
         url: ${{ steps.deploy.outputs.function_url }}
 
+    - name: Publish test message
+      run: |
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
+          --message "{\"origin\":\"gha\",\"ts\":\"${TIMESTAMP}\"}"
+
   deploy-ui:
     name: Deploy UI
     needs: test
