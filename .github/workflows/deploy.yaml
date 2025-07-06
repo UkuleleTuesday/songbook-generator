@@ -81,16 +81,24 @@ jobs:
           echo "Merger function $MERGER_FN_NAME not found, skipping"
         fi
 
-    - name: Delete PR Pub/Sub topic
+    - name: Delete PR Pub/Sub topics
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
-        TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
-        if gcloud pubsub topics describe "$TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Pub/Sub topic: $TOPIC_NAME"
-          gcloud pubsub topics delete "$TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        SONGBOOK_GEN_TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $SONGBOOK_GEN_TOPIC_NAME"
+          gcloud pubsub topics delete "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
         else
-          echo "Pub/Sub topic $TOPIC_NAME not found, skipping"
+          echo "Pub/Sub topic $SONGBOOK_GEN_TOPIC_NAME not found, skipping"
+        fi
+
+        CACHE_REFRESH_TOPIC_NAME="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $CACHE_REFRESH_TOPIC_NAME"
+          gcloud pubsub topics delete "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $CACHE_REFRESH_TOPIC_NAME not found, skipping"
         fi
 
   deploy-infrastructure:
@@ -115,14 +123,20 @@ jobs:
 
         # Override environment variables for PR environment
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
 
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
     - name: Create Pub/Sub topic
       run: |
         echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
         gcloud pubsub topics create "${PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+        echo "Creating Pub/Sub topic ${CACHE_REFRESH_PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${CACHE_REFRESH_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
   deploy-api:
@@ -241,7 +255,7 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
+          --trigger-topic="${{ env.PUBSUB_TOPIC }}" \
           --source=generator \
           --entry-point=main \
           --memory=4Gi \
@@ -311,12 +325,11 @@ jobs:
           --gen2 \
           --region="${{ env.GCP_REGION }}" \
           --runtime=python312 \
-          --trigger-http \
+          --trigger-topic="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}" \
           --source=merger \
           --entry-point=main \
           --memory=2Gi \
           --cpu=1 \
-          --allow-unauthenticated \
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \

@@ -12,6 +12,7 @@ fi
 echo "1. Enabling required APIs…"
 gcloud services enable \
   pubsub.googleapis.com \
+  cloudscheduler.googleapis.com \
   firestore.googleapis.com \
   storage.googleapis.com \
   eventarc.googleapis.com \
@@ -22,6 +23,10 @@ gcloud services enable \
 
 echo "2. Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
 gcloud pubsub topics create "${PUBSUB_TOPIC}" \
+  --project="${GCP_PROJECT_ID}" || echo "Topic may already exist, continuing…"
+
+echo "2b. Creating Pub/Sub topic ${CACHE_REFRESH_PUBSUB_TOPIC}…"
+gcloud pubsub topics create "${CACHE_REFRESH_PUBSUB_TOPIC}" \
   --project="${GCP_PROJECT_ID}" || echo "Topic may already exist, continuing…"
 
 echo "3. Initializing Firestore in Native mode (region=${GCP_REGION})…"
@@ -121,5 +126,13 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${SA}" \
   --role="roles/monitoring.metricWriter"
+
+echo "9. Set up cron schedule for cache refresh"
+gcloud scheduler jobs create pubsub refresh-songbook-cache \
+  --schedule="*/15 * * * *" \
+  --time-zone="Europe/Dublin" \
+  --topic=${CACHE_REFRESH_PUBSUB_TOPIC} \
+  --location="${GCP_REGION}" \
+  --message-body='{}'
 
 echo "✔ All done. 🎉"
