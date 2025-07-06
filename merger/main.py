@@ -142,9 +142,10 @@ def cli_main():
 
     parser = argparse.ArgumentParser(description="Merge PDFs from GCS cache bucket")
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         default="merged-songbook.pdf",
-        help="Output file path for merged PDF (default: merged-songbook.pdf)"
+        help="Output file path for merged PDF (default: merged-songbook.pdf)",
     )
 
     args = parser.parse_args()
@@ -160,6 +161,7 @@ def cli_main():
 
         # Copy the merged PDF to the specified output location
         import shutil
+
         shutil.copy2(merged_pdf_path, args.output)
 
         print(f"Successfully created merged PDF: {args.output}")
@@ -174,4 +176,5 @@ def cli_main():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(cli_main())
