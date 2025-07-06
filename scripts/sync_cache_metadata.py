@@ -44,7 +44,7 @@ def extract_drive_file_id_from_blob_name(blob_name, prefix="song-sheets/"):
     if not blob_name.startswith(prefix):
         return None
 
-    filename = blob_name[len(prefix):]
+    filename = blob_name[len(prefix) :]
     if filename.endswith(".pdf"):
         return filename[:-4]  # Remove .pdf extension
 
@@ -108,8 +108,10 @@ def sync_cache_metadata(folder_id, bucket_name, dry_run=False):
         expected_file_id = drive_file["id"]
         expected_file_name = drive_file["name"]
 
-        if (current_metadata.get("gdrive_file_id") == expected_file_id and
-            current_metadata.get("gdrive_file_name") == expected_file_name):
+        if (
+            current_metadata.get("gdrive_file_id") == expected_file_id
+            and current_metadata.get("gdrive_file_name") == expected_file_name
+        ):
             print(f"  OK: {blob.name} metadata already up to date")
             continue
 
@@ -146,19 +148,16 @@ def main():
     parser = argparse.ArgumentParser(
         description="Sync GCS cache metadata with Google Drive file information"
     )
-    parser.add_argument(
-        "folder_id",
-        help="Google Drive folder ID to sync from"
-    )
+    parser.add_argument("folder_id", help="Google Drive folder ID to sync from")
     parser.add_argument(
         "--bucket",
         default="songbook-generator-worker-cache",
-        help="GCS bucket name (default: songbook-generator-worker-cache)"
+        help="GCS bucket name (default: songbook-generator-worker-cache)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Only show what would be done without making changes"
+        help="Only show what would be done without making changes",
     )
 
     args = parser.parse_args()
