@@ -351,6 +351,7 @@ jobs:
 
     - name: Publish test message
       run: |
+        CACHE_REFRESH_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
           --message "{\"origin\":\"gha\",\"ts\":\"${TIMESTAMP}\"}"
