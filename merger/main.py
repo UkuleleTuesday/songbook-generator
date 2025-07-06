@@ -134,6 +134,13 @@ def fetch_and_merge_pdfs(output_path):
                     toc_span.set_attribute("temp_with_toc_path", temp_with_toc_path)
                     print(f"Added {len(toc_entries)} entries to table of contents")
 
+                # Upload merged PDF back to GCS cache
+                with tracer.start_as_current_span("upload_to_cache") as upload_span:
+                    cache_blob = cache_bucket.blob("merged-pdf/latest.pdf")
+                    print(f"Uploading merged PDF to cache at: merged-pdf/latest.pdf")
+                    cache_blob.upload_from_filename(temp_with_toc_path, content_type="application/pdf")
+                    upload_span.set_attribute("cache_blob_name", "merged-pdf/latest.pdf")
+
                 # Copy the file with TOC to the final output location
                 import shutil
 
