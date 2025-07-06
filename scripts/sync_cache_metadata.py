@@ -9,6 +9,7 @@ and name.
 
 import argparse
 import sys
+import os
 from google.cloud import storage
 from googleapiclient.discovery import build
 from google.auth import default
@@ -217,8 +218,16 @@ def main():
 
     args = parser.parse_args()
 
+    # Determine bucket name: command line arg -> env var -> error
+    bucket_name = args.bucket
+    if not bucket_name:
+        bucket_name = os.environ.get("GCS_WORKER_CACHE_BUCKET")
+        if not bucket_name:
+            print("Error: No bucket specified. Use --bucket argument or set GCS_WORKER_CACHE_BUCKET environment variable.")
+            sys.exit(1)
+
     try:
-        sync_cache_metadata(args.folder_id, args.bucket, args.dry_run)
+        sync_cache_metadata(args.folder_id, bucket_name, args.dry_run)
     except KeyboardInterrupt:
         print("\nOperation cancelled by user")
         sys.exit(1)
