@@ -31,7 +31,7 @@ def fetch_and_merge_pdfs():
         for blob in blobs:
             if blob.name.endswith(".pdf"):
                 # Replace path separators with underscores for local filename
-                filename = blob.name.replace('/', '_')
+                filename = blob.name.replace("/", "_")
                 local_path = os.path.join(temp_dir, filename)
 
                 print(f"Downloading {blob.name} to {filename}")
