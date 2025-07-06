@@ -113,6 +113,9 @@ def copy_pdfs(
 
         # Try to get the cached merged PDF
         try:
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            # FIXME: It looks like cache.get current implementation wipes object metadata!!!!!!!!!!!!
+            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             cached_pdf_data = cache.get("merged-pdf/latest.pdf")
             if not cached_pdf_data:
                 span.set_attribute("cache_miss", True)

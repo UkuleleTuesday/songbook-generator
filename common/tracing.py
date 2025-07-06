@@ -4,7 +4,6 @@ import os
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
-from opentelemetry.sdk.resources import Resource
 from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.resourcedetector.gcp_resource_detector import (
@@ -14,30 +13,18 @@ from opentelemetry.propagators.cloud_trace_propagator import CloudTraceFormatPro
 from opentelemetry import propagate
 
 
-def setup_tracing(service_name: str):
+def setup_tracing():
     """Set up OpenTelemetry tracing with Google Cloud Trace."""
     project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
 
     if not project_id:
         # Running locally, don't set up tracing
-        print(
-            f"No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for {service_name}"
-        )
+        print("No GOOGLE_CLOUD_PROJECT found, skipping tracing setup")
         return
 
     # Detect GCP resource information
     gcp_resource_detector = GoogleCloudResourceDetector()
     resource = gcp_resource_detector.detect()
-
-    # Merge with service-specific attributes
-    resource = resource.merge(
-        Resource.create(
-            {
-                "service.name": service_name,
-                "service.version": "0.1.0",
-            }
-        )
-    )
 
     # Create tracer provider with sampling
     tracer_provider = TracerProvider(

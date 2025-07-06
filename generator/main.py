@@ -20,7 +20,7 @@ GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
 GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
 
 # Set up tracing
-setup_tracing("songbook-generator-worker")
+setup_tracing()
 
 db = firestore.Client(project=PROJECT_ID)
 storage_client = storage.Client(project=PROJECT_ID)
