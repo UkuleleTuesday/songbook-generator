@@ -90,7 +90,10 @@ def test_setup_tracing_missing_project_id(capsys):
 
         # Verify the expected message was printed
         captured = capsys.readouterr()
-        assert "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for test-service" in captured.out
+        assert (
+            "No GOOGLE_CLOUD_PROJECT found, skipping tracing setup for test-service"
+            in captured.out
+        )
 
 
 @patch("tracing.trace.get_tracer")
