@@ -105,38 +105,40 @@ def fetch_and_merge_pdfs(output_path):
                     merger.append(file_info["path"])
 
                 # Write combined PDF to temporary file
-                temp_output_path = os.path.join(temp_dir, "combined.pdf")
-                merger.write(temp_output_path)
+                temp_merged_path = os.path.join(temp_dir, "merged.pdf")
+                merger.write(temp_merged_path)
                 merger.close()
 
-                merge_span.set_attribute("temp_output_path", temp_output_path)
+                merge_span.set_attribute("temp_merged_path", temp_merged_path)
                 merge_span.set_attribute("merged_files", len(file_metadata))
                 merge_span.set_attribute("toc_entries", len(toc_entries))
 
-                print(f"Successfully created combined PDF: {temp_output_path}")
+                print(f"Successfully created merged PDF: {temp_merged_path}")
 
                 # Add table of contents using PyMuPDF
                 with tracer.start_as_current_span("add_toc") as toc_span:
                     print("Adding table of contents to merged PDF...")
 
                     # Open the merged PDF with PyMuPDF
-                    doc = fitz.open(temp_output_path)
+                    doc = fitz.open(temp_merged_path)
 
                     # Set the table of contents
                     doc.set_toc(toc_entries)
 
-                    # Save the PDF with TOC
-                    doc.save(temp_output_path, incremental=False)
+                    # Save to a new temporary file with TOC
+                    temp_with_toc_path = os.path.join(temp_dir, "with_toc.pdf")
+                    doc.save(temp_with_toc_path)
                     doc.close()
 
                     toc_span.set_attribute("toc_entries_added", len(toc_entries))
+                    toc_span.set_attribute("temp_with_toc_path", temp_with_toc_path)
                     print(f"Added {len(toc_entries)} entries to table of contents")
 
-                # Copy the file to the final output location
+                # Copy the file with TOC to the final output location
                 import shutil
 
-                print(f"Copying merged PDF to: {output_path}")
-                shutil.copy2(temp_output_path, output_path)
+                print(f"Copying merged PDF with TOC to: {output_path}")
+                shutil.copy2(temp_with_toc_path, output_path)
                 merge_span.set_attribute("final_output_path", output_path)
 
                 return output_path
