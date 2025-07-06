@@ -53,6 +53,7 @@ jobs:
         PR_NUM="${{ github.event.pull_request.number }}"
         API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
         echo "Cleaning up PR #${PR_NUM} resources..."
 
@@ -70,6 +71,14 @@ jobs:
           gcloud functions delete "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
           echo "Worker function $WORKER_FN_NAME not found, skipping"
+        fi
+
+        # Delete Merger function
+        if gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Merger function: $MERGER_FN_NAME"
+          gcloud functions delete "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Merger function $MERGER_FN_NAME not found, skipping"
         fi
 
     - name: Delete PR Pub/Sub topic
@@ -250,6 +259,73 @@ jobs:
       with:
         component: 'Generator Worker'
         function_name: ${{ steps.fn-name.outputs.name }}
+
+  deploy-merger:
+    name: Deploy Merger
+    needs: [test, deploy-infrastructure]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Compute function name
+      id: fn-name
+      run: |
+        BASE_FN=${{ env.MERGER_FUNCTION_NAME }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Copy common directory to merger
+      run: |
+        echo "Copying common directory to merger for deployment..."
+        cp -r common merger/
+        ls -la merger/
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > merger/requirements.txt
+        cat merger/requirements.txt
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      run: |
+        MERGER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        gcloud functions deploy "$MERGER_FN_NAME" \
+          --gen2 \
+          --region="${{ env.GCP_REGION }}" \
+          --runtime=python312 \
+          --trigger-http \
+          --source=merger \
+          --entry-point=main \
+          --memory=2Gi \
+          --cpu=1 \
+          --allow-unauthenticated \
+          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
+          --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
+          --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
+          --set-env-vars=LOG_LEVEL=info
+
+        # Output the function URL for PR comments
+        FUNCTION_URL=$(gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
+        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: 'Merger'
+        url: ${{ steps.deploy.outputs.function_url }}
 
   deploy-ui:
     name: Deploy UI
