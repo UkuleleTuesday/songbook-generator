@@ -15,6 +15,9 @@ gcloud services enable \
   firestore.googleapis.com \
   storage.googleapis.com \
   eventarc.googleapis.com \
+  telemetry.googleapis.com \
+  monitoring.googleapis.com \
+  logging.googleapis.com \
   --project="${GCP_PROJECT_ID}"
 
 echo "2. Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
@@ -102,5 +105,21 @@ echo "7. (Optional) Grant Service Account Token Creator for push subscriptions�
 gcloud iam service-accounts add-iam-policy-binding "${SA}" \
   --member="serviceAccount:${SA}" \
   --role="roles/iam.serviceAccountTokenCreator" || echo "Already bound, continuing…"
+
+echo "8. Make sure service account can write observability stuff"
+# Traces Writer
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+  --member="serviceAccount:${SA}" \
+  --role="roles/telemetry.tracesWriter"
+
+# Logs Writer
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+  --member="serviceAccount:${SA}" \
+  --role="roles/logging.logWriter"
+
+# Monitoring Metric Writer
+gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
+  --member="serviceAccount:${SA}" \
+  --role="roles/monitoring.metricWriter"
 
 echo "✔ All done. 🎉"
