@@ -97,6 +97,7 @@ def fetch_and_merge_pdfs(output_path=None):
                 # If output_path is specified, copy the file there before temp dir is cleaned up
                 if output_path:
                     import shutil
+
                     print(f"Copying merged PDF to: {output_path}")
                     shutil.copy2(temp_output_path, output_path)
                     merge_span.set_attribute("final_output_path", output_path)
