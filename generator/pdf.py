@@ -108,14 +108,12 @@ def copy_pdfs(
         add_page_numbers: Whether to add page numbers
     """
     with tracer.start_as_current_span("copy_pdfs") as span:
-        span.set_attribute("files_count", len(files))
+        files_count = len(files)
+        span.set_attribute("files_count", files_count)
         span.set_attribute("add_page_numbers", add_page_numbers)
 
         # Try to get the cached merged PDF
         try:
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            # FIXME: It looks like cache.get current implementation wipes object metadata!!!!!!!!!!!!
-            # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             cached_pdf_data = cache.get("merged-pdf/latest.pdf")
             if not cached_pdf_data:
                 span.set_attribute("cache_miss", True)
@@ -142,7 +140,7 @@ def copy_pdfs(
                 current_page = page_offset
                 copied_pages = 0
 
-                for file in files:
+                for file_number, file in enumerate(files):
                     file_name = file["name"]
 
                     # Look for this file in the cached PDF's TOC
@@ -191,7 +189,7 @@ def copy_pdfs(
 
                         current_page += page_count
                         progress_step.increment(
-                            1, f"Copied {file_name} ({page_count} pages)"
+                            1, f"Copied song sheet {file_number}/{files_count}..."
                         )
                     else:
                         print(f"Warning: {file_name} not found in cached PDF TOC")
