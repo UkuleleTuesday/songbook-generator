@@ -189,7 +189,7 @@ def copy_pdfs(
 
                         current_page += page_count
                         progress_step.increment(
-                            1, f"Copied song sheet {file_name}/{files_count}..."
+                            1, f"Copied song sheet {file_number}/{files_count}..."
                         )
                     else:
                         print(f"Warning: {file_name} not found in cached PDF TOC")
