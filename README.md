@@ -39,9 +39,25 @@ Dev instructions are below. Check out [issues](https://github.com/ukuleletuesday
 ## Development
 
 ### Requirements
-- Python 3.12+
-- [uv](https://docs.astral.sh/uv/) for Python package management
-- [gcloud](https://cloud.google.com/sdk/docs/install) CLI installed for authentication
+
+#### uv (Project packaging)
+
+The project uses [uv](https://docs.astral.sh/uv/) for Python package management. Follow the install instructions for your system.
+
+#### Google Cloud CLI (Infrastructure, authentication)
+
+Install the [gcloud](https://cloud.google.com/sdk/docs/install) CLI for authentication.
+
+#### Python
+
+The code is written in and uses Python 3.12+, use [uv to install Python 3.12 if needed](https://docs.astral.sh/uv/guides/install-python/).
+
+```sh
+uv python install
+```
+
+Should tell uv to install the latest Python version.
+
 
 ### Authentication
 Before running the backend, authenticate with Google Cloud using the following command:
