@@ -26,7 +26,26 @@ def list_drive_files():
     and calculates the total size.
     """
     drive = authenticate_drive()
-    click.echo("Authenticated with Google Drive successfully.")
+    creds, _ = default()
+    click.echo("=" * 40)
+    click.echo("Authentication Details:")
+    if hasattr(creds, "service_account_email"):
+        click.echo(f"  Type: Service Account")
+        click.echo(f"  Email: {creds.service_account_email}")
+    elif hasattr(creds, "token"):
+        click.echo(f"  Type: User Credentials")
+        try:
+            about = drive.about().get(fields="user").execute()
+            user_info = about.get("user")
+            if user_info:
+                click.echo(f"  User: {user_info.get('displayName')}")
+                click.echo(f"  Email: {user_info.get('emailAddress')}")
+        except Exception as e:
+            click.echo(f"  Could not retrieve user info: {e}")
+    else:
+        click.echo(f"  Type: {type(creds)}")
+    click.echo(f"  Scopes: {creds.scopes}")
+    click.echo("=" * 40)
 
     total_size = 0
     file_count = 0
