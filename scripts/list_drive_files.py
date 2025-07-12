@@ -2,31 +2,42 @@
 
 import click
 from google.auth import default
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import humanize
 
 
-def authenticate_drive():
+def authenticate_drive(key_file_path=None):
     """Authenticate with Google Drive API."""
-    creds, _ = default(
-        scopes=[
-            "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/drive.metadata",
-        ]
-    )
-    return build("drive", "v3", credentials=creds)
+    scopes = [
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata",
+    ]
+    if key_file_path:
+        creds = service_account.Credentials.from_service_account_file(
+            key_file_path, scopes=scopes
+        )
+    else:
+        creds, _ = default(scopes=scopes)
+    return build("drive", "v3", credentials=creds), creds
 
 
 @click.command(
     help="List all files in Google Drive and calculate total size for the authenticated user."
 )
-def list_drive_files():
+@click.option(
+    "--service-account-key",
+    "key_file_path",
+    type=click.Path(exists=True),
+    help="Path to a service account key file for authentication.",
+)
+def list_drive_files(key_file_path):
     """
     Lists all files in Google Drive for the authenticated user,
     and calculates the total size.
     """
-    drive = authenticate_drive()
-    creds, _ = default()
+    drive, creds = authenticate_drive(key_file_path)
+
     click.echo("=" * 40)
     click.echo("Authentication Details:")
     if hasattr(creds, "service_account_email"):
