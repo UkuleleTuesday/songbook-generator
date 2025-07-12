@@ -7,12 +7,16 @@ from googleapiclient.discovery import build
 import humanize
 
 
-def authenticate_drive(key_file_path=None):
+def authenticate_drive(key_file_path=None, delete_mode=False):
     """Authenticate with Google Drive API."""
     scopes = [
         "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/drive.metadata",
     ]
+    if delete_mode:
+        # Broader scope is needed for deletion
+        scopes = ["https://www.googleapis.com/auth/drive"]
+
     if key_file_path:
         creds = service_account.Credentials.from_service_account_file(
             key_file_path, scopes=scopes
@@ -31,12 +35,17 @@ def authenticate_drive(key_file_path=None):
     type=click.Path(exists=True),
     help="Path to a service account key file for authentication.",
 )
-def list_drive_files(key_file_path):
+@click.option(
+    "--delete-files",
+    is_flag=True,
+    help="DANGEROUS: Interactively prompt to delete all listed files.",
+)
+def list_drive_files(key_file_path, delete_files):
     """
     Lists all files in Google Drive for the authenticated user,
     and calculates the total size.
     """
-    drive, creds = authenticate_drive(key_file_path)
+    drive, creds = authenticate_drive(key_file_path, delete_mode=delete_files)
 
     click.echo("=" * 40)
     click.echo("Authentication Details:")
@@ -61,6 +70,7 @@ def list_drive_files(key_file_path):
     total_size = 0
     file_count = 0
     page_token = None
+    all_files = []
 
     click.echo("Fetching file list...")
 
@@ -80,8 +90,9 @@ def list_drive_files(key_file_path):
             click.echo(f"An error occurred: {e}", err=True)
             break
 
-        files = response.get("files", [])
-        for file in files:
+        files_page = response.get("files", [])
+        all_files.extend(files_page)
+        for file in files_page:
             file_count += 1
             size_str = file.get("size", "0")
             size = int(size_str)
@@ -102,6 +113,38 @@ def list_drive_files(key_file_path):
     click.echo(f"Total number of files: {file_count}")
     click.echo(f"Total size of all files: {humanize.naturalsize(total_size)}")
     click.echo("=" * 20)
+
+    if delete_files and all_files:
+        click.echo("\n" + "=" * 40, err=True)
+        click.echo("DANGER: Deletion mode is enabled.", err=True)
+        click.echo(
+            f"You are about to PERMANENTLY DELETE {len(all_files)} files.", err=True
+        )
+        confirmation_phrase = "yes I want to delete these files"
+        click.echo(f"To confirm, please type the following phrase:", err=True)
+        click.echo(f"  '{confirmation_phrase}'\n", err=True)
+        response = click.prompt("Confirmation", type=str)
+
+        if response == confirmation_phrase:
+            click.echo("\nDELETING FILES...")
+            deleted_count = 0
+            error_count = 0
+            for file in all_files:
+                try:
+                    drive.files().delete(fileId=file["id"]).execute()
+                    click.echo(f"  ✓ Deleted: {file['name']} (ID: {file['id']})")
+                    deleted_count += 1
+                except Exception as e:
+                    click.echo(
+                        f"  ✗ FAILED to delete: {file['name']} (ID: {file['id']}) - {e}",
+                        err=True,
+                    )
+                    error_count += 1
+            click.echo("\nDeletion Summary:")
+            click.echo(f"  Successfully deleted: {deleted_count}")
+            click.echo(f"  Failed to delete: {error_count}")
+        else:
+            click.echo("Deletion cancelled. No files were deleted.")
 
 
 if __name__ == "__main__":
