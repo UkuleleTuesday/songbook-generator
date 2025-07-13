@@ -31,6 +31,46 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 tracer = get_tracer(__name__)
 
 
+def init_services(main_span):
+    """Initializes and authenticates services, logging auth details."""
+    from gdrive import authenticate_drive
+    from caching import init_cache
+
+    with tracer.start_as_current_span("init_services"):
+        drive, creds = authenticate_drive()
+        cache = init_cache()
+
+        print("Authentication Details:")
+        if hasattr(creds, "service_account_email"):
+            auth_type = "Service Account"
+            email = creds.service_account_email
+            print(f"  Type: {auth_type}")
+            print(f"  Email: {email}")
+            main_span.set_attribute("auth.type", auth_type)
+            main_span.set_attribute("auth.email", email)
+        elif hasattr(creds, "token"):
+            auth_type = "User Credentials"
+            print(f"  Type: {auth_type}")
+            try:
+                about = drive.about().get(fields="user").execute()
+                user_info = about.get("user")
+                if user_info:
+                    user_name = user_info.get("displayName")
+                    email = user_info.get("emailAddress")
+                    print(f"  User: {user_name}")
+                    print(f"  Email: {email}")
+                    main_span.set_attribute("auth.type", auth_type)
+                    main_span.set_attribute("auth.email", email)
+                    main_span.set_attribute("auth.user", user_name)
+            except Exception as e:
+                print(f"  Could not retrieve user info: {e}")
+        else:
+            print(f"  Type: {type(creds)}")
+        print(f"  Scopes: {creds.scopes}")
+        main_span.set_attribute("auth.scopes", str(creds.scopes))
+        return drive, cache
+
+
 def make_progress_callback(job_ref):
     """Return a callback that writes progress info into Firestore."""
 
@@ -128,43 +168,7 @@ def main(cloud_event):
             status_span.set_attribute("status", "RUNNING")
 
         try:
-            from gdrive import authenticate_drive
-            from caching import init_cache
-
-            with tracer.start_as_current_span("init_services"):
-                drive, creds = authenticate_drive()
-                cache = init_cache()
-                print("=" * 40)
-                print("Authentication Details:")
-                if hasattr(creds, "service_account_email"):
-                    auth_type = "Service Account"
-                    email = creds.service_account_email
-                    print(f"  Type: {auth_type}")
-                    print(f"  Email: {email}")
-                    main_span.set_attribute("auth.type", auth_type)
-                    main_span.set_attribute("auth.email", email)
-                elif hasattr(creds, "token"):
-                    auth_type = "User Credentials"
-                    print(f"  Type: {auth_type}")
-                    try:
-                        about = drive.about().get(fields="user").execute()
-                        user_info = about.get("user")
-                        if user_info:
-                            user_name = user_info.get("displayName")
-                            email = user_info.get("emailAddress")
-                            print(f"  User: {user_name}")
-                            print(f"  Email: {email}")
-                            main_span.set_attribute("auth.type", auth_type)
-                            main_span.set_attribute("auth.email", email)
-                            main_span.set_attribute("auth.user", user_name)
-                    except Exception as e:
-                        print(f"  Could not retrieve user info: {e}")
-                else:
-                    print(f"  Type: {type(creds)}")
-                print(f"  Scopes: {creds.scopes}")
-                main_span.set_attribute("auth.scopes", str(creds.scopes))
-                print("=" * 40)
-
+            drive, cache = init_services(main_span)
             source_folders = params["source_folders"]
             cover_file_id = params.get("cover_file_id")
             limit = params.get("limit")
