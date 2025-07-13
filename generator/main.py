@@ -10,8 +10,6 @@ from filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
 
 from pdf import generate_songbook, init_services
-from filters import PropertyFilter, FilterGroup
-from typing import Union, Optional
 
 # Initialize tracing
 from opentelemetry import trace
