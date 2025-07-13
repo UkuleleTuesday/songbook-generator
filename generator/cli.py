@@ -2,10 +2,8 @@ import click
 from pathlib import Path
 
 from config import load_config_folder_ids, load_cover_config
-from pdf import generate_songbook
+from pdf import generate_songbook, init_services
 from filters import FilterParser
-from gdrive import authenticate_drive
-from caching import init_cache
 
 
 def make_cli_progress_callback():
@@ -75,8 +73,7 @@ def cli(
     preface_file_id,
     postface_file_id,
 ):
-    drive = authenticate_drive()
-    cache = init_cache()
+    drive, cache = init_services()
 
     client_filter = None
     if filter:

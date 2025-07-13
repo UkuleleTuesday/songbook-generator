@@ -9,9 +9,9 @@ import traceback
 from filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
 
-from pdf import generate_songbook
-from gdrive import authenticate_drive
-from caching import init_cache
+from pdf import generate_songbook, init_services
+from filters import PropertyFilter, FilterGroup
+from typing import Union, Optional
 
 # Initialize tracing
 from opentelemetry import trace
@@ -33,45 +33,6 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 # Initialize tracer
 tracer = get_tracer(__name__)
-
-
-def init_services():
-    """Initializes and authenticates services, logging auth details."""
-    main_span = trace.get_current_span()
-
-    with tracer.start_as_current_span("init_services"):
-        drive, creds = authenticate_drive()
-        cache = init_cache()
-
-        print("Authentication Details:")
-        if hasattr(creds, "service_account_email"):
-            auth_type = "Service Account"
-            email = creds.service_account_email
-            print(f"  Type: {auth_type}")
-            print(f"  Email: {email}")
-            main_span.set_attribute("auth.type", auth_type)
-            main_span.set_attribute("auth.email", email)
-        elif hasattr(creds, "token"):
-            auth_type = "User Credentials"
-            print(f"  Type: {auth_type}")
-            try:
-                about = drive.about().get(fields="user").execute()
-                user_info = about.get("user")
-                if user_info:
-                    user_name = user_info.get("displayName")
-                    email = user_info.get("emailAddress")
-                    print(f"  User: {user_name}")
-                    print(f"  Email: {email}")
-                    main_span.set_attribute("auth.type", auth_type)
-                    main_span.set_attribute("auth.email", email)
-                    main_span.set_attribute("auth.user", user_name)
-            except Exception as e:
-                print(f"  Could not retrieve user info: {e}")
-        else:
-            print(f"  Type: {type(creds)}")
-        print(f"  Scopes: {creds.scopes}")
-        main_span.set_attribute("auth.scopes", str(creds.scopes))
-        return drive, cache
 
 
 def make_progress_callback(job_ref):

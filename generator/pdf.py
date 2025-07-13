@@ -1,6 +1,7 @@
 import fitz
 import click
 import os
+from opentelemetry import trace
 import gc
 from pathlib import Path
 from typing import List, Optional, Union
@@ -12,6 +13,7 @@ import toc
 import cover
 import caching
 from gdrive import (
+    authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,
@@ -40,6 +42,45 @@ except ImportError:
             pass
 
     tracer = NoOpTracer()
+
+
+def init_services():
+    """Initializes and authenticates services, logging auth details."""
+    main_span = trace.get_current_span()
+
+    with tracer.start_as_current_span("init_services"):
+        drive, creds = authenticate_drive()
+        cache = caching.init_cache()
+
+        click.echo("Authentication Details:")
+        if hasattr(creds, "service_account_email"):
+            auth_type = "Service Account"
+            email = creds.service_account_email
+            click.echo(f"  Type: {auth_type}")
+            click.echo(f"  Email: {email}")
+            main_span.set_attribute("auth.type", auth_type)
+            main_span.set_attribute("auth.email", email)
+        elif hasattr(creds, "token"):
+            auth_type = "User Credentials"
+            click.echo(f"  Type: {auth_type}")
+            try:
+                about = drive.about().get(fields="user").execute()
+                user_info = about.get("user")
+                if user_info:
+                    user_name = user_info.get("displayName")
+                    email = user_info.get("emailAddress")
+                    click.echo(f"  User: {user_name}")
+                    click.echo(f"  Email: {email}")
+                    main_span.set_attribute("auth.type", auth_type)
+                    main_span.set_attribute("auth.email", email)
+                    main_span.set_attribute("auth.user", user_name)
+            except Exception as e:
+                click.echo(f"  Could not retrieve user info: {e}")
+        else:
+            click.echo(f"  Type: {type(creds)}")
+        click.echo(f"  Scopes: {creds.scopes}")
+        main_span.set_attribute("auth.scopes", str(creds.scopes))
+        return drive, cache
 
 
 def collect_and_sort_files(
