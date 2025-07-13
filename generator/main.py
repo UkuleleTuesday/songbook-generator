@@ -11,6 +11,7 @@ from filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
 
 # Initialize tracing
+from opentelemetry import trace
 from common.tracing import setup_tracing, get_tracer
 
 # Initialized at cold start
@@ -31,8 +32,9 @@ cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 tracer = get_tracer(__name__)
 
 
-def init_services(main_span):
+def init_services():
     """Initializes and authenticates services, logging auth details."""
+    main_span = trace.get_current_span()
     from gdrive import authenticate_drive
     from caching import init_cache
 
@@ -168,7 +170,7 @@ def main(cloud_event):
             status_span.set_attribute("status", "RUNNING")
 
         try:
-            drive, cache = init_services(main_span)
+            drive, cache = init_services()
             source_folders = params["source_folders"]
             cover_file_id = params.get("cover_file_id")
             limit = params.get("limit")
