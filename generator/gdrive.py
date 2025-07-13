@@ -4,20 +4,26 @@ import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 from google.auth import default
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 import io
 
 from filters import PropertyFilter, FilterGroup
 
 
-def authenticate_drive():
+def authenticate_drive(key_file_path: Optional[str] = None):
     """Authenticate with Google Drive API."""
-    creds, _ = default(
-        scopes=[
-            "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/drive.metadata.readonly",
-        ]
-    )
+    scopes = [
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+    ]
+    if key_file_path:
+        creds = service_account.Credentials.from_service_account_file(
+            key_file_path, scopes=scopes
+        )
+    else:
+        creds, _ = default(scopes=scopes)
+
     return build("drive", "v3", credentials=creds), creds
 
 

@@ -129,7 +129,7 @@ def main(cloud_event):
             status_span.set_attribute("status", "RUNNING")
 
         try:
-            drive, cache = init_services()
+            drive, cache = init_services()  # Uses ADC from env
             source_folders = params["source_folders"]
             cover_file_id = params.get("cover_file_id")
             limit = params.get("limit")

@@ -63,6 +63,13 @@ def make_cli_progress_callback():
     multiple=True,
     help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
 )
+@click.option(
+    "--service-account-key",
+    envvar="GOOGLE_APPLICATION_CREDENTIALS",
+    type=click.Path(exists=True),
+    help="Path to a service account key file for authentication. "
+    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+)
 def cli(
     source_folder: str,
     destination_path: Path,
@@ -72,8 +79,9 @@ def cli(
     filter,
     preface_file_id,
     postface_file_id,
+    service_account_key: str,
 ):
-    drive, cache = init_services()
+    drive, cache = init_services(service_account_key)
 
     client_filter = None
     if filter:

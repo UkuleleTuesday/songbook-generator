@@ -44,12 +44,12 @@ except ImportError:
     tracer = NoOpTracer()
 
 
-def init_services():
+def init_services(key_file_path: Optional[str] = None):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
 
     with tracer.start_as_current_span("init_services"):
-        drive, creds = authenticate_drive()
+        drive, creds = authenticate_drive(key_file_path)
         cache = caching.init_cache()
 
         click.echo("Authentication Details:")
