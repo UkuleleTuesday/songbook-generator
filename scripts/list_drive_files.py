@@ -46,7 +46,6 @@ def list_drive_files(key_file_path, delete_files):
     and calculates the total size.
     """
     drive, creds = authenticate_drive(key_file_path, delete_mode=delete_files)
-
     click.echo("=" * 40)
     click.echo("Authentication Details:")
     if hasattr(creds, "service_account_email"):

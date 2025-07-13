@@ -11,6 +11,7 @@ from filters import PropertyFilter, FilterGroup
 
 
 def authenticate_drive():
+    """Authenticate with Google Drive API."""
     creds, _ = default(
         scopes=[
             "https://www.googleapis.com/auth/drive.readonly",
