@@ -10,3 +10,6 @@ wheels/
 .venv
 .aider*
 .env
+
+# For sikrits
+.secrets
