@@ -12,7 +12,6 @@ import toc
 import cover
 import caching
 from gdrive import (
-    authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,

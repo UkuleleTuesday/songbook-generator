@@ -1,9 +1,6 @@
 import click
 from pathlib import Path
 
-import click
-from pathlib import Path
-
 from config import load_config_folder_ids, load_cover_config
 from pdf import generate_songbook
 from filters import FilterParser
