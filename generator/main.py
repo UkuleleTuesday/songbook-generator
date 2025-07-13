@@ -2,13 +2,16 @@ import os
 import json
 import base64
 import tempfile
-from pdf import generate_songbook
 import functions_framework
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
 from filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
+
+from pdf import generate_songbook
+from gdrive import authenticate_drive
+from caching import init_cache
 
 # Initialize tracing
 from opentelemetry import trace
@@ -35,8 +38,6 @@ tracer = get_tracer(__name__)
 def init_services():
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
-    from gdrive import authenticate_drive
-    from caching import init_cache
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive()
