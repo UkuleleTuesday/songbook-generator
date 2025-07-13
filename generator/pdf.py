@@ -52,14 +52,11 @@ def init_services():
         drive, creds = authenticate_drive()
         cache = caching.init_cache()
 
-        click.echo(f"DEBUG: creds object: {creds}")
-        click.echo(f"DEBUG: creds attributes: {dir(creds)}")
-
         click.echo("Authentication Details:")
-        # Check for service account first, as it's more specific
-        if hasattr(creds, "service_account_email"):
+        # Check for service account first by looking for the 'account' attribute
+        if hasattr(creds, "account") and creds.account:
             auth_type = "Service Account"
-            email = creds.service_account_email
+            email = creds.account
             click.echo(f"  Type: {auth_type}")
             click.echo(f"  Email: {email}")
             main_span.set_attribute("auth.type", auth_type)
