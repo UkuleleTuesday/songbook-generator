@@ -58,11 +58,21 @@ uv python install
 
 Should tell uv to install the latest Python version.
 
+#### Receiving/sending secrets
+
+You will need some client secrets to impersonate service accounts. To be able to send and receive them securely,
+install [magic wormhole](https://magic-wormhole.readthedocs.io/en/latest/welcome.html#installation)
+
+**Note:** On Windows, you will have to [install Chocolatey](https://chocolatey.org/install) first.
+
 
 ### Authentication
-Before running the backend, authenticate with Google Cloud using the following command:
+To run this step successfully, ask an existing developer to send you client secrets to impersonate a service account
+with the right permissions. Save the file to `.secrets/client-secrets.json`.
+
+Then, authenticate with Google Cloud using the following command from your local clone:
 ```bash
-gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform
+gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secrets.json
 ```
 
 ### Code Quality and Pre-commit Hooks
