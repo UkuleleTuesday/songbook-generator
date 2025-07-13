@@ -70,7 +70,7 @@ with the right permissions. Save the file to `.secrets/client-secrets.json`.
 
 Then, authenticate with Google Cloud using the following command from your local clone:
 ```bash
-gcloud auth application-default login --scopes=https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform --client-id-file=.secrets/client-secrets.json
+gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secrets.json
 ```
 
 ### Code Quality and Pre-commit Hooks
