@@ -108,10 +108,6 @@ def query_drive_files(
             # Return partial results if we have any, otherwise empty list
             break
 
-        except Exception as e:
-            click.echo(f"Unexpected error querying Drive files: {str(e)}")
-            break
-
     return files
 
 

@@ -49,10 +49,10 @@ def list_drive_files(key_file_path, delete_files):
     click.echo("=" * 40)
     click.echo("Authentication Details:")
     if hasattr(creds, "service_account_email"):
-        click.echo(f"  Type: Service Account")
+        click.echo("  Type: Service Account")
         click.echo(f"  Email: {creds.service_account_email}")
     elif hasattr(creds, "token"):
-        click.echo(f"  Type: User Credentials")
+        click.echo("  Type: User Credentials")
         try:
             about = drive.about().get(fields="user").execute()
             user_info = about.get("user")
@@ -120,7 +120,7 @@ def list_drive_files(key_file_path, delete_files):
             f"You are about to PERMANENTLY DELETE {len(all_files)} files.", err=True
         )
         confirmation_phrase = "yes I want to delete these files"
-        click.echo(f"To confirm, please type the following phrase:", err=True)
+        click.echo("To confirm, please type the following phrase:", err=True)
         click.echo(f"  '{confirmation_phrase}'\n", err=True)
         response = click.prompt("Confirmation", type=str)
 

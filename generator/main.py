@@ -12,7 +12,6 @@ from typing import Union, Optional
 from pdf import generate_songbook, init_services
 
 # Initialize tracing
-from opentelemetry import trace
 from common.tracing import setup_tracing, get_tracer
 
 # Initialized at cold start
