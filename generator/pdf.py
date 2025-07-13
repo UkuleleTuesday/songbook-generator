@@ -53,6 +53,7 @@ def init_services():
         cache = caching.init_cache()
 
         click.echo("Authentication Details:")
+        # Check for service account first, as it's more specific
         if hasattr(creds, "service_account_email"):
             auth_type = "Service Account"
             email = creds.service_account_email
@@ -60,6 +61,7 @@ def init_services():
             click.echo(f"  Email: {email}")
             main_span.set_attribute("auth.type", auth_type)
             main_span.set_attribute("auth.email", email)
+        # Then check for user credentials
         elif hasattr(creds, "token"):
             auth_type = "User Credentials"
             click.echo(f"  Type: {auth_type}")
