@@ -62,6 +62,7 @@ Should tell uv to install the latest Python version.
 
 You will need some client secrets to impersonate service accounts. To be able to send and received them securely,
 install [magic wormhole](https://magic-wormhole.readthedocs.io/en/latest/welcome.html#installation)
+**Note:** On Windows, you will have to [install Chocolatey](https://chocolatey.org/install) first.
 
 
 ### Authentication
