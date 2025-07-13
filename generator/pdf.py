@@ -62,7 +62,9 @@ def collect_and_sort_files(
         List of file dictionaries sorted alphabetically by name
     """
     with tracer.start_as_current_span("collect_and_sort_files") as span:
-        span.set_attribute("source_folders_count", len(source_folders))
+        span.set_attribute(
+            "source_folders_count", len(source_folders) if source_folders else 0
+        )
         span.set_attribute("filter", client_filter)
 
         files = []
