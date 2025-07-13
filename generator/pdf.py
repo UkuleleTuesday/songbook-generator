@@ -357,6 +357,11 @@ def generate_songbook(
 
         with tracer.start_as_current_span("create_songbook_pdf") as pdf_span:
             with fitz.open() as songbook_pdf:
+                # Generate cover first to know if we need to adjust page offset
+                with reporter.step(1, "Generating cover..."):
+                    with tracer.start_as_current_span("generate_cover"):
+                        cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
+
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
                     with tracer.start_as_current_span("precalculate_toc"):
@@ -367,13 +372,12 @@ def generate_songbook(
                         toc_pdf.close()  # Close temporary TOC
 
                 # Calculate page offset based on cover + preface pages + TOC pages
-                page_offset = 1 + len(preface_files) + toc_page_count
+                cover_page_count = 1 if cover_pdf else 0
+                page_offset = cover_page_count + len(preface_files) + toc_page_count
                 pdf_span.set_attribute("page_offset", page_offset)
 
-                with reporter.step(1, "Generating cover..."):
-                    with tracer.start_as_current_span("generate_cover"):
-                        cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
-                        songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+                if cover_pdf:
+                    songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
                 # Add preface files after cover
                 if preface_files:
