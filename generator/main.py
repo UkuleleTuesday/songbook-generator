@@ -178,14 +178,16 @@ def main(cloud_event):
                 # Create progress callback and pass it to generate_songbook
                 progress_callback = make_progress_callback(job_ref)
                 generate_songbook(
-                    source_folders,
-                    out_path,
-                    limit,
-                    cover_file_id,
-                    client_filter,
-                    preface_file_ids,
-                    postface_file_ids,
-                    progress_callback,
+                    drive=drive,
+                    cache=cache,
+                    source_folders=source_folders,
+                    destination_path=out_path,
+                    limit=limit,
+                    cover_file_id=cover_file_id,
+                    client_filter=client_filter,
+                    preface_file_ids=preface_file_ids,
+                    postface_file_ids=postface_file_ids,
+                    on_progress=progress_callback,
                 )
                 gen_span.set_attribute("output_path", out_path)
 

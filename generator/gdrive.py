@@ -17,7 +17,7 @@ def authenticate_drive():
             "https://www.googleapis.com/auth/drive.metadata.readonly",
         ]
     )
-    return build("drive", "v3", credentials=creds)
+    return build("drive", "v3", credentials=creds), creds
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:

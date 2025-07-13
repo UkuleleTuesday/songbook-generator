@@ -207,6 +207,8 @@ def copy_pdfs(
 
 
 def generate_songbook(
+    drive,
+    cache,
     source_folders: List[str],
     destination_path: Path,
     limit: int,
@@ -229,14 +231,6 @@ def generate_songbook(
             span.set_attribute("postface_files_count", len(postface_file_ids))
 
         reporter = progress.ProgressReporter(on_progress)
-
-        with reporter.step(1, "Initializing cache..."):
-            with tracer.start_as_current_span("init_cache"):
-                cache = caching.init_cache()
-
-        with reporter.step(1, "Authenticating with Google Drive..."):
-            with tracer.start_as_current_span("authenticate_drive"):
-                drive = authenticate_drive()
 
         with reporter.step(1, "Querying files...") as step:
             files = collect_and_sort_files(drive, source_folders, client_filter, step)
