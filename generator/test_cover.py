@@ -10,9 +10,10 @@ from googleapiclient.errors import HttpError
 @pytest.fixture
 def mock_google_services():
     """Create mock Google services (Docs and Drive)."""
-    with patch("cover.get_credentials") as mock_get_credentials, patch(
-        "cover.build"
-    ) as mock_build:
+    with (
+        patch("cover.get_credentials") as mock_get_credentials,
+        patch("cover.build") as mock_build,
+    ):
         mock_creds = Mock()
         mock_get_credentials.return_value = mock_creds
 
