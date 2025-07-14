@@ -164,7 +164,13 @@ def test_create_cover_from_template_custom_title(mock_build):
 @patch("cover.open", new_callable=mock_open)
 @patch("cover.arrow.now")
 def test_generate_cover_basic(
-    mock_now, mock_open_file, mock_makedirs, mock_get_credentials, mock_build, mock_fitz
+    mock_now,
+    mock_open_file,
+    mock_makedirs,
+    mock_get_credentials,
+    mock_build,
+    mock_fitz,
+    tmp_path,
 ):
     """Test basic cover generation functionality."""
     mock_now.return_value.format.return_value = "1st January 2024"
@@ -193,7 +199,7 @@ def test_generate_cover_basic(
 
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
-    result = cover.generate_cover("/tmp/cache", "cover123")
+    result = cover.generate_cover(tmp_path, "cover123")
 
     assert result == mock_pdf
     mock_open_file().write.assert_called_once_with(pdf_content)
@@ -201,10 +207,10 @@ def test_generate_cover_basic(
 
 @patch("cover.config.load_cover_config")
 @patch("cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
+def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_path):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
-    result = cover.generate_cover("/tmp/cache")
+    result = cover.generate_cover(tmp_path)
     assert result is None
     mock_echo.assert_called_once_with(
         "No cover file ID configured. Skipping cover generation."
@@ -213,7 +219,7 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
 
 @patch("cover.fitz.open")
 @patch("cover.build")
-def test_generate_cover_corrupted_pdf(mock_build, mock_fitz):
+def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, tmp_path):
     """Test handling of corrupted PDF file."""
     drive_http = HttpMockSequence(
         [
@@ -239,12 +245,12 @@ def test_generate_cover_corrupted_pdf(mock_build, mock_fitz):
     with pytest.raises(
         cover.CoverGenerationException, match="Downloaded cover file is corrupted"
     ):
-        cover.generate_cover("/tmp/cache", "cover123")
+        cover.generate_cover(tmp_path, "cover123")
 
 
 @patch("cover.fitz.open")
 @patch("cover.build")
-def test_generate_cover_deletion_failure(mock_build, mock_fitz):
+def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
     """Test handling when temporary file deletion fails."""
     drive_http = HttpMockSequence(
         [
@@ -269,14 +275,14 @@ def test_generate_cover_deletion_failure(mock_build, mock_fitz):
     mock_fitz.return_value = Mock()
 
     with pytest.raises(cover.CoverGenerationException):
-        cover.generate_cover("/tmp/cache", "cover123")
+        cover.generate_cover(tmp_path, "cover123")
 
 
 @patch("cover.config.load_cover_config")
 @patch("cover.fitz.open")
 @patch("cover.build")
 def test_generate_cover_uses_provided_cover_id(
-    mock_build, mock_fitz, mock_load_config
+    mock_build, mock_fitz, mock_load_config, tmp_path
 ):
     """Test that provided cover_file_id takes precedence over config."""
     pdf_content = b"fake pdf content"
@@ -302,7 +308,7 @@ def test_generate_cover_uses_provided_cover_id(
     }[service]
     mock_fitz.return_value = Mock()
 
-    cover.generate_cover("/tmp/cache", "provided_cover123")
+    cover.generate_cover(tmp_path, "provided_cover123")
 
     mock_load_config.assert_not_called()
 
