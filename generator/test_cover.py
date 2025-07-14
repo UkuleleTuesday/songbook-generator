@@ -201,7 +201,6 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
         result = cover.generate_cover(
             mock_cache_dir,
             cover_file_id,
-            http=http,
             build_service=mock_build,
         )
 
@@ -266,7 +265,6 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
             cover.generate_cover(
                 mock_cache_dir,
                 cover_file_id,
-                http=http,
                 build_service=mock_build,
             )
 
@@ -276,20 +274,23 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
 def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
     """Test handling when temporary file deletion fails."""
     pdf_content = b"fake pdf content"
-    # To correctly raise an HttpError, we must mock the response object (resp)
-    # and content that HttpError expects.
-    http = HttpMockSequence(
+    drive_http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
             (
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, json.dumps({"replies": []})),
             ({"status": "200"}, pdf_content),
             (Mock(status=500), b"API Error"),
         ]
     )
+    docs_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"replies": []})),
+        ]
+    )
+
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
 
@@ -303,8 +304,8 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
         patch("cover.get_credentials"),
         patch("cover.build") as mock_build,
     ):
-        mock_drive = cover.build("drive", "v3", http=http)
-        mock_docs = cover.build("docs", "v1", http=http)
+        mock_drive = cover.build("drive", "v3", http=drive_http)
+        mock_docs = cover.build("docs", "v1", http=docs_http)
         mock_build.side_effect = lambda service, *args, **kwargs: {
             "drive": mock_drive,
             "docs": mock_docs,
@@ -316,7 +317,6 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
             cover.generate_cover(
                 mock_cache_dir,
                 cover_file_id,
-                http=http,
                 build_service=mock_build,
             )
 
@@ -363,7 +363,6 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
         cover.generate_cover(
             mock_cache_dir,
             provided_cover_id,
-            http=http,
             build_service=mock_build,
         )
 

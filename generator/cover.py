@@ -74,7 +74,7 @@ def create_cover_from_template(
     return copy_id
 
 
-def generate_cover(cache_dir, cover_file_id=None, http=None, build_service=None):
+def generate_cover(cache_dir, cover_file_id=None, build_service=None):
     if not cover_file_id:
         cover_file_id = config.load_cover_config()
         if not cover_file_id:
@@ -91,8 +91,8 @@ def generate_cover(cache_dir, cover_file_id=None, http=None, build_service=None)
             "https://www.googleapis.com/auth/drive",
         ]
     )
-    docs_write = build_func("docs", "v1", credentials=creds, http=http)
-    drive_write = build_func("drive", "v3", credentials=creds, http=http)
+    docs_write = build_func("docs", "v1", credentials=creds)
+    drive_write = build_func("drive", "v3", credentials=creds)
 
     # Generate the formatted date
     today = arrow.now()
