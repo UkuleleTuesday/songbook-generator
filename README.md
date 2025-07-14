@@ -72,6 +72,8 @@ to run code locally with the permissions of a service account.
 First, ask an existing project admin to grant your Google account the `Service
 Account User` role on the `songbook-generator` service account.
 
+**Note:** members of dev@ukuleletuesday.ie should have permissions by default.
+
 Once you have permission, authenticate by running the following command:
 ```bash
 gcloud auth application-default login \
