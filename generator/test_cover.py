@@ -199,9 +199,10 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()) as mock_file,
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
-        patch("cover.default"),
+        patch("cover.default") as mock_default,
         patch("cover.build") as mock_build,
     ):
+        mock_default.return_value = (Mock(), None)
         mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_pdf = Mock()
