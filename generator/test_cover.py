@@ -232,50 +232,42 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_cover_dependencies):
         )
 
 
-@patch("cover.config.load_cover_config")
-@patch("cover.arrow.now")
-def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
+def test_generate_cover_corrupted_pdf(mock_cover_dependencies):
     """Test handling of corrupted PDF file."""
     pdf_content = b"corrupted pdf content"
-    http = HttpMockSequence(
+    drive_http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
             (
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, json.dumps({"replies": []})),
             ({"status": "200"}, pdf_content),
-            ({"status": "200"}, ""),
         ]
+    )
+    docs_http = HttpMockSequence(
+        [({"status": "200"}, json.dumps({"replies": []}))]
     )
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
+    mock_cover_dependencies["load_config"].return_value = cover_file_id
 
-    mock_load_cover_config.return_value = cover_file_id
-    mock_now.return_value.format.return_value = "1st January 2024"
+    mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
+        "drive": mock_drive,
+        "docs": mock_docs,
+    }[service]
+    mock_cover_dependencies["fitz"].side_effect = fitz.EmptyFileError("Empty file")
 
-    with (
-        patch("cover.os.makedirs"),
-        patch("cover.open", mock_open()),
-        patch("cover.fitz.open") as mock_fitz_open,
-        patch("cover.get_credentials"),
-        patch("cover.build") as mock_build,
+    with pytest.raises(
+        cover.CoverGenerationException, match="Downloaded cover file is corrupted"
     ):
-        mock_drive = cover.build("drive", "v3", http=http)
-        mock_docs = cover.build("docs", "v1", http=http)
-        mock_build.side_effect = lambda service, *args, **kwargs: {
-            "drive": mock_drive,
-            "docs": mock_docs,
-        }[service]
-        mock_fitz_open.side_effect = fitz.EmptyFileError("Empty file")
-
-        with pytest.raises(ValueError, match="Downloaded cover file is corrupted"):
-            cover.generate_cover(
-                mock_cache_dir,
-                cover_file_id,
-                build_service=mock_build,
-            )
+        cover.generate_cover(
+            mock_cache_dir,
+            cover_file_id,
+            build_service=mock_cover_dependencies["build"],
+        )
 
 
 def test_generate_cover_deletion_failure(mock_cover_dependencies):
