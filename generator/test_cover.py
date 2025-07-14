@@ -9,28 +9,35 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import HttpMockSequence
 
 
-@pytest.fixture
-def mock_cover_dependencies():
-    """A fixture to mock all external dependencies for cover generation."""
-    with (
-        patch("cover.os.makedirs") as mock_makedirs,
-        patch("cover.open", mock_open()) as mock_file,
-        patch("cover.fitz.open") as mock_fitz,
-        patch("cover.get_credentials") as mock_get_credentials,
-        patch("cover.build") as mock_build,
-        patch("cover.arrow.now") as mock_now,
-        patch("cover.config.load_cover_config") as mock_load_config,
-    ):
+@pytest.fixture(autouse=True)
+def mock_fs():
+    """Auto-used fixture to mock filesystem operations."""
+    with patch("cover.os.makedirs"), patch("cover.open", mock_open()) as mock_file:
+        yield mock_file
+
+
+@pytest.fixture(autouse=True)
+def mock_google_apis():
+    """Auto-used fixture to mock Google API clients and authentication."""
+    with patch("cover.get_credentials"), patch("cover.build") as mock_build:
+        yield mock_build
+
+
+@pytest.fixture(autouse=True)
+def mock_time_and_config():
+    """Auto-used fixture to mock time and config loading."""
+    with patch("cover.arrow.now") as mock_now, patch(
+        "cover.config.load_cover_config"
+    ) as mock_load_config:
         mock_now.return_value.format.return_value = "1st January 2024"
-        yield {
-            "makedirs": mock_makedirs,
-            "file": mock_file,
-            "fitz": mock_fitz,
-            "get_credentials": mock_get_credentials,
-            "build": mock_build,
-            "now": mock_now,
-            "load_config": mock_load_config,
-        }
+        yield {"now": mock_now, "load_config": mock_load_config}
+
+
+@pytest.fixture
+def mock_fitz():
+    """Fixture to mock PDF processing with fitz."""
+    with patch("cover.fitz.open") as mock_fitz_open:
+        yield mock_fitz_open
 
 
 def test_create_cover_from_template_basic():
