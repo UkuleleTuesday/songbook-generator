@@ -2,13 +2,14 @@ import os
 import json
 import base64
 import tempfile
-from pdf import generate_songbook
 import functions_framework
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
 from filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
+
+from pdf import generate_songbook, init_services
 
 # Initialize tracing
 from common.tracing import setup_tracing, get_tracer
@@ -128,6 +129,7 @@ def main(cloud_event):
             status_span.set_attribute("status", "RUNNING")
 
         try:
+            drive, cache = init_services()  # Uses ADC from env
             source_folders = params["source_folders"]
             cover_file_id = params.get("cover_file_id")
             limit = params.get("limit")
@@ -178,14 +180,16 @@ def main(cloud_event):
                 # Create progress callback and pass it to generate_songbook
                 progress_callback = make_progress_callback(job_ref)
                 generate_songbook(
-                    source_folders,
-                    out_path,
-                    limit,
-                    cover_file_id,
-                    client_filter,
-                    preface_file_ids,
-                    postface_file_ids,
-                    progress_callback,
+                    drive=drive,
+                    cache=cache,
+                    source_folders=source_folders,
+                    destination_path=out_path,
+                    limit=limit,
+                    cover_file_id=cover_file_id,
+                    client_filter=client_filter,
+                    preface_file_ids=preface_file_ids,
+                    postface_file_ids=postface_file_ids,
+                    on_progress=progress_callback,
                 )
                 gen_span.set_attribute("output_path", out_path)
 

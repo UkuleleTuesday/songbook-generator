@@ -3,21 +3,9 @@ from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
-from google.auth import default
-from googleapiclient.discovery import build
 import io
 
 from filters import PropertyFilter, FilterGroup
-
-
-def authenticate_drive():
-    creds, _ = default(
-        scopes=[
-            "https://www.googleapis.com/auth/drive.readonly",
-            "https://www.googleapis.com/auth/drive.metadata.readonly",
-        ]
-    )
-    return build("drive", "v3", credentials=creds)
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
@@ -105,10 +93,6 @@ def query_drive_files(
                 click.echo(f"Error querying Drive API (HTTP {error_code}): {error_msg}")
 
             # Return partial results if we have any, otherwise empty list
-            break
-
-        except Exception as e:
-            click.echo(f"Unexpected error querying Drive files: {str(e)}")
             break
 
     return files

@@ -2,7 +2,7 @@ import click
 from pathlib import Path
 
 from config import load_config_folder_ids, load_cover_config
-from pdf import generate_songbook
+from pdf import generate_songbook, init_services
 from filters import FilterParser
 
 
@@ -63,6 +63,13 @@ def make_cli_progress_callback():
     multiple=True,
     help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
 )
+@click.option(
+    "--service-account-key",
+    envvar="GOOGLE_APPLICATION_CREDENTIALS",
+    type=click.Path(exists=True),
+    help="Path to a service account key file for authentication. "
+    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+)
 def cli(
     source_folder: str,
     destination_path: Path,
@@ -72,7 +79,10 @@ def cli(
     filter,
     preface_file_id,
     postface_file_id,
+    service_account_key: str,
 ):
+    drive, cache = init_services(service_account_key)
+
     client_filter = None
     if filter:
         try:
@@ -83,6 +93,7 @@ def cli(
             return
 
     # Convert tuples to lists
+    source_folders = list(source_folder) if source_folder else []
     preface_file_ids = list(preface_file_id) if preface_file_id else None
     postface_file_ids = list(postface_file_id) if postface_file_id else None
 
@@ -93,18 +104,21 @@ def cli(
 
     progress_callback = make_cli_progress_callback()
     generate_songbook(
-        source_folder,
+        drive,
+        cache,
+        source_folders,
         destination_path,
         limit,
         cover_file_id,
         client_filter,
         preface_file_ids,
         postface_file_ids,
-        progress_callback,
+        on_progress=progress_callback,
     )
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
         click.launch(destination_path)
 
 
-cli()
+if __name__ == "__main__":
+    cli()

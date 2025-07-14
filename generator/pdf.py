@@ -1,6 +1,7 @@
 import fitz
 import click
 import os
+from opentelemetry import trace
 import gc
 from pathlib import Path
 from typing import List, Optional, Union
@@ -10,9 +11,10 @@ import progress
 import debug
 import toc
 import cover
+from googleapiclient.discovery import build
 import caching
+from gcp import get_credentials
 from gdrive import (
-    authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,
@@ -43,6 +45,57 @@ except ImportError:
     tracer = NoOpTracer()
 
 
+def authenticate_drive(key_file_path: Optional[str] = None):
+    """Authenticate with Google Drive API."""
+    scopes = [
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+    ]
+    creds = get_credentials(scopes, key_file_path)
+    return build("drive", "v3", credentials=creds), creds
+
+
+def init_services(key_file_path: Optional[str] = None):
+    """Initializes and authenticates services, logging auth details."""
+    main_span = trace.get_current_span()
+
+    with tracer.start_as_current_span("init_services"):
+        drive, creds = authenticate_drive(key_file_path)
+        cache = caching.init_cache()
+
+        click.echo("Authentication Details:")
+        # Check for service account first by looking for the 'account' attribute
+        if hasattr(creds, "account") and creds.account:
+            auth_type = "Service Account"
+            email = creds.account
+            click.echo(f"  Type: {auth_type}")
+            click.echo(f"  Email: {email}")
+            main_span.set_attribute("auth.type", auth_type)
+            main_span.set_attribute("auth.email", email)
+        # Then check for user credentials
+        elif hasattr(creds, "token"):
+            auth_type = "User Credentials"
+            click.echo(f"  Type: {auth_type}")
+            try:
+                about = drive.about().get(fields="user").execute()
+                user_info = about.get("user")
+                if user_info:
+                    user_name = user_info.get("displayName")
+                    email = user_info.get("emailAddress")
+                    click.echo(f"  User: {user_name}")
+                    click.echo(f"  Email: {email}")
+                    main_span.set_attribute("auth.type", auth_type)
+                    main_span.set_attribute("auth.email", email)
+                    main_span.set_attribute("auth.user", user_name)
+            except Exception as e:
+                click.echo(f"  Could not retrieve user info: {e}")
+        else:
+            click.echo(f"  Type: {type(creds)}")
+        click.echo(f"  Scopes: {creds.scopes}")
+        main_span.set_attribute("auth.scopes", str(creds.scopes))
+        return drive, cache
+
+
 def collect_and_sort_files(
     drive,
     source_folders: List[str],
@@ -62,7 +115,9 @@ def collect_and_sort_files(
         List of file dictionaries sorted alphabetically by name
     """
     with tracer.start_as_current_span("collect_and_sort_files") as span:
-        span.set_attribute("source_folders_count", len(source_folders))
+        span.set_attribute(
+            "source_folders_count", len(source_folders) if source_folders else 0
+        )
         span.set_attribute("filter", client_filter)
 
         files = []
@@ -207,6 +262,8 @@ def copy_pdfs(
 
 
 def generate_songbook(
+    drive,
+    cache,
     source_folders: List[str],
     destination_path: Path,
     limit: int,
@@ -229,14 +286,6 @@ def generate_songbook(
             span.set_attribute("postface_files_count", len(postface_file_ids))
 
         reporter = progress.ProgressReporter(on_progress)
-
-        with reporter.step(1, "Initializing cache..."):
-            with tracer.start_as_current_span("init_cache"):
-                cache = caching.init_cache()
-
-        with reporter.step(1, "Authenticating with Google Drive..."):
-            with tracer.start_as_current_span("authenticate_drive"):
-                drive = authenticate_drive()
 
         with reporter.step(1, "Querying files...") as step:
             files = collect_and_sort_files(drive, source_folders, client_filter, step)
@@ -321,6 +370,11 @@ def generate_songbook(
 
         with tracer.start_as_current_span("create_songbook_pdf") as pdf_span:
             with fitz.open() as songbook_pdf:
+                # Generate cover first to know if we need to adjust page offset
+                with reporter.step(1, "Generating cover..."):
+                    with tracer.start_as_current_span("generate_cover"):
+                        cover_pdf = cover.generate_cover(cache.cache_dir, cover_file_id)
+
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
                     with tracer.start_as_current_span("precalculate_toc"):
@@ -331,13 +385,12 @@ def generate_songbook(
                         toc_pdf.close()  # Close temporary TOC
 
                 # Calculate page offset based on cover + preface pages + TOC pages
-                page_offset = 1 + len(preface_files) + toc_page_count
+                cover_page_count = 1 if cover_pdf else 0
+                page_offset = cover_page_count + len(preface_files) + toc_page_count
                 pdf_span.set_attribute("page_offset", page_offset)
 
-                with reporter.step(1, "Generating cover..."):
-                    with tracer.start_as_current_span("generate_cover"):
-                        cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
-                        songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+                if cover_pdf:
+                    songbook_pdf.insert_pdf(cover_pdf, start_at=0)
 
                 # Add preface files after cover
                 if preface_files:
