@@ -233,7 +233,6 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
             ({"status": "200"}, ""),
         ]
     )
-    mock_drive = Mock()
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
 
@@ -281,7 +280,6 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
             ({"status": "500"}, b"API Error"),
         ]
     )
-    mock_drive = Mock()
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
 
@@ -316,7 +314,6 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
 @patch("cover.arrow.now")
 def test_generate_cover_uses_provided_cover_id(mock_now):
     """Test that provided cover_file_id takes precedence over config."""
-    mock_drive = Mock()
     mock_cache_dir = "/tmp/cache"
     provided_cover_id = "provided_cover123"
 
