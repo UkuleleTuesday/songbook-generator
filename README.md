@@ -64,25 +64,18 @@ uv python install
 
 Should tell uv to install the latest Python version.
 
-#### Receiving/sending secrets
-
-You will need some client secrets to impersonate service accounts. To be able to send and receive them securely,
-install [magic wormhole](https://magic-wormhole.readthedocs.io/en/latest/welcome.html#installation)
-
-**Note:** On Windows, you will have to [install Chocolatey](https://chocolatey.org/install) first.
-
 ### Authentication
-To run this step successfully, ask an existing developer to send you client secrets to impersonate a service account
-with the right permissions. Save the file to `.secrets/client-secret.json`.
+To run the application locally against live Google Cloud services, you need to
+authenticate. This project uses service account impersonation, which allows you
+to run code locally with the permissions of a service account.
 
-You will also need to be added to the Test users of the project before being able to log in. Ask an existing project admin
-to add you using [App Audience Management](https://share.google/387btD6tmD4JI3fGd).
+First, ask an existing project admin to grant your Google account the `Service
+Account User` role on the `songbook-generator` service account.
 
-**Project admins**: To add a test user in [Google Cloud console](https://console.cloud.google.com/), go to [*APIs and Services -> OAuth Consent Screen -> Audience*](https://console.cloud.google.com/auth/audience). Only direct email addresses are supported, it is not possible to bulk-add a group/mailing list email address.
-
-Then, authenticate with Google Cloud using the following command from your local clone:
+Once you have permission, authenticate by running the following command:
 ```bash
-gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secret.json
+gcloud auth application-default login \
+  --impersonate-service-account=songbook-generator@songbook-generator.iam.gserviceaccount.com
 ```
 
 ### Code Quality and Pre-commit Hooks
