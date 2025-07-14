@@ -207,9 +207,10 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_pat
     )
 
 
+@patch("cover.get_credentials")
 @patch("cover.fitz.open")
 @patch("cover.build")
-def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, tmp_path):
+def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, mock_get_credentials, tmp_path):
     """Test handling of corrupted PDF file."""
     drive_http = HttpMockSequence(
         [
@@ -236,9 +237,12 @@ def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, tmp_path):
         cover.generate_cover(tmp_path, "cover123")
 
 
+@patch("cover.get_credentials")
 @patch("cover.fitz.open")
 @patch("cover.build")
-def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
+def test_generate_cover_deletion_failure(
+    mock_build, mock_fitz, mock_get_credentials, tmp_path
+):
     """Test handling when temporary file deletion fails."""
     drive_http = HttpMockSequence(
         [
@@ -267,8 +271,9 @@ def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
 @patch("cover.config.load_cover_config")
 @patch("cover.fitz.open")
 @patch("cover.build")
+@patch("cover.get_credentials")
 def test_generate_cover_uses_provided_cover_id(
-    mock_build, mock_fitz, mock_load_config, tmp_path
+    mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
 ):
     """Test that provided cover_file_id takes precedence over config."""
     pdf_content = b"fake pdf content"
@@ -297,7 +302,8 @@ def test_generate_cover_uses_provided_cover_id(
     mock_load_config.assert_not_called()
 
 
-def test_create_cover_malformed_batch_response(capsys):
+@patch("cover.build")
+def test_create_cover_malformed_batch_response(mock_build, capsys):
     """Test handling of malformed batch response structure."""
     http = HttpMockSequence(
         [
@@ -321,8 +327,8 @@ def test_create_cover_malformed_batch_response(capsys):
             ),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
 
     result = cover.create_cover_from_template(
         drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
