@@ -45,7 +45,10 @@ def test_create_cover_from_template_basic(mock_google_services):
     )
 
     result = cover.create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"}
+        drive,
+        docs,
+        "template123",
+        {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"},
     )
 
     assert result == "copy123"
@@ -94,7 +97,7 @@ def test_create_cover_from_template_missing_occurrences_changed(
 
     # This should not raise a KeyError
     result = cover.create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
+        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"
@@ -119,7 +122,7 @@ def test_create_cover_from_template_no_replies(mock_google_services, capsys):
     )
 
     result = cover.create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
+        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"
@@ -142,7 +145,7 @@ def test_create_cover_from_template_empty_replacement_map(mock_google_services):
         batch_response
     )
 
-    result = cover.create_cover_from_template("template123", {})
+    result = cover.create_cover_from_template(drive, docs, "template123", {})
 
     assert result == "copy123"
 
@@ -166,7 +169,11 @@ def test_create_cover_from_template_custom_title(mock_google_services):
     )
 
     result = cover.create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}, copy_title="Custom Title"
+        drive,
+        docs,
+        "template123",
+        {"{{DATE}}": "1st January 2024"},
+        copy_title="Custom Title",
     )
 
     assert result == "copy123"
@@ -217,7 +224,7 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
 
         # Verify cover was created with date
         mock_create_cover.assert_called_once_with(
-            cover_file_id, {"{{DATE}}": "1st January 2024"}
+            mock_drive, mock_drive, cover_file_id, {"{{DATE}}": "1st January 2024"}
         )
 
         # Verify PDF was exported
@@ -383,7 +390,7 @@ def test_create_cover_malformed_batch_response(mock_google_services, capsys):
 
     # Should handle malformed responses gracefully
     result = cover.create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
+        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"

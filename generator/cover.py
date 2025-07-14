@@ -12,28 +12,24 @@ DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 def create_cover_from_template(
-    template_cover_id: str, replacement_map: dict, copy_title: str = None
+    drive,
+    docs,
+    template_cover_id: str,
+    replacement_map: dict,
+    copy_title: str = None,
 ):
     """
     Copies the original Google Doc, performs text replacements on the copy,
     exports that copy to PDF, and saves it locally.
 
+    :param drive: Authenticated Google Drive service object.
+    :param docs: Authenticated Google Docs service object.
     :param original_doc_id: ID of the source Google Doc
     :param replacement_map: dict mapping placeholder → replacement text
     :param pdf_output_path: local filename for the exported PDF
     :param copy_title: Optional new title for the copied Doc
     """
-    # 1) Authenticate
-    creds, _ = default(
-        scopes=[
-            "https://www.googleapis.com/auth/documents",
-            "https://www.googleapis.com/auth/drive",
-        ]
-    )
-    docs = build("docs", "v1", credentials=creds)
-    drive = build("drive", "v3", credentials=creds)
-
-    # 2) Copy the original Doc
+    # 1) Copy the original Doc
     copy_metadata = {"name": copy_title or f"Copy of {template_cover_id}"}
     copy = drive.files().copy(fileId=template_cover_id, body=copy_metadata).execute()
     copy_id = copy["id"]
@@ -94,7 +90,9 @@ def generate_cover(cache_dir, cover_file_id=None):
     today = arrow.now()
     formatted_date = today.format("Do MMMM YYYY")
 
-    cover_id = create_cover_from_template(cover_file_id, {"{{DATE}}": formatted_date})
+    cover_id = create_cover_from_template(
+        drive_write, docs_write, cover_file_id, {"{{DATE}}": formatted_date}
+    )
     pdf_blob = (
         drive_write.files()
         .export(fileId=cover_id, mimeType="application/pdf")
