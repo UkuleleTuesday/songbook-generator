@@ -6,14 +6,9 @@ from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
 import config
+from .exceptions import CoverGenerationException
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
-
-
-class SongbookCoverException(Exception):
-    """Custom exception for errors during cover generation."""
-
-    pass
 
 
 def create_cover_from_template(
@@ -124,7 +119,7 @@ def generate_cover(cache_dir, cover_file_id=None):
         # Catch specific API errors but don't halt the process,
         # just wrap and raise as our custom exception.
         # The temporary file might be left on Drive, but the PDF is generated.
-        raise SongbookCoverException(
+        raise CoverGenerationException(
             f"Failed to delete temporary cover file {cover_id} from Google Drive. "
             f"It may need to be manually removed. Original error: {e}"
         ) from e
