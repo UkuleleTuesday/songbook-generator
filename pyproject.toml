@@ -40,3 +40,7 @@ dev = [
     "pytest>=8.4.1",
     "pytest-mock>=3.14.1",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["api*", "common*", "generator*", "merger*"]
