@@ -181,11 +181,19 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
         patch("cover.get_credentials"),
         patch("cover.build") as mock_build,
     ):
-        mock_drive = cover.build("drive", "v3", http=http)
-        mock_docs = cover.build("docs", "v1", http=http)
+        # This is intricate. The HttpMockSequence is consumed by `cover.build`,
+        # but we also need to mock the `export_media` method. So we create real
+        # service objects with the mock HTTP, then wrap them in a mock to
+        # control the return of `export_media`.
+        mock_drive_service = cover.build("drive", "v3", http=http)
+        mock_drive_service.files.return_value.export.return_value.execute.return_value = (
+            pdf_content
+        )
+
+        mock_docs_service = cover.build("docs", "v1", http=http)
         mock_build.side_effect = lambda service, *args, **kwargs: {
-            "drive": mock_drive,
-            "docs": mock_docs,
+            "drive": mock_drive_service,
+            "docs": mock_docs_service,
         }[service]
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
@@ -268,6 +276,8 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
 def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
     """Test handling when temporary file deletion fails."""
     pdf_content = b"fake pdf content"
+    # To correctly raise an HttpError, we must mock the response object (resp)
+    # and content that HttpError expects.
     http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
@@ -277,7 +287,7 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
             ),
             ({"status": "200"}, json.dumps({"replies": []})),
             ({"status": "200"}, pdf_content),
-            ({"status": "500"}, b"API Error"),
+            (Mock(status=500), b"API Error"),
         ]
     )
     mock_cache_dir = "/tmp/cache"
