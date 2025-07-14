@@ -12,9 +12,8 @@ import debug
 import toc
 import cover
 from googleapiclient.discovery import build
-from google.auth import default
-from google.oauth2 import service_account
 import caching
+from gcp import get_credentials
 from gdrive import (
     query_drive_files_with_client_filter,
     download_file_stream,
@@ -52,13 +51,7 @@ def authenticate_drive(key_file_path: Optional[str] = None):
         "https://www.googleapis.com/auth/drive.readonly",
         "https://www.googleapis.com/auth/drive.metadata.readonly",
     ]
-    if key_file_path:
-        creds = service_account.Credentials.from_service_account_file(
-            key_file_path, scopes=scopes
-        )
-    else:
-        creds, _ = default(scopes=scopes)
-
+    creds = get_credentials(scopes, key_file_path)
     return build("drive", "v3", credentials=creds), creds
 
 

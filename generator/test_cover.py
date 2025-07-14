@@ -10,9 +10,11 @@ from googleapiclient.errors import HttpError
 @pytest.fixture
 def mock_google_services():
     """Create mock Google services (Docs and Drive)."""
-    with patch("cover.default") as mock_default, patch("cover.build") as mock_build:
+    with patch("cover.get_credentials") as mock_get_credentials, patch(
+        "cover.build"
+    ) as mock_build:
         mock_creds = Mock()
-        mock_default.return_value = (mock_creds, None)
+        mock_get_credentials.return_value = mock_creds
 
         mock_docs = Mock()
         mock_drive = Mock()
@@ -206,10 +208,10 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()) as mock_file,
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
-        patch("cover.default") as mock_default,
+        patch("cover.get_credentials") as mock_get_credentials,
         patch("cover.build") as mock_build,
     ):
-        mock_default.return_value = (Mock(), None)
+        mock_get_credentials.return_value = Mock()
         mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_pdf = Mock()
@@ -276,10 +278,10 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
-        patch("cover.default") as mock_default,
+        patch("cover.get_credentials") as mock_get_credentials,
         patch("cover.build") as mock_build,
     ):
-        mock_default.return_value = (Mock(), None)
+        mock_get_credentials.return_value = Mock()
         mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_fitz_open.side_effect = fitz.EmptyFileError("Empty file")
@@ -307,10 +309,10 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
-        patch("cover.default") as mock_default,
+        patch("cover.get_credentials") as mock_get_credentials,
         patch("cover.build") as mock_build,
     ):
-        mock_default.return_value = (Mock(), None)
+        mock_get_credentials.return_value = Mock()
         mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_pdf = Mock()
@@ -343,10 +345,10 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
-        patch("cover.default") as mock_default,
+        patch("cover.get_credentials") as mock_get_credentials,
         patch("cover.build") as mock_build,
     ):
-        mock_default.return_value = (Mock(), None)
+        mock_get_credentials.return_value = Mock()
         mock_build.return_value = mock_drive
         mock_load_cover_config.return_value = (
             "config_cover123"  # This should be ignored

@@ -1,12 +1,12 @@
 import os
 import click
-from google.auth import default
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
 import config
 from exceptions import CoverGenerationException
+from gcp import get_credentials
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
@@ -77,7 +77,7 @@ def generate_cover(cache_dir, cover_file_id=None):
             return
 
     # This part needs its own auth with broader scopes
-    creds, _ = default(
+    creds = get_credentials(
         scopes=[
             "https://www.googleapis.com/auth/documents",
             "https://www.googleapis.com/auth/drive",
