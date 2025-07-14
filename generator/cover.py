@@ -74,15 +74,12 @@ def create_cover_from_template(
     return copy_id
 
 
-def generate_cover(cache_dir, cover_file_id=None, build_service=None):
+def generate_cover(cache_dir, cover_file_id=None):
     if not cover_file_id:
         cover_file_id = config.load_cover_config()
         if not cover_file_id:
             click.echo("No cover file ID configured. Skipping cover generation.")
             return
-
-    # Allow dependency injection for testing
-    build_func = build_service or build
 
     # This part needs its own auth with broader scopes
     creds = get_credentials(
@@ -91,8 +88,8 @@ def generate_cover(cache_dir, cover_file_id=None, build_service=None):
             "https://www.googleapis.com/auth/drive",
         ]
     )
-    docs_write = build_func("docs", "v1", credentials=creds)
-    drive_write = build_func("drive", "v3", credentials=creds)
+    docs_write = build("docs", "v1", credentials=creds)
+    drive_write = build("drive", "v3", credentials=creds)
 
     # Generate the formatted date
     today = arrow.now()
