@@ -40,6 +40,12 @@ Dev instructions are below. Check out [issues](https://github.com/ukuleletuesday
 
 ### Requirements
 
+#### git
+
+Install [Git](https://git-scm.com/downloads) on your system.
+
+Clone this repository to your local environment.
+
 #### uv (Project packaging)
 
 The project uses [uv](https://docs.astral.sh/uv/) for Python package management. Follow the install instructions for your system.
@@ -65,10 +71,12 @@ install [magic wormhole](https://magic-wormhole.readthedocs.io/en/latest/welcome
 
 **Note:** On Windows, you will have to [install Chocolatey](https://chocolatey.org/install) first.
 
-
 ### Authentication
 To run this step successfully, ask an existing developer to send you client secrets to impersonate a service account
 with the right permissions. Save the file to `.secrets/client-secrets.json`.
+
+You will also need to be added to the Test users of the project before being able to log in. Ask an existing project admin
+to add you using [App Audience Management](https://share.google/387btD6tmD4JI3fGd).
 
 Then, authenticate with Google Cloud using the following command from your local clone:
 ```bash
