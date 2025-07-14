@@ -114,10 +114,10 @@ def generate_cover(cache_dir, cover_file_id=None, build_service=None):
         f.write(pdf_blob)
     try:
         cover_pdf = fitz.open(pdf_output_path)
-    except fitz.EmptyFileError:
-        raise ValueError(
+    except fitz.EmptyFileError as e:
+        raise CoverGenerationException(
             f"Downloaded cover file is corrupted: {pdf_output_path}. Please check the file on Google Drive."
-        )
+        ) from e
     try:
         drive_write.files().delete(fileId=cover_id).execute()
         print(f"Deleted copy: {cover_id} from Google Drive.")
