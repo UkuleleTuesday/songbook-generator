@@ -199,6 +199,9 @@ def test_generate_cover_basic(mock_cover_dependencies):
     )
 
     mock_drive = cover.build("drive", "v3", http=drive_http)
+    # The export method for media downloads doesn't use the HttpMockSequence in the same way.
+    # We need to mock its return value directly.
+    mock_drive.files().export().execute.return_value = pdf_content
     mock_docs = cover.build("docs", "v1", http=docs_http)
     mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
@@ -280,7 +283,6 @@ def test_generate_cover_deletion_failure(mock_cover_dependencies):
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, pdf_content),
             (Mock(status=500), b"API Error"),
         ]
     )
@@ -293,6 +295,7 @@ def test_generate_cover_deletion_failure(mock_cover_dependencies):
     mock_cover_dependencies["load_config"].return_value = cover_file_id
 
     mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_drive.files().export().execute.return_value = pdf_content
     mock_docs = cover.build("docs", "v1", http=docs_http)
     mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
@@ -331,6 +334,7 @@ def test_generate_cover_uses_provided_cover_id(mock_cover_dependencies):
     )
 
     mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_drive.files().export().execute.return_value = pdf_content
     mock_docs = cover.build("docs", "v1", http=docs_http)
     mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
