@@ -171,7 +171,7 @@ def test_collect_and_sort_files_no_progress_step(mocker):
 
 
 def test_collect_and_sort_files_case_sensitive_sorting(mocker):
-    """Test that sorting handles different cases correctly."""
+    """Test that sorting handles different cases correctly with case-insensitive natural sorting."""
     mock_drive = mocker.Mock()
 
     # Files with mixed case names
@@ -189,11 +189,11 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
         source_folders=["folder1"],
     )
 
-    # Should be sorted alphabetically (case-sensitive by default in Python)
+    # Should be sorted alphabetically (case-insensitive with natural sorting)
     expected = [
+        {"name": "apple.pdf", "id": "2"},
         {"name": "Banana.pdf", "id": "3"},
         {"name": "Zebra.pdf", "id": "1"},
-        {"name": "apple.pdf", "id": "2"},
     ]
     assert result == expected
 
@@ -254,3 +254,75 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
 
     # Should have queried all folders
     assert mock_query.call_count == 3
+
+
+def test_collect_and_sort_files_natural_sorting(mocker):
+    """Test that files are sorted using natural sorting (natsort) for proper numerical ordering."""
+    mock_drive = mocker.Mock()
+
+    # Mock files with numbers that should be sorted naturally
+    mock_files = [
+        {"name": "Song 10 - Artist A.pdf", "id": "10"},
+        {"name": "Song 2 - Artist B.pdf", "id": "2"},
+        {"name": "Song 1 - Artist C.pdf", "id": "1"},
+        {"name": "Song 20 - Artist D.pdf", "id": "20"},
+        {"name": "A Song - Artist E.pdf", "id": "a"},
+        {"name": "B Song - Artist F.pdf", "id": "b"},
+        {"name": "Song 3 - Artist G.pdf", "id": "3"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+
+    # Should be sorted naturally: letters first, then numbers in natural order
+    expected = [
+        {"name": "A Song - Artist E.pdf", "id": "a"},
+        {"name": "B Song - Artist F.pdf", "id": "b"},
+        {"name": "Song 1 - Artist C.pdf", "id": "1"},
+        {"name": "Song 2 - Artist B.pdf", "id": "2"},
+        {"name": "Song 3 - Artist G.pdf", "id": "3"},
+        {"name": "Song 10 - Artist A.pdf", "id": "10"},
+        {"name": "Song 20 - Artist D.pdf", "id": "20"},
+    ]
+    assert result == expected
+
+    # Verify the query was called correctly
+    mock_query.assert_called_once_with(mock_drive, "folder1", None)
+
+
+def test_collect_and_sort_files_case_insensitive_natural_sorting(mocker):
+    """Test that natural sorting works case-insensitively."""
+    mock_drive = mocker.Mock()
+
+    # Mock files with mixed case that should be sorted case-insensitively
+    mock_files = [
+        {"name": "zulu Song - Artist.pdf", "id": "z"},
+        {"name": "Alpha Song - Artist.pdf", "id": "a"},
+        {"name": "beta Song - Artist.pdf", "id": "b"},
+        {"name": "Zebra Song - Artist.pdf", "id": "Z"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+
+    # Should be sorted case-insensitively
+    expected = [
+        {"name": "Alpha Song - Artist.pdf", "id": "a"},
+        {"name": "beta Song - Artist.pdf", "id": "b"},
+        {"name": "Zebra Song - Artist.pdf", "id": "Z"},
+        {"name": "zulu Song - Artist.pdf", "id": "z"},
+    ]
+    assert result == expected
+
+    # Verify the query was called correctly
+    mock_query.assert_called_once_with(mock_drive, "folder1", None)

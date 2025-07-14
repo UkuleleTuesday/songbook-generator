@@ -6,6 +6,7 @@ import gc
 from pathlib import Path
 from typing import List, Optional, Union
 from itertools import batched
+from natsort import natsorted, ns
 import progress
 
 import debug
@@ -137,8 +138,8 @@ def collect_and_sort_files(
                         f"Found {len(folder_files)} files in folder {folder_index + 1}: {folder}",
                     )
 
-        # Sort files alphabetically by name after aggregating from all folders
-        files.sort(key=lambda f: f["name"])
+        # Sort files alphabetically by name after aggregating from all folders using natural sorting
+        files = natsorted(files, key=lambda f: f["name"], alg=ns.IGNORECASE)
         span.set_attribute("total_files_found", len(files))
         return files
 

@@ -5,6 +5,7 @@ import fitz
 import functions_framework
 from google.cloud import storage
 import traceback
+from natsort import natsorted, ns
 
 # Initialize tracing
 from common.tracing import setup_tracing, get_tracer
@@ -80,8 +81,10 @@ def fetch_and_merge_pdfs(output_path):
 
                 downloads_span.set_attribute("downloaded_count", len(downloaded_files))
 
-            # Sort files and metadata for consistent ordering
-            file_metadata.sort(key=lambda x: x["name"])
+            # Sort files and metadata for consistent ordering using natural sorting
+            file_metadata = natsorted(
+                file_metadata, key=lambda x: x["name"], alg=ns.IGNORECASE
+            )
 
             # Merge PDFs
             with tracer.start_as_current_span("merge_pdfs") as merge_span:
