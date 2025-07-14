@@ -5,10 +5,7 @@ import fitz
 import cover
 
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from googleapiclient.http import HttpMockSequence
-
-
 
 
 def test_create_cover_from_template_basic():
@@ -180,9 +177,7 @@ def test_generate_cover_basic(
             ({"status": "200"}, ""),  # for the delete call
         ]
     )
-    docs_http = HttpMockSequence(
-        [({"status": "200"}, json.dumps({"replies": []}))]
-    )
+    docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
 
     mock_drive = cover.build("drive", "v3", http=drive_http)
     mock_drive.files().export().execute.return_value = pdf_content
@@ -225,9 +220,7 @@ def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, tmp_path):
             ),
         ]
     )
-    docs_http = HttpMockSequence(
-        [({"status": "200"}, json.dumps({"replies": []}))]
-    )
+    docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
     mock_drive = cover.build("drive", "v3", http=drive_http)
     mock_drive.files().export().execute.return_value = b"corrupted"
     mock_docs = cover.build("docs", "v1", http=docs_http)
@@ -258,9 +251,7 @@ def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
             ({"status": "500"}, b"API Error"),  # for delete
         ]
     )
-    docs_http = HttpMockSequence(
-        [({"status": "200"}, json.dumps({"replies": []}))]
-    )
+    docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
     mock_drive = build("drive", "v3", http=drive_http)
     mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
@@ -291,9 +282,7 @@ def test_generate_cover_uses_provided_cover_id(
             ({"status": "200"}, ""),
         ]
     )
-    docs_http = HttpMockSequence(
-        [({"status": "200"}, json.dumps({"replies": []}))]
-    )
+    docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
     mock_drive = cover.build("drive", "v3", http=drive_http)
     mock_drive.files().export().execute.return_value = pdf_content
     mock_docs = cover.build("docs", "v1", http=docs_http)
