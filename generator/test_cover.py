@@ -34,8 +34,10 @@ def test_create_cover_from_template_basic(mock_build):
             ),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    # The build function returns a service object that uses the mock http transport.
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
+    # The mock_build is for calls inside the SUT, which there are none in this case.
 
     result = cover.create_cover_from_template(
         drive,
@@ -43,7 +45,7 @@ def test_create_cover_from_template_basic(mock_build):
         "template123",
         {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"},
     )
-
+    print(f"Result from create_cover_from_template: {result!r}")
     assert result == "copy123"
 
 
