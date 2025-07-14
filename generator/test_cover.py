@@ -335,7 +335,10 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
+        patch("cover.default"),
+        patch("cover.build") as mock_build,
     ):
+        mock_build.return_value = mock_drive
         mock_load_cover_config.return_value = (
             "config_cover123"  # This should be ignored
         )
@@ -344,14 +347,15 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
         mock_fitz_open.return_value = mock_pdf
         mock_drive.files.return_value.delete.return_value.execute.return_value = {}
 
-        cover.generate_cover(mock_drive, mock_cache_dir, provided_cover_id)
+        cover.generate_cover(mock_cache_dir, provided_cover_id)
 
-        # Should use provided ID, not config ID
-        mock_create_cover.assert_called_once_with(
-            provided_cover_id, {"{{DATE}}": "1st January 2024"}
-        )
         # Config should not be loaded when cover_file_id is provided
         mock_load_cover_config.assert_not_called()
+
+        # Check that the provided_cover_id was used
+        mock_create_cover.assert_called_with(
+            provided_cover_id, {"{{DATE}}": "1st January 2024"}
+        )
 
 
 def test_create_cover_malformed_batch_response(mock_google_services, capsys):
