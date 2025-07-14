@@ -8,7 +8,6 @@ from typing import List, Optional, Union
 from itertools import batched
 import progress
 
-import debug
 import toc
 import cover
 from googleapiclient.discovery import build
@@ -577,7 +576,6 @@ def merge_pdfs(
                         progress_step.increment(1, f"Added {file['name']}")
                         current_page += 1
 
-                debug.log_resource_usage()
                 gc.collect()  # Clean up after each batch
 
 
