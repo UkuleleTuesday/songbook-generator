@@ -255,7 +255,7 @@ def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
             ({"status": "200"}, b"pdf content"),  # for export
-            (Mock(status=500), b"API Error"),  # for delete
+            ({"status": "500"}, b"API Error"),  # for delete
         ]
     )
     docs_http = HttpMockSequence(
