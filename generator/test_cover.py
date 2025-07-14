@@ -4,6 +4,9 @@ import fitz
 import cover
 
 
+from googleapiclient.errors import HttpError
+
+
 @pytest.fixture
 def mock_google_services():
     """Create mock Google services (Docs and Drive)."""
@@ -176,7 +179,9 @@ def test_create_cover_from_template_custom_title(mock_google_services):
 
 @patch("cover.config.load_cover_config")
 @patch("cover.arrow.now")
-def test_generate_cover_basic(mock_now, mock_load_cover_config, mock_google_services):
+@patch("cover.config.load_cover_config")
+@patch("cover.arrow.now")
+def test_generate_cover_basic(mock_now, mock_load_cover_config):
     """Test basic cover generation functionality."""
     # Setup mocks
     mock_drive = Mock()
@@ -196,7 +201,10 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config, mock_google_serv
         patch("cover.open", mock_open()) as mock_file,
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
+        patch("cover.default"),
+        patch("cover.build") as mock_build,
     ):
+        mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
@@ -204,7 +212,7 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config, mock_google_serv
         # Mock successful deletion
         mock_drive.files.return_value.delete.return_value.execute.return_value = {}
 
-        result = cover.generate_cover(mock_drive, mock_cache_dir, cover_file_id)
+        result = cover.generate_cover(mock_cache_dir, cover_file_id)
 
         assert result == mock_pdf
 
@@ -220,7 +228,7 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config, mock_google_serv
 
         # Verify file was written
         mock_file.assert_called_once()
-        mock_file.return_value.write.assert_called_once_with(pdf_content)
+        mock_file().write.assert_called_once_with(pdf_content)
 
         # Verify temporary file was deleted
         mock_drive.files.return_value.delete.assert_called_once_with(
@@ -233,10 +241,9 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config, mock_google_serv
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_cover_config):
     """Test when no cover file is configured."""
     mock_load_cover_config.return_value = None
-    mock_drive = Mock()
     mock_cache_dir = "/tmp/cache"
 
-    result = cover.generate_cover(mock_drive, mock_cache_dir)
+    result = cover.generate_cover(mock_cache_dir)
 
     assert result is None
     mock_echo.assert_called_once_with(
@@ -263,17 +270,20 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
+        patch("cover.default"),
+        patch("cover.build") as mock_build,
     ):
+        mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_fitz_open.side_effect = fitz.EmptyFileError("Empty file")
 
         with pytest.raises(ValueError, match="Downloaded cover file is corrupted"):
-            cover.generate_cover(mock_drive, mock_cache_dir, cover_file_id)
+            cover.generate_cover(mock_cache_dir, cover_file_id)
 
 
 @patch("cover.config.load_cover_config")
 @patch("cover.arrow.now")
-def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config, capsys):
+def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
     """Test handling when temporary file deletion fails."""
     mock_drive = Mock()
     mock_cache_dir = "/tmp/cache"
@@ -290,23 +300,21 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config, capsy
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.create_cover_from_template") as mock_create_cover,
+        patch("cover.default"),
+        patch("cover.build") as mock_build,
     ):
+        mock_build.return_value = mock_drive
         mock_create_cover.return_value = "temp_cover123"
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
 
         # Mock deletion failure
-        mock_drive.files.return_value.delete.return_value.execute.side_effect = (
-            Exception("API Error")
+        mock_drive.files.return_value.delete.return_value.execute.side_effect = HttpError(
+            Mock(status=500), b"API Error"
         )
 
-        result = cover.generate_cover(mock_drive, mock_cache_dir, cover_file_id)
-
-        assert result == mock_pdf
-
-        # Check error message was printed
-        captured = capsys.readouterr()
-        assert "Failed to delete copy: temp_cover123. Error: API Error" in captured.out
+        with pytest.raises(cover.SongbookCoverException):
+            cover.generate_cover(mock_cache_dir, cover_file_id)
 
 
 @patch("cover.arrow.now")
