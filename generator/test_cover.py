@@ -308,8 +308,7 @@ def test_generate_cover_uses_provided_cover_id(
     mock_load_config.assert_not_called()
 
 
-@patch("cover.build")
-def test_create_cover_malformed_batch_response(mock_build, capsys):
+def test_create_cover_malformed_batch_response(capsys):
     """Test handling of malformed batch response structure."""
     http = HttpMockSequence(
         [
