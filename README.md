@@ -73,7 +73,7 @@ install [magic wormhole](https://magic-wormhole.readthedocs.io/en/latest/welcome
 
 ### Authentication
 To run this step successfully, ask an existing developer to send you client secrets to impersonate a service account
-with the right permissions. Save the file to `.secrets/client-secrets.json`.
+with the right permissions. Save the file to `.secrets/client-secret.json`.
 
 You will also need to be added to the Test users of the project before being able to log in. Ask an existing project admin
 to add you using [App Audience Management](https://share.google/387btD6tmD4JI3fGd).
@@ -82,7 +82,7 @@ to add you using [App Audience Management](https://share.google/387btD6tmD4JI3fG
 
 Then, authenticate with Google Cloud using the following command from your local clone:
 ```bash
-gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secrets.json
+gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secret.json
 ```
 
 ### Code Quality and Pre-commit Hooks
