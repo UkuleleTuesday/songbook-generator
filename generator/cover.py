@@ -29,8 +29,13 @@ def create_cover_from_template(
     :param pdf_output_path: local filename for the exported PDF
     :param copy_title: Optional new title for the copied Doc
     """
-    # 1) Copy the original Doc
-    copy_metadata = {"name": copy_title or f"Copy of {template_cover_id}"}
+    # 1) Copy the original Doc. Place it in root of My Drive to avoid
+    # permission issues with the source folder.
+    root_folder_id = drive.files().get(fileId="root", fields="id").execute()["id"]
+    copy_metadata = {
+        "name": copy_title or f"Copy of {template_cover_id}",
+        "parents": [root_folder_id],
+    }
     copy = drive.files().copy(fileId=template_cover_id, body=copy_metadata).execute()
     copy_id = copy["id"]
     print(f"Created copy: {copy_id} (title: {copy.get('name')})")
