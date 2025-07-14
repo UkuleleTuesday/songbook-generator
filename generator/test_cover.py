@@ -363,7 +363,7 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
 
         # Check that the provided_cover_id was used
         mock_create_cover.assert_called_with(
-            provided_cover_id, {"{{DATE}}": "1st January 2024"}
+            mock_drive, mock_drive, provided_cover_id, {"{{DATE}}": "1st January 2024"}
         )
 
 
