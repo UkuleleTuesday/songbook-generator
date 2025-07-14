@@ -71,12 +71,22 @@ def create_cover_from_template(
     return copy_id
 
 
-def generate_cover(drive, cache_dir, cover_file_id=None):
+def generate_cover(cache_dir, cover_file_id=None):
     if not cover_file_id:
         cover_file_id = config.load_cover_config()
         if not cover_file_id:
             click.echo("No cover file ID configured. Skipping cover generation.")
             return
+
+    # This part needs its own auth with broader scopes
+    creds, _ = default(
+        scopes=[
+            "https://www.googleapis.com/auth/documents",
+            "https://www.googleapis.com/auth/drive",
+        ]
+    )
+    docs_write = build("docs", "v1", credentials=creds)
+    drive_write = build("drive", "v3", credentials=creds)
 
     # Generate the formatted date
     today = arrow.now()
@@ -84,7 +94,9 @@ def generate_cover(drive, cache_dir, cover_file_id=None):
 
     cover_id = create_cover_from_template(cover_file_id, {"{{DATE}}": formatted_date})
     pdf_blob = (
-        drive.files().export(fileId=cover_id, mimeType="application/pdf").execute()
+        drive_write.files()
+        .export(fileId=cover_id, mimeType="application/pdf")
+        .execute()
     )
 
     covers_dir = os.path.join(
@@ -101,7 +113,7 @@ def generate_cover(drive, cache_dir, cover_file_id=None):
             f"Downloaded cover file is corrupted: {pdf_output_path}. Please check the file on Google Drive."
         )
     try:
-        drive.files().delete(fileId=cover_id).execute()
+        drive_write.files().delete(fileId=cover_id).execute()
         print(f"Deleted copy: {cover_id} from Google Drive.")
     except Exception as e:
         print(f"Failed to delete copy: {cover_id}. Error: {e}")

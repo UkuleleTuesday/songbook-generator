@@ -11,9 +11,11 @@ import progress
 import debug
 import toc
 import cover
+from googleapiclient.discovery import build
+from google.auth import default
+from google.oauth2 import service_account
 import caching
 from gdrive import (
-    authenticate_drive,
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,
@@ -42,6 +44,22 @@ except ImportError:
             pass
 
     tracer = NoOpTracer()
+
+
+def authenticate_drive(key_file_path: Optional[str] = None):
+    """Authenticate with Google Drive API."""
+    scopes = [
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
+    ]
+    if key_file_path:
+        creds = service_account.Credentials.from_service_account_file(
+            key_file_path, scopes=scopes
+        )
+    else:
+        creds, _ = default(scopes=scopes)
+
+    return build("drive", "v3", credentials=creds), creds
 
 
 def init_services(key_file_path: Optional[str] = None):
@@ -362,7 +380,7 @@ def generate_songbook(
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
-                        cover_pdf = cover.generate_cover(drive, cache, cover_file_id)
+                        cover_pdf = cover.generate_cover(cache, cover_file_id)
 
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
