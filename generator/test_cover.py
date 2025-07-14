@@ -210,7 +210,9 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_pat
 @patch("cover.get_credentials")
 @patch("cover.fitz.open")
 @patch("cover.build")
-def test_generate_cover_corrupted_pdf(mock_build, mock_fitz, mock_get_credentials, tmp_path):
+def test_generate_cover_corrupted_pdf(
+    mock_build, mock_fitz, mock_get_credentials, tmp_path
+):
     """Test handling of corrupted PDF file."""
     drive_http = HttpMockSequence(
         [
