@@ -182,11 +182,34 @@ def test_collect_and_sort_files_no_progress_step(mocker):
     assert result == mock_files
 
 
+def test_collect_and_sort_files_strips_artist_name(mocker):
+    """Test that sorting handles different cases correctly."""
+    mock_drive = mocker.Mock()
+
+    mock_files = [
+        {"name": "ab - a.pdf", "id": "1"},
+        {"name": "a - cd.pdf", "id": "2"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+
+    expected = [
+        {"name": "a - cd.pdf", "id": "2"},
+        {"name": "ab - a.pdf", "id": "1"},
+    ]
+    assert result == expected
+
+
 def test_collect_and_sort_files_case_sensitive_sorting(mocker):
     """Test that sorting handles different cases correctly."""
     mock_drive = mocker.Mock()
 
-    # Files with mixed case names
     mock_files = [
         {"name": "Zebra.pdf", "id": "1"},
         {"name": "apple.pdf", "id": "2"},
@@ -203,11 +226,84 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
         source_folders=["folder1"],
     )
 
-    # Should be sorted alphabetically (case-sensitive by default in Python)
     expected = [
+        {"name": "apple.pdf", "id": "2"},
         {"name": "Banana.pdf", "id": "3"},
         {"name": "Zebra.pdf", "id": "1"},
-        {"name": "apple.pdf", "id": "2"},
+    ]
+    assert result == expected
+
+
+def test_collect_and_sort_files_strips_punctuation(mocker):
+    mock_drive = mocker.Mock()
+
+    mock_files = [
+        {"name": "!!banana.pdf", "id": "1"},
+        {"name": "apple", "id": "2"},
+        {"name": "cucumber.pdf", "id": "3"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+
+    expected = [
+        {"name": "apple", "id": "2"},
+        {"name": "!!banana.pdf", "id": "1"},
+        {"name": "cucumber.pdf", "id": "3"},
+    ]
+    assert result == expected
+
+
+def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
+    mock_drive = mocker.Mock()
+
+    mock_files = [
+        {"name": "çb.pdf", "id": "1"},
+        {"name": "ca", "id": "2"},
+        {"name": "cz.pdf", "id": "3"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+
+    expected = [
+        {"name": "ca", "id": "2"},
+        {"name": "çb.pdf", "id": "1"},
+        {"name": "cz.pdf", "id": "3"},
+    ]
+    assert result == expected
+
+
+def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
+    mock_drive = mocker.Mock()
+
+    mock_files = [
+        {"name": "01 things.pdf", "id": "1"},
+        {"name": "things 100 things", "id": "2"},
+        {"name": "things 001 things.pdf", "id": "3"},
+    ]
+
+    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query.return_value = mock_files
+
+    result = collect_and_sort_files(
+        drive=mock_drive,
+        source_folders=["folder1"],
+    )
+    expected = [
+        {"name": "01 things.pdf", "id": "1"},
+        {"name": "things 001 things.pdf", "id": "3"},
+        {"name": "things 100 things", "id": "2"},
     ]
     assert result == expected
 

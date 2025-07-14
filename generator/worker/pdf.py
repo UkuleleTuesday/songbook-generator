@@ -3,7 +3,7 @@ import click
 import os
 from opentelemetry import trace
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 from . import progress
 from . import toc
 from . import cover
@@ -19,6 +19,9 @@ from ..common.gdrive import (
     query_drive_files_with_client_filter,
 )
 from ..common.tracing import get_tracer
+from natsort import natsorted
+from unidecode import unidecode
+import re
 
 tracer = get_tracer(__name__)
 
@@ -74,6 +77,18 @@ def init_services(key_file_path: Optional[str] = None):
         return drive, cache
 
 
+def _create_song_sort_key(file_obj: Dict) -> str:
+    name = file_obj.get("name", "")
+    title = name.split(" - ")[0] if " - " in name else name
+    title_no_accents = unidecode(title)
+    title_no_punctuation = re.sub(r"[\W_]+", "", title_no_accents)
+    return title_no_punctuation.lower()
+
+
+def _sort_titles(files: List[Dict]):
+    return natsorted(files, key=_create_song_sort_key)
+
+
 def collect_and_sort_files(
     drive,
     source_folders: List[str],
@@ -116,9 +131,9 @@ def collect_and_sort_files(
                     )
 
         # Sort files alphabetically by name after aggregating from all folders
-        files.sort(key=lambda f: f["name"])
+        sorted_files = _sort_titles(files)
         span.set_attribute("total_files_found", len(files))
-        return files
+        return sorted_files
 
 
 def copy_pdfs(
