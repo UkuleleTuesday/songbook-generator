@@ -76,8 +76,7 @@ Account User` role on the `songbook-generator` service account.
 
 Once you have permission, authenticate by running the following command:
 ```bash
-gcloud auth application-default login \
-  --impersonate-service-account=songbook-generator@songbook-generator.iam.gserviceaccount.com
+gcloud auth application-default login --impersonate-service-account=songbook-generator@songbook-generator.iam.gserviceaccount.com
 ```
 
 ### Code Quality and Pre-commit Hooks
