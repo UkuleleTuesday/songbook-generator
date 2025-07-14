@@ -11,8 +11,7 @@ from googleapiclient.http import HttpMockSequence
 
 
 
-@patch("cover.build")
-def test_create_cover_from_template_basic(mock_build):
+def test_create_cover_from_template_basic():
     """Test basic cover creation functionality."""
     http = HttpMockSequence(
         [
@@ -34,10 +33,8 @@ def test_create_cover_from_template_basic(mock_build):
             ),
         ]
     )
-    # The build function returns a service object that uses the mock http transport.
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
-    # The mock_build is for calls inside the SUT, which there are none in this case.
 
     result = cover.create_cover_from_template(
         drive,
@@ -45,12 +42,11 @@ def test_create_cover_from_template_basic(mock_build):
         "template123",
         {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"},
     )
-    print(f"Result from create_cover_from_template: {result!r}")
+
     assert result == "copy123"
 
 
-@patch("cover.build")
-def test_create_cover_from_template_missing_occurrences_changed(mock_build, capsys):
+def test_create_cover_from_template_missing_occurrences_changed(capsys):
     """Test handling of missing occurrencesChanged key (the main bugfix)."""
     http = HttpMockSequence(
         [
@@ -86,8 +82,7 @@ def test_create_cover_from_template_missing_occurrences_changed(mock_build, caps
     assert "Replaced 3 occurrences in the copy." in captured.out
 
 
-@patch("cover.build")
-def test_create_cover_from_template_no_replies(mock_build, capsys):
+def test_create_cover_from_template_no_replies(capsys):
     """Test handling when there are no replies in the batch response."""
     http = HttpMockSequence(
         [
@@ -111,8 +106,7 @@ def test_create_cover_from_template_no_replies(mock_build, capsys):
     assert "Replaced 0 occurrences in the copy." in captured.out
 
 
-@patch("cover.build")
-def test_create_cover_from_template_empty_replacement_map(mock_build):
+def test_create_cover_from_template_empty_replacement_map():
     """Test with empty replacement map."""
     http = HttpMockSequence(
         [
@@ -132,8 +126,7 @@ def test_create_cover_from_template_empty_replacement_map(mock_build):
     assert result == "copy123"
 
 
-@patch("cover.build")
-def test_create_cover_from_template_custom_title(mock_build):
+def test_create_cover_from_template_custom_title():
     """Test creating cover with custom title."""
     http = HttpMockSequence(
         [
@@ -261,15 +254,15 @@ def test_generate_cover_deletion_failure(mock_build, mock_fitz, tmp_path):
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            (Mock(status=500), b"API Error"),
+            ({"status": "200"}, b"pdf content"),  # for export
+            (Mock(status=500), b"API Error"),  # for delete
         ]
     )
     docs_http = HttpMockSequence(
         [({"status": "200"}, json.dumps({"replies": []}))]
     )
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = b"pdf content"
-    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_drive = build("drive", "v3", http=drive_http)
+    mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
         "docs": mock_docs,
