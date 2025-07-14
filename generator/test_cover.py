@@ -275,7 +275,6 @@ def test_generate_cover_corrupted_pdf(mock_cover_dependencies):
 
 def test_generate_cover_deletion_failure(mock_cover_dependencies):
     """Test handling when temporary file deletion fails."""
-    pdf_content = b"fake pdf content"
     drive_http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
@@ -284,7 +283,7 @@ def test_generate_cover_deletion_failure(mock_cover_dependencies):
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
             ({"status": "200"}, pdf_content),  # for the export call
-            (Mock(status=500), b"API Error"),  # for the delete call
+            ({"status": "403"}, "Insufficient permissions"),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
@@ -296,14 +295,8 @@ def test_generate_cover_deletion_failure(mock_cover_dependencies):
     mock_cover_dependencies["load_config"].return_value = cover_file_id
 
     mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = pdf_content
     mock_docs = cover.build("docs", "v1", http=docs_http)
-    mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
     mock_pdf = Mock()
-    mock_cover_dependencies["fitz"].return_value = mock_pdf
 
     with pytest.raises(cover.CoverGenerationException):
         cover.generate_cover(
