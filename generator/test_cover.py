@@ -9,6 +9,30 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import HttpMockSequence
 
 
+@pytest.fixture
+def mock_cover_dependencies():
+    """A fixture to mock all external dependencies for cover generation."""
+    with (
+        patch("cover.os.makedirs") as mock_makedirs,
+        patch("cover.open", mock_open()) as mock_file,
+        patch("cover.fitz.open") as mock_fitz,
+        patch("cover.get_credentials") as mock_get_credentials,
+        patch("cover.build") as mock_build,
+        patch("cover.arrow.now") as mock_now,
+        patch("cover.config.load_cover_config") as mock_load_config,
+    ):
+        mock_now.return_value.format.return_value = "1st January 2024"
+        yield {
+            "makedirs": mock_makedirs,
+            "file": mock_file,
+            "fitz": mock_fitz,
+            "get_credentials": mock_get_credentials,
+            "build": mock_build,
+            "now": mock_now,
+            "load_config": mock_load_config,
+        }
+
+
 def test_create_cover_from_template_basic():
     """Test basic cover creation functionality."""
     http = HttpMockSequence(
@@ -153,74 +177,59 @@ def test_create_cover_from_template_custom_title():
     assert result == "copy123"
 
 
-@patch("cover.config.load_cover_config", return_value="cover123")
-@patch("cover.arrow.now")
-def test_generate_cover_basic(mock_now, mock_load_cover_config):
+def test_generate_cover_basic(mock_cover_dependencies):
     """Test basic cover generation functionality."""
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
-    mock_now.return_value.format.return_value = "1st January 2024"
     pdf_content = b"fake pdf content"
-    http = HttpMockSequence(
+
+    drive_http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
             (
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, json.dumps({"replies": []})),
             ({"status": "200"}, pdf_content),
             ({"status": "200"}, ""),
         ]
     )
+    docs_http = HttpMockSequence(
+        [({"status": "200"}, json.dumps({"replies": []}))]
+    )
 
-    with (
-        patch("cover.os.makedirs"),
-        patch("cover.open", mock_open()) as mock_file,
-        patch("cover.fitz.open") as mock_fitz_open,
-        patch("cover.get_credentials"),
-        patch("cover.build") as mock_build,
-    ):
-        # This is intricate. The HttpMockSequence is consumed by `cover.build`,
-        # but we also need to mock the `export_media` method. So we create real
-        # service objects with the mock HTTP, then wrap them in a mock to
-        # control the return of `export_media`.
-        mock_drive_service = cover.build("drive", "v3", http=http)
-        mock_drive_service.files.return_value.export.return_value.execute.return_value = (
-            pdf_content
-        )
+    mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
+        "drive": mock_drive,
+        "docs": mock_docs,
+    }[service]
 
-        mock_docs_service = cover.build("docs", "v1", http=http)
-        mock_build.side_effect = lambda service, *args, **kwargs: {
-            "drive": mock_drive_service,
-            "docs": mock_docs_service,
-        }[service]
-        mock_pdf = Mock()
-        mock_fitz_open.return_value = mock_pdf
+    mock_pdf = Mock()
+    mock_cover_dependencies["fitz"].return_value = mock_pdf
 
-        result = cover.generate_cover(
-            mock_cache_dir,
-            cover_file_id,
-            build_service=mock_build,
-        )
+    result = cover.generate_cover(
+        mock_cache_dir, cover_file_id, build_service=mock_cover_dependencies["build"]
+    )
 
-        assert result == mock_pdf
-        mock_file().write.assert_called_once_with(pdf_content)
+    assert result == mock_pdf
+    mock_cover_dependencies["file"]().write.assert_called_once_with(pdf_content)
 
 
-@patch("cover.config.load_cover_config")
 @patch("cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_load_cover_config):
+def test_generate_cover_no_cover_configured(mock_echo, mock_cover_dependencies):
     """Test when no cover file is configured."""
-    mock_load_cover_config.return_value = None
+    mock_cover_dependencies["load_config"].return_value = None
     mock_cache_dir = "/tmp/cache"
 
-    result = cover.generate_cover(mock_cache_dir)
+    with patch("cover.config.load_cover_config") as mock_load_config:
+        mock_load_config.return_value = None
+        result = cover.generate_cover(mock_cache_dir)
 
-    assert result is None
-    mock_echo.assert_called_once_with(
-        "No cover file ID configured. Skipping cover generation."
-    )
+        assert result is None
+        mock_echo.assert_called_once_with(
+            "No cover file ID configured. Skipping cover generation."
+        )
 
 
 @patch("cover.config.load_cover_config")
@@ -269,9 +278,7 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
             )
 
 
-@patch("cover.config.load_cover_config")
-@patch("cover.arrow.now")
-def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
+def test_generate_cover_deletion_failure(mock_cover_dependencies):
     """Test handling when temporary file deletion fails."""
     pdf_content = b"fake pdf content"
     drive_http = HttpMockSequence(
@@ -286,88 +293,68 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
         ]
     )
     docs_http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"replies": []})),
-        ]
+        [({"status": "200"}, json.dumps({"replies": []}))]
     )
 
     mock_cache_dir = "/tmp/cache"
     cover_file_id = "cover123"
+    mock_cover_dependencies["load_config"].return_value = cover_file_id
 
-    mock_load_cover_config.return_value = cover_file_id
-    mock_now.return_value.format.return_value = "1st January 2024"
+    mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
+        "drive": mock_drive,
+        "docs": mock_docs,
+    }[service]
+    mock_pdf = Mock()
+    mock_cover_dependencies["fitz"].return_value = mock_pdf
 
-    with (
-        patch("cover.os.makedirs"),
-        patch("cover.open", mock_open()),
-        patch("cover.fitz.open") as mock_fitz_open,
-        patch("cover.get_credentials"),
-        patch("cover.build") as mock_build,
-    ):
-        mock_drive = cover.build("drive", "v3", http=drive_http)
-        mock_docs = cover.build("docs", "v1", http=docs_http)
-        mock_build.side_effect = lambda service, *args, **kwargs: {
-            "drive": mock_drive,
-            "docs": mock_docs,
-        }[service]
-        mock_pdf = Mock()
-        mock_fitz_open.return_value = mock_pdf
-
-        with pytest.raises(cover.CoverGenerationException):
-            cover.generate_cover(
-                mock_cache_dir,
-                cover_file_id,
-                build_service=mock_build,
-            )
+    with pytest.raises(cover.CoverGenerationException):
+        cover.generate_cover(
+            mock_cache_dir,
+            cover_file_id,
+            build_service=mock_cover_dependencies["build"],
+        )
 
 
-@patch("cover.arrow.now")
-def test_generate_cover_uses_provided_cover_id(mock_now):
+def test_generate_cover_uses_provided_cover_id(mock_cover_dependencies):
     """Test that provided cover_file_id takes precedence over config."""
     mock_cache_dir = "/tmp/cache"
     provided_cover_id = "provided_cover123"
-
-    mock_now.return_value.format.return_value = "1st January 2024"
-
     pdf_content = b"fake pdf content"
-    http = HttpMockSequence(
+
+    drive_http = HttpMockSequence(
         [
             ({"status": "200"}, json.dumps({"id": "root_id"})),
             (
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, json.dumps({"replies": []})),
             ({"status": "200"}, pdf_content),
             ({"status": "200"}, ""),
         ]
     )
+    docs_http = HttpMockSequence(
+        [({"status": "200"}, json.dumps({"replies": []}))]
+    )
 
-    with (
-        patch("cover.config.load_cover_config") as mock_load_cover_config,
-        patch("cover.os.makedirs"),
-        patch("cover.open", mock_open()),
-        patch("cover.fitz.open") as mock_fitz_open,
-        patch("cover.get_credentials"),
-        patch("cover.build") as mock_build,
-    ):
-        mock_drive = cover.build("drive", "v3", http=http)
-        mock_docs = cover.build("docs", "v1", http=http)
-        mock_build.side_effect = lambda service, *args, **kwargs: {
-            "drive": mock_drive,
-            "docs": mock_docs,
-        }[service]
-        mock_pdf = Mock()
-        mock_fitz_open.return_value = mock_pdf
+    mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_cover_dependencies["build"].side_effect = lambda service, *args, **kwargs: {
+        "drive": mock_drive,
+        "docs": mock_docs,
+    }[service]
+    mock_pdf = Mock()
+    mock_cover_dependencies["fitz"].return_value = mock_pdf
 
-        cover.generate_cover(
-            mock_cache_dir,
-            provided_cover_id,
-            build_service=mock_build,
-        )
+    cover.generate_cover(
+        mock_cache_dir,
+        provided_cover_id,
+        build_service=mock_cover_dependencies["build"],
+    )
 
-        # Config should not be loaded when cover_file_id is provided
-        mock_load_cover_config.assert_not_called()
+    # Config should not be loaded when cover_file_id is provided
+    mock_cover_dependencies["load_config"].assert_not_called()
 
 
 def test_create_cover_malformed_batch_response(capsys):
