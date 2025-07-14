@@ -69,12 +69,12 @@
         </label>
         <input id="folders" name="source_folders" type="text" value="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95,1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM" required />
         <label for="cover" title="Google Drive file ID for the cover template">
-          Cover File ID
+          Cover File ID (optional)
           <span class="tooltip">❓
-            <span class="tooltip-text">Google Drive file ID for the cover template. The songbook generator needs to have read access to this folder to work!</span>
+            <span class="tooltip-text">Google Drive file ID for the cover template. If left blank, no cover will be generated. The songbook generator needs to have read access to this folder to work!</span>
           </span>
         </label>
-        <input id="cover" name="cover_file_id" type="text" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" required />
+        <input id="cover" name="cover_file_id" type="text" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" />
         <label for="limit" title="Maximum number of song sheets to include in the songbook">
           Limit
           <span class="tooltip">❓
@@ -203,10 +203,14 @@
 
       const payload = {
         source_folders: folderIds,
-        cover_file_id: form.get("cover_file_id"),
         preface_file_ids: ["1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"], // FIXME: hardcoding preface for now
         limit: form.get("limit") ? Number(form.get("limit")) : undefined
       };
+
+      const coverFileId = form.get("cover_file_id");
+      if (coverFileId) {
+        payload.cover_file_id = coverFileId;
+      }
 
       // Build filters array
       const filters = [];
