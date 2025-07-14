@@ -283,7 +283,8 @@ def test_generate_cover_deletion_failure(mock_cover_dependencies):
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            (Mock(status=500), b"API Error"),
+            ({"status": "200"}, pdf_content),  # for the export call
+            (Mock(status=500), b"API Error"),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
