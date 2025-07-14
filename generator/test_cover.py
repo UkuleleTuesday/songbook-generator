@@ -310,8 +310,8 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
         mock_fitz_open.return_value = mock_pdf
 
         # Mock deletion failure
-        mock_drive.files.return_value.delete.return_value.execute.side_effect = HttpError(
-            Mock(status=500), b"API Error"
+        mock_drive.files.return_value.delete.return_value.execute.side_effect = (
+            HttpError(Mock(status=500), b"API Error")
         )
 
         with pytest.raises(cover.SongbookCoverException):

@@ -380,9 +380,7 @@ def generate_songbook(
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
-                        cover_pdf = cover.generate_cover(
-                            cache.cache_dir, cover_file_id
-                        )
+                        cover_pdf = cover.generate_cover(cache.cache_dir, cover_file_id)
 
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
