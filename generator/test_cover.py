@@ -40,6 +40,17 @@ def mock_fitz():
         yield mock_fitz_open
 
 
+def setup_google_api_mocks(mock_google_apis, drive_http, docs_http, export_content=b""):
+    """Helper to set up mock Google Drive and Docs services."""
+    mock_drive = cover.build("drive", "v3", http=drive_http)
+    mock_drive.files().export().execute.return_value = export_content
+    mock_docs = cover.build("docs", "v1", http=docs_http)
+    mock_google_apis.side_effect = lambda service, *args, **kwargs: {
+        "drive": mock_drive,
+        "docs": mock_docs,
+    }[service]
+
+
 def test_create_cover_from_template_basic():
     """Test basic cover creation functionality."""
     http = HttpMockSequence(
@@ -196,19 +207,16 @@ def test_generate_cover_basic(mock_fs, mock_google_apis, mock_fitz):
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
-            ({"status": "200"}, ""),
+            # Note: The export call is mocked directly, so its response is not in the sequence.
+            ({"status": "200"}, ""),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
         [({"status": "200"}, json.dumps({"replies": []}))]
     )
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = pdf_content
-    mock_docs = cover.build("docs", "v1", http=docs_http)
-    mock_google_apis.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
+    setup_google_api_mocks(
+        mock_google_apis, drive_http, docs_http, export_content=pdf_content
+    )
 
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
@@ -248,14 +256,11 @@ def test_generate_cover_corrupted_pdf(
     docs_http = HttpMockSequence(
         [({"status": "200"}, json.dumps({"replies": []}))]
     )
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = b"corrupted"
-    mock_docs = cover.build("docs", "v1", http=docs_http)
-    mock_google_apis.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
+    setup_google_api_mocks(
+        mock_google_apis, drive_http, docs_http, export_content=b"corrupted"
+    )
     mock_fitz.side_effect = fitz.EmptyFileError("Empty file")
+
     with pytest.raises(
         cover.CoverGenerationException, match="Downloaded cover file is corrupted"
     ):
@@ -282,13 +287,10 @@ def test_generate_cover_deletion_failure(
     docs_http = HttpMockSequence(
         [({"status": "200"}, json.dumps({"replies": []}))]
     )
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = b"pdf content"
-    mock_docs = cover.build("docs", "v1", http=docs_http)
-    mock_google_apis.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
+    setup_google_api_mocks(
+        mock_google_apis, drive_http, docs_http, export_content=b"pdf content"
+    )
+
     mock_fitz.return_value = Mock()
     with pytest.raises(cover.CoverGenerationException):
         cover.generate_cover(mock_cache_dir, cover_file_id)
@@ -314,13 +316,9 @@ def test_generate_cover_uses_provided_cover_id(
     docs_http = HttpMockSequence(
         [({"status": "200"}, json.dumps({"replies": []}))]
     )
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = pdf_content
-    mock_docs = cover.build("docs", "v1", http=docs_http)
-    mock_google_apis.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
+    setup_google_api_mocks(
+        mock_google_apis, drive_http, docs_http, export_content=pdf_content
+    )
     mock_fitz.return_value = Mock()
 
     cover.generate_cover(mock_cache_dir, provided_cover_id)
