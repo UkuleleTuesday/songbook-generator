@@ -32,6 +32,9 @@ def test_create_cover_from_template_basic(mock_google_services):
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
 
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
+
     # Mock the copy operation
     copy_response = {"id": "copy123", "name": "Copy of template"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
@@ -58,7 +61,8 @@ def test_create_cover_from_template_basic(mock_google_services):
 
     # Verify copy was created
     drive.files.return_value.copy.assert_called_once_with(
-        fileId="template123", body={"name": "Copy of template123"}
+        fileId="template123",
+        body={"name": "Copy of template123", "parents": ["root_id"]},
     )
 
     # Verify batch update was called
@@ -81,6 +85,9 @@ def test_create_cover_from_template_missing_occurrences_changed(
     """Test handling of missing occurrencesChanged key (the main bugfix)."""
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
+
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
 
     copy_response = {"id": "copy123", "name": "Copy of template"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
@@ -115,6 +122,9 @@ def test_create_cover_from_template_no_replies(mock_google_services, capsys):
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
 
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
+
     copy_response = {"id": "copy123", "name": "Copy of template"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
 
@@ -140,6 +150,9 @@ def test_create_cover_from_template_empty_replacement_map(mock_google_services):
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
 
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
+
     copy_response = {"id": "copy123", "name": "Copy of template"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
 
@@ -163,6 +176,9 @@ def test_create_cover_from_template_custom_title(mock_google_services):
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
 
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
+
     copy_response = {"id": "copy123", "name": "Custom Title"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
 
@@ -183,7 +199,7 @@ def test_create_cover_from_template_custom_title(mock_google_services):
 
     # Verify copy was created with custom title
     drive.files.return_value.copy.assert_called_once_with(
-        fileId="template123", body={"name": "Custom Title"}
+        fileId="template123", body={"name": "Custom Title", "parents": ["root_id"]}
     )
 
 
@@ -374,6 +390,9 @@ def test_create_cover_malformed_batch_response(mock_google_services, capsys):
     """Test handling of malformed batch response structure."""
     docs = mock_google_services["docs"]
     drive = mock_google_services["drive"]
+
+    # Mock fetching the root folder
+    drive.files.return_value.get.return_value.execute.return_value = {"id": "root_id"}
 
     copy_response = {"id": "copy123", "name": "Copy of template"}
     drive.files.return_value.copy.return_value.execute.return_value = copy_response
