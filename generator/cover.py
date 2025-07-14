@@ -106,9 +106,7 @@ def generate_cover(cache_dir, cover_file_id=None):
         .execute()
     )
 
-    covers_dir = os.path.join(
-        os.path.expanduser("~/.cache"), "songbook-generator", "cache", "covers"
-    )
+    covers_dir = os.path.join(cache_dir, "covers")
     os.makedirs(covers_dir, exist_ok=True)
     pdf_output_path = os.path.join(covers_dir, f"{cover_id}.pdf")
     with open(pdf_output_path, "wb") as f:
