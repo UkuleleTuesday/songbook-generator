@@ -6,7 +6,7 @@ from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
 import config
-from .exceptions import CoverGenerationException
+from exceptions import CoverGenerationException
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
