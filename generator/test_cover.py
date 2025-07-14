@@ -179,13 +179,22 @@ def test_generate_cover_basic(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()) as mock_file,
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.get_credentials"),
-        patch("cover.build", return_value=Mock(http=http)) as mock_build,
+        patch("cover.build") as mock_build,
     ):
+        mock_drive = cover.build("drive", "v3", http=http)
+        mock_docs = cover.build("docs", "v1", http=http)
+        mock_build.side_effect = lambda service, *args, **kwargs: {
+            "drive": mock_drive,
+            "docs": mock_docs,
+        }[service]
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
 
         result = cover.generate_cover(
-            mock_cache_dir, cover_file_id, http=http, build_service=mock_build
+            mock_cache_dir,
+            cover_file_id,
+            http=http,
+            build_service=mock_build,
         )
 
         assert result == mock_pdf
@@ -236,13 +245,22 @@ def test_generate_cover_corrupted_pdf(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.get_credentials"),
-        patch("cover.build", return_value=Mock(http=http)) as mock_build,
+        patch("cover.build") as mock_build,
     ):
+        mock_drive = cover.build("drive", "v3", http=http)
+        mock_docs = cover.build("docs", "v1", http=http)
+        mock_build.side_effect = lambda service, *args, **kwargs: {
+            "drive": mock_drive,
+            "docs": mock_docs,
+        }[service]
         mock_fitz_open.side_effect = fitz.EmptyFileError("Empty file")
 
         with pytest.raises(ValueError, match="Downloaded cover file is corrupted"):
             cover.generate_cover(
-                mock_cache_dir, cover_file_id, http=http, build_service=mock_build
+                mock_cache_dir,
+                cover_file_id,
+                http=http,
+                build_service=mock_build,
             )
 
 
@@ -275,14 +293,23 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.get_credentials"),
-        patch("cover.build", return_value=Mock(http=http)) as mock_build,
+        patch("cover.build") as mock_build,
     ):
+        mock_drive = cover.build("drive", "v3", http=http)
+        mock_docs = cover.build("docs", "v1", http=http)
+        mock_build.side_effect = lambda service, *args, **kwargs: {
+            "drive": mock_drive,
+            "docs": mock_docs,
+        }[service]
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
 
         with pytest.raises(cover.CoverGenerationException):
             cover.generate_cover(
-                mock_cache_dir, cover_file_id, http=http, build_service=mock_build
+                mock_cache_dir,
+                cover_file_id,
+                http=http,
+                build_service=mock_build,
             )
 
 
@@ -315,13 +342,22 @@ def test_generate_cover_uses_provided_cover_id(mock_now):
         patch("cover.open", mock_open()),
         patch("cover.fitz.open") as mock_fitz_open,
         patch("cover.get_credentials"),
-        patch("cover.build", return_value=Mock(http=http)) as mock_build,
+        patch("cover.build") as mock_build,
     ):
+        mock_drive = cover.build("drive", "v3", http=http)
+        mock_docs = cover.build("docs", "v1", http=http)
+        mock_build.side_effect = lambda service, *args, **kwargs: {
+            "drive": mock_drive,
+            "docs": mock_docs,
+        }[service]
         mock_pdf = Mock()
         mock_fitz_open.return_value = mock_pdf
 
         cover.generate_cover(
-            mock_cache_dir, provided_cover_id, http=http, build_service=mock_build
+            mock_cache_dir,
+            provided_cover_id,
+            http=http,
+            build_service=mock_build,
         )
 
         # Config should not be loaded when cover_file_id is provided
