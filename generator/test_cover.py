@@ -314,7 +314,7 @@ def test_generate_cover_deletion_failure(mock_now, mock_load_cover_config):
             HttpError(Mock(status=500), b"API Error")
         )
 
-        with pytest.raises(cover.SongbookCoverException):
+        with pytest.raises(cover.CoverGenerationException):
             cover.generate_cover(mock_cache_dir, cover_file_id)
 
 
