@@ -78,6 +78,8 @@ with the right permissions. Save the file to `.secrets/client-secrets.json`.
 You will also need to be added to the Test users of the project before being able to log in. Ask an existing project admin
 to add you using [App Audience Management](https://share.google/387btD6tmD4JI3fGd).
 
+**Project admins**: To add a test user in [Google Cloud console](https://console.cloud.google.com/), go to [*APIs and Services -> OAuth Consent Screen -> Audience*](https://console.cloud.google.com/auth/audience). Only direct email addresses are supported, it is not possible to bulk-add a group/mailing list email address.
+
 Then, authenticate with Google Cloud using the following command from your local clone:
 ```bash
 gcloud auth application-default login --scopes="https://www.googleapis.com/auth/drive.file,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/cloud-platform" --client-id-file=.secrets/client-secrets.json
