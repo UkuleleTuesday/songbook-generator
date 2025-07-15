@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import Mock, patch, mock_open
 import fitz
-from .. import cover
+from . import cover
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -197,7 +197,7 @@ def test_generate_cover_basic(
 
 
 @patch("generator.worker.cover.config.load_cover_config")
-@patch("cover.click.echo")
+@patch("generator.worker.cover.click.echo")
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_path):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
@@ -208,9 +208,9 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_pat
     )
 
 
-@patch("cover.get_credentials")
-@patch("cover.fitz.open")
-@patch("cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
 def test_generate_cover_corrupted_pdf(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
@@ -237,9 +237,9 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(tmp_path, "cover123")
 
 
-@patch("cover.get_credentials")
-@patch("cover.fitz.open")
-@patch("cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
 def test_generate_cover_deletion_failure(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
@@ -267,9 +267,9 @@ def test_generate_cover_deletion_failure(
 
 
 @patch("generator.worker.cover.config.load_cover_config")
-@patch("cover.fitz.open")
-@patch("cover.build")
-@patch("cover.get_credentials")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.get_credentials")
 def test_generate_cover_uses_provided_cover_id(
     mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
 ):
@@ -297,7 +297,7 @@ def test_generate_cover_uses_provided_cover_id(
     mock_load_config.assert_not_called()
 
 
-@patch("cover.build")
+@patch("generator.worker.cover.build")
 def test_create_cover_malformed_batch_response(mock_build, capsys):
     """Test handling of malformed batch response structure."""
     http = HttpMockSequence(

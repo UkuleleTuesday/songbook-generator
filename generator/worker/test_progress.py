@@ -1,4 +1,4 @@
-from ..progress import ProgressReporter
+from .progress import ProgressReporter
 
 
 def test_progress_reporter_with_callback():

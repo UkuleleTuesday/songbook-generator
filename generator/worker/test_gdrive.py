@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from ..gdrive import query_drive_files, build_property_filters
+from .gdrive import query_drive_files, build_property_filters
 
 
 @pytest.fixture

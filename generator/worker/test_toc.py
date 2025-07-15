@@ -1,5 +1,5 @@
 import pytest
-from ..toc import resolve_font, DEFAULT_FONT, load_toc_config, generate_toc_title
+from .toc import resolve_font, DEFAULT_FONT, load_toc_config, generate_toc_title
 
 
 def test_resolve_font_valid_fontfile(mocker):

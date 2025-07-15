@@ -6,19 +6,18 @@ import gc
 from pathlib import Path
 from typing import List, Optional, Union
 from itertools import batched
-import progress
-
-import toc
-import cover
+from . import progress
+from . import toc
+from . import cover
 from googleapiclient.discovery import build
-import caching
-from gcp import get_credentials
-from gdrive import (
+from . import caching
+from .gcp import get_credentials
+from .gdrive import (
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,
 )
-from filters import PropertyFilter, FilterGroup
+from .filters import PropertyFilter, FilterGroup
 
 from ..common.tracing import get_tracer
 
