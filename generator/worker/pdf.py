@@ -12,13 +12,12 @@ from . import cover
 from googleapiclient.discovery import build
 from . import caching
 from .gcp import get_credentials
-from .gdrive import (
-    query_drive_files_with_client_filter,
+from .filters import PropertyFilter, FilterGroup
+from ..common.gdrive import (
     download_file_stream,
     get_files_metadata_by_ids,
+    query_drive_files_with_client_filter,
 )
-from .filters import PropertyFilter, FilterGroup
-
 from ..common.tracing import get_tracer
 
 tracer = get_tracer(__name__)
