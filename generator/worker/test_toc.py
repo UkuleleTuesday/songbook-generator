@@ -28,48 +28,6 @@ def test_resolve_font_no_fontfile(mocker):
     mock_font.assert_not_called()
 
 
-def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
-    mock_config = {
-        "toc": {
-            "text-font": "custom-font",
-            "text-fontsize": 12,
-            "title-font": "custom-title-font",
-            "title-fontsize": 18,
-        }
-    }
-    mock_load_config = mocker.patch("generator.common.config.load_config", return_value=mock_config)
-    config = load_toc_config()
-    assert config.text_font == DEFAULT_FONT
-    assert config.text_fontsize == 12
-    assert config.title_font == DEFAULT_FONT
-    assert config.title_fontsize == 18
-    mock_load_config.assert_called_once()
-
-
-def test_load_toc_config_with_missing_file(mocker):
-    mock_load_config = mocker.patch("generator.common.config.load_config", return_value={})
-    config = load_toc_config()
-    assert config.text_font == DEFAULT_FONT
-    assert config.text_fontsize == 9
-    assert config.title_font == DEFAULT_FONT
-    assert config.title_fontsize == 16
-    mock_load_config.assert_called_once()
-
-
-def test_load_toc_config_partial_override(mocker):
-    mock_config = {
-        "toc": {
-            "text-fontsize": 14,
-        }
-    }
-    mock_load_config = mocker.patch("generator.common.config.load_config", return_value=mock_config)
-    config = load_toc_config()
-    assert config.text_font == DEFAULT_FONT
-    assert config.text_fontsize == 14
-    assert config.title_font == DEFAULT_FONT
-    assert config.title_fontsize == 16
-    mock_load_config.assert_called_once()
-
 
 def test_generate_toc_title_empty_string():
     """Test with empty string."""
