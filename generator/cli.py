@@ -135,8 +135,14 @@ def generate(
     default=load_config_folder_ids(),
     help="Drive folder IDs to sync from (can be passed multiple times)",
 )
-def sync_cache_command(source_folder):
-    """Syncs files from Google Drive source folders to the GCS cache."""
+@click.option(
+    "--no-metadata",
+    is_flag=True,
+    default=False,
+    help="Disable syncing of file metadata from Drive to GCS.",
+)
+def sync_cache_command(source_folder, no_metadata):
+    """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
@@ -148,7 +154,7 @@ def sync_cache_command(source_folder):
             click.echo("No source folders provided. Nothing to sync.", err=True)
             raise click.Abort()
 
-        sync_cache(source_folders, services)
+        sync_cache(source_folders, services, with_metadata=not no_metadata)
         click.echo("Cache synchronization complete.")
 
     except Exception as e:
