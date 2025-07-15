@@ -20,15 +20,7 @@ FIRESTORE_COLLECTION = None
 
 def _init_globals():
     """Initialize global clients and configuration."""
-    global (
-        publisher,
-        db,
-        topic_path,
-        tracer,
-        PROJECT_ID,
-        PUBSUB_TOPIC,
-        FIRESTORE_COLLECTION,
-    )
+    global publisher, db, topic_path, tracer, PROJECT_ID, PUBSUB_TOPIC, FIRESTORE_COLLECTION
 
     if publisher is not None:
         return

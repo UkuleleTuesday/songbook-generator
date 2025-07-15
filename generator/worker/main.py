@@ -18,11 +18,12 @@ db = None
 cdn_bucket = None
 tracer = None
 FIRESTORE_COLLECTION = None
+GCS_CDN_BUCKET = None
 
 
 def _init_globals():
     """Initialize global clients and configuration."""
-    global db, cdn_bucket, tracer, FIRESTORE_COLLECTION
+    global db, cdn_bucket, tracer, FIRESTORE_COLLECTION, GCS_CDN_BUCKET
 
     if db is not None:
         return
