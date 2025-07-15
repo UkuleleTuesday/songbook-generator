@@ -195,9 +195,9 @@ def test_generate_cover_basic(
 
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
-    with patch("generator.common.caching.init_cache") as mock_init_cache:
-        mock_init_cache.return_value.get.return_value = None
-        result = cover.generate_cover(tmp_path, "cover123")
+    with patch("generator.common.caching.LocalStorageCache") as mock_cache:
+        mock_cache.get.return_value = None
+        result = cover.generate_cover(mock_cache, "cover123")
 
     assert result == mock_pdf
 
