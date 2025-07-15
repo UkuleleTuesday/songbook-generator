@@ -26,7 +26,6 @@ def _init_globals():
         return
 
     # Set up tracing
-    setup_tracing("songbook-api")
     tracer = get_tracer(__name__)
 
     # Initialize clients once at cold start

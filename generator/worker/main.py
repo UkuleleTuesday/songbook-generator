@@ -29,7 +29,6 @@ def _init_globals():
         return
 
     # Set up tracing
-    setup_tracing("songbook-generator")
     tracer = get_tracer(__name__)
 
     # Initialized at cold start
