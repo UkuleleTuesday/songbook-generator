@@ -265,7 +265,7 @@ jobs:
           GCS_WORKER_CACHE_BUCKET: ${{ env.GCS_WORKER_CACHE_BUCKET }}
           GCP_REGION: ${{ env.GCP_REGION }}
           GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
-          GENERATOR_ADD_PAGE_NUMBERS: ${{ env.GENERATOR_ADD_PAGE_NUMBERS }}
+          GENERATOR_ADD_PAGE_NUMBERS: "${{ env.GENERATOR_ADD_PAGE_NUMBERS }}"
           OTEL_SERVICE_NAME: songbook-generator
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator"
           OTEL_EXPORTER_OTLP_ENDPOINT: https://telemetry.googleapis.com
