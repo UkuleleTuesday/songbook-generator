@@ -93,6 +93,7 @@ def generate(
     postface_file_id,
     service_account_key: str,
 ):
+    """Generates a songbook PDF from Google Drive files."""
     drive, cache = init_services(service_account_key)
 
     client_filter = None
