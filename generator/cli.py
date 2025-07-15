@@ -2,9 +2,6 @@ import traceback
 import click
 from pathlib import Path
 
-import traceback
-import click
-from pathlib import Path
 
 from .common.config import load_config_folder_ids, load_cover_config
 from .merger.main import fetch_and_merge_pdfs

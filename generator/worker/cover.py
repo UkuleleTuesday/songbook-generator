@@ -1,4 +1,3 @@
-import os
 import click
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -7,7 +6,6 @@ import fitz  # PyMuPDF
 from ..common import config, gdrive
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
-from ..common import caching
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
@@ -110,7 +108,7 @@ def generate_cover(cache, cover_file_id=None):
         cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
     except fitz.EmptyFileError as e:
         raise CoverGenerationException(
-            f"Downloaded cover file is corrupted. Please check the file on Google Drive."
+            "Downloaded cover file is corrupted. Please check the file on Google Drive."
         ) from e
     finally:
         try:
