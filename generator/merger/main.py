@@ -7,7 +7,7 @@ import traceback
 import shutil
 
 # Initialize tracing
-from common.tracing import setup_tracing, get_tracer
+from ..common.tracing import setup_tracing, get_tracer
 
 # Global variables to hold initialized clients
 storage_client = None

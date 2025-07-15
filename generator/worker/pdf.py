@@ -20,7 +20,7 @@ from gdrive import (
 )
 from filters import PropertyFilter, FilterGroup
 
-from common.tracing import get_tracer
+from ..common.tracing import get_tracer
 
 tracer = get_tracer(__name__)
 

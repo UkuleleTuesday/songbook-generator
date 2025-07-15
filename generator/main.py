@@ -10,7 +10,7 @@ import functions_framework
 @functions_framework.http
 def api(request):
     """HTTP Cloud Function for the API service."""
-    from api.main import api_main
+    from .api.main import api_main
 
     return api_main(request)
 
@@ -18,7 +18,7 @@ def api(request):
 @functions_framework.cloud_event
 def worker(cloud_event):
     """CloudEvent Function for the songbook generation worker."""
-    from worker.main import worker_main
+    from .worker.main import worker_main
 
     return worker_main(cloud_event)
 
@@ -26,6 +26,6 @@ def worker(cloud_event):
 @functions_framework.http
 def merger(request):
     """HTTP Cloud Function for the PDF merging service."""
-    from merger.main import merger_main
+    from .merger.main import merger_main
 
     return merger_main(request)
