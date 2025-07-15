@@ -4,6 +4,7 @@ import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
+from opentelemetry import trace
 
 from ..worker.filters import FilterGroup, PropertyFilter
 
@@ -197,21 +198,27 @@ def download_file(
 
     Can either download a file directly or export a Google Doc to a specific format.
     """
+    span = trace.get_current_span()
     cache_key = f"{cache_prefix}/{file_id}.pdf"
+    span.set_attribute("cache.key", cache_key)
 
     details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
     remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
+    span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
 
     try:
         cached = cache.get(cache_key, newer_than=remote_ts)
         if cached:
+            span.set_attribute("cache.hit", True)
             click.echo(f"Using cached version of {file_name} (ID: {file_id})")
             return cached
     except Exception as e:
+        span.set_attribute("cache.error", str(e))
         click.echo(
             f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
         )
 
+    span.set_attribute("cache.hit", False)
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
     if export:
         request = drive.files().export_media(fileId=file_id, mimeType=mime_type)
