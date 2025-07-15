@@ -5,22 +5,12 @@ import fitz
 from google.cloud import storage
 import traceback
 import shutil
-from typing import List
 
-import os
-import tempfile
-import PyPDF2
-import fitz
-from google.cloud import storage
-import traceback
-import shutil
-from typing import List
 
 from google.auth import default
 from googleapiclient.discovery import build
 
 from . import sync
-from ..common import gdrive
 from ..common.config import load_config_folder_ids
 
 # Initialize tracing
@@ -46,9 +36,7 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
-    creds, _ = default(
-        scopes=["https://www.googleapis.com/auth/drive.readonly"]
-    )
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
     drive_service = build("drive", "v3", credentials=creds)
 
     _services = {
@@ -136,8 +124,6 @@ def _upload_to_cache(file_path, services):
         print(f"Uploading merged PDF to cache at: {cache_blob_name}")
         cache_blob.upload_from_filename(file_path, content_type="application/pdf")
         span.set_attribute("cache_blob_name", cache_blob_name)
-
-
 
 
 def fetch_and_merge_pdfs(output_path, services):

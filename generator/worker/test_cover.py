@@ -1,11 +1,10 @@
 import json
 import pytest
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 import fitz
 from . import cover
 
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 from googleapiclient.http import HttpMockSequence
 
 
@@ -254,9 +253,12 @@ def test_generate_cover_corrupted_pdf(
     }[service]
     mock_fitz.side_effect = fitz.EmptyFileError("Empty file")
 
-    with pytest.raises(
-        cover.CoverGenerationException, match="Downloaded cover file is corrupted"
-    ), patch("generator.common.caching.init_cache") as mock_init_cache:
+    with (
+        pytest.raises(
+            cover.CoverGenerationException, match="Downloaded cover file is corrupted"
+        ),
+        patch("generator.common.caching.init_cache") as mock_init_cache,
+    ):
         mock_init_cache.return_value.get.return_value = None
         cover.generate_cover(tmp_path, "cover123")
 
@@ -300,9 +302,10 @@ def test_generate_cover_deletion_failure(
     }[service]
     mock_fitz.return_value = Mock()
 
-    with pytest.raises(cover.CoverGenerationException), patch(
-        "generator.common.caching.init_cache"
-    ) as mock_init_cache:
+    with (
+        pytest.raises(cover.CoverGenerationException),
+        patch("generator.common.caching.init_cache") as mock_init_cache,
+    ):
         mock_init_cache.return_value.get.return_value = None
         cover.generate_cover(tmp_path, "cover123")
 
