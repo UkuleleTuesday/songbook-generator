@@ -160,6 +160,7 @@ def sync_cache_command(source_folder, no_metadata):
             click.echo("No source folders provided. Nothing to sync.", err=True)
             raise click.Abort()
 
+        click.echo(f"Syncing folders: {source_folders}")
         sync_cache(source_folders, services, with_metadata=not no_metadata)
         click.echo("Cache synchronization complete.")
 
@@ -187,6 +188,7 @@ def merge_pdfs(output: str):
 
         # Manually get the services since we are not in a Cloud Function
         services = merger_main._get_services()
+        click.echo("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
         if not result_path:

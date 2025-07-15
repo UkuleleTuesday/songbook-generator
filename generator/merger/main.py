@@ -195,9 +195,10 @@ def merger_main(request):
             if not source_folders:
                 source_folders = load_config_folder_ids()
 
-            main_span.set_attribute(
-                "source_folders", ",".join(source_folders) if source_folders else ""
-            )
+            # Add source_folders to span attributes for tracing
+            if source_folders:
+                main_span.set_attribute("source_folders", ",".join(source_folders))
+
             with services["tracer"].start_as_current_span("sync_operation"):
                 print(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
