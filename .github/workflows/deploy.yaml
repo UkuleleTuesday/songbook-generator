@@ -211,7 +211,7 @@ jobs:
         url: ${{ steps.deploy.outputs.function_url }}
 
   deploy-generator:
-    name: Deploy Generator
+    name: Deploy Worker
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
