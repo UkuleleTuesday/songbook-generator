@@ -4,7 +4,7 @@ import pytest
 from pathlib import Path
 from fsspec.implementations.local import LocalFileSystem
 
-from caching.localstorage import LocalStorageCache
+from .localstorage import LocalStorageCache
 
 
 @pytest.fixture

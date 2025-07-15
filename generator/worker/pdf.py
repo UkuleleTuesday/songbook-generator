@@ -6,42 +6,22 @@ import gc
 from pathlib import Path
 from typing import List, Optional, Union
 from itertools import batched
-import progress
-
-import toc
-import cover
+from . import progress
+from . import toc
+from . import cover
 from googleapiclient.discovery import build
-import caching
-from gcp import get_credentials
-from gdrive import (
+from . import caching
+from .gcp import get_credentials
+from .gdrive import (
     query_drive_files_with_client_filter,
     download_file_stream,
     get_files_metadata_by_ids,
 )
-from filters import PropertyFilter, FilterGroup
+from .filters import PropertyFilter, FilterGroup
 
-# Import tracing - only if running in cloud environment
-try:
-    from common.tracing import get_tracer
+from ..common.tracing import get_tracer
 
-    tracer = get_tracer(__name__)
-except ImportError:
-    # Running locally (CLI), create a no-op tracer
-    class NoOpTracer:
-        def start_as_current_span(self, name):
-            return NoOpSpan()
-
-    class NoOpSpan:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def set_attribute(self, key, value):
-            pass
-
-    tracer = NoOpTracer()
+tracer = get_tracer(__name__)
 
 
 def authenticate_drive(key_file_path: Optional[str] = None):

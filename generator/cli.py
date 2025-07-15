@@ -1,9 +1,11 @@
+import traceback
 import click
 from pathlib import Path
 
-from config import load_config_folder_ids, load_cover_config
-from pdf import generate_songbook, init_services
-from filters import FilterParser
+from .common.config import load_config_folder_ids, load_cover_config
+from .merger.main import fetch_and_merge_pdfs
+from .worker.filters import FilterParser
+from .worker.pdf import generate_songbook, init_services
 
 
 def make_cli_progress_callback():
@@ -16,7 +18,12 @@ def make_cli_progress_callback():
     return _callback
 
 
-@click.command()
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
 @click.option(
     "--source-folder",
     "-s",
@@ -70,7 +77,7 @@ def make_cli_progress_callback():
     help="Path to a service account key file for authentication. "
     "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
 )
-def cli(
+def generate(
     source_folder: str,
     destination_path: Path,
     open_generated_pdf,
@@ -118,6 +125,38 @@ def cli(
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
         click.launch(destination_path)
+
+
+@cli.command(name="merge-pdfs")
+@click.option(
+    "--output",
+    "-o",
+    default="merged-songbook.pdf",
+    help="Output file path for merged PDF (default: merged-songbook.pdf)",
+)
+def merge_pdfs(output: str):
+    """CLI interface for merging PDFs from GCS cache."""
+    try:
+        click.echo("Starting PDF merge operation (CLI mode)")
+
+        # Lazily import to avoid issues if merger dependencies are not available
+        from .merger import main as merger_main
+
+        # Manually get the services since we are not in a Cloud Function
+        services = merger_main._get_services()
+        result_path = fetch_and_merge_pdfs(output, services)
+
+        if not result_path:
+            click.echo("Error: No PDF files found to merge", err=True)
+            raise click.Abort()
+
+        click.echo(f"Successfully created merged PDF: {result_path}")
+
+    except Exception as e:
+        click.echo(f"Merge operation failed: {str(e)}", err=True)
+        click.echo("Error details:", err=True)
+        click.echo(traceback.format_exc(), err=True)
+        raise click.Abort()
 
 
 if __name__ == "__main__":

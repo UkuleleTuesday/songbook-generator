@@ -135,7 +135,7 @@ The easiest way to test the PDF generation functionality locally is to use the C
 uv sync
 
 # Run the generator (limit to 10 files for testing)
-uv run generator/cli.py --destination-path ./test-songbook.pdf --limit 10
+uv run songbook-tools generate --destination-path ./test-songbook.pdf --limit 10
 ```
 
 ### Testing Full Application

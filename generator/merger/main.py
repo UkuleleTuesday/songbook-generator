@@ -2,46 +2,61 @@ import os
 import tempfile
 import PyPDF2
 import fitz
-import functions_framework
 from google.cloud import storage
 import traceback
+import shutil
 
 # Initialize tracing
-from common.tracing import setup_tracing, get_tracer
+from ..common.tracing import get_tracer, setup_tracing
 
-# Initialized at cold start
-GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
-
-# Set up tracing
-setup_tracing("songbook-merger")
-
-storage_client = storage.Client()
-cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
-
-# Initialize tracer
-tracer = get_tracer(__name__)
+# Cache for initialized clients to avoid re-initialization on warm starts
+_services = None
 
 
-def fetch_and_merge_pdfs(output_path):
+def _get_services():
+    """Initializes and returns services, using a cache for warm starts."""
+    global _services
+    if _services is not None:
+        return _services
+
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
+    os.environ["GCP_PROJECT_ID"] = project_id
+    setup_tracing(service_name)
+    tracer = get_tracer(__name__)
+
+    gcs_worker_cache_bucket = os.environ["GCS_WORKER_CACHE_BUCKET"]
+    storage_client = storage.Client(project=project_id)
+    cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
+
+    _services = {
+        "tracer": tracer,
+        "cache_bucket": cache_bucket,
+    }
+    return _services
+
+
+def fetch_and_merge_pdfs(output_path, services):
     """
     Fetch all song sheet PDFs from GCS cache bucket and merge them into a single PDF.
 
     Args:
         output_path: Path where the merged PDF should be saved.
+        services: A dictionary containing initialized clients (tracer, cache_bucket).
 
     Returns:
         str: Path to the merged PDF file (same as output_path)
     """
-    with tracer.start_as_current_span("fetch_and_merge_pdfs") as main_span:
+    with services["tracer"].start_as_current_span("fetch_and_merge_pdfs") as main_span:
         # Create temporary directory for downloads
         with tempfile.TemporaryDirectory() as temp_dir:
             print(f"Downloading PDFs to temporary directory: {temp_dir}")
             main_span.set_attribute("temp_dir", temp_dir)
 
             # Fetch all blobs with song-sheets prefix
-            with tracer.start_as_current_span("list_blobs") as list_span:
+            with services["tracer"].start_as_current_span("list_blobs") as list_span:
                 prefix = "song-sheets/"
-                blobs = list(cache_bucket.list_blobs(prefix=prefix))
+                blobs = list(services["cache_bucket"].list_blobs(prefix=prefix))
                 pdf_blobs = [blob for blob in blobs if blob.name.endswith(".pdf")]
 
                 list_span.set_attribute("total_blobs", len(blobs))
@@ -56,14 +71,18 @@ def fetch_and_merge_pdfs(output_path):
             file_metadata = []
 
             # Download each PDF file and collect metadata
-            with tracer.start_as_current_span("download_files") as downloads_span:
+            with services["tracer"].start_as_current_span(
+                "download_files"
+            ) as downloads_span:
                 for blob in pdf_blobs:
                     # Replace path separators with underscores for local filename
                     filename = blob.name.replace("/", "_")
                     local_path = os.path.join(temp_dir, filename)
 
                     print(f"Downloading {blob.name} to {filename}")
-                    with tracer.start_as_current_span("download_file") as download_span:
+                    with services["tracer"].start_as_current_span(
+                        "download_file"
+                    ) as download_span:
                         download_span.set_attribute("blob_name", blob.name)
                         download_span.set_attribute("local_path", local_path)
                         blob.download_to_filename(local_path)
@@ -84,7 +103,7 @@ def fetch_and_merge_pdfs(output_path):
             file_metadata.sort(key=lambda x: x["name"])
 
             # Merge PDFs
-            with tracer.start_as_current_span("merge_pdfs") as merge_span:
+            with services["tracer"].start_as_current_span("merge_pdfs") as merge_span:
                 print(f"Merging {len(file_metadata)} PDF files...")
                 merger = PyPDF2.PdfMerger()
                 toc_entries = []
@@ -116,7 +135,7 @@ def fetch_and_merge_pdfs(output_path):
                 print(f"Successfully created merged PDF: {temp_merged_path}")
 
                 # Add table of contents using PyMuPDF
-                with tracer.start_as_current_span("add_toc") as toc_span:
+                with services["tracer"].start_as_current_span("add_toc") as toc_span:
                     print("Adding table of contents to merged PDF...")
 
                     # Open the merged PDF with PyMuPDF
@@ -135,8 +154,10 @@ def fetch_and_merge_pdfs(output_path):
                     print(f"Added {len(toc_entries)} entries to table of contents")
 
                 # Upload merged PDF back to GCS cache
-                with tracer.start_as_current_span("upload_to_cache") as upload_span:
-                    cache_blob = cache_bucket.blob("merged-pdf/latest.pdf")
+                with services["tracer"].start_as_current_span(
+                    "upload_to_cache"
+                ) as upload_span:
+                    cache_blob = services["cache_bucket"].blob("merged-pdf/latest.pdf")
                     print("Uploading merged PDF to cache at: merged-pdf/latest.pdf")
                     cache_blob.upload_from_filename(
                         temp_with_toc_path, content_type="application/pdf"
@@ -146,8 +167,6 @@ def fetch_and_merge_pdfs(output_path):
                     )
 
                 # Copy the file with TOC to the final output location
-                import shutil
-
                 print(f"Copying merged PDF with TOC to: {output_path}")
                 shutil.copy2(temp_with_toc_path, output_path)
                 merge_span.set_attribute("final_output_path", output_path)
@@ -155,10 +174,10 @@ def fetch_and_merge_pdfs(output_path):
                 return output_path
 
 
-@functions_framework.http
-def main(request):
+def merger_main(request):
     """HTTP Cloud Function for merging PDFs from GCS cache."""
-    with tracer.start_as_current_span("merger_main") as main_span:
+    services = _get_services()
+    with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
             print("Starting PDF merge operation")
 
@@ -168,8 +187,10 @@ def main(request):
 
             try:
                 # Fetch and merge PDFs
-                with tracer.start_as_current_span("merge_operation") as merge_span:
-                    result_path = fetch_and_merge_pdfs(temp_output_path)
+                with services["tracer"].start_as_current_span(
+                    "merge_operation"
+                ) as merge_span:
+                    result_path = fetch_and_merge_pdfs(temp_output_path, services)
 
                     if not result_path:
                         main_span.set_attribute("status", "no_files")
@@ -178,7 +199,9 @@ def main(request):
                     merge_span.set_attribute("merged_pdf_path", result_path)
 
                 # Read the merged PDF data
-                with tracer.start_as_current_span("return_pdf") as return_span:
+                with services["tracer"].start_as_current_span(
+                    "return_pdf"
+                ) as return_span:
                     with open(result_path, "rb") as pdf_file:
                         pdf_data = pdf_file.read()
 
@@ -208,43 +231,3 @@ def main(request):
             print(traceback.format_exc())
 
             return {"error": f"Internal error during PDF merge: {str(e)}"}, 500
-
-
-def cli_main():
-    """CLI interface for merging PDFs from GCS cache."""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Merge PDFs from GCS cache bucket")
-    parser.add_argument(
-        "--output",
-        "-o",
-        default="merged-songbook.pdf",
-        help="Output file path for merged PDF (default: merged-songbook.pdf)",
-    )
-
-    args = parser.parse_args()
-
-    try:
-        print("Starting PDF merge operation (CLI mode)")
-
-        # Pass the output path
-        result_path = fetch_and_merge_pdfs(args.output)
-
-        if not result_path:
-            print("Error: No PDF files found to merge")
-            return 1
-
-        print(f"Successfully created merged PDF: {result_path}")
-        return 0
-
-    except Exception as e:
-        print(f"Merge operation failed: {str(e)}")
-        print("Error details:")
-        print(traceback.format_exc())
-        return 1
-
-
-if __name__ == "__main__":
-    import sys
-
-    sys.exit(cli_main())

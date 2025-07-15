@@ -1,7 +1,7 @@
 import click
 import os
 import gcsfs
-from caching.localstorage import LocalStorageCache
+from .localstorage import LocalStorageCache
 from fsspec.implementations.local import LocalFileSystem
 
 LOCAL_CACHE_DIR = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")

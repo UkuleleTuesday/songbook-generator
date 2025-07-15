@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import Mock, patch, mock_open
 import fitz
-import cover
+from . import cover
 
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -68,8 +68,8 @@ def test_create_cover_from_template_missing_occurrences_changed(capsys):
             ),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
 
     result = cover.create_cover_from_template(
         drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
@@ -92,8 +92,8 @@ def test_create_cover_from_template_no_replies(capsys):
             ({"status": "200"}, json.dumps({"replies": []})),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
 
     result = cover.create_cover_from_template(
         drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
@@ -116,8 +116,8 @@ def test_create_cover_from_template_empty_replacement_map():
             ({"status": "200"}, json.dumps({"replies": []})),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
 
     result = cover.create_cover_from_template(drive, docs, "template123", {})
 
@@ -136,8 +136,8 @@ def test_create_cover_from_template_custom_title():
             ({"status": "200"}, json.dumps({"replies": []})),
         ]
     )
-    drive = cover.build("drive", "v3", http=http)
-    docs = cover.build("docs", "v1", http=http)
+    drive = build("drive", "v3", http=http)
+    docs = build("docs", "v1", http=http)
 
     result = cover.create_cover_from_template(
         drive,
@@ -150,12 +150,12 @@ def test_create_cover_from_template_custom_title():
     assert result == "copy123"
 
 
-@patch("cover.fitz.open")
-@patch("cover.build")
-@patch("cover.get_credentials")
-@patch("cover.os.makedirs")
-@patch("cover.open", new_callable=mock_open)
-@patch("cover.arrow.now")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.os.makedirs")
+@patch("generator.worker.cover.open", new_callable=mock_open)
+@patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
     mock_now,
     mock_open_file,
@@ -180,9 +180,19 @@ def test_generate_cover_basic(
     )
     docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
 
-    mock_drive = cover.build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = pdf_content
-    mock_docs = cover.build("docs", "v1", http=docs_http)
+    drive_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"id": "root_id"})),
+            (
+                {"status": "200"},
+                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
+            ),
+            ({"status": "200"}, pdf_content),  # For the export call
+            ({"status": "200"}, ""),  # for the delete call
+        ]
+    )
+    mock_drive = build("drive", "v3", http=drive_http)
+    mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
         "docs": mock_docs,
@@ -196,8 +206,8 @@ def test_generate_cover_basic(
     mock_open_file().write.assert_called_once_with(pdf_content)
 
 
-@patch("cover.config.load_cover_config")
-@patch("cover.click.echo")
+@patch("generator.common.config.load_cover_config")
+@patch("generator.worker.cover.click.echo")
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_path):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
@@ -208,9 +218,9 @@ def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_pat
     )
 
 
-@patch("cover.get_credentials")
-@patch("cover.fitz.open")
-@patch("cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
 def test_generate_cover_corrupted_pdf(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
@@ -237,9 +247,9 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(tmp_path, "cover123")
 
 
-@patch("cover.get_credentials")
-@patch("cover.fitz.open")
-@patch("cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
 def test_generate_cover_deletion_failure(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
@@ -266,10 +276,10 @@ def test_generate_cover_deletion_failure(
         cover.generate_cover(tmp_path, "cover123")
 
 
-@patch("cover.config.load_cover_config")
-@patch("cover.fitz.open")
-@patch("cover.build")
-@patch("cover.get_credentials")
+@patch("generator.common.config.load_cover_config")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.get_credentials")
 def test_generate_cover_uses_provided_cover_id(
     mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
 ):
@@ -297,7 +307,7 @@ def test_generate_cover_uses_provided_cover_id(
     mock_load_config.assert_not_called()
 
 
-@patch("cover.build")
+@patch("generator.worker.cover.build")
 def test_create_cover_malformed_batch_response(mock_build, capsys):
     """Test handling of malformed batch response structure."""
     http = HttpMockSequence(
