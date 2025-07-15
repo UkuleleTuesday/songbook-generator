@@ -4,9 +4,10 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from ..common import config
+from ..common import config, gdrive
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
+from . import caching
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
@@ -79,9 +80,8 @@ def generate_cover(cache_dir, cover_file_id=None):
         cover_file_id = config.load_cover_config()
         if not cover_file_id:
             click.echo("No cover file ID configured. Skipping cover generation.")
-            return
+            return None
 
-    # This part needs its own auth with broader scopes
     creds = get_credentials(
         scopes=[
             "https://www.googleapis.com/auth/documents",
@@ -91,39 +91,35 @@ def generate_cover(cache_dir, cover_file_id=None):
     docs_write = build("docs", "v1", credentials=creds)
     drive_write = build("drive", "v3", credentials=creds)
 
-    # Generate the formatted date
     today = arrow.now()
     formatted_date = today.format("Do MMMM YYYY")
 
-    cover_id = create_cover_from_template(
+    copy_id = create_cover_from_template(
         drive_write, docs_write, cover_file_id, {"{{DATE}}": formatted_date}
     )
-    pdf_blob = (
-        drive_write.files()
-        .export(fileId=cover_id, mimeType="application/pdf")
-        .execute()
-    )
 
-    covers_dir = os.path.join(cache_dir, "covers")
-    os.makedirs(covers_dir, exist_ok=True)
-    pdf_output_path = os.path.join(covers_dir, f"{cover_id}.pdf")
-    with open(pdf_output_path, "wb") as f:
-        f.write(pdf_blob)
     try:
-        cover_pdf = fitz.open(pdf_output_path)
+        cache = caching.init_cache()
+        pdf_data = gdrive.download_file(
+            drive_write,
+            copy_id,
+            f"Cover-{copy_id}",
+            cache,
+            "covers",
+            "application/pdf",
+        )
+        cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
     except fitz.EmptyFileError as e:
         raise CoverGenerationException(
-            f"Downloaded cover file is corrupted: {pdf_output_path}. Please check the file on Google Drive."
+            f"Downloaded cover file is corrupted. Please check the file on Google Drive."
         ) from e
-    try:
-        drive_write.files().delete(fileId=cover_id).execute()
-        print(f"Deleted copy: {cover_id} from Google Drive.")
-    except HttpError as e:
-        # Catch specific API errors but don't halt the process,
-        # just wrap and raise as our custom exception.
-        # The temporary file might be left on Drive, but the PDF is generated.
-        raise CoverGenerationException(
-            f"Failed to delete temporary cover file {cover_id} from Google Drive. "
-            f"It may need to be manually removed. Original error: {e}"
-        ) from e
+    finally:
+        try:
+            drive_write.files().delete(fileId=copy_id).execute()
+            print(f"Deleted copy: {copy_id} from Google Drive.")
+        except HttpError as e:
+            raise CoverGenerationException(
+                f"Failed to delete temporary cover file {copy_id} from Google Drive. "
+                f"It may need to be manually removed. Original error: {e}"
+            ) from e
     return cover_pdf
