@@ -3,7 +3,7 @@ import click
 from pathlib import Path
 
 from .common.config import load_config_folder_ids, load_cover_config
-from .merger.main import fetch_and_merge_pdfs
+from .merger.main import fetch_and_merge_pdfs, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -125,6 +125,37 @@ def generate(
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
         click.launch(destination_path)
+
+
+@cli.command(name="sync-cache")
+@click.option(
+    "--source-folder",
+    "-s",
+    multiple=True,
+    default=load_config_folder_ids(),
+    help="Drive folder IDs to sync from (can be passed multiple times)",
+)
+def sync_cache_command(source_folder):
+    """Syncs files from Google Drive source folders to the GCS cache."""
+    try:
+        click.echo("Starting cache synchronization (CLI mode)")
+        from .merger import main as merger_main
+
+        services = merger_main._get_services()
+        source_folders = list(source_folder) if source_folder else []
+
+        if not source_folders:
+            click.echo("No source folders provided. Nothing to sync.", err=True)
+            raise click.Abort()
+
+        sync_cache(source_folders, services)
+        click.echo("Cache synchronization complete.")
+
+    except Exception as e:
+        click.echo(f"Cache sync operation failed: {str(e)}", err=True)
+        click.echo("Error details:", err=True)
+        click.echo(traceback.format_exc(), err=True)
+        raise click.Abort()
 
 
 @cli.command(name="merge-pdfs")
