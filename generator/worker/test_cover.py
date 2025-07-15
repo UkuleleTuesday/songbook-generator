@@ -150,12 +150,12 @@ def test_create_cover_from_template_custom_title():
     assert result == "copy123"
 
 
-@patch("cover.fitz.open")
-@patch("cover.build")
-@patch("cover.get_credentials")
-@patch("cover.os.makedirs")
-@patch("cover.open", new_callable=mock_open)
-@patch("cover.arrow.now")
+@patch("generator.worker.cover.fitz.open")
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.os.makedirs")
+@patch("generator.worker.cover.open", new_callable=mock_open)
+@patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
     mock_now,
     mock_open_file,
@@ -181,7 +181,7 @@ def test_generate_cover_basic(
     docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
 
     mock_drive = build("drive", "v3", http=drive_http)
-    mock_drive.files().export().execute.return_value = pdf_content
+    mock_drive.files().export.return_value.execute.return_value = pdf_content
     mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
