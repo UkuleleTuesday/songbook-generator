@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from gdrive import query_drive_files, build_property_filters
+from ..gdrive import query_drive_files, build_property_filters
 
 
 @pytest.fixture
@@ -99,7 +99,7 @@ def test_query_drive_files_no_files_key(mock_drive):
     assert result == []
 
 
-@patch("gdrive.click.echo")
+@patch("generator.worker.gdrive.click.echo")
 def test_query_drive_files_logs_query(mock_echo, mock_drive):
     """Test that the function logs the query being executed."""
     mock_response = {
@@ -150,7 +150,7 @@ def test_query_drive_files_with_property_filters(mock_drive):
     )
 
 
-@patch("gdrive.click.echo")
+@patch("generator.worker.gdrive.click.echo")
 def test_query_drive_files_logs_property_filters(mock_echo, mock_drive):
     """Test that property filters are logged."""
     mock_response = {

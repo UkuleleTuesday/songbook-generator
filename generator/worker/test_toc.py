@@ -1,5 +1,5 @@
 import pytest
-from toc import resolve_font, DEFAULT_FONT, load_toc_config, generate_toc_title
+from ..toc import resolve_font, DEFAULT_FONT, load_toc_config, generate_toc_title
 
 
 def test_resolve_font_valid_fontfile(mocker):
@@ -37,7 +37,7 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
             "title-fontsize": 18,
         }
     }
-    mock_load_config = mocker.patch("toc.load_config", return_value=mock_config)
+    mock_load_config = mocker.patch("generator.worker.toc.load_config", return_value=mock_config)
     config = load_toc_config()
     assert config.text_font == DEFAULT_FONT
     assert config.text_fontsize == 12
@@ -47,7 +47,7 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
 
 
 def test_load_toc_config_with_missing_file(mocker):
-    mock_load_config = mocker.patch("toc.load_config", return_value={})
+    mock_load_config = mocker.patch("generator.worker.toc.load_config", return_value={})
     config = load_toc_config()
     assert config.text_font == DEFAULT_FONT
     assert config.text_fontsize == 9
@@ -62,7 +62,7 @@ def test_load_toc_config_partial_override(mocker):
             "text-fontsize": 14,
         }
     }
-    mock_load_config = mocker.patch("toc.load_config", return_value=mock_config)
+    mock_load_config = mocker.patch("generator.worker.toc.load_config", return_value=mock_config)
     config = load_toc_config()
     assert config.text_font == DEFAULT_FONT
     assert config.text_fontsize == 14
