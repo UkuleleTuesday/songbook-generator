@@ -29,7 +29,7 @@ def _init_globals():
     tracer = get_tracer(__name__)
 
     # Initialize clients once at cold start
-    PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
+    PROJECT_ID = os.environ["PROJECT_ID"]
     PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 

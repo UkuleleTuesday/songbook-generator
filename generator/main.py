@@ -10,6 +10,11 @@ def _initialize():
     # These are assumed to be set in the execution environment.
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     service_name = os.environ["SERVICE_NAME"]
+
+    # Set other project ID env vars for consistency
+    os.environ["PROJECT_ID"] = project_id
+    os.environ["GCP_PROJECT_ID"] = project_id
+
     setup_tracing(service_name)
     return project_id, service_name
 
