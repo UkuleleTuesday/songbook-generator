@@ -13,14 +13,12 @@ publisher = None
 db = None
 topic_path = None
 tracer = None
-PROJECT_ID = None
-PUBSUB_TOPIC = None
 FIRESTORE_COLLECTION = None
 
 
 def _init_globals():
     """Initialize global clients and configuration."""
-    global publisher, db, topic_path, tracer, PROJECT_ID, PUBSUB_TOPIC, FIRESTORE_COLLECTION
+    global publisher, db, topic_path, tracer, FIRESTORE_COLLECTION
 
     if publisher is not None:
         return
@@ -29,12 +27,12 @@ def _init_globals():
     tracer = get_tracer(__name__)
 
     # Initialize clients once at cold start
-    PROJECT_ID = os.environ["PROJECT_ID"]
-    PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
+    project_id = os.environ["PROJECT_ID"]
+    pubsub_topic = os.environ["PUBSUB_TOPIC"]
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
     publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
+    topic_path = publisher.topic_path(project_id, pubsub_topic)
     db = firestore.Client()
 
 
@@ -75,7 +73,7 @@ def handle_post(req):
             print(f"Publishing message to Pub/Sub topic: {topic_path}")
             future = publisher.publish(topic_path, serialized_message.encode("utf-8"))
             future.result()
-            pubsub_span.set_attribute("pubsub.topic", PUBSUB_TOPIC)
+            pubsub_span.set_attribute("pubsub.topic", os.environ["PUBSUB_TOPIC"])
             pubsub_span.set_attribute("pubsub.message_size", len(serialized_message))
 
         # 3) Return job ID

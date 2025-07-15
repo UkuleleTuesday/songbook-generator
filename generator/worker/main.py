@@ -32,12 +32,12 @@ def _init_globals():
     tracer = get_tracer(__name__)
 
     # Initialized at cold start
-    PROJECT_ID = os.environ["GCP_PROJECT_ID"]
+    project_id = os.environ["GCP_PROJECT_ID"]
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
     GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
 
-    db = firestore.Client(project=PROJECT_ID)
-    storage_client = storage.Client(project=PROJECT_ID)
+    db = firestore.Client(project=project_id)
+    storage_client = storage.Client(project=project_id)
     cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
 
 
