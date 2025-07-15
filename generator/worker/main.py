@@ -11,7 +11,8 @@ from typing import Union, Optional
 from .pdf import generate_songbook, init_services
 
 # Initialize tracing
-from ..common.tracing import get_tracer
+import functions_framework
+from ..common.tracing import get_tracer, setup_tracing
 
 # Global variables to hold initialized clients
 db = None
@@ -28,11 +29,14 @@ def _init_globals():
     if db is not None:
         return
 
-    # Set up tracing
+    # Common initialization
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-worker")
+    os.environ["GCP_PROJECT_ID"] = project_id
+    setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # Initialized at cold start
-    project_id = os.environ["GCP_PROJECT_ID"]
+    # Initialize clients
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
     GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
 
@@ -105,6 +109,7 @@ def parse_filters(filters_param) -> Optional[Union[PropertyFilter, FilterGroup]]
     return None
 
 
+@functions_framework.cloud_event
 def worker_main(cloud_event):
     _init_globals()
     with tracer.start_as_current_span("worker_main") as main_span:

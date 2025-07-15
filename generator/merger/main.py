@@ -7,7 +7,8 @@ import traceback
 import shutil
 
 # Initialize tracing
-from ..common.tracing import get_tracer
+import functions_framework
+from ..common.tracing import get_tracer, setup_tracing
 
 # Global variables to hold initialized clients
 storage_client = None
@@ -23,13 +24,17 @@ def init_merger():
     if storage_client is not None:
         return
 
-    # Set up tracing
+    # Common initialization
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
+    os.environ["GCP_PROJECT_ID"] = project_id
+    setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
     # Initialized at cold start
     GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
 
-    storage_client = storage.Client()
+    storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
 
 
@@ -164,6 +169,7 @@ def fetch_and_merge_pdfs(output_path):
                 return output_path
 
 
+@functions_framework.http
 def merger_main(request):
     """HTTP Cloud Function for merging PDFs from GCS cache."""
     init_merger()

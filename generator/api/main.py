@@ -6,7 +6,8 @@ from flask import make_response
 from google.cloud import pubsub_v1, firestore
 
 # Initialize tracing
-from ..common.tracing import get_tracer
+import functions_framework
+from ..common.tracing import get_tracer, setup_tracing
 
 # Global variables to hold initialized clients
 publisher = None
@@ -23,17 +24,20 @@ def _init_globals():
     if publisher is not None:
         return
 
-    # Set up tracing
+    # Common initialization
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-api")
+    os.environ["GCP_PROJECT_ID"] = project_id
+    setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # Initialize clients once at cold start
-    project_id = os.environ["PROJECT_ID"]
+    # Initialize clients
     pubsub_topic = os.environ["PUBSUB_TOPIC"]
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
 
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, pubsub_topic)
-    db = firestore.Client()
+    db = firestore.Client(project=project_id)
 
 
 def _cors_headers():
@@ -138,9 +142,10 @@ def handle_get_job(job_id):
         )
 
 
+@functions_framework.http
 def api_main(req):
     _init_globals()
-    with tracer.start_as_current_span("main") as span:
+    with tracer.start_as_current_span("api_main") as span:
         span.set_attribute("http.method", req.method)
         span.set_attribute("http.path", req.path)
 
