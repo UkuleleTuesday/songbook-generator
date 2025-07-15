@@ -11,6 +11,7 @@ from google.auth import default
 from googleapiclient.discovery import build
 
 from ..common import gdrive
+from ..common.caching import init_cache
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -132,27 +133,7 @@ def sync_cache(source_folders: List[str], services):
     with services["tracer"].start_as_current_span("sync_cache") as span:
         span.set_attribute("source_folders_count", len(source_folders))
 
-        # The cache object for gdrive functions needs a 'put' method and a 'get' method.
-        # We can create a simple wrapper around the GCS bucket client.
-        class GCSCache:
-            def __init__(self, bucket):
-                self.bucket = bucket
-
-            def get(self, key: str, newer_than=None):
-                blob = self.bucket.blob(key)
-                if not blob.exists():
-                    return None
-                if newer_than:
-                    blob.reload()
-                    if blob.updated and blob.updated >= newer_than:
-                        return None
-                return blob.download_as_bytes()
-
-            def put(self, key: str, data: bytes):
-                blob = self.bucket.blob(key)
-                blob.upload_from_string(data)
-
-        gcs_cache = GCSCache(services["cache_bucket"])
+        cache = init_cache()
 
         all_files = []
         for folder_id in source_folders:
@@ -164,7 +145,7 @@ def sync_cache(source_folders: List[str], services):
         for file in all_files:
             with services["tracer"].start_as_current_span("sync_file"):
                 print(f"Syncing {file['name']} (ID: {file['id']})")
-                gdrive.download_file_stream(services["drive"], file, gcs_cache)
+                gdrive.download_file_stream(services["drive"], file, cache)
 
 
 def fetch_and_merge_pdfs(output_path, services):
