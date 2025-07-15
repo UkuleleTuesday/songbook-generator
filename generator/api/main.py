@@ -1,7 +1,6 @@
 import os
 import json
 import uuid
-import functions_framework
 from datetime import datetime, timedelta
 from flask import make_response
 from google.cloud import pubsub_v1, firestore
@@ -9,20 +8,43 @@ from google.cloud import pubsub_v1, firestore
 # Initialize tracing
 from common.tracing import setup_tracing, get_tracer
 
-# Initialize clients once at cold start
-PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
-PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
-FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
+# Global variables to hold initialized clients
+publisher = None
+db = None
+topic_path = None
+tracer = None
+PROJECT_ID = None
+PUBSUB_TOPIC = None
+FIRESTORE_COLLECTION = None
 
-# Set up tracing
-setup_tracing("songbook-api")
 
-publisher = pubsub_v1.PublisherClient()
-topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
-db = firestore.Client()
+def _init_globals():
+    """Initialize global clients and configuration."""
+    global (
+        publisher,
+        db,
+        topic_path,
+        tracer,
+        PROJECT_ID,
+        PUBSUB_TOPIC,
+        FIRESTORE_COLLECTION,
+    )
 
-# Initialize tracer
-tracer = get_tracer(__name__)
+    if publisher is not None:
+        return
+
+    # Set up tracing
+    setup_tracing("songbook-api")
+    tracer = get_tracer(__name__)
+
+    # Initialize clients once at cold start
+    PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
+    PUBSUB_TOPIC = os.environ["PUBSUB_TOPIC"]
+    FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
+
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(PROJECT_ID, PUBSUB_TOPIC)
+    db = firestore.Client()
 
 
 def _cors_headers():
@@ -127,8 +149,8 @@ def handle_get_job(job_id):
         )
 
 
-@functions_framework.http
-def main(req):
+def api_main(req):
+    _init_globals()
     with tracer.start_as_current_span("main") as span:
         span.set_attribute("http.method", req.method)
         span.set_attribute("http.path", req.path)

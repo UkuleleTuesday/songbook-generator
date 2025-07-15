@@ -2,7 +2,6 @@ import os
 import json
 import base64
 import tempfile
-import functions_framework
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
@@ -14,22 +13,32 @@ from pdf import generate_songbook, init_services
 # Initialize tracing
 from common.tracing import setup_tracing, get_tracer
 
-# Initialized at cold start
-PROJECT_ID = os.environ["GCP_PROJECT_ID"]
-FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
-GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
-GCS_WORKER_CACHE_BUCKET = os.environ["GCS_WORKER_CACHE_BUCKET"]
+# Global variables to hold initialized clients
+db = None
+cdn_bucket = None
+tracer = None
+FIRESTORE_COLLECTION = None
 
-# Set up tracing
-setup_tracing("songbook-generator")
 
-db = firestore.Client(project=PROJECT_ID)
-storage_client = storage.Client(project=PROJECT_ID)
-cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
-cache_bucket = storage_client.bucket(GCS_WORKER_CACHE_BUCKET)
+def _init_globals():
+    """Initialize global clients and configuration."""
+    global db, cdn_bucket, tracer, FIRESTORE_COLLECTION
 
-# Initialize tracer
-tracer = get_tracer(__name__)
+    if db is not None:
+        return
+
+    # Set up tracing
+    setup_tracing("songbook-generator")
+    tracer = get_tracer(__name__)
+
+    # Initialized at cold start
+    PROJECT_ID = os.environ["GCP_PROJECT_ID"]
+    FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
+    GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
+
+    db = firestore.Client(project=PROJECT_ID)
+    storage_client = storage.Client(project=PROJECT_ID)
+    cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
 
 
 def make_progress_callback(job_ref):
@@ -96,8 +105,8 @@ def parse_filters(filters_param) -> Optional[Union[PropertyFilter, FilterGroup]]
     return None
 
 
-@functions_framework.cloud_event
-def main(cloud_event):
+def worker_main(cloud_event):
+    _init_globals()
     with tracer.start_as_current_span("worker_main") as main_span:
         # 1) Decode Pub/Sub message
         print("Received Cloud Event with data:", cloud_event.data)
