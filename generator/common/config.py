@@ -22,8 +22,5 @@ def load_config_folder_ids():
 
 
 def load_cover_config():
-    config_path = os.path.expanduser("~/.config/songbook-generator/config.toml")
-    if os.path.exists(config_path):
-        config = toml.load(config_path)
-        return config.get("cover", {}).get("file-id", None)
-    return None
+    config = load_config()
+    return config.get("cover", {}).get("file-id", None)
