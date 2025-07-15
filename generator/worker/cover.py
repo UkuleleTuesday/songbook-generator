@@ -7,7 +7,7 @@ import fitz  # PyMuPDF
 from ..common import config, gdrive
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
-from . import caching
+from ..common import caching
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 

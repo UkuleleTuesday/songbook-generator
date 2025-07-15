@@ -10,7 +10,7 @@ from . import progress
 from . import toc
 from . import cover
 from googleapiclient.discovery import build
-from . import caching
+from ..common import caching
 from .gcp import get_credentials
 from .filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
