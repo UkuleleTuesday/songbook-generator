@@ -153,13 +153,9 @@ def test_create_cover_from_template_custom_title():
 @patch("generator.worker.cover.fitz.open")
 @patch("generator.worker.cover.build")
 @patch("generator.worker.cover.get_credentials")
-@patch("generator.worker.cover.os.makedirs")
-@patch("generator.worker.cover.open", new_callable=mock_open)
 @patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
     mock_now,
-    mock_open_file,
-    mock_makedirs,
     mock_get_credentials,
     mock_build,
     mock_fitz,
@@ -175,20 +171,20 @@ def test_generate_cover_basic(
                 {"status": "200"},
                 json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
             ),
+            (
+                {"status": "200"},
+                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
+            ),
+            ({"status": "200"}, pdf_content),
             ({"status": "200"}, ""),  # for the delete call
         ]
     )
-    docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
-
-    drive_http = HttpMockSequence(
+    docs_http = HttpMockSequence(
         [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
             (
                 {"status": "200"},
-                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
-            ),
-            ({"status": "200"}, pdf_content),  # For the export call
-            ({"status": "200"}, ""),  # for the delete call
+                json.dumps({"replies": []}),
+            )
         ]
     )
     mock_drive = build("drive", "v3", http=drive_http)
@@ -200,10 +196,11 @@ def test_generate_cover_basic(
 
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
-    result = cover.generate_cover(tmp_path, "cover123")
+    with patch("generator.common.caching.init_cache") as mock_init_cache:
+        mock_init_cache.return_value.get.return_value = None
+        result = cover.generate_cover(tmp_path, "cover123")
 
     assert result == mock_pdf
-    mock_open_file().write.assert_called_once_with(pdf_content)
 
 
 @patch("generator.common.config.load_cover_config")
@@ -225,16 +222,32 @@ def test_generate_cover_corrupted_pdf(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
     """Test handling of corrupted PDF file."""
-    mock_drive = Mock()
-    mock_drive.files().get().execute.return_value = {"id": "root_id"}
-    mock_drive.files().copy().execute.return_value = {
-        "id": "temp_cover123",
-        "name": "Copy of template",
-    }
-    mock_drive.files().export().execute.return_value = b"corrupted"
-
-    mock_docs = Mock()
-    mock_docs.documents().batchUpdate().execute.return_value = {"replies": []}
+    pdf_content = b"corrupted"
+    drive_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"id": "root_id"})),
+            (
+                {"status": "200"},
+                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
+            ),
+            ({"status": "200"}, pdf_content),
+            ({"status": "200"}, ""),  # for the delete call
+        ]
+    )
+    docs_http = HttpMockSequence(
+        [
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            )
+        ]
+    )
+    mock_drive = build("drive", "v3", http=drive_http)
+    mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
         "docs": mock_docs,
@@ -243,7 +256,8 @@ def test_generate_cover_corrupted_pdf(
 
     with pytest.raises(
         cover.CoverGenerationException, match="Downloaded cover file is corrupted"
-    ):
+    ), patch("generator.common.caching.init_cache") as mock_init_cache:
+        mock_init_cache.return_value.get.return_value = None
         cover.generate_cover(tmp_path, "cover123")
 
 
@@ -254,25 +268,42 @@ def test_generate_cover_deletion_failure(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
     """Test handling when temporary file deletion fails."""
-    mock_drive = Mock()
-    mock_drive.files().get().execute.return_value = {"id": "root_id"}
-    mock_drive.files().copy().execute.return_value = {
-        "id": "temp_cover123",
-        "name": "Copy of template",
-    }
-    mock_drive.files().export().execute.return_value = b"pdf content"
-    mock_drive.files().delete().execute.side_effect = HttpError(Mock(), b"API Error")
-
-    mock_docs = Mock()
-    mock_docs.documents().batchUpdate().execute.return_value = {"replies": []}
-
+    pdf_content = b"pdf content"
+    drive_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"id": "root_id"})),
+            (
+                {"status": "200"},
+                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
+            ),
+            ({"status": "200"}, pdf_content),
+            ({"status": "500"}, "API Error"),  # for the delete call
+        ]
+    )
+    docs_http = HttpMockSequence(
+        [
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            )
+        ]
+    )
+    mock_drive = build("drive", "v3", http=drive_http)
+    mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
         "docs": mock_docs,
     }[service]
     mock_fitz.return_value = Mock()
 
-    with pytest.raises(cover.CoverGenerationException):
+    with pytest.raises(cover.CoverGenerationException), patch(
+        "generator.common.caching.init_cache"
+    ) as mock_init_cache:
+        mock_init_cache.return_value.get.return_value = None
         cover.generate_cover(tmp_path, "cover123")
 
 
@@ -284,25 +315,41 @@ def test_generate_cover_uses_provided_cover_id(
     mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
 ):
     """Test that provided cover_file_id takes precedence over config."""
-    mock_drive = Mock()
-    mock_drive.files().get().execute.return_value = {"id": "root_id"}
-    mock_drive.files().copy().execute.return_value = {
-        "id": "temp_cover123",
-        "name": "Copy of template",
-    }
-    mock_drive.files().export().execute.return_value = b"fake pdf content"
-    mock_drive.files().delete().execute.return_value = {}
-
-    mock_docs = Mock()
-    mock_docs.documents().batchUpdate().execute.return_value = {"replies": []}
-
+    pdf_content = b"fake pdf content"
+    drive_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"id": "root_id"})),
+            (
+                {"status": "200"},
+                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
+            ),
+            ({"status": "200"}, pdf_content),
+            ({"status": "200"}, ""),  # for the delete call
+        ]
+    )
+    docs_http = HttpMockSequence(
+        [
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            )
+        ]
+    )
+    mock_drive = build("drive", "v3", http=drive_http)
+    mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
         "docs": mock_docs,
     }[service]
     mock_fitz.return_value = Mock()
 
-    cover.generate_cover(tmp_path, "provided_cover123")
+    with patch("generator.common.caching.init_cache") as mock_init_cache:
+        mock_init_cache.return_value.get.return_value = None
+        cover.generate_cover(tmp_path, "provided_cover123")
 
     mock_load_config.assert_not_called()
 
