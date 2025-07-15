@@ -14,6 +14,17 @@ def load_config(config_path=DEFAULT_CONFIG_PATH):
 
 
 def load_config_folder_ids():
+    """
+    Load GDrive folder IDs from environment or config file.
+    Priority order:
+    1. GDRIVE_SONG_SHEETS_FOLDER_IDS environment variable (comma-separated).
+    2. Local config file (~/.config/songbook-generator/config.toml).
+    3. Hardcoded default.
+    """
+    env_folders = os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS")
+    if env_folders:
+        return [folder.strip() for folder in env_folders.split(",")]
+
     config = load_config()
     folder_ids = config.get("song-sheets", {}).get(
         "folder-ids", [DEFAULT_GDRIVE_FOLDER_ID]

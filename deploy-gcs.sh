@@ -128,11 +128,19 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --role="roles/monitoring.metricWriter"
 
 echo "9. Set up cron schedule for cache refresh"
-gcloud scheduler jobs create pubsub refresh-songbook-cache \
+# Create a JSON array of folder IDs from the comma-separated env var.
+# e.g., "id1,id2" becomes '{"source_folders":["id1","id2"]}'
+# shellcheck disable=SC2016
+PAYLOAD_JSON='{"source_folders":["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]}'
+
+gcloud scheduler jobs create http trigger-merger-job \
   --schedule="*/15 * * * *" \
   --time-zone="Europe/Dublin" \
-  --topic=${CACHE_REFRESH_PUBSUB_TOPIC} \
+  --uri="$(gcloud run services describe "${MERGER_FUNCTION_NAME}" --region "${GCP_REGION}" --format="value(uri)")" \
+  --http-method=POST \
+  --oidc-service-account-email="${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
+  --message-body="${PAYLOAD_JSON}" \
   --location="${GCP_REGION}" \
-  --message-body='{}'
+  --description="Triggers the PDF merger and cache sync for songbooks."
 
 echo "✔ All done. 🎉"
