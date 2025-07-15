@@ -2,8 +2,13 @@ import traceback
 import click
 from pathlib import Path
 
+import traceback
+import click
+from pathlib import Path
+
 from .common.config import load_config_folder_ids, load_cover_config
-from .merger.main import fetch_and_merge_pdfs, sync_cache
+from .merger.main import fetch_and_merge_pdfs
+from .merger.sync import sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
