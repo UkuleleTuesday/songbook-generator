@@ -190,7 +190,7 @@ jobs:
           PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
           FIRESTORE_COLLECTION: ${{ env.FIRESTORE_COLLECTION }}
           GCS_CDN_BUCKET: ${{ env.GCS_CDN_BUCKET }}
-          JOB_TTL_DAYS: 3
+          JOB_TTL_DAYS: "3"
           OTEL_SERVICE_NAME: songbook-api
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api"
           OTEL_EXPORTER_OTLP_ENDPOINT: https://telemetry.googleapis.com
@@ -254,7 +254,7 @@ jobs:
         --source: "generator"
         --entry-point: "worker"
         --memory: "1Gi"
-        --cpu: 1
+        --cpu: "1"
         --allow-unauthenticated: true
         --set-env-vars:
           SERVICE_NAME: songbook-generator
@@ -324,7 +324,7 @@ jobs:
         --source: "generator"
         --entry-point: "merger"
         --memory: "1Gi"
-        --cpu: 1
+        --cpu: "1"
         --allow-unauthenticated: true
         --set-env-vars:
           SERVICE_NAME: songbook-merger
