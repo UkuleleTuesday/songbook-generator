@@ -3,7 +3,7 @@ import click
 from pathlib import Path
 
 from .common.config import load_config_folder_ids, load_cover_config
-from .merger.main import fetch_and_merge_pdfs, init_merger
+from .merger.main import fetch_and_merge_pdfs
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -138,8 +138,13 @@ def merge_pdfs(output: str):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
-        init_merger()
-        result_path = fetch_and_merge_pdfs(output)
+
+        # Lazily import to avoid issues if merger dependencies are not available
+        from .merger import main as merger_main
+
+        # Manually get the services since we are not in a Cloud Function
+        services = merger_main._get_services()
+        result_path = fetch_and_merge_pdfs(output, services)
 
         if not result_path:
             click.echo("Error: No PDF files found to merge", err=True)

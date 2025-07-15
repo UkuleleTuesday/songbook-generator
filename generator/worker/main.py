@@ -14,35 +14,36 @@ from .pdf import generate_songbook, init_services
 import functions_framework
 from ..common.tracing import get_tracer, setup_tracing
 
-# Global variables to hold initialized clients
-db = None
-cdn_bucket = None
-tracer = None
-FIRESTORE_COLLECTION = None
-GCS_CDN_BUCKET = None
+# Cache for initialized clients to avoid re-initialization on warm starts
+_services = None
 
 
-def _init_globals():
-    """Initialize global clients and configuration."""
-    global db, cdn_bucket, tracer, FIRESTORE_COLLECTION, GCS_CDN_BUCKET
+def _get_services():
+    """Initializes and returns services, using a cache for warm starts."""
+    global _services
+    if _services is not None:
+        return _services
 
-    if db is not None:
-        return
-
-    # Common initialization
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     service_name = os.environ.get("K_SERVICE", "songbook-generator-worker")
     os.environ["GCP_PROJECT_ID"] = project_id
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # Initialize clients
-    FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
-    GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
-
+    firestore_collection = os.environ["FIRESTORE_COLLECTION"]
+    gcs_cdn_bucket_name = os.environ["GCS_CDN_BUCKET"]
     db = firestore.Client(project=project_id)
     storage_client = storage.Client(project=project_id)
-    cdn_bucket = storage_client.bucket(GCS_CDN_BUCKET)
+    cdn_bucket = storage_client.bucket(gcs_cdn_bucket_name)
+
+    _services = {
+        "tracer": tracer,
+        "db": db,
+        "cdn_bucket": cdn_bucket,
+        "firestore_collection": firestore_collection,
+        "gcs_cdn_bucket_name": gcs_cdn_bucket_name,
+    }
+    return _services
 
 
 def make_progress_callback(job_ref):
@@ -111,8 +112,8 @@ def parse_filters(filters_param) -> Optional[Union[PropertyFilter, FilterGroup]]
 
 @functions_framework.cloud_event
 def worker_main(cloud_event):
-    _init_globals()
-    with tracer.start_as_current_span("worker_main") as main_span:
+    services = _get_services()
+    with services["tracer"].start_as_current_span("worker_main") as main_span:
         # 1) Decode Pub/Sub message
         print("Received Cloud Event with data:", cloud_event.data)
         envelope = cloud_event.data
@@ -132,10 +133,14 @@ def worker_main(cloud_event):
         main_span.set_attribute("job_id", job_id)
         main_span.set_attribute("params_size", len(json.dumps(params)))
 
-        job_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
+        job_ref = services["db"].collection(services["firestore_collection"]).document(
+            job_id
+        )
 
         # 2) Mark RUNNING
-        with tracer.start_as_current_span("update_job_status") as status_span:
+        with services["tracer"].start_as_current_span(
+            "update_job_status"
+        ) as status_span:
             print(f"Marking job {job_id} as RUNNING in Firestore")
             job_ref.update(
                 {"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP}
@@ -162,7 +167,9 @@ def worker_main(cloud_event):
             filters_param = params.get("filters")
             client_filter = None
             if filters_param:
-                with tracer.start_as_current_span("parse_filters") as filter_span:
+                with services["tracer"].start_as_current_span(
+                    "parse_filters"
+                ) as filter_span:
                     try:
                         client_filter = parse_filters(filters_param)
                         print(f"Parsed client filter: {client_filter}")
@@ -183,7 +190,9 @@ def worker_main(cloud_event):
                         return
 
             # 3) Generate into a temp file
-            with tracer.start_as_current_span("generate_songbook") as gen_span:
+            with services["tracer"].start_as_current_span(
+                "generate_songbook"
+            ) as gen_span:
                 out_path = tempfile.mktemp(suffix=".pdf")
                 print(f"Generating songbook for job {job_id} with parameters: {params}")
                 if preface_file_ids:
@@ -208,16 +217,21 @@ def worker_main(cloud_event):
                 gen_span.set_attribute("output_path", out_path)
 
             # 4) Upload to GCS
-            with tracer.start_as_current_span("upload_to_gcs") as upload_span:
-                blob = cdn_bucket.blob(f"{job_id}/songbook.pdf")
-                print(f"Uploading generated songbook to GCS bucket: {GCS_CDN_BUCKET}")
+            with services["tracer"].start_as_current_span("upload_to_gcs") as upload_span:
+                blob = services["cdn_bucket"].blob(f"{job_id}/songbook.pdf")
+                print(
+                    "Uploading generated songbook to GCS bucket: "
+                    f"{services['gcs_cdn_bucket_name']}"
+                )
                 blob.upload_from_filename(out_path, content_type="application/pdf")
                 result_url = blob.public_url  # or use signed URL if you need auth
-                upload_span.set_attribute("gcs_bucket", GCS_CDN_BUCKET)
+                upload_span.set_attribute(
+                    "gcs_bucket", services["gcs_cdn_bucket_name"]
+                )
                 upload_span.set_attribute("blob_name", f"{job_id}/songbook.pdf")
 
             # 5) Update Firestore to COMPLETED
-            with tracer.start_as_current_span("complete_job") as complete_span:
+            with services["tracer"].start_as_current_span("complete_job") as complete_span:
                 print(
                     f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
                 )

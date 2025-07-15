@@ -9,35 +9,36 @@ from google.cloud import pubsub_v1, firestore
 import functions_framework
 from ..common.tracing import get_tracer, setup_tracing
 
-# Global variables to hold initialized clients
-publisher = None
-db = None
-topic_path = None
-tracer = None
-FIRESTORE_COLLECTION = None
+# Cache for initialized clients to avoid re-initialization on warm starts
+_services = None
 
 
-def _init_globals():
-    """Initialize global clients and configuration."""
-    global publisher, db, topic_path, tracer, FIRESTORE_COLLECTION
+def _get_services():
+    """Initializes and returns services, using a cache for warm starts."""
+    global _services
+    if _services is not None:
+        return _services
 
-    if publisher is not None:
-        return
-
-    # Common initialization
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     service_name = os.environ.get("K_SERVICE", "songbook-generator-api")
     os.environ["GCP_PROJECT_ID"] = project_id
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # Initialize clients
     pubsub_topic = os.environ["PUBSUB_TOPIC"]
-    FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
-
+    firestore_collection = os.environ["FIRESTORE_COLLECTION"]
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, pubsub_topic)
     db = firestore.Client(project=project_id)
+
+    _services = {
+        "tracer": tracer,
+        "db": db,
+        "publisher": publisher,
+        "topic_path": topic_path,
+        "firestore_collection": firestore_collection,
+    }
+    return _services
 
 
 def _cors_headers():
@@ -48,8 +49,8 @@ def _cors_headers():
     }
 
 
-def handle_post(req):
-    with tracer.start_as_current_span("handle_post") as span:
+def handle_post(req, services):
+    with services["tracer"].start_as_current_span("handle_post") as span:
         print("Received POST request with payload:", req.get_data(as_text=True))
         payload = req.get_json(silent=True) or {}
         job_id = uuid.uuid4().hex
@@ -58,7 +59,9 @@ def handle_post(req):
         span.set_attribute("payload_size", len(json.dumps(payload)))
 
         # 1) Create Firestore job doc
-        with tracer.start_as_current_span("create_firestore_job") as firestore_span:
+        with services["tracer"].start_as_current_span(
+            "create_firestore_job"
+        ) as firestore_span:
             job_doc = {
                 "status": "QUEUED",
                 "created_at": firestore.SERVER_TIMESTAMP,
@@ -66,16 +69,24 @@ def handle_post(req):
                 "params": payload,
             }
             print(f"Creating Firestore job document with ID: {job_id}")
-            db.collection(FIRESTORE_COLLECTION).document(job_id).set(job_doc)
-            firestore_span.set_attribute("firestore.collection", FIRESTORE_COLLECTION)
+            services["db"].collection(services["firestore_collection"]).document(
+                job_id
+            ).set(job_doc)
+            firestore_span.set_attribute(
+                "firestore.collection", services["firestore_collection"]
+            )
             firestore_span.set_attribute("firestore.document_id", job_id)
 
         # 2) Publish Pub/Sub event
-        with tracer.start_as_current_span("publish_pubsub_message") as pubsub_span:
+        with services["tracer"].start_as_current_span(
+            "publish_pubsub_message"
+        ) as pubsub_span:
             message = {"job_id": job_id, "params": payload}
             serialized_message = json.dumps(message)
-            print(f"Publishing message to Pub/Sub topic: {topic_path}")
-            future = publisher.publish(topic_path, serialized_message.encode("utf-8"))
+            print(f"Publishing message to Pub/Sub topic: {services['topic_path']}")
+            future = services["publisher"].publish(
+                services["topic_path"], serialized_message.encode("utf-8")
+            )
             future.result()
             pubsub_span.set_attribute("pubsub.topic", os.environ["PUBSUB_TOPIC"])
             pubsub_span.set_attribute("pubsub.message_size", len(serialized_message))
@@ -88,16 +99,22 @@ def handle_post(req):
         )
 
 
-def handle_get_job(job_id):
-    with tracer.start_as_current_span("handle_get_job") as span:
+def handle_get_job(job_id, services):
+    with services["tracer"].start_as_current_span("handle_get_job") as span:
         span.set_attribute("job_id", job_id)
 
         print(f"Fetching Firestore document for job ID: {job_id}")
 
-        with tracer.start_as_current_span("fetch_firestore_document") as firestore_span:
-            doc_ref = db.collection(FIRESTORE_COLLECTION).document(job_id)
+        with services["tracer"].start_as_current_span(
+            "fetch_firestore_document"
+        ) as firestore_span:
+            doc_ref = services["db"].collection(services["firestore_collection"]).document(
+                job_id
+            )
             snapshot = doc_ref.get()
-            firestore_span.set_attribute("firestore.collection", FIRESTORE_COLLECTION)
+            firestore_span.set_attribute(
+                "firestore.collection", services["firestore_collection"]
+            )
             firestore_span.set_attribute("firestore.document_id", job_id)
             firestore_span.set_attribute("firestore.document_exists", snapshot.exists)
 
@@ -144,8 +161,8 @@ def handle_get_job(job_id):
 
 @functions_framework.http
 def api_main(req):
-    _init_globals()
-    with tracer.start_as_current_span("api_main") as span:
+    services = _get_services()
+    with services["tracer"].start_as_current_span("api_main") as span:
         span.set_attribute("http.method", req.method)
         span.set_attribute("http.path", req.path)
 
@@ -163,7 +180,7 @@ def api_main(req):
         if req.method == "POST" and req.path == "/":
             print("Handling POST request at root path")
             span.set_attribute("request.type", "enqueue_job")
-            return handle_post(req)
+            return handle_post(req, services)
 
         # GET healthcheck at root
         if req.method == "GET" and req.path == "/":
@@ -178,7 +195,7 @@ def api_main(req):
             if job_id:
                 print(f"Handling GET request for job ID: {job_id}")
                 span.set_attribute("request.type", "get_job_status")
-                return handle_get_job(job_id)
+                return handle_get_job(job_id, services)
 
         print(f"Unhandled request method: {req.method}, path: {req.path}")
         span.set_attribute("request.type", "unhandled")
