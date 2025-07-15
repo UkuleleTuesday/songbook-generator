@@ -6,7 +6,6 @@ from flask import make_response
 from google.cloud import pubsub_v1, firestore
 
 # Initialize tracing
-import functions_framework
 from ..common.tracing import get_tracer, setup_tracing
 
 # Cache for initialized clients to avoid re-initialization on warm starts
@@ -161,7 +160,6 @@ def handle_get_job(job_id, services):
         )
 
 
-@functions_framework.http
 def api_main(req):
     services = _get_services()
     with services["tracer"].start_as_current_span("api_main") as span:

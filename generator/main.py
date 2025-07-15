@@ -1,9 +1,26 @@
-# Expose Cloud Function entry points from sub-packages.
-# This file allows functions-framework to discover the decorated functions.
+import functions_framework
 
-from .api.main import api_main as api
-from .worker.main import worker_main as worker
-from .merger.main import merger_main as merger
+# Import the actual function handlers from sub-packages
+from .api.main import api_main
+from .worker.main import worker_main
+from .merger.main import merger_main
 
-# Make linters happy
-__all__ = ["api", "worker", "merger"]
+
+# Create and decorate the entrypoints that Cloud Functions will discover.
+# This makes the trigger type explicit at the entrypoint file.
+@functions_framework.http
+def api(request):
+    """HTTP Cloud Function for the API service."""
+    return api_main(request)
+
+
+@functions_framework.cloud_event
+def worker(cloud_event):
+    """CloudEvent Function for the songbook generation worker."""
+    return worker_main(cloud_event)
+
+
+@functions_framework.http
+def merger(request):
+    """HTTP Cloud Function for the PDF merging service."""
+    return merger_main(request)

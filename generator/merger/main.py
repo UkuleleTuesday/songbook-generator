@@ -7,7 +7,6 @@ import traceback
 import shutil
 
 # Initialize tracing
-import functions_framework
 from ..common.tracing import get_tracer, setup_tracing
 
 # Cache for initialized clients to avoid re-initialization on warm starts
@@ -175,7 +174,6 @@ def fetch_and_merge_pdfs(output_path, services):
                 return output_path
 
 
-@functions_framework.http
 def merger_main(request):
     """HTTP Cloud Function for merging PDFs from GCS cache."""
     services = _get_services()

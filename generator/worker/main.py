@@ -11,7 +11,6 @@ from typing import Union, Optional
 from .pdf import generate_songbook, init_services
 
 # Initialize tracing
-import functions_framework
 from ..common.tracing import get_tracer, setup_tracing
 
 # Cache for initialized clients to avoid re-initialization on warm starts
@@ -110,7 +109,6 @@ def parse_filters(filters_param) -> Optional[Union[PropertyFilter, FilterGroup]]
     return None
 
 
-@functions_framework.cloud_event
 def worker_main(cloud_event):
     services = _get_services()
     with services["tracer"].start_as_current_span("worker_main") as main_span:
