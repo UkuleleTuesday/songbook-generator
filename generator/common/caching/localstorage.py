@@ -1,7 +1,6 @@
 from datetime import datetime
 from fsspec.spec import AbstractFileSystem
 import os
-from opentelemetry import trace
 
 from ..tracing import get_tracer
 
