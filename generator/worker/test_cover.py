@@ -206,7 +206,7 @@ def test_generate_cover_basic(
     mock_open_file().write.assert_called_once_with(pdf_content)
 
 
-@patch("generator.worker.cover.config.load_cover_config")
+@patch("generator.common.config.load_cover_config")
 @patch("generator.worker.cover.click.echo")
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_path):
     """Test when no cover file is configured."""
@@ -276,7 +276,7 @@ def test_generate_cover_deletion_failure(
         cover.generate_cover(tmp_path, "cover123")
 
 
-@patch("generator.worker.cover.config.load_cover_config")
+@patch("generator.common.config.load_cover_config")
 @patch("generator.worker.cover.fitz.open")
 @patch("generator.worker.cover.build")
 @patch("generator.worker.cover.get_credentials")

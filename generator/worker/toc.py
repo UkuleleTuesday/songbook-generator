@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 
-from .config import load_config
+from ..common.config import load_config
 
 DEFAULT_FONT = "helv"
 

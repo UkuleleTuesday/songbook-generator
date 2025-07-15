@@ -1,9 +1,9 @@
 import click
 from pathlib import Path
 
-from .config import load_config_folder_ids, load_cover_config
-from .filters import FilterParser
-from .pdf import generate_songbook, init_services
+from .common.config import load_config_folder_ids, load_cover_config
+from .worker.filters import FilterParser
+from .worker.pdf import generate_songbook, init_services
 
 
 def make_cli_progress_callback():

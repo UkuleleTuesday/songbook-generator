@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from . import config
+from ..common import config
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
