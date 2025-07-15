@@ -4,9 +4,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-import config
-from exceptions import CoverGenerationException
-from gcp import get_credentials
+from . import config
+from .exceptions import CoverGenerationException
+from .gcp import get_credentials
 
 DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 

@@ -5,7 +5,7 @@ from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
 
-from filters import PropertyFilter, FilterGroup
+from .filters import PropertyFilter, FilterGroup
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
