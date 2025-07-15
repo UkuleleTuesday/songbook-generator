@@ -75,7 +75,7 @@ def create_cover_from_template(
     return copy_id
 
 
-def generate_cover(cache_dir, cover_file_id=None):
+def generate_cover(cache, cover_file_id=None):
     if not cover_file_id:
         cover_file_id = config.load_cover_config()
         if not cover_file_id:
@@ -99,7 +99,6 @@ def generate_cover(cache_dir, cover_file_id=None):
     )
 
     try:
-        cache = caching.init_cache()
         pdf_data = gdrive.download_file(
             drive_write,
             copy_id,

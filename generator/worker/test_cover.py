@@ -204,10 +204,10 @@ def test_generate_cover_basic(
 
 @patch("generator.common.config.load_cover_config")
 @patch("generator.worker.cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_load_config, tmp_path):
+def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
-    result = cover.generate_cover(tmp_path)
+    result = cover.generate_cover(Mock())
     assert result is None
     mock_echo.assert_called_once_with(
         "No cover file ID configured. Skipping cover generation."
@@ -257,10 +257,10 @@ def test_generate_cover_corrupted_pdf(
         pytest.raises(
             cover.CoverGenerationException, match="Downloaded cover file is corrupted"
         ),
-        patch("generator.common.caching.init_cache") as mock_init_cache,
+        patch("generator.common.caching.LocalStorageCache") as mock_cache,
     ):
-        mock_init_cache.return_value.get.return_value = None
-        cover.generate_cover(tmp_path, "cover123")
+        mock_cache.get.return_value = None
+        cover.generate_cover(mock_cache, "cover123")
 
 
 @patch("generator.worker.cover.get_credentials")
@@ -304,10 +304,10 @@ def test_generate_cover_deletion_failure(
 
     with (
         pytest.raises(cover.CoverGenerationException),
-        patch("generator.common.caching.init_cache") as mock_init_cache,
+        patch("generator.common.caching.LocalStorageCache") as mock_cache,
     ):
-        mock_init_cache.return_value.get.return_value = None
-        cover.generate_cover(tmp_path, "cover123")
+        mock_cache.get.return_value = None
+        cover.generate_cover(mock_cache, "cover123")
 
 
 @patch("generator.common.config.load_cover_config")
@@ -350,9 +350,9 @@ def test_generate_cover_uses_provided_cover_id(
     }[service]
     mock_fitz.return_value = Mock()
 
-    with patch("generator.common.caching.init_cache") as mock_init_cache:
-        mock_init_cache.return_value.get.return_value = None
-        cover.generate_cover(tmp_path, "provided_cover123")
+    with patch("generator.common.caching.LocalStorageCache") as mock_cache:
+        mock_cache.get.return_value = None
+        cover.generate_cover(mock_cache, "provided_cover123")
 
     mock_load_config.assert_not_called()
 
