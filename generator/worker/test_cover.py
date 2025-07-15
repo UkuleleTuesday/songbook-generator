@@ -180,8 +180,18 @@ def test_generate_cover_basic(
     )
     docs_http = HttpMockSequence([({"status": "200"}, json.dumps({"replies": []}))])
 
+    drive_http = HttpMockSequence(
+        [
+            ({"status": "200"}, json.dumps({"id": "root_id"})),
+            (
+                {"status": "200"},
+                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
+            ),
+            ({"status": "200"}, pdf_content),  # For the export call
+            ({"status": "200"}, ""),  # for the delete call
+        ]
+    )
     mock_drive = build("drive", "v3", http=drive_http)
-    mock_drive.files().export.return_value.execute.return_value = pdf_content
     mock_docs = build("docs", "v1", http=docs_http)
     mock_build.side_effect = lambda service, *args, **kwargs: {
         "drive": mock_drive,
