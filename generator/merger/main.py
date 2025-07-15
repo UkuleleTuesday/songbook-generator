@@ -16,8 +16,8 @@ tracer = None
 GCS_WORKER_CACHE_BUCKET = None
 
 
-def _init_globals():
-    """Initialize global clients and configuration."""
+def init_merger():
+    """Initialize global clients and configuration for the merger."""
     global storage_client, cache_bucket, tracer, GCS_WORKER_CACHE_BUCKET
 
     if storage_client is not None:
@@ -166,7 +166,7 @@ def fetch_and_merge_pdfs(output_path):
 
 def merger_main(request):
     """HTTP Cloud Function for merging PDFs from GCS cache."""
-    _init_globals()
+    init_merger()
     with tracer.start_as_current_span("merger_main") as main_span:
         try:
             print("Starting PDF merge operation")

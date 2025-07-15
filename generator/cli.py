@@ -3,7 +3,7 @@ import click
 from pathlib import Path
 
 from .common.config import load_config_folder_ids, load_cover_config
-from .merger.main import fetch_and_merge_pdfs
+from .merger.main import fetch_and_merge_pdfs, init_merger
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -138,7 +138,7 @@ def merge_pdfs(output: str):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
-
+        init_merger()
         result_path = fetch_and_merge_pdfs(output)
 
         if not result_path:
