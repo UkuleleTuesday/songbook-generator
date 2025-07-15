@@ -10,15 +10,14 @@ from . import progress
 from . import toc
 from . import cover
 from googleapiclient.discovery import build
-from . import caching
+from ..common import caching
 from .gcp import get_credentials
-from .gdrive import (
-    query_drive_files_with_client_filter,
+from .filters import PropertyFilter, FilterGroup
+from ..common.gdrive import (
     download_file_stream,
     get_files_metadata_by_ids,
+    query_drive_files_with_client_filter,
 )
-from .filters import PropertyFilter, FilterGroup
-
 from ..common.tracing import get_tracer
 
 tracer = get_tracer(__name__)
@@ -352,7 +351,7 @@ def generate_songbook(
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
-                        cover_pdf = cover.generate_cover(cache.cache_dir, cover_file_id)
+                        cover_pdf = cover.generate_cover(cache, cover_file_id)
 
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):

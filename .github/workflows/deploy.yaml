@@ -174,25 +174,30 @@ jobs:
       id: deploy
       run: |
         API_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        gcloud functions deploy "$API_FN_NAME" \
-          --gen2 \
-          --region=${{ env.GCP_REGION }} \
-          --runtime=python312 \
-          --trigger-http \
-          --source=generator \
-          --entry-point=api \
-          --allow-unauthenticated \
-          --set-env-vars=SERVICE_NAME=songbook-api \
-          --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
-          --set-env-vars=GCP_REGION=${{ env.GCP_REGION }} \
-          --set-env-vars=PUBSUB_TOPIC=${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }} \
-          --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \
-          --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
-          --set-env-vars=JOB_TTL_DAYS=3 \
-          --set-env-vars=OTEL_SERVICE_NAME=songbook-api \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api" \
-          --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
-          --set-env-vars=LOG_LEVEL=info
+        FLAGS_FILE=$(mktemp)
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --trigger-http: true
+        --source: "generator"
+        --entry-point: "api"
+        --allow-unauthenticated: true
+        --set-env-vars:
+          SERVICE_NAME: "songbook-api"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
+          FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
+          GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
+          JOB_TTL_DAYS: "3"
+          OTEL_SERVICE_NAME: "songbook-api"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          LOG_LEVEL: "info"
+        EOF
+
+        gcloud functions deploy "$API_FN_NAME" --flags-file="$FLAGS_FILE"
 
         # Output the function URL for PR comments
         FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
@@ -206,7 +211,7 @@ jobs:
         url: ${{ steps.deploy.outputs.function_url }}
 
   deploy-generator:
-    name: Deploy Generator
+    name: Deploy Worker
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -240,28 +245,33 @@ jobs:
       id: deploy
       run: |
         WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        gcloud functions deploy "$WORKER_FN_NAME" \
-          --gen2 \
-          --region="${{ env.GCP_REGION }}" \
-          --runtime=python312 \
-          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}" \
-          --source=generator \
-          --entry-point=worker \
-          --memory=1Gi \
-          --cpu=1 \
-          --allow-unauthenticated \
-          --set-env-vars=SERVICE_NAME=songbook-generator \
-          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
-          --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
-          --set-env-vars=FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }} \
-          --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
-          --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
-          --set-env-vars=GCP_REGION=${{ env.GCP_REGION }} \
-          --set-env-vars=GENERATOR_ADD_PAGE_NUMBERS=${{ env.GENERATOR_ADD_PAGE_NUMBERS }} \
-          --set-env-vars=OTEL_SERVICE_NAME=songbook-generator \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator" \
-          --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
-          --set-env-vars=LOG_LEVEL=info
+        FLAGS_FILE=$(mktemp)
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
+        --source: "generator"
+        --entry-point: "worker"
+        --memory: "1Gi"
+        --cpu: "1"
+        --allow-unauthenticated: true
+        --set-env-vars:
+          SERVICE_NAME: "songbook-generator"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
+          GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
+          GENERATOR_ADD_PAGE_NUMBERS: "${{ env.GENERATOR_ADD_PAGE_NUMBERS }}"
+          OTEL_SERVICE_NAME: "songbook-generator"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          LOG_LEVEL: "info"
+        EOF
+        gcloud functions deploy "$WORKER_FN_NAME" --flags-file="$FLAGS_FILE"
 
     - name: Update PR preview status
       if: github.event_name == 'pull_request'
@@ -305,23 +315,29 @@ jobs:
       id: deploy
       run: |
         MERGER_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        gcloud functions deploy "$MERGER_FN_NAME" \
-          --gen2 \
-          --region="${{ env.GCP_REGION }}" \
-          --runtime=python312 \
-          --trigger-topic="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}" \
-          --source=generator \
-          --entry-point=merger \
-          --memory=1Gi \
-          --cpu=1 \
-          --set-env-vars=SERVICE_NAME=songbook-merger \
-          --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
-          --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
-          --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
-          --set-env-vars=OTEL_SERVICE_NAME=songbook-merger \
-          --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger" \
-          --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
-          --set-env-vars=LOG_LEVEL=info
+        FLAGS_FILE=$(mktemp)
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
+        --source: "generator"
+        --entry-point: "merger"
+        --memory: "1Gi"
+        --cpu: "1"
+        --allow-unauthenticated: true
+        --set-env-vars:
+          SERVICE_NAME: "songbook-merger"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
+          OTEL_SERVICE_NAME: "songbook-merger"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          LOG_LEVEL: "info"
+        EOF
+        gcloud functions deploy "$MERGER_FN_NAME" --flags-file="$FLAGS_FILE"
 
         # Output the function URL for PR comments
         FUNCTION_URL=$(gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
@@ -337,9 +353,12 @@ jobs:
     - name: Publish test message
       run: |
         CACHE_REFRESH_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
-          --message "{\"origin\":\"gha\",\"ts\":\"${TIMESTAMP}\"}"
+        # Create a JSON array of folder IDs from the comma-separated env var.
+        # e.g., "id1,id2" becomes '["id1","id2"]'
+        FOLDER_IDS_JSON='["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]'
+        # Construct the full message payload
+        MESSAGE_JSON="{\"source_folders\":${FOLDER_IDS_JSON}}"
+        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" --message "${MESSAGE_JSON}"
 
   deploy-ui:
     name: Deploy UI

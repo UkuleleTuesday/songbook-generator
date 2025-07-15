@@ -5,7 +5,7 @@ from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
 
-from .filters import PropertyFilter, FilterGroup
+from ..worker.filters import FilterGroup, PropertyFilter
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
@@ -183,40 +183,67 @@ def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None,
             yield stream.getvalue()
 
 
-def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
+def download_file(
+    drive,
+    file_id: str,
+    file_name: str,
+    cache,
+    cache_prefix: str,
+    mime_type: str = "application/pdf",
+    export: bool = True,
+) -> bytes:
     """
-    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
-    Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns a BytesIO stream of the file.
+    Generic file downloader with caching.
+
+    Can either download a file directly or export a Google Doc to a specific format.
     """
-    file_id = file["id"]
-    file_name = file["name"]
+    cache_key = f"{cache_prefix}/{file_id}.pdf"
 
-    cache_key = f"song-sheets/{file_id}.pdf"
-
-    # 1) Get the remote modified timestamp
     details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
     remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
 
-    # 2) Attempt cache lookup with freshness check
-    cached = cache.get(cache_key, newer_than=remote_ts)
-    if cached:
-        click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-        return io.BytesIO(cached)
+    try:
+        cached = cache.get(cache_key, newer_than=remote_ts)
+        if cached:
+            click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+            return cached
+    except Exception as e:
+        click.echo(
+            f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+        )
 
-    # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
-    request = drive.files().export_media(fileId=file_id, mimeType="application/pdf")
+    if export:
+        request = drive.files().export_media(fileId=file_id, mimeType=mime_type)
+    else:
+        request = drive.files().get_media(fileId=file_id)
+
     buffer = io.BytesIO()
     downloader = MediaIoBaseDownload(buffer, request)
     done = False
     while not done:
         _, done = downloader.next_chunk()
 
-    pdf_data = buffer.getvalue()
+    data = buffer.getvalue()
+    cache.put(cache_key, data)
+    return data
 
-    # 4) Store into cache and return a new BytesIO stream
-    cache.put(cache_key, pdf_data)
+
+def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
+    """
+    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
+    Only re-downloads if remote modifiedTime is newer than the cached file.
+    Returns a BytesIO stream of the file.
+    """
+    pdf_data = download_file(
+        drive,
+        file["id"],
+        file["name"],
+        cache,
+        "song-sheets",
+        "application/pdf",
+        export=True,
+    )
     return io.BytesIO(pdf_data)
 
 

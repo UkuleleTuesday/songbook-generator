@@ -2,8 +2,10 @@ import traceback
 import click
 from pathlib import Path
 
+
 from .common.config import load_config_folder_ids, load_cover_config
 from .merger.main import fetch_and_merge_pdfs
+from .merger.sync import sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -88,6 +90,7 @@ def generate(
     postface_file_id,
     service_account_key: str,
 ):
+    """Generates a songbook PDF from Google Drive files."""
     drive, cache = init_services(service_account_key)
 
     client_filter = None
@@ -127,6 +130,44 @@ def generate(
         click.launch(destination_path)
 
 
+@cli.command(name="sync-cache")
+@click.option(
+    "--source-folder",
+    "-s",
+    multiple=True,
+    default=load_config_folder_ids(),
+    help="Drive folder IDs to sync from (can be passed multiple times)",
+)
+@click.option(
+    "--no-metadata",
+    is_flag=True,
+    default=False,
+    help="Disable syncing of file metadata from Drive to GCS.",
+)
+def sync_cache_command(source_folder, no_metadata):
+    """Syncs files and metadata from Google Drive to the GCS cache."""
+    try:
+        click.echo("Starting cache synchronization (CLI mode)")
+        from .merger import main as merger_main
+
+        services = merger_main._get_services()
+        source_folders = list(source_folder) if source_folder else []
+
+        if not source_folders:
+            click.echo("No source folders provided. Nothing to sync.", err=True)
+            raise click.Abort()
+
+        click.echo(f"Syncing folders: {source_folders}")
+        sync_cache(source_folders, services, with_metadata=not no_metadata)
+        click.echo("Cache synchronization complete.")
+
+    except Exception as e:
+        click.echo(f"Cache sync operation failed: {str(e)}", err=True)
+        click.echo("Error details:", err=True)
+        click.echo(traceback.format_exc(), err=True)
+        raise click.Abort()
+
+
 @cli.command(name="merge-pdfs")
 @click.option(
     "--output",
@@ -144,6 +185,7 @@ def merge_pdfs(output: str):
 
         # Manually get the services since we are not in a Cloud Function
         services = merger_main._get_services()
+        click.echo("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
         if not result_path:

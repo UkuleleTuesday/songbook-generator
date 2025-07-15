@@ -77,62 +77,70 @@ gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_CDN_BUCKET}"
 gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_WORKER_CACHE_BUCKET}"
 rm "${LIFECYCLE_JSON}"
 
-echo "6. Granting IAM roles to ${SA}…"
+echo "6. Granting IAM roles to ${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}…"
 # Pub/Sub: allow publishing and subscribing
 gcloud pubsub topics add-iam-policy-binding "projects/${GCP_PROJECT_ID}/topics/${PUBSUB_TOPIC}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/pubsub.publisher"
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/pubsub.subscriber"
 
 # Firestore read/write
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/datastore.user"
 
 # (Optional) if you plan on building indexes dynamically
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/datastore.indexAdmin"
 
 # Storage: allow uploading objects to CDN bucket
 gsutil iam ch \
-  serviceAccount:${SA}:objectCreator \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
   "gs://${GCS_CDN_BUCKET}"
 
 # Storage: allow uploading objects to worker cache bucket
 gsutil iam ch \
-  serviceAccount:${SA}:objectCreator \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
   "gs://${GCS_WORKER_CACHE_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"
-gcloud iam service-accounts add-iam-policy-binding "${SA}" \
-  --member="serviceAccount:${SA}" \
+gcloud iam service-accounts add-iam-policy-binding "${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/iam.serviceAccountTokenCreator" || echo "Already bound, continuing…"
 
 echo "8. Make sure service account can write observability stuff"
 # Traces Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/telemetry.tracesWriter"
 
 # Logs Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/logging.logWriter"
 
 # Monitoring Metric Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/monitoring.metricWriter"
 
 echo "9. Set up cron schedule for cache refresh"
-gcloud scheduler jobs create pubsub refresh-songbook-cache \
+# Create a JSON array of folder IDs from the comma-separated env var.
+# e.g., "id1,id2" becomes '{"source_folders":["id1","id2"]}'
+# shellcheck disable=SC2016
+PAYLOAD_JSON='{"source_folders":["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]}'
+
+gcloud scheduler jobs create http trigger-merger-job \
   --schedule="*/15 * * * *" \
   --time-zone="Europe/Dublin" \
-  --topic=${CACHE_REFRESH_PUBSUB_TOPIC} \
+  --uri="$(gcloud run services describe "${MERGER_FUNCTION_NAME}" --region "${GCP_REGION}" --format="value(uri)")" \
+  --http-method=POST \
+  --oidc-service-account-email="${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
+  --message-body="${PAYLOAD_JSON}" \
   --location="${GCP_REGION}" \
-  --message-body='{}'
+  --description="Triggers the PDF merger and cache sync for songbooks."
 
 echo "✔ All done. 🎉"

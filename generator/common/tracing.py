@@ -2,6 +2,7 @@
 
 import os
 from opentelemetry import trace
+from opentelemetry.trace import NoOpTracerProvider
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import SERVICE_INSTANCE_ID, SERVICE_NAME, Resource
@@ -15,8 +16,23 @@ from google.auth.transport.grpc import AuthMetadataPlugin
 
 
 def setup_tracing(service_name):
+    # Standard way to disable OpenTelemetry SDK.
+    if os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true":
+        trace.set_tracer_provider(NoOpTracerProvider())
+        return
+
+    # Only set up real tracing if we are in a GCP environment.
+    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+        trace.set_tracer_provider(NoOpTracerProvider())
+        return
+
     # Retrieve and store Google application-default credentials
-    credentials, project_id = google.auth.default()
+    try:
+        credentials, project_id = google.auth.default()
+    except google.auth.exceptions.DefaultCredentialsError:
+        # We're likely running locally without gcloud auth. Fall back to NoOp.
+        trace.set_tracer_provider(NoOpTracerProvider())
+        return
     # Request used to refresh credentials upon expiry
     request = google.auth.transport.requests.Request()
 

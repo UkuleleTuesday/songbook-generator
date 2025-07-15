@@ -6,6 +6,13 @@ from google.cloud import storage
 import traceback
 import shutil
 
+
+from google.auth import default
+from googleapiclient.discovery import build
+
+from . import sync
+from ..common.config import load_config_folder_ids
+
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
 
@@ -29,11 +36,94 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    drive_service = build("drive", "v3", credentials=creds)
+
     _services = {
         "tracer": tracer,
         "cache_bucket": cache_bucket,
+        "drive": drive_service,
     }
     return _services
+
+
+def _fetch_pdf_blobs(services):
+    """Fetch all song sheet PDF blobs from GCS cache bucket."""
+    with services["tracer"].start_as_current_span("list_blobs") as span:
+        prefix = "song-sheets/"
+        blobs = list(services["cache_bucket"].list_blobs(prefix=prefix))
+        pdf_blobs = [blob for blob in blobs if blob.name.endswith(".pdf")]
+        span.set_attribute("total_blobs", len(blobs))
+        span.set_attribute("pdf_blobs", len(pdf_blobs))
+        return pdf_blobs
+
+
+def _download_blobs(pdf_blobs, temp_dir, services):
+    """Download PDF blobs to a temporary directory and extract metadata."""
+    with services["tracer"].start_as_current_span("download_files") as span:
+        file_metadata = []
+        for blob in pdf_blobs:
+            filename = blob.name.replace("/", "_")
+            local_path = os.path.join(temp_dir, filename)
+            print(f"Downloading {blob.name} to {filename}")
+            with services["tracer"].start_as_current_span("download_file") as dl_span:
+                dl_span.set_attribute("blob_name", blob.name)
+                dl_span.set_attribute("local_path", local_path)
+                blob.download_to_filename(local_path)
+            blob_metadata = blob.metadata or {}
+            song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
+            file_metadata.append({"path": local_path, "name": song_name})
+        span.set_attribute("downloaded_count", len(file_metadata))
+        return file_metadata
+
+
+def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
+    """Merge PDFs and generate TOC entries."""
+    with services["tracer"].start_as_current_span("merge_pdfs") as span:
+        print(f"Merging {len(file_metadata)} PDF files...")
+        merger = PyPDF2.PdfMerger()
+        toc_entries = []
+        current_page = 0
+        for file_info in file_metadata:
+            with open(file_info["path"], "rb") as pdf_file:
+                pdf_reader = PyPDF2.PdfReader(pdf_file)
+                page_count = len(pdf_reader.pages)
+            toc_entries.append([1, file_info["name"], current_page + 1])
+            current_page += page_count
+            merger.append(file_info["path"])
+        temp_merged_path = os.path.join(temp_dir, "merged.pdf")
+        merger.write(temp_merged_path)
+        merger.close()
+        span.set_attribute("temp_merged_path", temp_merged_path)
+        span.set_attribute("merged_files", len(file_metadata))
+        span.set_attribute("toc_entries", len(toc_entries))
+        print(f"Successfully created merged PDF: {temp_merged_path}")
+        return temp_merged_path, toc_entries
+
+
+def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
+    """Add a table of contents to the merged PDF."""
+    with services["tracer"].start_as_current_span("add_toc") as span:
+        print("Adding table of contents to merged PDF...")
+        doc = fitz.open(temp_merged_path)
+        doc.set_toc(toc_entries)
+        temp_with_toc_path = os.path.join(temp_dir, "with_toc.pdf")
+        doc.save(temp_with_toc_path)
+        doc.close()
+        span.set_attribute("toc_entries_added", len(toc_entries))
+        span.set_attribute("temp_with_toc_path", temp_with_toc_path)
+        print(f"Added {len(toc_entries)} entries to table of contents")
+        return temp_with_toc_path
+
+
+def _upload_to_cache(file_path, services):
+    """Upload the final merged PDF to the GCS cache."""
+    with services["tracer"].start_as_current_span("upload_to_cache") as span:
+        cache_blob_name = "merged-pdf/latest.pdf"
+        cache_blob = services["cache_bucket"].blob(cache_blob_name)
+        print(f"Uploading merged PDF to cache at: {cache_blob_name}")
+        cache_blob.upload_from_filename(file_path, content_type="application/pdf")
+        span.set_attribute("cache_blob_name", cache_blob_name)
 
 
 def fetch_and_merge_pdfs(output_path, services):
@@ -47,138 +137,60 @@ def fetch_and_merge_pdfs(output_path, services):
     Returns:
         str: Path to the merged PDF file (same as output_path)
     """
-    with services["tracer"].start_as_current_span("fetch_and_merge_pdfs") as main_span:
-        # Create temporary directory for downloads
+    with services["tracer"].start_as_current_span("fetch_and_merge_pdfs") as span:
+        pdf_blobs = _fetch_pdf_blobs(services)
+        span.set_attribute("pdf_count", len(pdf_blobs))
+        if not pdf_blobs:
+            print("No PDF files found in the cache bucket")
+            return None
+
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"Downloading PDFs to temporary directory: {temp_dir}")
-            main_span.set_attribute("temp_dir", temp_dir)
-
-            # Fetch all blobs with song-sheets prefix
-            with services["tracer"].start_as_current_span("list_blobs") as list_span:
-                prefix = "song-sheets/"
-                blobs = list(services["cache_bucket"].list_blobs(prefix=prefix))
-                pdf_blobs = [blob for blob in blobs if blob.name.endswith(".pdf")]
-
-                list_span.set_attribute("total_blobs", len(blobs))
-                list_span.set_attribute("pdf_blobs", len(pdf_blobs))
-                main_span.set_attribute("pdf_count", len(pdf_blobs))
-
-            if not pdf_blobs:
-                print("No PDF files found in the cache bucket")
-                return None
-
-            downloaded_files = []
-            file_metadata = []
-
-            # Download each PDF file and collect metadata
-            with services["tracer"].start_as_current_span(
-                "download_files"
-            ) as downloads_span:
-                for blob in pdf_blobs:
-                    # Replace path separators with underscores for local filename
-                    filename = blob.name.replace("/", "_")
-                    local_path = os.path.join(temp_dir, filename)
-
-                    print(f"Downloading {blob.name} to {filename}")
-                    with services["tracer"].start_as_current_span(
-                        "download_file"
-                    ) as download_span:
-                        download_span.set_attribute("blob_name", blob.name)
-                        download_span.set_attribute("local_path", local_path)
-                        blob.download_to_filename(local_path)
-                        print(f"Downloading {blob.name} to {filename}")
-
-                    downloaded_files.append(local_path)
-
-                    # Extract metadata for TOC
-                    blob_metadata = blob.metadata or {}
-                    song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
-                    file_metadata.append(
-                        {"path": local_path, "name": song_name, "blob_name": blob.name}
-                    )
-
-                downloads_span.set_attribute("downloaded_count", len(downloaded_files))
-
-            # Sort files and metadata for consistent ordering
+            span.set_attribute("temp_dir", temp_dir)
+            file_metadata = _download_blobs(pdf_blobs, temp_dir, services)
             file_metadata.sort(key=lambda x: x["name"])
 
-            # Merge PDFs
-            with services["tracer"].start_as_current_span("merge_pdfs") as merge_span:
-                print(f"Merging {len(file_metadata)} PDF files...")
-                merger = PyPDF2.PdfMerger()
-                toc_entries = []
-                current_page = 0
+            temp_merged_path, toc_entries = _merge_pdfs_with_toc(
+                file_metadata, temp_dir, services
+            )
 
-                for file_info in file_metadata:
-                    print(f"Adding {file_info['name']} to merger")
+            temp_with_toc_path = _add_toc_to_pdf(
+                temp_merged_path, toc_entries, temp_dir, services
+            )
 
-                    # Count pages in this PDF to track TOC positions
-                    with open(file_info["path"], "rb") as pdf_file:
-                        pdf_reader = PyPDF2.PdfReader(pdf_file)
-                        page_count = len(pdf_reader.pages)
+            _upload_to_cache(temp_with_toc_path, services)
 
-                    # Add to TOC (page numbers are 1-based for user display)
-                    toc_entries.append([1, file_info["name"], current_page + 1])
-                    current_page += page_count
+            print(f"Copying merged PDF with TOC to: {output_path}")
+            shutil.copy2(temp_with_toc_path, output_path)
+            span.set_attribute("final_output_path", output_path)
 
-                    merger.append(file_info["path"])
-
-                # Write combined PDF to temporary file
-                temp_merged_path = os.path.join(temp_dir, "merged.pdf")
-                merger.write(temp_merged_path)
-                merger.close()
-
-                merge_span.set_attribute("temp_merged_path", temp_merged_path)
-                merge_span.set_attribute("merged_files", len(file_metadata))
-                merge_span.set_attribute("toc_entries", len(toc_entries))
-
-                print(f"Successfully created merged PDF: {temp_merged_path}")
-
-                # Add table of contents using PyMuPDF
-                with services["tracer"].start_as_current_span("add_toc") as toc_span:
-                    print("Adding table of contents to merged PDF...")
-
-                    # Open the merged PDF with PyMuPDF
-                    doc = fitz.open(temp_merged_path)
-
-                    # Set the table of contents
-                    doc.set_toc(toc_entries)
-
-                    # Save to a new temporary file with TOC
-                    temp_with_toc_path = os.path.join(temp_dir, "with_toc.pdf")
-                    doc.save(temp_with_toc_path)
-                    doc.close()
-
-                    toc_span.set_attribute("toc_entries_added", len(toc_entries))
-                    toc_span.set_attribute("temp_with_toc_path", temp_with_toc_path)
-                    print(f"Added {len(toc_entries)} entries to table of contents")
-
-                # Upload merged PDF back to GCS cache
-                with services["tracer"].start_as_current_span(
-                    "upload_to_cache"
-                ) as upload_span:
-                    cache_blob = services["cache_bucket"].blob("merged-pdf/latest.pdf")
-                    print("Uploading merged PDF to cache at: merged-pdf/latest.pdf")
-                    cache_blob.upload_from_filename(
-                        temp_with_toc_path, content_type="application/pdf"
-                    )
-                    upload_span.set_attribute(
-                        "cache_blob_name", "merged-pdf/latest.pdf"
-                    )
-
-                # Copy the file with TOC to the final output location
-                print(f"Copying merged PDF with TOC to: {output_path}")
-                shutil.copy2(temp_with_toc_path, output_path)
-                merge_span.set_attribute("final_output_path", output_path)
-
-                return output_path
+            return output_path
 
 
 def merger_main(request):
-    """HTTP Cloud Function for merging PDFs from GCS cache."""
+    """HTTP Cloud Function for syncing and merging PDFs from GCS cache."""
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
+            # Get source folders from request payload, or fall back to config
+            request_json = request.get_json(silent=True)
+            source_folders = (
+                request_json.get("source_folders")
+                if request_json
+                else load_config_folder_ids()
+            )
+            if not source_folders:
+                source_folders = load_config_folder_ids()
+
+            # Add source_folders to span attributes for tracing
+            if source_folders:
+                main_span.set_attribute("source_folders", ",".join(source_folders))
+
+            with services["tracer"].start_as_current_span("sync_operation"):
+                print(f"Syncing folders: {source_folders}")
+                # Sync files and their metadata before merging.
+                sync.sync_cache(source_folders, services)
+                print("Sync complete.")
+
             print("Starting PDF merge operation")
 
             # Create a temporary file for the merged PDF
