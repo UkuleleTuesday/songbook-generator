@@ -185,8 +185,16 @@ def merger_main(request):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            # Always sync files from Drive to GCS cache from default folders first
-            source_folders = load_config_folder_ids()
+            # Get source folders from request payload, or fall back to config
+            request_json = request.get_json(silent=True)
+            source_folders = (
+                request_json.get("source_folders")
+                if request_json
+                else load_config_folder_ids()
+            )
+            if not source_folders:
+                source_folders = load_config_folder_ids()
+
             with services["tracer"].start_as_current_span("sync_operation"):
                 print(f"Syncing folders: {source_folders}")
                 # In this context (merger), we don't need metadata sync
