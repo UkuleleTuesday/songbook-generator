@@ -6,6 +6,7 @@
 # It should be sourced to affect the current shell session.
 
 export GCP_PROJECT_ID=songbook-generator
+export GOOGLE_CLOUD_PROJECT=songbook-generator
 export GCP_REGION=europe-west1
 export PUBSUB_TOPIC=songbook-jobs
 export CACHE_REFRESH_PUBSUB_TOPIC=songbook-cache-refresh-jobs
