@@ -173,11 +173,6 @@ def api_main(req):
             span.set_attribute("request.type", "cors_preflight")
             return ("", 204, _cors_headers())
 
-        # Echo env for debug
-        print("Environment variables:")
-        for k, v in os.environ.items():
-            print(f"{k}={v}")
-
         # POST to enqueue new job
         if req.method == "POST" and req.path == "/":
             print("Handling POST request at root path")
