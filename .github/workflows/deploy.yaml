@@ -257,7 +257,7 @@ jobs:
           --set-env-vars=GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }} \
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
           --set-env-vars=GCP_REGION=${{ env.GCP_REGION }} \
-          --set-env-vars=GDRIVE_SONG_SHEETS_FOLDER_IDS=${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }} \
+          --set-env-vars="GDRIVE_SONG_SHEETS_FOLDER_IDS=${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}" \
           --set-env-vars=GENERATOR_ADD_PAGE_NUMBERS=${{ env.GENERATOR_ADD_PAGE_NUMBERS }} \
           --set-env-vars=OTEL_SERVICE_NAME=songbook-generator \
           --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator" \
@@ -319,7 +319,7 @@ jobs:
           --set-env-vars=GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GOOGLE_CLOUD_PROJECT=${{ env.GCP_PROJECT_ID }} \
           --set-env-vars=GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }} \
-          --set-env-vars=GDRIVE_SONG_SHEETS_FOLDER_IDS=${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }} \
+          --set-env-vars="GDRIVE_SONG_SHEETS_FOLDER_IDS=${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}" \
           --set-env-vars=OTEL_SERVICE_NAME=songbook-merger \
           --set-env-vars=OTEL_RESOURCE_ATTRIBUTES="gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger" \
           --set-env-vars=OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com \
