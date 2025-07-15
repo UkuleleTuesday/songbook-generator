@@ -47,7 +47,7 @@ def test_load_toc_config_with_existing_file_but_invalid_font(mocker):
 
 
 def test_load_toc_config_with_missing_file(mocker):
-    mock_load_config = mocker.patch("generator.common.config.load_config", return_value={})
+    mock_load_config = mocker.patch("generator.worker.toc.load_config", return_value={})
     config = load_toc_config()
     assert config.text_font == DEFAULT_FONT
     assert config.text_fontsize == 9

@@ -129,14 +129,17 @@ def load_toc_config() -> TocLayout:
     config = load_config()
     toc_config = config.get("toc", {})
 
-    return TocLayout(
-        text_font=resolve_font(toc_config.get("text-font", DEFAULT_FONT), DEFAULT_FONT),
-        text_fontsize=toc_config.get("text-fontsize", 9),
-        title_font=resolve_font(
-            toc_config.get("title-font", DEFAULT_FONT), DEFAULT_FONT
-        ),
-        title_fontsize=toc_config.get("title-fontsize", 16),
+    layout = TocLayout()
+    layout.text_font = resolve_font(
+        toc_config.get("text-font", layout.text_font), layout.text_font
     )
+    layout.text_fontsize = toc_config.get("text-fontsize", layout.text_fontsize)
+    layout.title_font = resolve_font(
+        toc_config.get("title-font", layout.title_font), layout.title_font
+    )
+    layout.title_fontsize = toc_config.get("title-fontsize", layout.title_fontsize)
+
+    return layout
 
 
 class TocGenerator:
