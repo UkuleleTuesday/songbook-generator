@@ -242,7 +242,7 @@ jobs:
         WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
         ENV_VARS_FILE=$(mktemp)
         cat > "$ENV_VARS_FILE" <<EOF
-        update-env-vars:
+        --set-env-vars:
           SERVICE_NAME: songbook-generator
           GCP_PROJECT_ID: ${{ env.GCP_PROJECT_ID }}
           GOOGLE_CLOUD_PROJECT: ${{ env.GCP_PROJECT_ID }}
@@ -313,7 +313,7 @@ jobs:
         MERGER_FN_NAME="${{ steps.fn-name.outputs.name }}"
         ENV_VARS_FILE=$(mktemp)
         cat > "$ENV_VARS_FILE" <<EOF
-        update-env-vars:
+        --set-env-vars:
           SERVICE_NAME: songbook-merger
           GCP_PROJECT_ID: ${{ env.GCP_PROJECT_ID }}
           GOOGLE_CLOUD_PROJECT: ${{ env.GCP_PROJECT_ID }}
