@@ -1,5 +1,5 @@
 import pytest
-from .toc import resolve_font, DEFAULT_FONT, load_toc_config, generate_toc_title
+from .toc import resolve_font, DEFAULT_FONT, generate_toc_title
 
 
 def test_resolve_font_valid_fontfile(mocker):
@@ -26,7 +26,6 @@ def test_resolve_font_no_fontfile(mocker):
     result = resolve_font(None, DEFAULT_FONT)
     assert result == DEFAULT_FONT
     mock_font.assert_not_called()
-
 
 
 def test_generate_toc_title_empty_string():

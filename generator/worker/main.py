@@ -11,7 +11,7 @@ from typing import Union, Optional
 from .pdf import generate_songbook, init_services
 
 # Initialize tracing
-from ..common.tracing import setup_tracing, get_tracer
+from ..common.tracing import get_tracer
 
 # Global variables to hold initialized clients
 db = None

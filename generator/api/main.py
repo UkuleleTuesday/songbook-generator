@@ -6,7 +6,7 @@ from flask import make_response
 from google.cloud import pubsub_v1, firestore
 
 # Initialize tracing
-from ..common.tracing import setup_tracing, get_tracer
+from ..common.tracing import get_tracer
 
 # Global variables to hold initialized clients
 publisher = None
