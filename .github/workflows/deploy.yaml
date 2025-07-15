@@ -353,9 +353,12 @@ jobs:
     - name: Publish test message
       run: |
         CACHE_REFRESH_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
-          --message "{\"origin\":\"gha\",\"ts\":\"${TIMESTAMP}\"}"
+        # Create a JSON array of folder IDs from the comma-separated env var.
+        # e.g., "id1,id2" becomes '["id1","id2"]'
+        FOLDER_IDS_JSON='["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]'
+        # Construct the full message payload
+        MESSAGE_JSON="{\"source_folders\":${FOLDER_IDS_JSON}}"
+        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" --message "${MESSAGE_JSON}"
 
   deploy-ui:
     name: Deploy UI
