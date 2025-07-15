@@ -20,28 +20,9 @@ from gdrive import (
 )
 from filters import PropertyFilter, FilterGroup
 
-# Import tracing - only if running in cloud environment
-try:
-    from common.tracing import get_tracer
+from common.tracing import get_tracer
 
-    tracer = get_tracer(__name__)
-except ImportError:
-    # Running locally (CLI), create a no-op tracer
-    class NoOpTracer:
-        def start_as_current_span(self, name):
-            return NoOpSpan()
-
-    class NoOpSpan:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-        def set_attribute(self, key, value):
-            pass
-
-    tracer = NoOpTracer()
+tracer = get_tracer(__name__)
 
 
 def authenticate_drive(key_file_path: Optional[str] = None):

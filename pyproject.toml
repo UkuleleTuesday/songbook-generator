@@ -43,4 +43,4 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["api*", "common*", "generator*", "merger*"]
+include = ["generator*"]
