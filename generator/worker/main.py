@@ -32,7 +32,7 @@ def _init_globals():
     tracer = get_tracer(__name__)
 
     # Initialized at cold start
-    PROJECT_ID = os.environ["GCP_PROJECT_ID"]
+    PROJECT_ID = os.environ["GOOGLE_CLOUD_PROJECT"]
     FIRESTORE_COLLECTION = os.environ["FIRESTORE_COLLECTION"]
     GCS_CDN_BUCKET = os.environ["GCS_CDN_BUCKET"]
 
