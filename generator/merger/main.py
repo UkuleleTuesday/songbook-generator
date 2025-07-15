@@ -197,9 +197,8 @@ def merger_main(request):
 
             with services["tracer"].start_as_current_span("sync_operation"):
                 print(f"Syncing folders: {source_folders}")
-                # In this context (merger), we don't need metadata sync
-                # as it's a precursor to a merge, not a standalone sync.
-                sync.sync_cache(source_folders, services, with_metadata=False)
+                # Sync files and their metadata before merging.
+                sync.sync_cache(source_folders, services)
                 print("Sync complete.")
 
             print("Starting PDF merge operation")
