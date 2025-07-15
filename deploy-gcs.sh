@@ -77,54 +77,54 @@ gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_CDN_BUCKET}"
 gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_WORKER_CACHE_BUCKET}"
 rm "${LIFECYCLE_JSON}"
 
-echo "6. Granting IAM roles to ${SA}…"
+echo "6. Granting IAM roles to ${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}…"
 # Pub/Sub: allow publishing and subscribing
 gcloud pubsub topics add-iam-policy-binding "projects/${GCP_PROJECT_ID}/topics/${PUBSUB_TOPIC}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/pubsub.publisher"
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/pubsub.subscriber"
 
 # Firestore read/write
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/datastore.user"
 
 # (Optional) if you plan on building indexes dynamically
 gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/datastore.indexAdmin"
 
 # Storage: allow uploading objects to CDN bucket
 gsutil iam ch \
-  serviceAccount:${SA}:objectCreator \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
   "gs://${GCS_CDN_BUCKET}"
 
 # Storage: allow uploading objects to worker cache bucket
 gsutil iam ch \
-  serviceAccount:${SA}:objectCreator \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
   "gs://${GCS_WORKER_CACHE_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"
-gcloud iam service-accounts add-iam-policy-binding "${SA}" \
-  --member="serviceAccount:${SA}" \
+gcloud iam service-accounts add-iam-policy-binding "${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/iam.serviceAccountTokenCreator" || echo "Already bound, continuing…"
 
 echo "8. Make sure service account can write observability stuff"
 # Traces Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/telemetry.tracesWriter"
 
 # Logs Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/logging.logWriter"
 
 # Monitoring Metric Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
-  --member="serviceAccount:${SA}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/monitoring.metricWriter"
 
 echo "9. Set up cron schedule for cache refresh"

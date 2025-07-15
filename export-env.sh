@@ -17,7 +17,8 @@ export GCS_WORKER_CACHE_BUCKET=songbook-generator-cache-europe-west1
 export WORKER_FUNCTION_NAME=songbook-generator-worker
 export API_FUNCTION_NAME=songbook-generator-api
 export MERGER_FUNCTION_NAME=songbook-generator-merger
-export SA=993670465212-compute@developer.gserviceaccount.com
+export COMPUTE_SERVICE_ACCOUNT=993670465212-compute@developer.gserviceaccount.com
+export SONGBOOK_GENERATOR_SERVICE_ACCOUNT=songbook-generator@songbook-generator.iam.gserviceaccount.com
 export GENERATOR_ADD_PAGE_NUMBERS=true
 
 echo "Environment variables exported."
