@@ -5,6 +5,12 @@ import fitz
 from google.cloud import storage
 import traceback
 import shutil
+from typing import List
+
+from google.auth import default
+from googleapiclient.discovery import build
+
+from ..common import gdrive
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -29,9 +35,15 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
+    creds, _ = default(
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    drive_service = build("drive", "v3", credentials=creds)
+
     _services = {
         "tracer": tracer,
         "cache_bucket": cache_bucket,
+        "drive": drive_service,
     }
     return _services
 
@@ -115,6 +127,46 @@ def _upload_to_cache(file_path, services):
         span.set_attribute("cache_blob_name", cache_blob_name)
 
 
+def sync_cache(source_folders: List[str], services):
+    """Ensure that files in the given drive source folders are synced into the GCS cache."""
+    with services["tracer"].start_as_current_span("sync_cache") as span:
+        span.set_attribute("source_folders_count", len(source_folders))
+
+        # The cache object for gdrive functions needs a 'put' method and a 'get' method.
+        # We can create a simple wrapper around the GCS bucket client.
+        class GCSCache:
+            def __init__(self, bucket):
+                self.bucket = bucket
+
+            def get(self, key: str, newer_than=None):
+                blob = self.bucket.blob(key)
+                if not blob.exists():
+                    return None
+                if newer_than:
+                    blob.reload()
+                    if blob.updated and blob.updated >= newer_than:
+                        return None
+                return blob.download_as_bytes()
+
+            def put(self, key: str, data: bytes):
+                blob = self.bucket.blob(key)
+                blob.upload_from_string(data)
+
+        gcs_cache = GCSCache(services["cache_bucket"])
+
+        all_files = []
+        for folder_id in source_folders:
+            files = gdrive.query_drive_files(services["drive"], folder_id)
+            all_files.extend(files)
+
+        span.set_attribute("total_files_found", len(all_files))
+
+        for file in all_files:
+            with services["tracer"].start_as_current_span("sync_file"):
+                print(f"Syncing {file['name']} (ID: {file['id']})")
+                gdrive.download_file_stream(services["drive"], file, gcs_cache)
+
+
 def fetch_and_merge_pdfs(output_path, services):
     """
     Fetch all song sheet PDFs from GCS cache bucket and merge them into a single PDF.
@@ -160,6 +212,15 @@ def merger_main(request):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
+            # Sync files from Drive to GCS cache if source_folders are provided
+            request_json = request.get_json(silent=True)
+            source_folders = request_json.get("source_folders") if request_json else None
+            if source_folders:
+                with services["tracer"].start_as_current_span("sync_operation"):
+                    print(f"Syncing folders: {source_folders}")
+                    sync_cache(source_folders, services)
+                    print("Sync complete.")
+
             print("Starting PDF merge operation")
 
             # Create a temporary file for the merged PDF

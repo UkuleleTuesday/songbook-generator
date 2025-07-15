@@ -199,10 +199,15 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
 
     # 2) Attempt cache lookup with freshness check
-    cached = cache.get(cache_key, newer_than=remote_ts)
-    if cached:
-        click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-        return io.BytesIO(cached)
+    try:
+        cached = cache.get(cache_key, newer_than=remote_ts)
+        if cached:
+            click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+            return io.BytesIO(cached)
+    except Exception as e:
+        click.echo(
+            f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+        )
 
     # 3) Cache miss or stale: export from Drive into memory
     click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
