@@ -3,6 +3,10 @@ from fsspec.spec import AbstractFileSystem
 import os
 from opentelemetry import trace
 
+from ..tracing import get_tracer
+
+tracer = get_tracer(__name__)
+
 
 class LocalStorageCache:
     """
@@ -25,7 +29,7 @@ class LocalStorageCache:
         Return the cached data if it exists and (optionally) its
         modification time is >= newer_than. Otherwise return None.
         """
-        with trace.get_current_span().start_as_current_span("cache.get") as span:
+        with tracer.start_as_current_span("cache.get") as span:
             path = f"{self.cache_dir}/{key}"
             span.set_attribute("cache.key", key)
             span.set_attribute("cache.path", path)
@@ -65,7 +69,7 @@ class LocalStorageCache:
         Store the given data under the key and return its path.
         Creates any necessary parent directories.
         """
-        with trace.get_current_span().start_as_current_span("cache.put") as span:
+        with tracer.start_as_current_span("cache.put") as span:
             path = f"{self.cache_dir}/{key}"
             span.set_attribute("cache.key", key)
             span.set_attribute("cache.path", path)
