@@ -108,8 +108,10 @@ def handle_get_job(job_id, services):
         with services["tracer"].start_as_current_span(
             "fetch_firestore_document"
         ) as firestore_span:
-            doc_ref = services["db"].collection(services["firestore_collection"]).document(
-                job_id
+            doc_ref = (
+                services["db"]
+                .collection(services["firestore_collection"])
+                .document(job_id)
             )
             snapshot = doc_ref.get()
             firestore_span.set_attribute(

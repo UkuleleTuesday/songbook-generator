@@ -133,8 +133,8 @@ def worker_main(cloud_event):
         main_span.set_attribute("job_id", job_id)
         main_span.set_attribute("params_size", len(json.dumps(params)))
 
-        job_ref = services["db"].collection(services["firestore_collection"]).document(
-            job_id
+        job_ref = (
+            services["db"].collection(services["firestore_collection"]).document(job_id)
         )
 
         # 2) Mark RUNNING
@@ -217,7 +217,9 @@ def worker_main(cloud_event):
                 gen_span.set_attribute("output_path", out_path)
 
             # 4) Upload to GCS
-            with services["tracer"].start_as_current_span("upload_to_gcs") as upload_span:
+            with services["tracer"].start_as_current_span(
+                "upload_to_gcs"
+            ) as upload_span:
                 blob = services["cdn_bucket"].blob(f"{job_id}/songbook.pdf")
                 print(
                     "Uploading generated songbook to GCS bucket: "
@@ -225,13 +227,13 @@ def worker_main(cloud_event):
                 )
                 blob.upload_from_filename(out_path, content_type="application/pdf")
                 result_url = blob.public_url  # or use signed URL if you need auth
-                upload_span.set_attribute(
-                    "gcs_bucket", services["gcs_cdn_bucket_name"]
-                )
+                upload_span.set_attribute("gcs_bucket", services["gcs_cdn_bucket_name"])
                 upload_span.set_attribute("blob_name", f"{job_id}/songbook.pdf")
 
             # 5) Update Firestore to COMPLETED
-            with services["tracer"].start_as_current_span("complete_job") as complete_span:
+            with services["tracer"].start_as_current_span(
+                "complete_job"
+            ) as complete_span:
                 print(
                     f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
                 )

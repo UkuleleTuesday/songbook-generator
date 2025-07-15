@@ -201,7 +201,9 @@ def merger_main(request):
                     merge_span.set_attribute("merged_pdf_path", result_path)
 
                 # Read the merged PDF data
-                with services["tracer"].start_as_current_span("return_pdf") as return_span:
+                with services["tracer"].start_as_current_span(
+                    "return_pdf"
+                ) as return_span:
                     with open(result_path, "rb") as pdf_file:
                         pdf_data = pdf_file.read()
 
