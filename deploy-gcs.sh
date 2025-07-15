@@ -103,7 +103,7 @@ gsutil iam ch \
 
 # Storage: allow uploading objects to worker cache bucket
 gsutil iam ch \
-  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
   "gs://${GCS_WORKER_CACHE_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"
