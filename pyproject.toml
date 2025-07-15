@@ -32,6 +32,7 @@ dependencies = [
 ]
 
 [project.scripts]
+songbook-generator-cli = "generator.cli:cli"
 songbook-generator = "songbook_generator:main"
 
 [dependency-groups]
