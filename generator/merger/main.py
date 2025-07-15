@@ -7,11 +7,21 @@ import traceback
 import shutil
 from typing import List
 
+import os
+import tempfile
+import PyPDF2
+import fitz
+from google.cloud import storage
+import traceback
+import shutil
+from typing import List
+
 from google.auth import default
 from googleapiclient.discovery import build
 
 from . import sync
 from ..common import gdrive
+from ..common.config import load_config_folder_ids
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -171,20 +181,18 @@ def fetch_and_merge_pdfs(output_path, services):
 
 
 def merger_main(request):
-    """HTTP Cloud Function for merging PDFs from GCS cache."""
+    """HTTP Cloud Function for syncing and merging PDFs from GCS cache."""
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            # Sync files from Drive to GCS cache if source_folders are provided
-            request_json = request.get_json(silent=True)
-            source_folders = request_json.get("source_folders") if request_json else None
-            if source_folders:
-                with services["tracer"].start_as_current_span("sync_operation"):
-                    print(f"Syncing folders: {source_folders}")
-                    # In this context (merger), we don't need metadata sync
-                    # as it's a precursor to a merge, not a standalone sync.
-                    sync.sync_cache(source_folders, services, with_metadata=False)
-                    print("Sync complete.")
+            # Always sync files from Drive to GCS cache from default folders first
+            source_folders = load_config_folder_ids()
+            with services["tracer"].start_as_current_span("sync_operation"):
+                print(f"Syncing folders: {source_folders}")
+                # In this context (merger), we don't need metadata sync
+                # as it's a precursor to a merge, not a standalone sync.
+                sync.sync_cache(source_folders, services, with_metadata=False)
+                print("Sync complete.")
 
             print("Starting PDF merge operation")
 
