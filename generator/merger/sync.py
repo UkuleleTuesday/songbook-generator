@@ -63,8 +63,11 @@ def sync_cache(
     services,
     with_metadata: bool = True,
     modified_after: Optional[datetime] = None,
-):
-    """Ensure that files in the given drive source folders are synced into the GCS cache."""
+) -> int:
+    """
+    Ensure that files in the given drive source folders are synced into the GCS cache.
+    Returns the number of files synced.
+    """
     with services["tracer"].start_as_current_span("sync_cache") as span:
         span.set_attribute("source_folders_count", len(source_folders))
         span.set_attribute("with_metadata", with_metadata)
@@ -84,6 +87,10 @@ def sync_cache(
 
         span.set_attribute("total_files_found", len(all_files))
 
+        if not all_files:
+            print("No new or modified files to sync.")
+            return 0
+
         for file in all_files:
             with services["tracer"].start_as_current_span("sync_file"):
                 print(f"Syncing {file['name']} (ID: {file['id']})")
@@ -91,3 +98,5 @@ def sync_cache(
 
         if with_metadata:
             _sync_gcs_metadata_from_drive(source_folders, services)
+
+        return len(all_files)

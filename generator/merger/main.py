@@ -233,13 +233,21 @@ def merger_main(request):
                 print("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")
 
-            with services["tracer"].start_as_current_span("sync_operation"):
+            with services["tracer"].start_as_current_span("sync_operation") as sync_span:
                 print(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
-                sync.sync_cache(
+                synced_files_count = sync.sync_cache(
                     source_folders, services, modified_after=last_merge_time
                 )
+                sync_span.set_attribute("synced_files_count", synced_files_count)
                 print("Sync complete.")
+
+            if not force_sync and synced_files_count == 0:
+                print(
+                    "No files were updated since the last merge. Nothing to do."
+                )
+                main_span.set_attribute("status", "skipped_no_changes")
+                return {"message": "No new file changes to merge."}, 200
 
             print("Starting PDF merge operation")
 
