@@ -145,7 +145,9 @@ def _get_last_merge_time(cache_bucket, tracer_span=None) -> Optional[datetime]:
                 tracer_span.set_attribute("last_merge_time", str(last_merge_time))
         return last_merge_time
     except Exception:
-        print("No previous merged PDF found or error fetching it. Performing a full sync.")
+        print(
+            "No previous merged PDF found or error fetching it. Performing a full sync."
+        )
         if tracer_span:
             tracer_span.set_attribute("last_merge_time", "None")
         return None

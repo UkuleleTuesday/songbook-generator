@@ -155,7 +155,6 @@ def sync_cache_command(source_folder, no_metadata, force):
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
-        from datetime import datetime
 
         services = merger_main._get_services()
         source_folders = list(source_folder) if source_folder else []
@@ -166,9 +165,7 @@ def sync_cache_command(source_folder, no_metadata, force):
 
         last_merge_time = None
         if not force:
-            last_merge_time = merger_main._get_last_merge_time(
-                services["cache_bucket"]
-            )
+            last_merge_time = merger_main._get_last_merge_time(services["cache_bucket"])
         else:
             click.echo("Force flag set. Performing a full sync.")
 
