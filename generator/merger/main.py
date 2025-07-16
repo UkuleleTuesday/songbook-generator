@@ -133,6 +133,33 @@ def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
         return temp_with_toc_path
 
 
+def _get_last_merge_time(cache, tracer_span=None) -> Optional[datetime]:
+    """Get the modification time of the last merged PDF from cache."""
+    try:
+        cache_key = "merged-pdf/latest.pdf"
+        info = cache.fs.info(f"{cache.cache_dir}/{cache_key}")
+        mtime = info.get("updated") or info.get("mtime")
+        if isinstance(mtime, str):
+            last_merge_time = datetime.fromisoformat(mtime)
+        elif isinstance(mtime, (int, float)):
+            last_merge_time = datetime.fromtimestamp(
+                mtime, tz=datetime.now().astimezone().tzinfo
+            )
+        else:
+            last_merge_time = None
+
+        if last_merge_time:
+            print(f"Last merge was at {last_merge_time}. Syncing changes since then.")
+            if tracer_span:
+                tracer_span.set_attribute("last_merge_time", str(last_merge_time))
+        return last_merge_time
+    except FileNotFoundError:
+        print("No previous merged PDF found. Performing a full sync.")
+        if tracer_span:
+            tracer_span.set_attribute("last_merge_time", "None")
+        return None
+
+
 def _upload_to_cache(file_path, services):
     """Upload the final merged PDF to the GCS cache."""
     with services["tracer"].start_as_current_span("upload_to_cache") as span:
@@ -207,29 +234,7 @@ def merger_main(request):
             # Get the modification time of the last merged PDF to use as a cutoff
             last_merge_time = None
             if not force_sync:
-                try:
-                    cache_key = "merged-pdf/latest.pdf"
-                    info = services["cache"].fs.info(
-                        f"{services['cache'].cache_dir}/{cache_key}"
-                    )
-                    mtime = info.get("updated") or info.get("mtime")
-                    if isinstance(mtime, str):
-                        last_merge_time = datetime.fromisoformat(mtime)
-                    elif isinstance(mtime, (int, float)):
-                        last_merge_time = datetime.fromtimestamp(
-                            mtime, tz=datetime.now().astimezone().tzinfo
-                        )
-
-                    if last_merge_time:
-                        print(
-                            f"Last merge was at {last_merge_time}. Syncing changes since then."
-                        )
-                        main_span.set_attribute(
-                            "last_merge_time", str(last_merge_time)
-                        )
-                except FileNotFoundError:
-                    print("No previous merged PDF found. Performing a full sync.")
-                    main_span.set_attribute("last_merge_time", "None")
+                last_merge_time = _get_last_merge_time(services["cache"], main_span)
             else:
                 print("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")

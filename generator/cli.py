@@ -166,25 +166,7 @@ def sync_cache_command(source_folder, no_metadata, force):
 
         last_merge_time = None
         if not force:
-            try:
-                cache_key = "merged-pdf/latest.pdf"
-                info = services["cache"].fs.info(
-                    f"{services['cache'].cache_dir}/{cache_key}"
-                )
-                mtime = info.get("updated") or info.get("mtime")
-                if isinstance(mtime, str):
-                    last_merge_time = datetime.fromisoformat(mtime)
-                elif isinstance(mtime, (int, float)):
-                    last_merge_time = datetime.fromtimestamp(
-                        mtime, tz=datetime.now().astimezone().tzinfo
-                    )
-
-                if last_merge_time:
-                    click.echo(
-                        f"Last merge was at {last_merge_time}. Syncing changes since then."
-                    )
-            except FileNotFoundError:
-                click.echo("No previous merged PDF found. Performing a full sync.")
+            last_merge_time = merger_main._get_last_merge_time(services["cache"])
         else:
             click.echo("Force flag set. Performing a full sync.")
 
