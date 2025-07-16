@@ -34,7 +34,10 @@ def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 
 def query_drive_files(
-    drive, source_folder, property_filters: Optional[Dict[str, str]] = None
+    drive,
+    source_folder,
+    property_filters: Optional[Dict[str, str]] = None,
+    modified_after: Optional[datetime] = None,
 ):
     """
     Query Google Drive files with optional property filtering.
@@ -50,6 +53,11 @@ def query_drive_files(
     base_query = f"'{source_folder}' in parents and trashed = false"
     property_query = build_property_filters(property_filters)
     query = base_query + property_query
+
+    if modified_after:
+        # Format for Drive API query, e.g., '2023-08-01T12:00:00'
+        ts_str = modified_after.isoformat()
+        query += f" and modifiedTime > '{ts_str}'"
 
     click.echo(f"Executing Drive API query: {query}")
     if property_filters:
@@ -232,7 +240,13 @@ def download_file(
         _, done = downloader.next_chunk()
 
     data = buffer.getvalue()
-    cache.put(cache_key, data)
+    # GCSFS supports setting metadata on upload via `metadata` kwarg.
+    # The local file system fsspec impl does not support this.
+    try:
+        cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
+    except TypeError:
+        # Fallback for filesystems that don't support metadata
+        cache.put(cache_key, data)
     return data
 
 
@@ -242,6 +256,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     Only re-downloads if remote modifiedTime is newer than the cached file.
     Returns a BytesIO stream of the file.
     """
+    # Song sheets are PDFs, so we don't need to export them.
     pdf_data = download_file(
         drive,
         file["id"],
@@ -249,7 +264,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
         cache,
         "song-sheets",
         "application/pdf",
-        export=True,
+        export=False,
     )
     return io.BytesIO(pdf_data)
 

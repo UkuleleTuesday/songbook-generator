@@ -328,24 +328,6 @@ def generate_songbook(
         )
         span.set_attribute("add_page_numbers", add_page_numbers)
 
-        # Try to use cached merged PDF first, fall back to individual downloads
-        use_cache = True
-        try:
-            # Quick check if cached PDF is available
-            cached_pdf_data = cache.get("merged-pdf/latest.pdf")
-            if not cached_pdf_data:
-                use_cache = False
-                click.echo(
-                    "Cached merged PDF not found, falling back to individual file downloads"
-                )
-        except Exception as e:
-            use_cache = False
-            click.echo(
-                f"Error accessing cached PDF: {e}, falling back to individual file downloads"
-            )
-
-        span.set_attribute("use_cached_pdf", use_cache)
-
         with tracer.start_as_current_span("create_songbook_pdf") as pdf_span:
             with fitz.open() as songbook_pdf:
                 # Generate cover first to know if we need to adjust page offset
@@ -408,40 +390,20 @@ def generate_songbook(
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)
 
-                # Add main content - try cached approach first, fall back to individual downloads
-                if use_cache:
-                    with reporter.step(
-                        len(files), "Copying from cached PDF..."
-                    ) as step:
-                        try:
-                            copy_pdfs(
-                                songbook_pdf,
-                                files,
-                                cache,
-                                page_offset,
-                                step,
-                                add_page_numbers=add_page_numbers,
-                            )
-                        except Exception as e:
-                            click.echo(f"Failed to copy from cached PDF: {e}")
-                            click.echo("Falling back to individual file downloads...")
-                            # Fall back to merge_pdfs if copy_pdfs fails
-                            use_cache = False
-
-                if not use_cache:
-                    with reporter.step(
-                        len(files), "Downloading and merging PDFs..."
-                    ) as step:
-                        merge_pdfs(
-                            songbook_pdf,
-                            files,
-                            cache,
-                            drive,
-                            page_offset,
-                            step,
-                            batch_size=20,
-                            add_page_numbers=add_page_numbers,
-                        )
+                # Add main content
+                with reporter.step(
+                    len(files), "Downloading and merging PDFs..."
+                ) as step:
+                    merge_pdfs(
+                        songbook_pdf,
+                        files,
+                        cache,
+                        drive,
+                        page_offset,
+                        step,
+                        batch_size=20,
+                        add_page_numbers=add_page_numbers,
+                    )
 
                 # Add postface files at the end
                 if postface_files:

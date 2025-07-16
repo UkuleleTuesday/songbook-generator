@@ -1,14 +1,17 @@
 import os
 import tempfile
+from typing import Optional
 import PyPDF2
 import fitz
-from google.cloud import storage
 import traceback
 import shutil
+from datetime import datetime
 
 
 from google.auth import default
 from googleapiclient.discovery import build
+
+from google.cloud import storage
 
 from . import sync
 from ..common.config import load_config_folder_ids
@@ -26,9 +29,22 @@ def _get_services():
     if _services is not None:
         return _services
 
-    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
-    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
+    creds, project_id = default(
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    if not project_id:
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
+
+    if not project_id:
+        raise ValueError(
+            "Could not determine GCP project ID. Please set GOOGLE_CLOUD_PROJECT."
+        )
+
     os.environ["GCP_PROJECT_ID"] = project_id
+    if "GOOGLE_CLOUD_PROJECT" not in os.environ:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
@@ -36,7 +52,6 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
     drive_service = build("drive", "v3", credentials=creds)
 
     _services = {
@@ -116,6 +131,28 @@ def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
         return temp_with_toc_path
 
 
+def _get_last_merge_time(cache_bucket, tracer_span=None) -> Optional[datetime]:
+    """Get the modification time of the last merged PDF from cache."""
+    try:
+        blob = cache_bucket.get_blob("merged-pdf/latest.pdf")
+        if not blob:
+            return None
+
+        last_merge_time = blob.updated
+        if last_merge_time:
+            print(f"Last merge was at {last_merge_time}. Syncing changes since then.")
+            if tracer_span:
+                tracer_span.set_attribute("last_merge_time", str(last_merge_time))
+        return last_merge_time
+    except Exception:
+        print(
+            "No previous merged PDF found or error fetching it. Performing a full sync."
+        )
+        if tracer_span:
+            tracer_span.set_attribute("last_merge_time", "None")
+        return None
+
+
 def _upload_to_cache(file_path, services):
     """Upload the final merged PDF to the GCS cache."""
     with services["tracer"].start_as_current_span("upload_to_cache") as span:
@@ -173,6 +210,7 @@ def merger_main(request):
         try:
             # Get source folders from request payload, or fall back to config
             request_json = request.get_json(silent=True)
+            force_sync = request_json.get("force", False) if request_json else False
             source_folders = (
                 request_json.get("source_folders")
                 if request_json
@@ -185,11 +223,31 @@ def merger_main(request):
             if source_folders:
                 main_span.set_attribute("source_folders", ",".join(source_folders))
 
-            with services["tracer"].start_as_current_span("sync_operation"):
+            # Get the modification time of the last merged PDF to use as a cutoff
+            last_merge_time = None
+            if not force_sync:
+                last_merge_time = _get_last_merge_time(
+                    services["cache_bucket"], main_span
+                )
+            else:
+                print("Force flag set. Performing a full sync.")
+                main_span.set_attribute("last_merge_time", "None (forced)")
+
+            with services["tracer"].start_as_current_span(
+                "sync_operation"
+            ) as sync_span:
                 print(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
-                sync.sync_cache(source_folders, services)
+                synced_files_count = sync.sync_cache(
+                    source_folders, services, modified_after=last_merge_time
+                )
+                sync_span.set_attribute("synced_files_count", synced_files_count)
                 print("Sync complete.")
+
+            if not force_sync and synced_files_count == 0:
+                print("No files were updated since the last merge. Nothing to do.")
+                main_span.set_attribute("status", "skipped_no_changes")
+                return {"message": "No new file changes to merge."}, 200
 
             print("Starting PDF merge operation")
 

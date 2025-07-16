@@ -63,7 +63,7 @@ class LocalStorageCache:
                 span.set_attribute("cache.bytes_read", len(data))
                 return data
 
-    def put(self, key: str, data: bytes) -> str:
+    def put(self, key: str, data: bytes, metadata: dict = None) -> str:
         """
         Store the given data under the key and return its path.
         Creates any necessary parent directories.
@@ -80,7 +80,11 @@ class LocalStorageCache:
             if parent_dir:
                 self.fs.makedirs(parent_dir, exist_ok=True)
 
-            with self.fs.open(path, "wb") as f:
+            kwargs = {}
+            if type(self.fs).__name__ == "GCSFileSystem":
+                kwargs["metadata"] = metadata
+
+            with self.fs.open(path, "wb", **kwargs) as f:
                 f.write(data)
 
             return path

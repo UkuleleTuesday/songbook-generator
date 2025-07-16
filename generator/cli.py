@@ -144,7 +144,13 @@ def generate(
     default=False,
     help="Disable syncing of file metadata from Drive to GCS.",
 )
-def sync_cache_command(source_folder, no_metadata):
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Force a full sync, ignoring modification times.",
+)
+def sync_cache_command(source_folder, no_metadata, force):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
@@ -157,8 +163,19 @@ def sync_cache_command(source_folder, no_metadata):
             click.echo("No source folders provided. Nothing to sync.", err=True)
             raise click.Abort()
 
+        last_merge_time = None
+        if not force:
+            last_merge_time = merger_main._get_last_merge_time(services["cache_bucket"])
+        else:
+            click.echo("Force flag set. Performing a full sync.")
+
         click.echo(f"Syncing folders: {source_folders}")
-        sync_cache(source_folders, services, with_metadata=not no_metadata)
+        sync_cache(
+            source_folders,
+            services,
+            with_metadata=not no_metadata,
+            modified_after=last_merge_time,
+        )
         click.echo("Cache synchronization complete.")
 
     except Exception as e:
