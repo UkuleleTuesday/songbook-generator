@@ -34,73 +34,6 @@ jobs:
     if: github.event.action != 'closed'
     uses: ./.github/workflows/test.yaml
 
-  cleanup-pr-resources:
-    name: Cleanup PR Resources
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Setup GCP and dependencies
-      uses: ./.github/actions/setup-gcp-deps
-      with:
-        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
-        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
-
-    - name: Delete PR Cloud Functions
-      run: |
-        PR_NUM="${{ github.event.pull_request.number }}"
-        API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
-        WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
-        MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
-
-        echo "Cleaning up PR #${PR_NUM} resources..."
-
-        # Delete API function
-        if gcloud functions describe "$API_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
-          echo "Deleting API function: $API_FN_NAME"
-          gcloud functions delete "$API_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
-        else
-          echo "API function $API_FN_NAME not found, skipping"
-        fi
-
-        # Delete Worker function
-        if gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
-          echo "Deleting Worker function: $WORKER_FN_NAME"
-          gcloud functions delete "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
-        else
-          echo "Worker function $WORKER_FN_NAME not found, skipping"
-        fi
-
-        # Delete Merger function
-        if gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
-          echo "Deleting Merger function: $MERGER_FN_NAME"
-          gcloud functions delete "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
-        else
-          echo "Merger function $MERGER_FN_NAME not found, skipping"
-        fi
-
-    - name: Delete PR Pub/Sub topics
-      run: |
-        PR_NUM="${{ github.event.pull_request.number }}"
-
-        SONGBOOK_GEN_TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
-        if gcloud pubsub topics describe "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Pub/Sub topic: $SONGBOOK_GEN_TOPIC_NAME"
-          gcloud pubsub topics delete "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
-        else
-          echo "Pub/Sub topic $SONGBOOK_GEN_TOPIC_NAME not found, skipping"
-        fi
-
-        CACHE_REFRESH_TOPIC_NAME="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
-        if gcloud pubsub topics describe "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Pub/Sub topic: $CACHE_REFRESH_TOPIC_NAME"
-          gcloud pubsub topics delete "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
-        else
-          echo "Pub/Sub topic $CACHE_REFRESH_TOPIC_NAME not found, skipping"
-        fi
-
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
     if: github.event.action != 'closed'
@@ -365,8 +298,6 @@ jobs:
 
   deploy-ui:
     name: Deploy UI
-    needs: test
-    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -397,8 +328,75 @@ jobs:
           source-dir: ui
 
       - name: Update PR preview status
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
         uses: ./.github/actions/update-pr-comment
         with:
           component: 'UI'
           url: 'https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/pr-preview/pr-${{ github.event.pull_request.number }}/'
+
+  cleanup-pr-resources:
+    name: Cleanup PR Resources
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Delete PR Cloud Functions
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
+        WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
+
+        echo "Cleaning up PR #${PR_NUM} resources..."
+
+        # Delete API function
+        if gcloud functions describe "$API_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting API function: $API_FN_NAME"
+          gcloud functions delete "$API_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "API function $API_FN_NAME not found, skipping"
+        fi
+
+        # Delete Worker function
+        if gcloud functions describe "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Worker function: $WORKER_FN_NAME"
+          gcloud functions delete "$WORKER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Worker function $WORKER_FN_NAME not found, skipping"
+        fi
+
+        # Delete Merger function
+        if gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Merger function: $MERGER_FN_NAME"
+          gcloud functions delete "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Merger function $MERGER_FN_NAME not found, skipping"
+        fi
+
+    - name: Delete PR Pub/Sub topics
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+
+        SONGBOOK_GEN_TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $SONGBOOK_GEN_TOPIC_NAME"
+          gcloud pubsub topics delete "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $SONGBOOK_GEN_TOPIC_NAME not found, skipping"
+        fi
+
+        CACHE_REFRESH_TOPIC_NAME="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $CACHE_REFRESH_TOPIC_NAME"
+          gcloud pubsub topics delete "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $CACHE_REFRESH_TOPIC_NAME not found, skipping"
+        fi
