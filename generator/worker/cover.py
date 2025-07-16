@@ -37,7 +37,7 @@ def create_cover_from_template(
     }
     copy = drive.files().copy(fileId=template_cover_id, body=copy_metadata).execute()
     copy_id = copy["id"]
-    print(f"Created copy: {copy_id} (title: {copy.get('name')})")
+    click.echo(f"Created copy: {copy_id} (title: {copy.get('name')})")
 
     # 3) Build batchUpdate requests for all placeholders
     requests = []
@@ -68,7 +68,7 @@ def create_cover_from_template(
         except (KeyError, TypeError, AttributeError):
             # Skip replies that have malformed structure
             pass
-    print(f"Replaced {total} occurrences in the copy.")
+    click.echo(f"Replaced {total} occurrences in the copy.")
 
     return copy_id
 
@@ -113,7 +113,7 @@ def generate_cover(cache, cover_file_id=None):
     finally:
         try:
             drive_write.files().delete(fileId=copy_id).execute()
-            print(f"Deleted copy: {copy_id} from Google Drive.")
+            click.echo(f"Deleted copy: {copy_id} from Google Drive.")
         except HttpError as e:
             raise CoverGenerationException(
                 f"Failed to delete temporary cover file {copy_id} from Google Drive. "

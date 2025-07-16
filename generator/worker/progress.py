@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from typing import Optional
+import click
 
 
 class ProgressStep:
@@ -12,7 +13,7 @@ class ProgressStep:
         self.step_progress = 0.0
 
     def __enter__(self):
-        print(f"Starting: {self.message}")
+        click.echo(f"Starting: {self.message}")
         self.reporter._start_step(self.weight, self.message)
         return self
 
@@ -23,7 +24,7 @@ class ProgressStep:
                 self.weight - self.step_progress, f"Completed {self.message}"
             )
         self.reporter._complete_step()
-        print(f"Finished: {self.message}")
+        click.echo(f"Finished: {self.message}")
 
     def increment(self, amount: float = 1.0, message: Optional[str] = None):
         """

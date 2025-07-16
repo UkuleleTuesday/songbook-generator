@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import tempfile
+import click
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
@@ -113,18 +114,18 @@ def worker_main(cloud_event):
     services = _get_services()
     with services["tracer"].start_as_current_span("worker_main") as main_span:
         # 1) Decode Pub/Sub message
-        print("Received Cloud Event with data:", cloud_event.data)
+        click.echo(f"Received Cloud Event with data: {cloud_event.data}")
         envelope = cloud_event.data
         if "message" not in envelope:
             abort(400, "No Pub/Sub message received")
-        print("Extracting Pub/Sub message from envelope")
+        click.echo("Extracting Pub/Sub message from envelope")
         msg = envelope["message"]
 
         data_payload = base64.b64decode(msg["data"]).decode("utf-8")
-        print("Decoding and parsing Pub/Sub message payload")
+        click.echo("Decoding and parsing Pub/Sub message payload")
         evt = json.loads(data_payload)
 
-        print(f"Received event: {evt}")
+        click.echo(f"Received event: {evt}")
         job_id = evt["job_id"]
         params = evt["params"]
 
@@ -139,7 +140,7 @@ def worker_main(cloud_event):
         with services["tracer"].start_as_current_span(
             "update_job_status"
         ) as status_span:
-            print(f"Marking job {job_id} as RUNNING in Firestore")
+            click.echo(f"Marking job {job_id} as RUNNING in Firestore")
             job_ref.update(
                 {"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP}
             )
@@ -170,14 +171,14 @@ def worker_main(cloud_event):
                 ) as filter_span:
                     try:
                         client_filter = parse_filters(filters_param)
-                        print(f"Parsed client filter: {client_filter}")
+                        click.echo(f"Parsed client filter: {client_filter}")
                         filter_span.set_attribute("has_filters", True)
                         if client_filter:
                             filter_span.set_attribute(
                                 "filter_type", type(client_filter).__name__
                             )
                     except ValueError as e:
-                        print(f"Error parsing filters: {e}")
+                        click.echo(f"Error parsing filters: {e}", err=True)
                         filter_span.set_attribute("error", str(e))
                         job_ref.update(
                             {
@@ -193,11 +194,13 @@ def worker_main(cloud_event):
                 "generate_songbook"
             ) as gen_span:
                 out_path = tempfile.mktemp(suffix=".pdf")
-                print(f"Generating songbook for job {job_id} with parameters: {params}")
+                click.echo(
+                    f"Generating songbook for job {job_id} with parameters: {params}"
+                )
                 if preface_file_ids:
-                    print(f"Using {len(preface_file_ids)} preface files")
+                    click.echo(f"Using {len(preface_file_ids)} preface files")
                 if postface_file_ids:
-                    print(f"Using {len(postface_file_ids)} postface files")
+                    click.echo(f"Using {len(postface_file_ids)} postface files")
 
                 # Create progress callback and pass it to generate_songbook
                 progress_callback = make_progress_callback(job_ref)
@@ -220,7 +223,7 @@ def worker_main(cloud_event):
                 "upload_to_gcs"
             ) as upload_span:
                 blob = services["cdn_bucket"].blob(f"{job_id}/songbook.pdf")
-                print(
+                click.echo(
                     "Uploading generated songbook to GCS bucket: "
                     f"{services['gcs_cdn_bucket_name']}"
                 )
@@ -233,7 +236,7 @@ def worker_main(cloud_event):
             with services["tracer"].start_as_current_span(
                 "complete_job"
             ) as complete_span:
-                print(
+                click.echo(
                     f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
                 )
                 job_ref.update(
@@ -257,9 +260,9 @@ def worker_main(cloud_event):
                     "error": "Internal error during songbook generation",
                 }
             )
-            print(f"Job failed: {job_id}")
-            print("Error details:")
+            click.echo(f"Job failed: {job_id}", err=True)
+            click.echo("Error details:", err=True)
             exc_info = traceback.format_exc()
-            print(exc_info)
+            click.echo(exc_info, err=True)
             main_span.set_attribute("error.stack_trace", exc_info)
             raise

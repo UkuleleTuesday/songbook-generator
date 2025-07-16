@@ -168,7 +168,7 @@ def apply_metadata_to_file(
         drive.files().update(fileId=file_id, body={"properties": properties}).execute()
         return True
     except HttpError as e:
-        click.echo(f"  Error applying metadata: {e}")
+        click.echo(f"  Error applying metadata: {e}", err=True)
         return False
 
 
