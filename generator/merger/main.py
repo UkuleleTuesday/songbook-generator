@@ -291,7 +291,7 @@ def merger_main(request):
                 if os.path.exists(temp_output_path):
                     os.unlink(temp_output_path)
 
-        except Exception:
+        except Exception:  # noqa: BLE001 - Top level error handler
             main_span.set_attribute("status", "failed")
 
             print("Merge operation failed.")

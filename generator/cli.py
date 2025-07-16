@@ -181,7 +181,7 @@ def sync_cache_command(source_folder, no_metadata, force):
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
         click.echo("Cache sync operation failed.", err=True)
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)
@@ -217,7 +217,7 @@ def merge_pdfs(output: str):
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
         click.echo("Merge operation failed.", err=True)
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)

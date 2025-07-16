@@ -246,7 +246,7 @@ def worker_main(cloud_event):
                 complete_span.set_attribute("status", "COMPLETED")
                 complete_span.set_attribute("result_url", result_url)
 
-        except Exception:
+        except Exception:  # noqa: BLE001 - Top level error handler
             # on any failure, mark FAILED
             main_span.set_attribute("status", "FAILED")
 
