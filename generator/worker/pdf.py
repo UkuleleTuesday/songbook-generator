@@ -414,7 +414,7 @@ def generate_songbook(
                                     final_value = 1 if is_last_postface else 0
 
                                     if final_value == 1:
-                                        print(
+                                        click.echo(
                                             f"Passing final=1 for last postface file: {file['name']}"
                                         )
 
