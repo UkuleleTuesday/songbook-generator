@@ -308,6 +308,7 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: ui
+          clean-exclude: pr-preview/
 
       - name: Deploy PR Preview (PRs only)
         if: github.event_name == 'pull_request'
