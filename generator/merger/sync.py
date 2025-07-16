@@ -58,17 +58,26 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         )
 
 
-def sync_cache(source_folders: List[str], services, with_metadata: bool = True):
+def sync_cache(
+    source_folders: List[str],
+    services,
+    with_metadata: bool = True,
+    modified_after: Optional[datetime] = None,
+):
     """Ensure that files in the given drive source folders are synced into the GCS cache."""
     with services["tracer"].start_as_current_span("sync_cache") as span:
         span.set_attribute("source_folders_count", len(source_folders))
         span.set_attribute("with_metadata", with_metadata)
+        if modified_after:
+            span.set_attribute("modified_after", str(modified_after))
 
         cache = init_cache()
 
         all_files = []
         for folder_id in source_folders:
-            files = gdrive.query_drive_files(services["drive"], folder_id)
+            files = gdrive.query_drive_files(
+                services["drive"], folder_id, modified_after=modified_after
+            )
             all_files.extend(files)
 
         span.set_attribute("total_files_found", len(all_files))
