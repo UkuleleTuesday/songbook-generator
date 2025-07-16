@@ -21,7 +21,7 @@ def authenticate_drive(key_file_path=None):
 
 
 @click.command(
-    help="Tests write access to Google Drive by creating a small test file."
+    help="Tests write access to Google Drive by creating and copying files."
 )
 @click.option(
     "--service-account-key",
@@ -29,63 +29,96 @@ def authenticate_drive(key_file_path=None):
     type=click.Path(exists=True),
     help="Path to a service account key file for authentication.",
 )
-def drive_write_test(key_file_path):
+@click.option(
+    "--template-id",
+    "template_id",
+    type=str,
+    help="Google Drive file ID of a template document to test copying.",
+    default=None,
+)
+def drive_write_test(key_file_path, template_id):
     """
-    Attempts to create a small, empty file in the root of the
-    authenticated user's Google Drive to test for write permissions
-    and quota issues.
+    Tests write permissions by creating an empty file and optionally
+    by copying a template file.
     """
     try:
         drive = authenticate_drive(key_file_path)
-        click.echo("Authentication successful. Attempting to create test file...")
+        click.echo("Authentication successful.")
     except Exception as e:
         click.echo(f"Error during authentication: {e}", err=True)
         return
 
-    file_metadata = {
-        "name": "songbook-generator-write-test.txt",
-        "mimeType": "text/plain",
-    }
-    file_id = None
-
+    # --- Test 1: Create a new file ---
+    click.echo("\n--- Running Test 1: Create new file ---")
+    created_file_id = None
     try:
-        # Create the file in the root of "My Drive"
-        # Not specifying 'parents' places it in the root.
+        file_metadata = {
+            "name": "songbook-generator-write-test.txt",
+            "mimeType": "text/plain",
+        }
         file = drive.files().create(body=file_metadata, fields="id, name").execute()
-        file_id = file.get("id")
+        created_file_id = file.get("id")
         click.secho(
-            f"\nSUCCESS: Successfully created file '{file.get('name')}' with ID: {file_id}",
+            f"SUCCESS: Successfully created file '{file.get('name')}' with ID: {created_file_id}",
             fg="green",
         )
-
     except HttpError as error:
-        click.secho(
-            f"\nFAILURE: Could not create file. The API returned an error:",
-            fg="red",
-            err=True,
-        )
-        click.secho(f"  - Status: {error.status_code}", fg="red", err=True)
-        click.secho(f"  - Reason: {error.reason}", fg="red", err=True)
-        # The error response body often contains the detailed error message.
+        click.secho("FAILURE: Could not create file.", fg="red", err=True)
         click.secho(f"  - Details: {error.content.decode()}", fg="red", err=True)
-        return
     except Exception as e:
-        click.secho(f"\nAn unexpected error occurred: {e}", fg="red", err=True)
-        return
+        click.secho(f"An unexpected error occurred: {e}", fg="red", err=True)
+
+    # --- Test 2: Copy a template file ---
+    copied_file_id = None
+    if template_id:
+        click.echo(f"\n--- Running Test 2: Copy template file (ID: {template_id}) ---")
+        try:
+            copy_metadata = {"name": f"Copy of {template_id}"}
+            copy = (
+                drive.files()
+                .copy(fileId=template_id, body=copy_metadata, fields="id, name")
+                .execute()
+            )
+            copied_file_id = copy.get("id")
+            click.secho(
+                f"SUCCESS: Successfully copied file. New file is '{copy.get('name')}' with ID: {copied_file_id}",
+                fg="green",
+            )
+        except HttpError as error:
+            click.secho("FAILURE: Could not copy file.", fg="red", err=True)
+            click.secho(f"  - Details: {error.content.decode()}", fg="red", err=True)
+        except Exception as e:
+            click.secho(f"An unexpected error occurred: {e}", fg="red", err=True)
 
     # --- Cleanup ---
-    if file_id:
-        click.echo("\nAttempting to clean up by deleting the test file...")
-        try:
-            drive.files().delete(fileId=file_id).execute()
-            click.secho("Cleanup successful: Test file deleted.", fg="green")
-        except HttpError as error:
-            click.secho(
-                f"Cleanup FAILED: Could not delete test file (ID: {file_id}). "
-                f"Please delete it manually. Error: {error}",
-                fg="yellow",
-                err=True,
-            )
+    if created_file_id or copied_file_id:
+        click.echo("\n--- Cleanup ---")
+        if created_file_id:
+            try:
+                drive.files().delete(fileId=created_file_id).execute()
+                click.secho(
+                    f"Successfully deleted created file (ID: {created_file_id}).",
+                    fg="green",
+                )
+            except HttpError as error:
+                click.secho(
+                    f"FAILED to delete created file (ID: {created_file_id}). Please remove it manually. Error: {error}",
+                    fg="yellow",
+                    err=True,
+                )
+        if copied_file_id:
+            try:
+                drive.files().delete(fileId=copied_file_id).execute()
+                click.secho(
+                    f"Successfully deleted copied file (ID: {copied_file_id}).",
+                    fg="green",
+                )
+            except HttpError as error:
+                click.secho(
+                    f"FAILED to delete copied file (ID: {copied_file_id}). Please remove it manually. Error: {error}",
+                    fg="yellow",
+                    err=True,
+                )
 
 
 if __name__ == "__main__":
