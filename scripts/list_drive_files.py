@@ -27,9 +27,7 @@ def authenticate_drive(key_file_path=None, delete_mode=False):
     return build("drive", "v3", credentials=creds), creds
 
 
-@click.command(
-    help="List all files in Google Drive and calculate total size for the authenticated user."
-)
+@click.command(help="List files in Google Drive for the authenticated user.")
 @click.option(
     "--service-account-key",
     "key_file_path",
@@ -37,11 +35,16 @@ def authenticate_drive(key_file_path=None, delete_mode=False):
     help="Path to a service account key file for authentication.",
 )
 @click.option(
+    "--folder-id",
+    type=str,
+    help="Google Drive folder ID to list files from. If not specified, lists all files owned by the user.",
+)
+@click.option(
     "--delete-files",
     is_flag=True,
     help="DANGEROUS: Interactively prompt to delete all listed files.",
 )
-def list_drive_files(key_file_path, delete_files):
+def list_drive_files(key_file_path, folder_id, delete_files):
     """
     Lists all files in Google Drive for the authenticated user,
     and calculates the total size.
@@ -74,12 +77,20 @@ def list_drive_files(key_file_path, delete_files):
 
     click.echo("Fetching file list...")
 
+    query_parts = ["trashed=false"]
+    if folder_id:
+        query_parts.append(f"'{folder_id}' in parents")
+    else:
+        # Default to files owned by the service account if no folder is specified
+        query_parts.append("'me' in owners")
+    query = " and ".join(query_parts)
+
     while True:
         try:
             response = (
                 drive.files()
                 .list(
-                    q="'me' in owners and trashed=false",
+                    q=query,
                     fields="nextPageToken, files(id, name, size, mimeType)",
                     pageSize=1000,
                     pageToken=page_token,
