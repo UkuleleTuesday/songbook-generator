@@ -149,7 +149,9 @@ def handle_get_job(job_id, services):
             ts = data["created_at"]
             try:
                 response["created_at"] = ts.isoformat()
-            except Exception:
+            except AttributeError:
+                # ts is not a datetime object, can't be formatted.
+                # It is optional in the response, so we can ignore.
                 pass
 
         span.set_attribute("job.status", data.get("status", ""))

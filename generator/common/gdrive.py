@@ -171,7 +171,7 @@ def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
                     1 / len(file_ids),
                     f"Retrieved metadata for {file_dict['name']}",
                 )
-        except Exception as e:
+        except HttpError as e:
             click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
             if progress_step:
                 progress_step.increment(
@@ -220,6 +220,9 @@ def download_file(
             span.set_attribute("cache.hit", True)
             click.echo(f"Using cached version of {file_name} (ID: {file_id})")
             return cached
+    except FileNotFoundError:
+        # This is an expected cache miss for local storage, not an error.
+        pass
     except Exception as e:
         span.set_attribute("cache.error", str(e))
         click.echo(

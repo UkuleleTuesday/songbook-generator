@@ -10,6 +10,7 @@ from . import progress
 from . import toc
 from . import cover
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from ..common import caching
 from .gcp import get_credentials
 from .filters import PropertyFilter, FilterGroup
@@ -65,7 +66,7 @@ def init_services(key_file_path: Optional[str] = None):
                     main_span.set_attribute("auth.type", auth_type)
                     main_span.set_attribute("auth.email", email)
                     main_span.set_attribute("auth.user", user_name)
-            except Exception as e:
+            except HttpError as e:
                 click.echo(f"  Could not retrieve user info: {e}")
         else:
             click.echo(f"  Type: {type(creds)}")

@@ -22,7 +22,7 @@ def resolve_font(fontfile, fallback_font):
             fitz.Font(fontfile=fontfile)
             return fontfile
         return fallback_font
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - We want to catch any error from fitz
         click.echo(
             f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}"
         )

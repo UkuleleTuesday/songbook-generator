@@ -178,8 +178,11 @@ def sync_cache_command(source_folder, no_metadata, force):
         )
         click.echo("Cache synchronization complete.")
 
-    except Exception as e:
-        click.echo(f"Cache sync operation failed: {str(e)}", err=True)
+    except click.Abort:
+        # click.Abort is raised on purpose, so just re-raise.
+        raise
+    except Exception:
+        click.echo("Cache sync operation failed.", err=True)
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
@@ -211,8 +214,11 @@ def merge_pdfs(output: str):
 
         click.echo(f"Successfully created merged PDF: {result_path}")
 
-    except Exception as e:
-        click.echo(f"Merge operation failed: {str(e)}", err=True)
+    except click.Abort:
+        # click.Abort is raised on purpose, so just re-raise.
+        raise
+    except Exception:
+        click.echo("Merge operation failed.", err=True)
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
