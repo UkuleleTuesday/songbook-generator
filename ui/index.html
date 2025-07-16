@@ -24,7 +24,7 @@
         </span>
       </label>
       <select id="songbook-edition" name="songbook_edition">
-        <option value="">All editions (**EXPERIMENTAL**)</option>
+        <option value="">All editions</option>
         <option value="regular" selected>Regular</option>
         <option value="halloween">Halloween</option>
         <option value="usa">USA</option>
@@ -78,10 +78,10 @@
         <label for="limit" title="Maximum number of song sheets to include in the songbook">
           Limit
           <span class="tooltip">❓
-            <span class="tooltip-text">Maximum number of song sheets to include in the songbook. Set to a reasonable value while testing :-)</span>
+            <span class="tooltip-text">Maximum number of song sheets to include. Set to 0 for no limit.</span>
           </span>
         </label>
-        <input id="limit" name="limit" type="number" value="300" min="1" max="500" />
+        <input id="limit" name="limit" type="number" value="0" min="0" max="500" />
       </details>
       <button type="submit" id="submitButton">Generate Songbook!</button>
     </form>
@@ -204,8 +204,12 @@
       const payload = {
         source_folders: folderIds,
         preface_file_ids: ["1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"], // FIXME: hardcoding preface for now
-        limit: form.get("limit") ? Number(form.get("limit")) : undefined
       };
+
+      const limitVal = Number(form.get("limit"));
+      if (limitVal > 0) {
+        payload.limit = limitVal;
+      }
 
       const coverFileId = form.get("cover_file_id");
       if (coverFileId) {
