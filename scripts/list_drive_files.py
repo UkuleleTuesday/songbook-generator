@@ -77,7 +77,7 @@ def list_drive_files(key_file_path, folder_id, delete_files):
 
     click.echo("Fetching file list...")
 
-    query_parts = ["trashed=false"]
+    query_parts = []
     if folder_id:
         query_parts.append(f"'{folder_id}' in parents")
     else:

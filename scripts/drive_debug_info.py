@@ -104,7 +104,7 @@ def drive_debug_info(key_file_path):
             response = (
                 drive.files()
                 .list(
-                    q="'me' in owners and trashed=false",
+                    q="'me' in owners",
                     fields="nextPageToken, files(size, mimeType)",
                     pageSize=1000,
                     pageToken=page_token,
