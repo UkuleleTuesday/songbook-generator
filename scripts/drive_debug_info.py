@@ -54,7 +54,7 @@ def drive_debug_info(key_file_path):
         click.echo("  Type: User Credentials (Application Default Credentials)")
     else:
         click.echo(f"  Type: {type(creds)}")
-    click.echo(f"  Scopes: {creds.scopes}")
+    click.echo(f"  Scopes: {creds.scopes if creds.scopes else 'Not specified'}")
 
     # --- 2. User & Quota Info from about.get ---
     print_section("2. Account & Storage Quota Information")
@@ -98,34 +98,34 @@ def drive_debug_info(key_file_path):
     folder_count = 0
     total_size = 0
     page_token = None
-    with click.progressbar(label="  Fetching file list...") as bar:
-        while True:
-            try:
-                response = (
-                    drive.files()
-                    .list(
-                        q="'me' in owners and trashed=false",
-                        fields="nextPageToken, files(size, mimeType)",
-                        pageSize=1000,
-                        pageToken=page_token,
-                    )
-                    .execute()
+    click.echo("  Fetching file list (this may take a moment)...", nl=False)
+    while True:
+        try:
+            response = (
+                drive.files()
+                .list(
+                    q="'me' in owners and trashed=false",
+                    fields="nextPageToken, files(size, mimeType)",
+                    pageSize=1000,
+                    pageToken=page_token,
                 )
-                files_page = response.get("files", [])
-                for f in files_page:
-                    if f["mimeType"] == "application/vnd.google-apps.folder":
-                        folder_count += 1
-                    else:
-                        file_count += 1
-                        total_size += int(f.get("size", "0"))
+                .execute()
+            )
+            files_page = response.get("files", [])
+            for f in files_page:
+                if f["mimeType"] == "application/vnd.google-apps.folder":
+                    folder_count += 1
+                else:
+                    file_count += 1
+                    total_size += int(f.get("size", "0"))
 
-                page_token = response.get("nextPageToken", None)
-                bar.update(1)
-                if page_token is None:
-                    break
-            except HttpError as e:
-                click.echo(f"\nAn error occurred fetching files: {e}", err=True)
+            page_token = response.get("nextPageToken", None)
+            if page_token is None:
                 break
+        except HttpError as e:
+            click.echo(f"\nAn error occurred fetching files: {e}", err=True)
+            break
+    click.echo(" Done.")
 
     click.echo(f"  Total Files (non-folders): {file_count}")
     click.echo(f"  Total Folders: {folder_count}")
