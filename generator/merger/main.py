@@ -28,15 +28,26 @@ def _get_services():
     if _services is not None:
         return _services
 
-    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
-    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
+    creds, project_id = default(
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    if not project_id:
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
+
+    if not project_id:
+        raise ValueError(
+            "Could not determine GCP project ID. Please set GOOGLE_CLOUD_PROJECT."
+        )
+
     os.environ["GCP_PROJECT_ID"] = project_id
+    if "GOOGLE_CLOUD_PROJECT" not in os.environ:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
     cache = caching.init_cache()
-
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
     drive_service = build("drive", "v3", credentials=creds)
 
     _services = {"tracer": tracer, "cache": cache, "drive": drive_service}
