@@ -2,10 +2,8 @@ import fitz
 import click
 import os
 from opentelemetry import trace
-import gc
 from pathlib import Path
 from typing import List, Optional, Union
-from itertools import batched
 from . import progress
 from . import toc
 from . import cover
@@ -13,6 +11,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from ..common import caching
 from .gcp import get_credentials
+from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from .filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
     download_file_stream,
@@ -147,97 +146,87 @@ def copy_pdfs(
         span.set_attribute("add_page_numbers", add_page_numbers)
 
         # Try to get the cached merged PDF
-        try:
-            cached_pdf_data = cache.get("merged-pdf/latest.pdf")
-            if not cached_pdf_data:
-                span.set_attribute("cache_miss", True)
-                raise ValueError("Cached merged PDF not found")
+        cached_pdf_data = cache.get("merged-pdf/latest.pdf")
+        if not cached_pdf_data:
+            span.set_attribute("cache_miss", True)
+            raise PdfCacheNotFound("Cached merged PDF not found")
 
-            span.set_attribute("cache_hit", True)
-            span.set_attribute("cached_pdf_size", len(cached_pdf_data))
+        span.set_attribute("cache_hit", True)
+        span.set_attribute("cached_pdf_size", len(cached_pdf_data))
 
-            # Open the cached merged PDF
-            with fitz.open(stream=cached_pdf_data) as cached_pdf:
-                cached_toc = cached_pdf.get_toc()
-                span.set_attribute("cached_toc_entries", len(cached_toc))
+        # Open the cached merged PDF
+        with fitz.open(stream=cached_pdf_data) as cached_pdf:
+            cached_toc = cached_pdf.get_toc()
+            span.set_attribute("cached_toc_entries", len(cached_toc))
 
-                if not cached_toc:
-                    span.set_attribute("no_toc", True)
-                    raise ValueError("Cached PDF has no table of contents")
+            if not cached_toc:
+                span.set_attribute("no_toc", True)
+                raise PdfCopyException("Cached PDF has no table of contents")
 
-                # Create a mapping from song names to TOC entries
-                toc_map = {}
-                for level, title, page_num in cached_toc:
-                    # Page numbers in TOC are 1-based, convert to 0-based
-                    toc_map[title] = page_num - 1
+            # Create a mapping from song names to TOC entries
+            toc_map = {}
+            for level, title, page_num in cached_toc:
+                # Page numbers in TOC are 1-based, convert to 0-based
+                toc_map[title] = page_num - 1
 
-                current_page = page_offset
-                copied_pages = 0
+            current_page = page_offset
+            copied_pages = 0
 
-                for file_number, file in enumerate(files):
-                    file_name = file["name"]
+            for file_number, file in enumerate(files):
+                file_name = file["name"]
 
-                    # Look for this file in the cached PDF's TOC
-                    if file_name in toc_map:
-                        source_page = toc_map[file_name]
+                # Look for this file in the cached PDF's TOC
+                if file_name not in toc_map:
+                    raise PdfCacheMissException(f"File ${file_name} not found in cache")
 
-                        # Determine how many pages this song has
-                        # Find the next song's page or use the last page
-                        next_page = len(cached_pdf)  # Default to end of document
-                        current_toc_index = None
+                source_page = toc_map[file_name]
 
-                        # Find current song in TOC to determine page range
-                        for i, (level, title, page_num) in enumerate(cached_toc):
-                            if title == file_name:
-                                current_toc_index = i
-                                break
+                # Determine how many pages this song has
+                # Find the next song's page or use the last page
+                next_page = len(cached_pdf)  # Default to end of document
+                current_toc_index = None
 
-                        if (
-                            current_toc_index is not None
-                            and current_toc_index + 1 < len(cached_toc)
-                        ):
-                            # Get the page number of the next song (convert from 1-based to 0-based)
-                            next_page = cached_toc[current_toc_index + 1][2] - 1
+                # Find current song in TOC to determine page range
+                for i, (level, title, page_num) in enumerate(cached_toc):
+                    if title == file_name:
+                        current_toc_index = i
+                        break
 
-                        page_count = next_page - source_page
+                if current_toc_index is not None and current_toc_index + 1 < len(
+                    cached_toc
+                ):
+                    # Get the page number of the next song (convert from 1-based to 0-based)
+                    next_page = cached_toc[current_toc_index + 1][2] - 1
 
-                        # Copy the pages for this song
-                        for page_offset_in_song in range(page_count):
-                            source_page_num = source_page + page_offset_in_song
-                            if source_page_num < len(cached_pdf):
-                                page = cached_pdf[source_page_num]
+                page_count = next_page - source_page
 
-                                # Create new page in destination
-                                dest_page = destination_pdf.new_page(
-                                    width=page.rect.width, height=page.rect.height
-                                )
-                                dest_page.show_pdf_page(
-                                    dest_page.rect, cached_pdf, source_page_num
-                                )
+                # Copy the pages for this song
+                for page_offset_in_song in range(page_count):
+                    source_page_num = source_page + page_offset_in_song
+                    if source_page_num < len(cached_pdf):
+                        page = cached_pdf[source_page_num]
 
-                                # Add page number if requested and it's the first page of the song
-                                if add_page_numbers and page_offset_in_song == 0:
-                                    add_page_number(dest_page, current_page + 1)
-
-                                copied_pages += 1
-
-                        current_page += page_count
-                        progress_step.increment(
-                            1, f"Copied song sheet {file_number}/{files_count}..."
+                        # Create new page in destination
+                        dest_page = destination_pdf.new_page(
+                            width=page.rect.width, height=page.rect.height
                         )
-                    else:
-                        print(f"Warning: {file_name} not found in cached PDF TOC")
-                        progress_step.increment(
-                            1, f"Skipped {file_name} (not in cache)"
+                        dest_page.show_pdf_page(
+                            dest_page.rect, cached_pdf, source_page_num
                         )
 
-                span.set_attribute("copied_pages", copied_pages)
-                span.set_attribute("final_page_count", current_page)
+                        # Add page number if requested and it's the first page of the song
+                        if add_page_numbers and page_offset_in_song == 0:
+                            add_page_number(dest_page, current_page + 1)
 
-        except Exception as e:
-            span.set_attribute("copy_error", str(e))
-            print(f"Error copying from cached PDF: {e}")
-            raise
+                        copied_pages += 1
+
+                current_page += page_count
+                progress_step.increment(
+                    1, f"Copied song sheet {file_number}/{files_count}..."
+                )
+
+            span.set_attribute("copied_pages", copied_pages)
+            span.set_attribute("final_page_count", current_page)
 
 
 def generate_songbook(
@@ -391,20 +380,20 @@ def generate_songbook(
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)
 
-                # Add main content
-                with reporter.step(
-                    len(files), "Downloading and merging PDFs..."
-                ) as step:
-                    merge_pdfs(
-                        songbook_pdf,
-                        files,
-                        cache,
-                        drive,
-                        page_offset,
-                        step,
-                        batch_size=20,
-                        add_page_numbers=add_page_numbers,
-                    )
+                # Add main content - try cached approach first, fall back to individual downloads
+                with reporter.step(len(files), "Copying from cached PDF...") as step:
+                    try:
+                        copy_pdfs(
+                            songbook_pdf,
+                            files,
+                            cache,
+                            page_offset,
+                            step,
+                            add_page_numbers=add_page_numbers,
+                        )
+                    except PdfCopyException as e:
+                        click.echo(f"Error copying from cached PDF: {str(e)}", err=True)
+                        raise
 
                 # Add postface files at the end
                 if postface_files:
@@ -460,65 +449,6 @@ def generate_songbook(
                             raise FileNotFoundError(
                                 f"Failed to save master PDF at {destination_path}"
                             )
-
-
-def merge_pdfs(
-    destination_pdf,
-    files,
-    cache,
-    drive,
-    page_offset,
-    progress_step,
-    batch_size=20,
-    add_page_numbers=True,
-):
-    """
-    Fallback method: Download and merge individual PDF files.
-
-    This is used when the cached merged PDF is not available or copy_pdfs fails.
-    """
-    with tracer.start_as_current_span("merge_pdfs") as span:
-        span.set_attribute("files_count", len(files))
-        span.set_attribute("batch_size", batch_size)
-        span.set_attribute("add_page_numbers", add_page_numbers)
-
-        current_page = 1 + page_offset
-        total_files = len(files)
-
-        for batch_index, batch in enumerate(batched(files, batch_size)):
-            with tracer.start_as_current_span("process_pdf_merge_batch") as batch_span:
-                batch_span.set_attribute("batch_size", len(batch))
-                batch_span.set_attribute("batch_index", batch_index)
-
-                for file in batch:
-                    with (
-                        download_file_stream(drive, file, cache) as pdf_stream,
-                        fitz.open(stream=pdf_stream) as pdf_document,
-                    ):
-                        if add_page_numbers:
-                            add_page_number(pdf_document[0], current_page)
-
-                        # Determine if this is the last file overall
-                        file_index = current_page - page_offset - 1
-                        is_last_file = file_index == total_files - 1
-
-                        final_value = 1 if is_last_file else 0
-                        if final_value == 1:
-                            print(f"Passing final=1 for last file: {file['name']}")
-
-                        destination_pdf.insert_pdf(
-                            pdf_document,
-                            from_page=0,
-                            to_page=0,
-                            links=False,
-                            annots=False,
-                            widgets=False,
-                            final=final_value,
-                        )
-                        progress_step.increment(1, f"Added {file['name']}")
-                        current_page += 1
-
-                gc.collect()  # Clean up after each batch
 
 
 def add_page_number(page, page_index):
