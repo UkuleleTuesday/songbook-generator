@@ -73,7 +73,14 @@ def drive_write_test(key_file_path, template_id):
     if template_id:
         click.echo(f"\n--- Running Test 2: Copy template file (ID: {template_id}) ---")
         try:
-            copy_metadata = {"name": f"Copy of {template_id}"}
+            # Explicitly set the parent to the root of "My Drive"
+            root_folder_id = (
+                drive.files().get(fileId="root", fields="id").execute()["id"]
+            )
+            copy_metadata = {
+                "name": f"Copy of {template_id}",
+                "parents": [root_folder_id],
+            }
             copy = (
                 drive.files()
                 .copy(fileId=template_id, body=copy_metadata, fields="id, name")
