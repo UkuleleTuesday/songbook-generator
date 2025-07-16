@@ -73,7 +73,7 @@ def query_drive_files(
                 .list(
                     q=query,
                     pageSize=1000,
-                    fields="nextPageToken, files(id,name,properties)",
+                    fields="nextPageToken, files(id,name,properties,mimeType)",
                     orderBy="name_natural",
                     pageToken=page_token,
                 )
@@ -259,7 +259,10 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     Only re-downloads if remote modifiedTime is newer than the cached file.
     Returns a BytesIO stream of the file.
     """
-    # Song sheets are PDFs, so we don't need to export them.
+    # Google Docs need to be exported, while regular PDFs can be downloaded directly.
+    mime_type = file.get("mimeType")
+    should_export = mime_type == "application/vnd.google-apps.document"
+
     pdf_data = download_file(
         drive,
         file["id"],
@@ -267,7 +270,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
         cache,
         "song-sheets",
         "application/pdf",
-        export=False,
+        export=should_export,
     )
     return io.BytesIO(pdf_data)
 
