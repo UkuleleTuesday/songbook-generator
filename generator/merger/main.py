@@ -62,24 +62,11 @@ def _fetch_pdf_blobs(services):
         files = services["cache"].fs.ls(
             f"{services['cache'].cache_dir}/{prefix}", detail=True
         )
-        # Re-create blob-like objects for downstream compatibility
-        pdf_blobs = []
-        for file_info in files:
-            if file_info["name"].endswith(".pdf"):
-                blob_like = type(
-                    "BlobLike",
-                    (),
-                    {
-                        "name": file_info["name"].replace(
-                            f"{services['cache'].cache_dir}/", ""
-                        ),
-                        "metadata": {},  # Simplified for now
-                        "download_to_filename": lambda dest, file_name=file_info[
-                            "name"
-                        ]: services["cache"].fs.get(file_name, dest),
-                    },
-                )()
-                pdf_blobs.append(blob_like)
+        pdf_blobs = [
+            f
+            for f in files
+            if f["name"].endswith(".pdf") and f["type"] == "file"
+        ]
 
         span.set_attribute("total_blobs", len(files))
         span.set_attribute("pdf_blobs", len(pdf_blobs))
@@ -90,16 +77,24 @@ def _download_blobs(pdf_blobs, temp_dir, services):
     """Download PDF blobs to a temporary directory and extract metadata."""
     with services["tracer"].start_as_current_span("download_files") as span:
         file_metadata = []
+        cache = services["cache"]
         for blob in pdf_blobs:
-            filename = blob.name.replace("/", "_")
+            filename = os.path.basename(blob["name"])
             local_path = os.path.join(temp_dir, filename)
-            print(f"Downloading {blob.name} to {filename}")
+            print(f"Downloading {blob['name']} to {filename}")
             with services["tracer"].start_as_current_span("download_file") as dl_span:
-                dl_span.set_attribute("blob_name", blob.name)
+                dl_span.set_attribute("blob_name", blob["name"])
                 dl_span.set_attribute("local_path", local_path)
-                blob.download_to_filename(local_path)
-            blob_metadata = blob.metadata or {}
-            song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
+                cache.fs.get(blob["name"], local_path)
+
+            song_name = "Unknown Song"
+            # For GCS, metadata is part of the blob object.
+            if "metadata" in blob and blob["metadata"]:
+                song_name = blob["metadata"].get("gdrive-file-name", song_name)
+            # For local files, we must rely on the filename.
+            else:
+                song_name = os.path.splitext(os.path.basename(filename))[0]
+
             file_metadata.append({"path": local_path, "name": song_name})
         span.set_attribute("downloaded_count", len(file_metadata))
         return file_metadata

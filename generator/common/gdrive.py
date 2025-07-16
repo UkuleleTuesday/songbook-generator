@@ -240,7 +240,13 @@ def download_file(
         _, done = downloader.next_chunk()
 
     data = buffer.getvalue()
-    cache.put(cache_key, data)
+    # GCSFS supports setting metadata on upload via `metadata` kwarg.
+    # The local file system fsspec impl does not support this.
+    try:
+        cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
+    except TypeError:
+        # Fallback for filesystems that don't support metadata
+        cache.put(cache_key, data)
     return data
 
 
@@ -250,6 +256,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     Only re-downloads if remote modifiedTime is newer than the cached file.
     Returns a BytesIO stream of the file.
     """
+    # Song sheets are PDFs, so we don't need to export them.
     pdf_data = download_file(
         drive,
         file["id"],
@@ -257,7 +264,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
         cache,
         "song-sheets",
         "application/pdf",
-        export=True,
+        export=False,
     )
     return io.BytesIO(pdf_data)
 
