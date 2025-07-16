@@ -11,8 +11,9 @@ from datetime import datetime
 from google.auth import default
 from googleapiclient.discovery import build
 
+from google.cloud import storage
+
 from . import sync
-from ..common import caching
 from ..common.config import load_config_folder_ids
 
 # Initialize tracing
@@ -47,10 +48,17 @@ def _get_services():
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    cache = caching.init_cache()
+    gcs_worker_cache_bucket = os.environ["GCS_WORKER_CACHE_BUCKET"]
+    storage_client = storage.Client(project=project_id)
+    cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
+
     drive_service = build("drive", "v3", credentials=creds)
 
-    _services = {"tracer": tracer, "cache": cache, "drive": drive_service}
+    _services = {
+        "tracer": tracer,
+        "cache_bucket": cache_bucket,
+        "drive": drive_service,
+    }
     return _services
 
 
@@ -58,17 +66,9 @@ def _fetch_pdf_blobs(services):
     """Fetch all song sheet PDF blobs from GCS cache bucket."""
     with services["tracer"].start_as_current_span("list_blobs") as span:
         prefix = "song-sheets/"
-        # Use fsspec interface to list files
-        files = services["cache"].fs.ls(
-            f"{services['cache'].cache_dir}/{prefix}", detail=True
-        )
-        pdf_blobs = [
-            f
-            for f in files
-            if f["name"].endswith(".pdf") and f["type"] == "file"
-        ]
-
-        span.set_attribute("total_blobs", len(files))
+        blobs = list(services["cache_bucket"].list_blobs(prefix=prefix))
+        pdf_blobs = [blob for blob in blobs if blob.name.endswith(".pdf")]
+        span.set_attribute("total_blobs", len(blobs))
         span.set_attribute("pdf_blobs", len(pdf_blobs))
         return pdf_blobs
 
@@ -77,24 +77,16 @@ def _download_blobs(pdf_blobs, temp_dir, services):
     """Download PDF blobs to a temporary directory and extract metadata."""
     with services["tracer"].start_as_current_span("download_files") as span:
         file_metadata = []
-        cache = services["cache"]
         for blob in pdf_blobs:
-            filename = os.path.basename(blob["name"])
+            filename = blob.name.replace("/", "_")
             local_path = os.path.join(temp_dir, filename)
-            print(f"Downloading {blob['name']} to {filename}")
+            print(f"Downloading {blob.name} to {filename}")
             with services["tracer"].start_as_current_span("download_file") as dl_span:
-                dl_span.set_attribute("blob_name", blob["name"])
+                dl_span.set_attribute("blob_name", blob.name)
                 dl_span.set_attribute("local_path", local_path)
-                cache.fs.get(blob["name"], local_path)
-
-            song_name = "Unknown Song"
-            # For GCS, metadata is part of the blob object.
-            if "metadata" in blob and blob["metadata"]:
-                song_name = blob["metadata"].get("gdrive-file-name", song_name)
-            # For local files, we must rely on the filename.
-            else:
-                song_name = os.path.splitext(os.path.basename(filename))[0]
-
+                blob.download_to_filename(local_path)
+            blob_metadata = blob.metadata or {}
+            song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
             file_metadata.append({"path": local_path, "name": song_name})
         span.set_attribute("downloaded_count", len(file_metadata))
         return file_metadata
@@ -139,28 +131,21 @@ def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
         return temp_with_toc_path
 
 
-def _get_last_merge_time(cache, tracer_span=None) -> Optional[datetime]:
+def _get_last_merge_time(cache_bucket, tracer_span=None) -> Optional[datetime]:
     """Get the modification time of the last merged PDF from cache."""
     try:
-        cache_key = "merged-pdf/latest.pdf"
-        info = cache.fs.info(f"{cache.cache_dir}/{cache_key}")
-        mtime = info.get("updated") or info.get("mtime")
-        if isinstance(mtime, str):
-            last_merge_time = datetime.fromisoformat(mtime)
-        elif isinstance(mtime, (int, float)):
-            last_merge_time = datetime.fromtimestamp(
-                mtime, tz=datetime.now().astimezone().tzinfo
-            )
-        else:
-            last_merge_time = None
+        blob = cache_bucket.get_blob("merged-pdf/latest.pdf")
+        if not blob:
+            return None
 
+        last_merge_time = blob.updated
         if last_merge_time:
             print(f"Last merge was at {last_merge_time}. Syncing changes since then.")
             if tracer_span:
                 tracer_span.set_attribute("last_merge_time", str(last_merge_time))
         return last_merge_time
-    except FileNotFoundError:
-        print("No previous merged PDF found. Performing a full sync.")
+    except Exception:
+        print("No previous merged PDF found or error fetching it. Performing a full sync.")
         if tracer_span:
             tracer_span.set_attribute("last_merge_time", "None")
         return None
@@ -169,12 +154,11 @@ def _get_last_merge_time(cache, tracer_span=None) -> Optional[datetime]:
 def _upload_to_cache(file_path, services):
     """Upload the final merged PDF to the GCS cache."""
     with services["tracer"].start_as_current_span("upload_to_cache") as span:
-        cache_key = "merged-pdf/latest.pdf"
-        span.set_attribute("cache.key", cache_key)
-        print(f"Uploading merged PDF to cache at: {cache_key}")
-        with open(file_path, "rb") as f:
-            data = f.read()
-            services["cache"].put(cache_key, data)
+        cache_blob_name = "merged-pdf/latest.pdf"
+        cache_blob = services["cache_bucket"].blob(cache_blob_name)
+        print(f"Uploading merged PDF to cache at: {cache_blob_name}")
+        cache_blob.upload_from_filename(file_path, content_type="application/pdf")
+        span.set_attribute("cache_blob_name", cache_blob_name)
 
 
 def fetch_and_merge_pdfs(output_path, services):
@@ -183,7 +167,7 @@ def fetch_and_merge_pdfs(output_path, services):
 
     Args:
         output_path: Path where the merged PDF should be saved.
-        services: A dictionary containing initialized clients (tracer, cache).
+        services: A dictionary containing initialized clients (tracer, cache_bucket).
 
     Returns:
         str: Path to the merged PDF file (same as output_path)
@@ -240,7 +224,9 @@ def merger_main(request):
             # Get the modification time of the last merged PDF to use as a cutoff
             last_merge_time = None
             if not force_sync:
-                last_merge_time = _get_last_merge_time(services["cache"], main_span)
+                last_merge_time = _get_last_merge_time(
+                    services["cache_bucket"], main_span
+                )
             else:
                 print("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")
