@@ -300,4 +300,6 @@ def merger_main(request):
             print(exc_info)
             main_span.set_attribute("error.stack_trace", exc_info)
 
-            return {"error": "Internal error during PDF merge."}, 500
+            # Re-raise to ensure the function invocation is marked as a failure.
+            # The framework will handle this and return a 500-level response.
+            raise

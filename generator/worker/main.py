@@ -262,3 +262,4 @@ def worker_main(cloud_event):
             exc_info = traceback.format_exc()
             print(exc_info)
             main_span.set_attribute("error.stack_trace", exc_info)
+            raise
