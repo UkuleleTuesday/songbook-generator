@@ -191,7 +191,9 @@ def test_collect_and_sort_files_strips_artist_name(mocker):
         {"name": "a - cd.pdf", "id": "2"},
     ]
 
-    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch(
+        "generator.worker.pdf.query_drive_files_with_client_filter"
+    )
     mock_query.return_value = mock_files
 
     result = collect_and_sort_files(
@@ -243,7 +245,9 @@ def test_collect_and_sort_files_strips_punctuation(mocker):
         {"name": "cucumber.pdf", "id": "3"},
     ]
 
-    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch(
+        "generator.worker.pdf.query_drive_files_with_client_filter"
+    )
     mock_query.return_value = mock_files
 
     result = collect_and_sort_files(
@@ -268,7 +272,9 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
         {"name": "cz.pdf", "id": "3"},
     ]
 
-    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch(
+        "generator.worker.pdf.query_drive_files_with_client_filter"
+    )
     mock_query.return_value = mock_files
 
     result = collect_and_sort_files(
@@ -293,7 +299,9 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
         {"name": "things 001 things.pdf", "id": "3"},
     ]
 
-    mock_query = mocker.patch("pdf.query_drive_files_with_client_filter")
+    mock_query = mocker.patch(
+        "generator.worker.pdf.query_drive_files_with_client_filter"
+    )
     mock_query.return_value = mock_files
 
     result = collect_and_sort_files(
