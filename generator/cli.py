@@ -144,11 +144,18 @@ def generate(
     default=False,
     help="Disable syncing of file metadata from Drive to GCS.",
 )
-def sync_cache_command(source_folder, no_metadata):
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Force a full sync, ignoring modification times.",
+)
+def sync_cache_command(source_folder, no_metadata, force):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
+        from datetime import datetime
 
         services = merger_main._get_services()
         source_folders = list(source_folder) if source_folder else []
@@ -157,8 +164,37 @@ def sync_cache_command(source_folder, no_metadata):
             click.echo("No source folders provided. Nothing to sync.", err=True)
             raise click.Abort()
 
+        last_merge_time = None
+        if not force:
+            try:
+                cache_key = "merged-pdf/latest.pdf"
+                info = services["cache"].fs.info(
+                    f"{services['cache'].cache_dir}/{cache_key}"
+                )
+                mtime = info.get("updated") or info.get("mtime")
+                if isinstance(mtime, str):
+                    last_merge_time = datetime.fromisoformat(mtime)
+                elif isinstance(mtime, (int, float)):
+                    last_merge_time = datetime.fromtimestamp(
+                        mtime, tz=datetime.now().astimezone().tzinfo
+                    )
+
+                if last_merge_time:
+                    click.echo(
+                        f"Last merge was at {last_merge_time}. Syncing changes since then."
+                    )
+            except FileNotFoundError:
+                click.echo("No previous merged PDF found. Performing a full sync.")
+        else:
+            click.echo("Force flag set. Performing a full sync.")
+
         click.echo(f"Syncing folders: {source_folders}")
-        sync_cache(source_folders, services, with_metadata=not no_metadata)
+        sync_cache(
+            source_folders,
+            services,
+            with_metadata=not no_metadata,
+            modified_after=last_merge_time,
+        )
         click.echo("Cache synchronization complete.")
 
     except Exception as e:

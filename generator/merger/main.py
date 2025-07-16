@@ -191,6 +191,7 @@ def merger_main(request):
         try:
             # Get source folders from request payload, or fall back to config
             request_json = request.get_json(silent=True)
+            force_sync = request_json.get("force", False) if request_json else False
             source_folders = (
                 request_json.get("source_folders")
                 if request_json
@@ -205,25 +206,33 @@ def merger_main(request):
 
             # Get the modification time of the last merged PDF to use as a cutoff
             last_merge_time = None
-            try:
-                cache_key = "merged-pdf/latest.pdf"
-                info = services["cache"].fs.info(
-                    f"{services['cache'].cache_dir}/{cache_key}"
-                )
-                mtime = info.get("updated") or info.get("mtime")
-                if isinstance(mtime, str):
-                    last_merge_time = datetime.fromisoformat(mtime)
-                elif isinstance(mtime, (int, float)):
-                    last_merge_time = datetime.fromtimestamp(mtime, tz=datetime.now().astimezone().tzinfo)
-
-                if last_merge_time:
-                    print(
-                        f"Last merge was at {last_merge_time}. Syncing changes since then."
+            if not force_sync:
+                try:
+                    cache_key = "merged-pdf/latest.pdf"
+                    info = services["cache"].fs.info(
+                        f"{services['cache'].cache_dir}/{cache_key}"
                     )
-                    main_span.set_attribute("last_merge_time", str(last_merge_time))
-            except FileNotFoundError:
-                print("No previous merged PDF found. Performing a full sync.")
-                main_span.set_attribute("last_merge_time", "None")
+                    mtime = info.get("updated") or info.get("mtime")
+                    if isinstance(mtime, str):
+                        last_merge_time = datetime.fromisoformat(mtime)
+                    elif isinstance(mtime, (int, float)):
+                        last_merge_time = datetime.fromtimestamp(
+                            mtime, tz=datetime.now().astimezone().tzinfo
+                        )
+
+                    if last_merge_time:
+                        print(
+                            f"Last merge was at {last_merge_time}. Syncing changes since then."
+                        )
+                        main_span.set_attribute(
+                            "last_merge_time", str(last_merge_time)
+                        )
+                except FileNotFoundError:
+                    print("No previous merged PDF found. Performing a full sync.")
+                    main_span.set_attribute("last_merge_time", "None")
+            else:
+                print("Force flag set. Performing a full sync.")
+                main_span.set_attribute("last_merge_time", "None (forced)")
 
             with services["tracer"].start_as_current_span("sync_operation"):
                 print(f"Syncing folders: {source_folders}")
