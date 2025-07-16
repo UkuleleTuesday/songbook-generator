@@ -154,6 +154,70 @@ def drive_debug_info(key_file_path):
     click.echo("  Navigate to 'Google Drive API' -> 'Quotas'.")
     click.echo("  Note: Free-tier user quotas are per-user, not per-project.")
 
+    # --- 6. Google Docs Listing (including trash) ---
+    print_section("6. Google Docs Listing (visible to this account, including trash)")
+    doc_count = 0
+    page_token = None
+    click.echo("\n  Fetching Google Docs list (this may take a moment)...", nl=False)
+    has_printed_header = False
+    try:
+        while True:
+            response = (
+                drive.files()
+                .list(
+                    q="mimeType='application/vnd.google-apps.document'",
+                    fields="nextPageToken, files(id, name, trashed, owners(emailAddress))",
+                    pageSize=100,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                )
+                .execute()
+            )
+            files_page = response.get("files", [])
+
+            if files_page and not has_printed_header:
+                click.echo(" Done.")
+                click.echo(
+                    "    {:<50} {:<15} {:<50} {}".format(
+                        "NAME", "STATUS", "ID", "OWNER(S)"
+                    )
+                )
+                click.echo("    " + "-" * 150)
+                has_printed_header = True
+
+            for f in files_page:
+                doc_count += 1
+                status = "In Trash" if f.get("trashed") else "Active"
+                owners = ", ".join(
+                    [
+                        owner.get("emailAddress", "N/A")
+                        for owner in f.get("owners", [])
+                    ]
+                )
+                click.echo(
+                    "    {:<50} {:<15} {:<50} {}".format(
+                        f.get("name", "N/A")[:48],
+                        status,
+                        f.get("id", "N/A"),
+                        owners,
+                    )
+                )
+
+            page_token = response.get("nextPageToken", None)
+            if page_token is None:
+                break
+    except HttpError as e:
+        click.echo(f"\nAn error occurred fetching Google Docs: {e}", err=True)
+
+    if doc_count == 0:
+        click.echo(" Done.")
+        click.echo("  No Google Docs found.")
+    else:
+        click.echo("\n  " + "=" * 20)
+        click.echo(f"  Found {doc_count} total Google Docs.")
+        click.echo("  " + "=" * 20)
+
 
 if __name__ == "__main__":
     drive_debug_info()
