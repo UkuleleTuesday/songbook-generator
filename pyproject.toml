@@ -48,3 +48,6 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["generator*"]
+
+[tool.ruff.lint]
+extend-select = ["BLE001"] # Catch all exceptions are the plague

@@ -73,7 +73,7 @@ def query_drive_files(
                 .list(
                     q=query,
                     pageSize=1000,
-                    fields="nextPageToken, files(id,name,properties)",
+                    fields="nextPageToken, files(id,name,properties,mimeType)",
                     orderBy="name_natural",
                     pageToken=page_token,
                 )
@@ -171,7 +171,7 @@ def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
                     1 / len(file_ids),
                     f"Retrieved metadata for {file_dict['name']}",
                 )
-        except Exception as e:
+        except HttpError as e:
             click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
             if progress_step:
                 progress_step.increment(
@@ -220,7 +220,10 @@ def download_file(
             span.set_attribute("cache.hit", True)
             click.echo(f"Using cached version of {file_name} (ID: {file_id})")
             return cached
-    except Exception as e:
+    except FileNotFoundError:
+        # This is an expected cache miss for local storage, not an error.
+        pass
+    except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
         span.set_attribute("cache.error", str(e))
         click.echo(
             f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
@@ -256,7 +259,10 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     Only re-downloads if remote modifiedTime is newer than the cached file.
     Returns a BytesIO stream of the file.
     """
-    # Song sheets are PDFs, so we don't need to export them.
+    # Google Docs need to be exported, while regular PDFs can be downloaded directly.
+    mime_type = file.get("mimeType")
+    should_export = mime_type == "application/vnd.google-apps.document"
+
     pdf_data = download_file(
         drive,
         file["id"],
@@ -264,7 +270,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
         cache,
         "song-sheets",
         "application/pdf",
-        export=False,
+        export=should_export,
     )
     return io.BytesIO(pdf_data)
 

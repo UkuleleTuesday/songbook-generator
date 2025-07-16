@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 import click
+import humanize
 from google.auth import default
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
-import humanize
+from googleapiclient.errors import HttpError
 
 
 def authenticate_drive(key_file_path=None, delete_mode=False):
@@ -59,7 +60,7 @@ def list_drive_files(key_file_path, delete_files):
             if user_info:
                 click.echo(f"  User: {user_info.get('displayName')}")
                 click.echo(f"  Email: {user_info.get('emailAddress')}")
-        except Exception as e:
+        except HttpError as e:
             click.echo(f"  Could not retrieve user info: {e}")
     else:
         click.echo(f"  Type: {type(creds)}")
@@ -85,7 +86,7 @@ def list_drive_files(key_file_path, delete_files):
                 )
                 .execute()
             )
-        except Exception as e:
+        except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)
             break
 
@@ -133,7 +134,7 @@ def list_drive_files(key_file_path, delete_files):
                     drive.files().delete(fileId=file["id"]).execute()
                     click.echo(f"  ✓ Deleted: {file['name']} (ID: {file['id']})")
                     deleted_count += 1
-                except Exception as e:
+                except HttpError as e:
                     click.echo(
                         f"  ✗ FAILED to delete: {file['name']} (ID: {file['id']}) - {e}",
                         err=True,

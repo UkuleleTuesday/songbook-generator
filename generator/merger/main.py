@@ -2,6 +2,7 @@ import os
 import tempfile
 from typing import Optional
 import PyPDF2
+from google.api_core import exceptions as gcp_exceptions
 import fitz
 import traceback
 import shutil
@@ -144,10 +145,8 @@ def _get_last_merge_time(cache_bucket, tracer_span=None) -> Optional[datetime]:
             if tracer_span:
                 tracer_span.set_attribute("last_merge_time", str(last_merge_time))
         return last_merge_time
-    except Exception:
-        print(
-            "No previous merged PDF found or error fetching it. Performing a full sync."
-        )
+    except gcp_exceptions.NotFound:
+        print("No previous merged PDF found. Performing a full sync.")
         if tracer_span:
             tracer_span.set_attribute("last_merge_time", "None")
         return None
@@ -292,12 +291,15 @@ def merger_main(request):
                 if os.path.exists(temp_output_path):
                     os.unlink(temp_output_path)
 
-        except Exception as e:
-            main_span.set_attribute("error", str(e))
+        except Exception:  # noqa: BLE001 - Top level error handler
             main_span.set_attribute("status", "failed")
 
-            print(f"Merge operation failed: {str(e)}")
+            print("Merge operation failed.")
             print("Error details:")
-            print(traceback.format_exc())
+            exc_info = traceback.format_exc()
+            print(exc_info)
+            main_span.set_attribute("error.stack_trace", exc_info)
 
-            return {"error": f"Internal error during PDF merge: {str(e)}"}, 500
+            # Re-raise to ensure the function invocation is marked as a failure.
+            # The framework will handle this and return a 500-level response.
+            raise

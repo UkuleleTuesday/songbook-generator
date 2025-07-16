@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional
 from datetime import datetime
+from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
 
@@ -50,7 +51,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
                 blob.patch()
                 print(f"  UPDATE: {blob.name} metadata updated.")
                 updated_count += 1
-            except Exception as e:
+            except gcp_exceptions.GoogleAPICallError as e:
                 print(f"  ERROR: Failed to update {blob.name}: {e}")
                 error_count += 1
         print(

@@ -172,10 +172,11 @@ def worker_main(cloud_event):
                         client_filter = parse_filters(filters_param)
                         print(f"Parsed client filter: {client_filter}")
                         filter_span.set_attribute("has_filters", True)
-                        filter_span.set_attribute(
-                            "filter_type", type(client_filter).__name__
-                        )
-                    except Exception as e:
+                        if client_filter:
+                            filter_span.set_attribute(
+                                "filter_type", type(client_filter).__name__
+                            )
+                    except ValueError as e:
                         print(f"Error parsing filters: {e}")
                         filter_span.set_attribute("error", str(e))
                         job_ref.update(
@@ -245,9 +246,8 @@ def worker_main(cloud_event):
                 complete_span.set_attribute("status", "COMPLETED")
                 complete_span.set_attribute("result_url", result_url)
 
-        except Exception as e:
+        except Exception:  # noqa: BLE001 - Top level error handler
             # on any failure, mark FAILED
-            main_span.set_attribute("error", str(e))
             main_span.set_attribute("status", "FAILED")
 
             job_ref.update(
@@ -259,4 +259,7 @@ def worker_main(cloud_event):
             )
             print(f"Job failed: {job_id}")
             print("Error details:")
-            print(traceback.format_exc())
+            exc_info = traceback.format_exc()
+            print(exc_info)
+            main_span.set_attribute("error.stack_trace", exc_info)
+            raise
