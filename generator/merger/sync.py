@@ -1,6 +1,7 @@
 import os
 from typing import List, Optional
 from datetime import datetime
+import click
 from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
@@ -11,7 +12,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
     with services["tracer"].start_as_current_span(
         "_sync_gcs_metadata_from_drive"
     ) as span:
-        print("Starting metadata sync from Drive to GCS cache...")
+        click.echo("Starting metadata sync from Drive to GCS cache...")
         all_drive_files = []
         for folder_id in source_folders:
             files = gdrive.query_drive_files(services["drive"], folder_id)
@@ -49,12 +50,12 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
             try:
                 blob.metadata = new_metadata
                 blob.patch()
-                print(f"  UPDATE: {blob.name} metadata updated.")
+                click.echo(f"  UPDATE: {blob.name} metadata updated.")
                 updated_count += 1
             except gcp_exceptions.GoogleAPICallError as e:
-                print(f"  ERROR: Failed to update {blob.name}: {e}")
+                click.echo(f"  ERROR: Failed to update {blob.name}: {e}", err=True)
                 error_count += 1
-        print(
+        click.echo(
             f"Metadata sync summary: {updated_count} updated, {skipped_count} skipped, {error_count} errors."
         )
 
@@ -89,12 +90,12 @@ def sync_cache(
         span.set_attribute("total_files_found", len(all_files))
 
         if not all_files:
-            print("No new or modified files to sync.")
+            click.echo("No new or modified files to sync.")
             return 0
 
         for file in all_files:
             with services["tracer"].start_as_current_span("sync_file"):
-                print(f"Syncing {file['name']} (ID: {file['id']})")
+                click.echo(f"Syncing {file['name']} (ID: {file['id']})")
                 gdrive.download_file_stream(services["drive"], file, cache)
 
         if with_metadata:

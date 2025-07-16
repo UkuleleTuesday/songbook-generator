@@ -7,6 +7,7 @@ import fitz
 import traceback
 import shutil
 from datetime import datetime
+import click
 
 
 from google.auth import default
@@ -81,7 +82,7 @@ def _download_blobs(pdf_blobs, temp_dir, services):
         for blob in pdf_blobs:
             filename = blob.name.replace("/", "_")
             local_path = os.path.join(temp_dir, filename)
-            print(f"Downloading {blob.name} to {filename}")
+            click.echo(f"Downloading {blob.name} to {filename}")
             with services["tracer"].start_as_current_span("download_file") as dl_span:
                 dl_span.set_attribute("blob_name", blob.name)
                 dl_span.set_attribute("local_path", local_path)
@@ -96,7 +97,7 @@ def _download_blobs(pdf_blobs, temp_dir, services):
 def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
     """Merge PDFs and generate TOC entries."""
     with services["tracer"].start_as_current_span("merge_pdfs") as span:
-        print(f"Merging {len(file_metadata)} PDF files...")
+        click.echo(f"Merging {len(file_metadata)} PDF files...")
         merger = PyPDF2.PdfMerger()
         toc_entries = []
         current_page = 0
@@ -113,14 +114,14 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
         span.set_attribute("temp_merged_path", temp_merged_path)
         span.set_attribute("merged_files", len(file_metadata))
         span.set_attribute("toc_entries", len(toc_entries))
-        print(f"Successfully created merged PDF: {temp_merged_path}")
+        click.echo(f"Successfully created merged PDF: {temp_merged_path}")
         return temp_merged_path, toc_entries
 
 
 def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
     """Add a table of contents to the merged PDF."""
     with services["tracer"].start_as_current_span("add_toc") as span:
-        print("Adding table of contents to merged PDF...")
+        click.echo("Adding table of contents to merged PDF...")
         doc = fitz.open(temp_merged_path)
         doc.set_toc(toc_entries)
         temp_with_toc_path = os.path.join(temp_dir, "with_toc.pdf")
@@ -128,7 +129,7 @@ def _add_toc_to_pdf(temp_merged_path, toc_entries, temp_dir, services):
         doc.close()
         span.set_attribute("toc_entries_added", len(toc_entries))
         span.set_attribute("temp_with_toc_path", temp_with_toc_path)
-        print(f"Added {len(toc_entries)} entries to table of contents")
+        click.echo(f"Added {len(toc_entries)} entries to table of contents")
         return temp_with_toc_path
 
 
@@ -141,12 +142,14 @@ def _get_last_merge_time(cache_bucket, tracer_span=None) -> Optional[datetime]:
 
         last_merge_time = blob.updated
         if last_merge_time:
-            print(f"Last merge was at {last_merge_time}. Syncing changes since then.")
+            click.echo(
+                f"Last merge was at {last_merge_time}. Syncing changes since then."
+            )
             if tracer_span:
                 tracer_span.set_attribute("last_merge_time", str(last_merge_time))
         return last_merge_time
     except gcp_exceptions.NotFound:
-        print("No previous merged PDF found. Performing a full sync.")
+        click.echo("No previous merged PDF found. Performing a full sync.")
         if tracer_span:
             tracer_span.set_attribute("last_merge_time", "None")
         return None
@@ -157,7 +160,7 @@ def _upload_to_cache(file_path, services):
     with services["tracer"].start_as_current_span("upload_to_cache") as span:
         cache_blob_name = "merged-pdf/latest.pdf"
         cache_blob = services["cache_bucket"].blob(cache_blob_name)
-        print(f"Uploading merged PDF to cache at: {cache_blob_name}")
+        click.echo(f"Uploading merged PDF to cache at: {cache_blob_name}")
         cache_blob.upload_from_filename(file_path, content_type="application/pdf")
         span.set_attribute("cache_blob_name", cache_blob_name)
 
@@ -177,7 +180,7 @@ def fetch_and_merge_pdfs(output_path, services):
         pdf_blobs = _fetch_pdf_blobs(services)
         span.set_attribute("pdf_count", len(pdf_blobs))
         if not pdf_blobs:
-            print("No PDF files found in the cache bucket")
+            click.echo("No PDF files found in the cache bucket")
             return None
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -195,7 +198,7 @@ def fetch_and_merge_pdfs(output_path, services):
 
             _upload_to_cache(temp_with_toc_path, services)
 
-            print(f"Copying merged PDF with TOC to: {output_path}")
+            click.echo(f"Copying merged PDF with TOC to: {output_path}")
             shutil.copy2(temp_with_toc_path, output_path)
             span.set_attribute("final_output_path", output_path)
 
@@ -229,26 +232,26 @@ def merger_main(request):
                     services["cache_bucket"], main_span
                 )
             else:
-                print("Force flag set. Performing a full sync.")
+                click.echo("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")
 
             with services["tracer"].start_as_current_span(
                 "sync_operation"
             ) as sync_span:
-                print(f"Syncing folders: {source_folders}")
+                click.echo(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
                 synced_files_count = sync.sync_cache(
                     source_folders, services, modified_after=last_merge_time
                 )
                 sync_span.set_attribute("synced_files_count", synced_files_count)
-                print("Sync complete.")
+                click.echo("Sync complete.")
 
             if not force_sync and synced_files_count == 0:
-                print("No files were updated since the last merge. Nothing to do.")
+                click.echo("No files were updated since the last merge. Nothing to do.")
                 main_span.set_attribute("status", "skipped_no_changes")
                 return {"message": "No new file changes to merge."}, 200
 
-            print("Starting PDF merge operation")
+            click.echo("Starting PDF merge operation")
 
             # Create a temporary file for the merged PDF
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
@@ -294,10 +297,10 @@ def merger_main(request):
         except Exception:  # noqa: BLE001 - Top level error handler
             main_span.set_attribute("status", "failed")
 
-            print("Merge operation failed.")
-            print("Error details:")
+            click.echo("Merge operation failed.", err=True)
+            click.echo("Error details:", err=True)
             exc_info = traceback.format_exc()
-            print(exc_info)
+            click.echo(exc_info, err=True)
             main_span.set_attribute("error.stack_trace", exc_info)
 
             # Re-raise to ensure the function invocation is marked as a failure.
