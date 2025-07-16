@@ -37,14 +37,19 @@ def authenticate_drive(key_file_path=None, delete_mode=False):
 @click.option(
     "--folder-id",
     type=str,
-    help="Google Drive folder ID to list files from. If not specified, lists all files owned by the user.",
+    help="Google Drive folder ID to list files from.",
+)
+@click.option(
+    "--owned-by-me",
+    is_flag=True,
+    help="Filter results to only files owned by the authenticated user.",
 )
 @click.option(
     "--delete-files",
     is_flag=True,
     help="DANGEROUS: Interactively prompt to delete all listed files.",
 )
-def list_drive_files(key_file_path, folder_id, delete_files):
+def list_drive_files(key_file_path, folder_id, owned_by_me, delete_files):
     """
     Lists all files in Google Drive for the authenticated user,
     and calculates the total size.
@@ -80,9 +85,15 @@ def list_drive_files(key_file_path, folder_id, delete_files):
     query_parts = []
     if folder_id:
         query_parts.append(f"'{folder_id}' in parents")
-    else:
-        # Default to files owned by the service account if no folder is specified
+    if owned_by_me:
         query_parts.append("'me' in owners")
+
+    if not query_parts:
+        click.echo(
+            "Warning: No filters specified (e.g., --folder-id or --owned-by-me). "
+            "This may list a large number of files.",
+            err=True,
+        )
     query = " and ".join(query_parts)
 
     while True:
