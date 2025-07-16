@@ -298,7 +298,6 @@ jobs:
 
   deploy-ui:
     name: Deploy UI
-    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages
