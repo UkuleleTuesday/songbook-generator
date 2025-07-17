@@ -233,6 +233,25 @@ def copy_pdfs(
                         if add_page_numbers and page_offset_in_song == 0:
                             add_page_number(dest_page, current_page + 1)
 
+                        # On the first page of the song, add a link from the title to the TOC
+                        if page_offset_in_song == 0:
+                            # Extract song title from filename (e.g., "Song - Artist.pdf")
+                            song_title = file_name.split(" - ")[0]
+
+                            # Search for the title on the page
+                            text_instances = dest_page.search_for(song_title)
+
+                            if text_instances:
+                                # Add a link over the first occurrence of the title
+                                link_rect = text_instances[0]
+                                dest_page.insert_link(
+                                    {
+                                        "kind": fitz.LINK_GOTO,
+                                        "from": link_rect,
+                                        "page": 0,  # Link to the first page (TOC)
+                                    }
+                                )
+
                         copied_pages += 1
 
                 current_page += page_count
