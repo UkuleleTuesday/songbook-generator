@@ -25,9 +25,7 @@ def authenticate_drive(key_file_path=None):
     return drive_service, docs_service
 
 
-@click.command(
-    help="Tests write access to Google Drive by creating and copying files."
-)
+@click.command(help="Tests write access to Google Drive by creating and copying files.")
 @click.option(
     "--service-account-key",
     "key_file_path",
@@ -92,10 +90,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
                     drive.files().get(fileId="root", fields="id").execute()["id"]
                 )
 
-            copy_metadata = {
-                "name": f"Copy of {template_id}",
-                "parents": [destination_folder_id],
-            }
+            copy_metadata = {"name": f"Copy of {template_id}"}
             copy = (
                 drive.files()
                 .copy(fileId=template_id, body=copy_metadata, fields="id, name")
@@ -115,9 +110,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
     # --- Test 3: Read template and write to new file ---
     new_doc_id = None
     if template_id:
-        click.echo(
-            f"\n--- Running Test 3: Read template and write to new doc ---"
-        )
+        click.echo("\n--- Running Test 3: Read template and write to new doc ---")
         try:
             # Step 1: Read the template document's title
             template_doc = docs.documents().get(documentId=template_id).execute()
@@ -128,13 +121,13 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
             )
 
             # Step 2: Create a new blank document to act as the destination
-            destination_folder_id = parent_folder_id or (
-                drive.files().get(fileId="root", fields="id").execute()["id"]
+            destination_folder_id = (
+                parent_folder_id
+                or (drive.files().get(fileId="root", fields="id").execute()["id"])
             )
             file_metadata = {
                 "name": f"Manual Copy of {template_title}",
                 "mimeType": "application/vnd.google-apps.document",
-                "parents": [destination_folder_id],
             }
             new_doc = (
                 drive.files().create(body=file_metadata, fields="id, name").execute()

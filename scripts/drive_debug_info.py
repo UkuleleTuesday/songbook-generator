@@ -73,7 +73,9 @@ def drive_debug_info(key_file_path):
             free_space = limit - usage if limit > 0 else "N/A"
 
             click.echo("\n  Storage Quota:")
-            click.echo(f"    - Limit: {humanize.naturalsize(limit) if limit > 0 else 'Unlimited'}")
+            click.echo(
+                f"    - Limit: {humanize.naturalsize(limit) if limit > 0 else 'Unlimited'}"
+            )
             click.echo(f"    - Total Used: {humanize.naturalsize(usage)}")
             if free_space != "N/A":
                 click.echo(f"    - Free Space: {humanize.naturalsize(free_space)}")
@@ -144,11 +146,15 @@ def drive_debug_info(key_file_path):
             click.echo("  No shared drives found for this account.")
     except HttpError as e:
         click.echo(f"  Could not list shared drives: {e}", err=True)
-        click.echo("  (Service account may need 'Shared Drive' support enabled in its configuration).")
+        click.echo(
+            "  (Service account may need 'Shared Drive' support enabled in its configuration)."
+        )
 
     # --- 5. API Quota Info ---
     print_section("5. API Usage Quotas")
-    click.echo("  API usage quotas (e.g., requests per minute) are not exposed by the API.")
+    click.echo(
+        "  API usage quotas (e.g., requests per minute) are not exposed by the API."
+    )
     click.echo("  To check usage against limits, visit the Google Cloud Console:")
     click.echo("  https://console.cloud.google.com/apis/dashboard")
     click.echo("  Navigate to 'Google Drive API' -> 'Quotas'.")
@@ -190,10 +196,7 @@ def drive_debug_info(key_file_path):
                 doc_count += 1
                 status = "In Trash" if f.get("trashed") else "Active"
                 owners = ", ".join(
-                    [
-                        owner.get("emailAddress", "N/A")
-                        for owner in f.get("owners", [])
-                    ]
+                    [owner.get("emailAddress", "N/A") for owner in f.get("owners", [])]
                 )
                 click.echo(
                     "    {:<50} {:<15} {:<50} {}".format(
