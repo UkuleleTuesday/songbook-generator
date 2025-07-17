@@ -11,10 +11,11 @@ DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class CoverGenerator:
-    def __init__(self, cache, drive_service, docs_service):
+    def __init__(self, cache, drive_service, docs_service, enable_templating=True):
         self.cache = cache
         self.drive = drive_service
         self.docs = docs_service
+        self.enable_templating = enable_templating
 
     def _create_cover_from_template(
         self,
@@ -88,37 +89,49 @@ class CoverGenerator:
                 click.echo("No cover file ID configured. Skipping cover generation.")
                 return None
 
-        today = arrow.now()
-        formatted_date = today.format("Do MMMM YYYY")
+        if self.enable_templating:
+            today = arrow.now()
+            formatted_date = today.format("Do MMMM YYYY")
 
-        copy_id = self._create_cover_from_template(
-            cover_file_id, {"{{DATE}}": formatted_date}
-        )
+            copy_id = self._create_cover_from_template(
+                cover_file_id, {"{{DATE}}": formatted_date}
+            )
 
-        try:
+            try:
+                pdf_data = gdrive.download_file(
+                    self.drive,
+                    copy_id,
+                    f"Cover-{copy_id}",
+                    self.cache,
+                    "covers",
+                    "application/pdf",
+                )
+                cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
+            except fitz.EmptyFileError as e:
+                raise CoverGenerationException(
+                    "Downloaded cover file is corrupted. Please check the file on Google Drive."
+                ) from e
+            finally:
+                try:
+                    self.drive.files().delete(fileId=copy_id).execute()
+                    click.echo(f"Deleted copy: {copy_id} from Google Drive.")
+                except HttpError as e:
+                    raise CoverGenerationException(
+                        f"Failed to delete temporary cover file {copy_id} from Google Drive. "
+                        f"It may need to be manually removed. Original error: {e}"
+                    ) from e
+            return cover_pdf
+        else:
             pdf_data = gdrive.download_file(
                 self.drive,
-                copy_id,
-                f"Cover-{copy_id}",
+                cover_file_id,
+                f"Cover-{cover_file_id}",
                 self.cache,
                 "covers",
                 "application/pdf",
+                export=False,
             )
-            cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
-        except fitz.EmptyFileError as e:
-            raise CoverGenerationException(
-                "Downloaded cover file is corrupted. Please check the file on Google Drive."
-            ) from e
-        finally:
-            try:
-                self.drive.files().delete(fileId=copy_id).execute()
-                click.echo(f"Deleted copy: {copy_id} from Google Drive.")
-            except HttpError as e:
-                raise CoverGenerationException(
-                    f"Failed to delete temporary cover file {copy_id} from Google Drive. "
-                    f"It may need to be manually removed. Original error: {e}"
-                ) from e
-        return cover_pdf
+            return fitz.open(stream=pdf_data, filetype="pdf")
 
 
 def generate_cover(cache, cover_file_id=None):
