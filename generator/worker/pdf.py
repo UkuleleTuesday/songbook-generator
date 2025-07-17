@@ -143,6 +143,7 @@ def copy_pdfs(
     page_offset,
     progress_step,
     add_page_numbers=True,
+    toc_page_index: int = 0,
 ):
     """
     Copy pages from the merged PDF cache based on TOC entries for the selected files.
@@ -235,7 +236,7 @@ def copy_pdfs(
 
                         # On the first page of the song, add a link from the title to the TOC
                         if page_offset_in_song == 0:
-                            # Extract song title from filename
+                            # Use the full filename as the song title for searching
                             song_title = file_name
 
                             # Search for the title on the page
@@ -248,7 +249,7 @@ def copy_pdfs(
                                     {
                                         "kind": fitz.LINK_GOTO,
                                         "from": link_rect,
-                                        "page": 0,  # Link to the first page (TOC)
+                                        "page": toc_page_index,
                                     }
                                 )
 
@@ -439,6 +440,7 @@ def generate_songbook(
                             page_offset,
                             step,
                             add_page_numbers=add_page_numbers,
+                            toc_page_index=toc_start_page,
                         )
                     except PdfCopyException as e:
                         click.echo(f"Error copying from cached PDF: {str(e)}", err=True)
