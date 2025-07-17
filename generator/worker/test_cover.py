@@ -32,10 +32,9 @@ def test_create_cover_from_template_basic():
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(
-        drive,
-        docs,
+    result = generator._create_cover_from_template(
         "template123",
         {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"},
     )
@@ -69,9 +68,10 @@ def test_create_cover_from_template_missing_occurrences_changed(capsys):
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(
-        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
+    result = generator._create_cover_from_template(
+        "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"
@@ -93,9 +93,10 @@ def test_create_cover_from_template_no_replies(capsys):
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(
-        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
+    result = generator._create_cover_from_template(
+        "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"
@@ -117,8 +118,9 @@ def test_create_cover_from_template_empty_replacement_map():
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(drive, docs, "template123", {})
+    result = generator._create_cover_from_template("template123", {})
 
     assert result == "copy123"
 
@@ -137,10 +139,9 @@ def test_create_cover_from_template_custom_title():
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(
-        drive,
-        docs,
+    result = generator._create_cover_from_template(
         "template123",
         {"{{DATE}}": "1st January 2024"},
         copy_title="Custom Title",
@@ -207,7 +208,10 @@ def test_generate_cover_basic(
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
-    result = cover.generate_cover(Mock())
+    with patch("generator.worker.cover.get_credentials"), patch(
+        "generator.worker.cover.build"
+    ):
+        result = cover.generate_cover(Mock())
     assert result is None
     mock_echo.assert_called_once_with(
         "No cover file ID configured. Skipping cover generation."
@@ -384,9 +388,10 @@ def test_create_cover_malformed_batch_response(mock_build, capsys):
     )
     drive = build("drive", "v3", http=http)
     docs = build("docs", "v1", http=http)
+    generator = cover.CoverGenerator(Mock(), drive, docs)
 
-    result = cover.create_cover_from_template(
-        drive, docs, "template123", {"{{DATE}}": "1st January 2024"}
+    result = generator._create_cover_from_template(
+        "template123", {"{{DATE}}": "1st January 2024"}
     )
 
     assert result == "copy123"
