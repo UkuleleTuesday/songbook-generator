@@ -17,39 +17,11 @@ class CoverGenerator:
         self.docs = docs_service
         self.enable_templating = enable_templating
 
-    def _create_cover_from_template(
-        self,
-        template_cover_id: str,
-        replacement_map: dict,
-        copy_title: str = None,
-    ):
+    def _apply_template_replacements(self, document_id: str, replacement_map: dict):
         """
-        Copies the original Google Doc, performs text replacements on the copy,
-        exports that copy to PDF, and saves it locally.
-
-        :param drive: Authenticated Google Drive service object.
-        :param docs: Authenticated Google Docs service object.
-        :param original_doc_id: ID of the source Google Doc
-        :param replacement_map: dict mapping placeholder → replacement text
-        :param pdf_output_path: local filename for the exported PDF
-        :param copy_title: Optional new title for the copied Doc
+        Applies text replacements to a Google Doc.
+        If it fails, it logs an error and continues gracefully.
         """
-        # 1) Copy the original Doc. Place it in root of My Drive to avoid
-        # permission issues with the source folder.
-        root_folder_id = self.drive.files().get(fileId="root", fields="id").execute()["id"]
-        copy_metadata = {
-            "name": copy_title or f"Copy of {template_cover_id}",
-            "parents": [root_folder_id],
-        }
-        copy = (
-            self.drive.files()
-            .copy(fileId=template_cover_id, body=copy_metadata)
-            .execute()
-        )
-        copy_id = copy["id"]
-        click.echo(f"Created copy: {copy_id} (title: {copy.get('name')})")
-
-        # 3) Build batchUpdate requests for all placeholders
         requests = []
         for placeholder, new_text in replacement_map.items():
             requests.append(
@@ -60,11 +32,21 @@ class CoverGenerator:
                     }
                 }
             )
-        result = (
-            self.docs.documents()
-            .batchUpdate(documentId=copy_id, body={"requests": requests})
-            .execute()
-        )
+
+        try:
+            result = (
+                self.docs.documents()
+                .batchUpdate(documentId=document_id, body={"requests": requests})
+                .execute()
+            )
+        except HttpError as e:
+            click.echo(
+                f"Warning: Could not apply template to cover '{document_id}'. "
+                f"This may be due to permissions. Proceeding without templating. "
+                f"Error: {e}",
+                err=True,
+            )
+            return
         total = 0
         for reply in result.get("replies", []):
             if reply is None:
@@ -80,8 +62,6 @@ class CoverGenerator:
                 pass
         click.echo(f"Replaced {total} occurrences in the copy.")
 
-        return copy_id
-
     def generate_cover(self, cover_file_id=None):
         if not cover_file_id:
             cover_file_id = config.load_cover_config()
@@ -92,36 +72,11 @@ class CoverGenerator:
         if self.enable_templating:
             today = arrow.now()
             formatted_date = today.format("Do MMMM YYYY")
-
-            copy_id = self._create_cover_from_template(
+            self._apply_template_replacements(
                 cover_file_id, {"{{DATE}}": formatted_date}
             )
 
-            try:
-                pdf_data = gdrive.download_file(
-                    self.drive,
-                    copy_id,
-                    f"Cover-{copy_id}",
-                    self.cache,
-                    "covers",
-                    "application/pdf",
-                )
-                cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
-            except fitz.EmptyFileError as e:
-                raise CoverGenerationException(
-                    "Downloaded cover file is corrupted. Please check the file on Google Drive."
-                ) from e
-            finally:
-                try:
-                    self.drive.files().delete(fileId=copy_id).execute()
-                    click.echo(f"Deleted copy: {copy_id} from Google Drive.")
-                except HttpError as e:
-                    raise CoverGenerationException(
-                        f"Failed to delete temporary cover file {copy_id} from Google Drive. "
-                        f"It may need to be manually removed. Original error: {e}"
-                    ) from e
-            return cover_pdf
-        else:
+        try:
             pdf_data = gdrive.download_file(
                 self.drive,
                 cover_file_id,
@@ -129,9 +84,15 @@ class CoverGenerator:
                 self.cache,
                 "covers",
                 "application/pdf",
-                export=False,
+                # Export when templating, otherwise direct download
+                export=self.enable_templating,
             )
-            return fitz.open(stream=pdf_data, filetype="pdf")
+            cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
+        except fitz.EmptyFileError as e:
+            raise CoverGenerationException(
+                "Downloaded cover file is corrupted. Please check the file on Google Drive."
+            ) from e
+        return cover_pdf
 
 
 def generate_cover(cache, cover_file_id=None):

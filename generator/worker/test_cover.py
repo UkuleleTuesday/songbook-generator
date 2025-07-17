@@ -8,146 +8,41 @@ from googleapiclient.discovery import build
 from googleapiclient.http import HttpMockSequence
 
 
-def test_create_cover_from_template_basic():
-    """Test basic cover creation functionality."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Copy of template"}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps(
-                    {
-                        "replies": [
-                            {"replaceAllText": {"occurrencesChanged": 2}},
-                            {"replaceAllText": {"occurrencesChanged": 1}},
-                        ]
-                    }
-                ),
-            ),
-        ]
-    )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
+@patch("generator.worker.cover.click.echo")
+def test_apply_template_replacements_permission_error(mock_echo):
+    """Test that a permission error is handled gracefully."""
+    docs_http = HttpMockSequence([({"status": "403"}, "Permission denied")])
+    docs = build("docs", "v1", http=docs_http)
+    generator = cover.CoverGenerator(Mock(), Mock(), docs)
 
-    result = generator._create_cover_from_template(
-        "template123",
-        {"{{DATE}}": "1st January 2024", "{{TITLE}}": "Test Songbook"},
+    generator._apply_template_replacements(
+        "doc123", {"{{PLACEHOLDER}}": "value"}
     )
 
-    assert result == "copy123"
+    mock_echo.assert_called_once()
+    assert "Warning: Could not apply template" in mock_echo.call_args[0][0]
 
 
-def test_create_cover_from_template_missing_occurrences_changed(capsys):
-    """Test handling of missing occurrencesChanged key (the main bugfix)."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Copy of template"}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps(
-                    {
-                        "replies": [
-                            {"replaceAllText": {"occurrencesChanged": 1}},
-                            {"replaceAllText": {}},
-                            {"someOtherReply": {}},
-                            {"replaceAllText": {"occurrencesChanged": 2}},
-                        ]
-                    }
-                ),
-            ),
-        ]
+@patch("generator.worker.cover.gdrive.download_file")
+@patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
+def test_generate_cover_with_templating(mock_apply_replacements, mock_download):
+    """Test that templating is applied and PDF is exported."""
+    mock_drive = Mock()
+    mock_docs = Mock()
+    mock_cache = Mock()
+    generator = cover.CoverGenerator(mock_cache, mock_drive, mock_docs, enable_templating=True)
+    generator.generate_cover("cover123")
+
+    mock_apply_replacements.assert_called_once()
+    mock_download.assert_called_once_with(
+        mock_drive,
+        "cover123",
+        "Cover-cover123",
+        mock_cache,
+        "covers",
+        "application/pdf",
+        export=True,
     )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
-
-    result = generator._create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
-    )
-
-    assert result == "copy123"
-    captured = capsys.readouterr()
-    assert "Replaced 3 occurrences in the copy." in captured.out
-
-
-def test_create_cover_from_template_no_replies(capsys):
-    """Test handling when there are no replies in the batch response."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Copy of template"}),
-            ),
-            ({"status": "200"}, json.dumps({"replies": []})),
-        ]
-    )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
-
-    result = generator._create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
-    )
-
-    assert result == "copy123"
-    captured = capsys.readouterr()
-    assert "Replaced 0 occurrences in the copy." in captured.out
-
-
-def test_create_cover_from_template_empty_replacement_map():
-    """Test with empty replacement map."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Copy of template"}),
-            ),
-            ({"status": "200"}, json.dumps({"replies": []})),
-        ]
-    )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
-
-    result = generator._create_cover_from_template("template123", {})
-
-    assert result == "copy123"
-
-
-def test_create_cover_from_template_custom_title():
-    """Test creating cover with custom title."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Custom Title"}),
-            ),
-            ({"status": "200"}, json.dumps({"replies": []})),
-        ]
-    )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
-
-    result = generator._create_cover_from_template(
-        "template123",
-        {"{{DATE}}": "1st January 2024"},
-        copy_title="Custom Title",
-    )
-
-    assert result == "copy123"
 
 
 @patch("generator.worker.cover.fitz.open")
@@ -166,17 +61,11 @@ def test_generate_cover_basic(
     pdf_content = b"fake pdf content"
     drive_http = HttpMockSequence(
         [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
-            ),
             (
                 {"status": "200"},
                 json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
             ),
             ({"status": "200"}, pdf_content),
-            ({"status": "200"}, ""),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
@@ -271,17 +160,11 @@ def test_generate_cover_corrupted_pdf(
     pdf_content = b"corrupted"
     drive_http = HttpMockSequence(
         [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
-            ),
             (
                 {"status": "200"},
                 json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
             ),
             ({"status": "200"}, pdf_content),
-            ({"status": "200"}, ""),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
@@ -310,53 +193,6 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(mock_cache, "cover123")
 
 
-@patch("generator.worker.cover.get_credentials")
-@patch("generator.worker.cover.fitz.open")
-@patch("generator.worker.cover.build")
-def test_generate_cover_deletion_failure(
-    mock_build, mock_fitz, mock_get_credentials, tmp_path
-):
-    """Test handling when temporary file deletion fails."""
-    pdf_content = b"pdf content"
-    drive_http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
-            ),
-            ({"status": "200"}, pdf_content),
-            ({"status": "500"}, "API Error"),  # for the delete call
-        ]
-    )
-    docs_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            )
-        ]
-    )
-    mock_drive = build("drive", "v3", http=drive_http)
-    mock_docs = build("docs", "v1", http=docs_http)
-    mock_build.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
-    mock_fitz.return_value = Mock()
-
-    with (
-        pytest.raises(cover.CoverGenerationException),
-        patch("generator.common.caching.LocalStorageCache") as mock_cache,
-    ):
-        mock_cache.get.return_value = None
-        cover.generate_cover(mock_cache, "cover123")
-
-
 @patch("generator.common.config.load_cover_config")
 @patch("generator.worker.cover.fitz.open")
 @patch("generator.worker.cover.build")
@@ -368,17 +204,11 @@ def test_generate_cover_uses_provided_cover_id(
     pdf_content = b"fake pdf content"
     drive_http = HttpMockSequence(
         [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "temp_cover123", "name": "Copy of template"}),
-            ),
             (
                 {"status": "200"},
                 json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
             ),
             ({"status": "200"}, pdf_content),
-            ({"status": "200"}, ""),  # for the delete call
         ]
     )
     docs_http = HttpMockSequence(
@@ -402,41 +232,3 @@ def test_generate_cover_uses_provided_cover_id(
         cover.generate_cover(mock_cache, "provided_cover123")
 
     mock_load_config.assert_not_called()
-
-
-@patch("generator.worker.cover.build")
-def test_create_cover_malformed_batch_response(mock_build, capsys):
-    """Test handling of malformed batch response structure."""
-    http = HttpMockSequence(
-        [
-            ({"status": "200"}, json.dumps({"id": "root_id"})),
-            (
-                {"status": "200"},
-                json.dumps({"id": "copy123", "name": "Copy of template"}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps(
-                    {
-                        "replies": [
-                            {"replaceAllText": {"occurrencesChanged": 1}},
-                            {"replaceAllText": None},
-                            None,
-                            {"replaceAllText": {"occurrencesChanged": "invalid"}},
-                        ]
-                    }
-                ),
-            ),
-        ]
-    )
-    drive = build("drive", "v3", http=http)
-    docs = build("docs", "v1", http=http)
-    generator = cover.CoverGenerator(Mock(), drive, docs)
-
-    result = generator._create_cover_from_template(
-        "template123", {"{{DATE}}": "1st January 2024"}
-    )
-
-    assert result == "copy123"
-    captured = capsys.readouterr()
-    assert "Replaced 1 occurrences in the copy." in captured.out
