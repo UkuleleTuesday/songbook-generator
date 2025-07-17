@@ -242,28 +242,23 @@ def test_generate_cover_templating_disabled(
     mock_fitz.return_value = mock_pdf
     mock_cache = Mock()
 
-    # The outer generate_cover() function needs patching for CoverGenerator
-    with patch("generator.worker.cover.CoverGenerator") as mock_cover_generator:
-        instance = mock_cover_generator.return_value
-        instance.generate_cover.return_value = mock_pdf
+    # Now we can test the real CoverGenerator logic
+    generator = cover.CoverGenerator(
+        mock_cache, mock_drive, mock_docs, enable_templating=False
+    )
+    result = generator.generate_cover("cover123")
 
-        # Now we can test the real CoverGenerator logic
-        generator = cover.CoverGenerator(
-            mock_cache, mock_drive, mock_docs, enable_templating=False
-        )
-        result = generator.generate_cover("cover123")
-
-        assert result == mock_pdf
-        mock_download_file.assert_called_once_with(
-            mock_drive,
-            "cover123",
-            "Cover-cover123",
-            mock_cache,
-            "covers",
-            "application/pdf",
-            export=False,
-        )
-        mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
+    assert result == mock_pdf
+    mock_download_file.assert_called_once_with(
+        mock_drive,
+        "cover123",
+        "Cover-cover123",
+        mock_cache,
+        "covers",
+        "application/pdf",
+        export=False,
+    )
+    mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
 
 @patch("generator.worker.cover.get_credentials")
