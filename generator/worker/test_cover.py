@@ -26,14 +26,20 @@ def test_apply_template_replacements_permission_error(mock_echo):
 @patch("generator.worker.cover.gdrive.download_file")
 @patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
 def test_generate_cover_with_templating(mock_apply_replacements, mock_download):
-    """Test that templating is applied and PDF is exported."""
+    """Test that templating is applied, reverted, and PDF is exported."""
     mock_drive = Mock()
     mock_docs = Mock()
     mock_cache = Mock()
-    generator = cover.CoverGenerator(mock_cache, mock_drive, mock_docs, enable_templating=True)
-    generator.generate_cover("cover123")
+    mock_download.return_value = b"fake-pdf-content"  # Fix for fitz.open
 
-    mock_apply_replacements.assert_called_once()
+    generator = cover.CoverGenerator(
+        mock_cache, mock_drive, mock_docs, enable_templating=True
+    )
+    with patch("fitz.open"):
+        generator.generate_cover("cover123")
+
+    # Check that replacements were applied and then reverted
+    assert mock_apply_replacements.call_count == 2
     mock_download.assert_called_once_with(
         mock_drive,
         "cover123",

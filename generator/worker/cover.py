@@ -72,11 +72,30 @@ class CoverGenerator:
         if self.enable_templating:
             today = arrow.now()
             formatted_date = today.format("Do MMMM YYYY")
-            self._apply_template_replacements(
-                cover_file_id, {"{{DATE}}": formatted_date}
-            )
+            replacement_map = {"{{DATE}}": formatted_date}
+            self._apply_template_replacements(cover_file_id, replacement_map)
 
-        try:
+            try:
+                pdf_data = gdrive.download_file(
+                    self.drive,
+                    cover_file_id,
+                    f"Cover-{cover_file_id}",
+                    self.cache,
+                    "covers",
+                    "application/pdf",
+                    export=True,
+                )
+                return fitz.open(stream=pdf_data, filetype="pdf")
+            except fitz.EmptyFileError as e:
+                raise CoverGenerationException(
+                    "Downloaded cover file is corrupted. Please check the file on Google Drive."
+                ) from e
+            finally:
+                # Revert changes
+                revert_map = {v: k for k, v in replacement_map.items()}
+                self._apply_template_replacements(cover_file_id, revert_map)
+        else:
+            # No templating, just download the file
             pdf_data = gdrive.download_file(
                 self.drive,
                 cover_file_id,
@@ -84,15 +103,9 @@ class CoverGenerator:
                 self.cache,
                 "covers",
                 "application/pdf",
-                # Export when templating, otherwise direct download
-                export=self.enable_templating,
+                export=False,
             )
-            cover_pdf = fitz.open(stream=pdf_data, filetype="pdf")
-        except fitz.EmptyFileError as e:
-            raise CoverGenerationException(
-                "Downloaded cover file is corrupted. Please check the file on Google Drive."
-            ) from e
-        return cover_pdf
+            return fitz.open(stream=pdf_data, filetype="pdf")
 
 
 def generate_cover(cache, cover_file_id=None):
