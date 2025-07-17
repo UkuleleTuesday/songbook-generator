@@ -79,7 +79,11 @@ def test_generate_cover_basic(
             (
                 {"status": "200"},
                 json.dumps({"replies": []}),
-            )
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            ),
         ]
     )
     mock_drive = build("drive", "v3", http=drive_http)
@@ -178,7 +182,11 @@ def test_generate_cover_corrupted_pdf(
             (
                 {"status": "200"},
                 json.dumps({"replies": []}),
-            )
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            ),
         ]
     )
     mock_drive = build("drive", "v3", http=drive_http)
@@ -222,7 +230,11 @@ def test_generate_cover_uses_provided_cover_id(
             (
                 {"status": "200"},
                 json.dumps({"replies": []}),
-            )
+            ),
+            (
+                {"status": "200"},
+                json.dumps({"replies": []}),
+            ),
         ]
     )
     mock_drive = build("drive", "v3", http=drive_http)
