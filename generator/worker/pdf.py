@@ -329,7 +329,9 @@ def generate_songbook(
                                 "https://www.googleapis.com/auth/drive",
                             ]
                         )
-                        docs_write_service = build("docs", "v1", credentials=cover_creds)
+                        docs_write_service = build(
+                            "docs", "v1", credentials=cover_creds
+                        )
                         drive_write_service = build(
                             "drive", "v3", credentials=cover_creds
                         )

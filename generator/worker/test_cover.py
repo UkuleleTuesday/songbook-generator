@@ -15,9 +15,7 @@ def test_apply_template_replacements_permission_error(mock_echo):
     docs = build("docs", "v1", http=docs_http)
     generator = cover.CoverGenerator(Mock(), Mock(), docs)
 
-    generator._apply_template_replacements(
-        "doc123", {"{{PLACEHOLDER}}": "value"}
-    )
+    generator._apply_template_replacements("doc123", {"{{PLACEHOLDER}}": "value"})
 
     mock_echo.assert_called_once()
     assert "Warning: Could not apply template" in mock_echo.call_args[0][0]
@@ -107,8 +105,9 @@ def test_generate_cover_basic(
 def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
     """Test when no cover file is configured."""
     mock_load_config.return_value = None
-    with patch("generator.worker.cover.get_credentials"), patch(
-        "generator.worker.cover.build"
+    with (
+        patch("generator.worker.cover.get_credentials"),
+        patch("generator.worker.cover.build"),
     ):
         result = cover.generate_cover(Mock())
     assert result is None
