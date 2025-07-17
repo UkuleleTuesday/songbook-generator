@@ -4,6 +4,7 @@ import click
 import humanize
 from google.auth import default
 from google.oauth2 import service_account
+from google.auth.exceptions import GoogleAuthError
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -41,7 +42,7 @@ def drive_debug_info(key_file_path):
     """
     try:
         drive, creds = authenticate_drive(key_file_path)
-    except Exception as e:
+    except GoogleAuthError as e:
         click.echo(f"Error during authentication: {e}", err=True)
         return
 

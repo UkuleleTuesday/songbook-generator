@@ -2,6 +2,7 @@
 
 import click
 from google.auth import default
+from google.auth.exceptions import GoogleAuthError
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -54,7 +55,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
     try:
         drive, docs = authenticate_drive(key_file_path)
         click.echo("Authentication successful.")
-    except Exception as e:
+    except GoogleAuthError as e:
         click.echo(f"Error during authentication: {e}", err=True)
         return
 
@@ -75,7 +76,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
     except HttpError as error:
         click.secho("FAILURE: Could not create file.", fg="red", err=True)
         click.secho(f"  - Details: {error.content.decode()}", fg="red", err=True)
-    except Exception as e:
+    except (OSError, TypeError) as e:
         click.secho(f"An unexpected error occurred: {e}", fg="red", err=True)
 
     # --- Test 2: Copy a template file ---
@@ -104,7 +105,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
         except HttpError as error:
             click.secho("FAILURE: Could not copy file.", fg="red", err=True)
             click.secho(f"  - Details: {error.content.decode()}", fg="red", err=True)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             click.secho(f"An unexpected error occurred: {e}", fg="red", err=True)
 
     # --- Test 3: Read template and write to new file ---
@@ -147,7 +148,7 @@ def drive_write_test(key_file_path, template_id, parent_folder_id):
         except HttpError as error:
             click.secho("FAILURE: Could not read or create file.", fg="red", err=True)
             click.secho(f"  - Details: {error.content.decode()}", fg="red", err=True)
-        except Exception as e:
+        except (OSError, TypeError) as e:
             click.secho(f"An unexpected error occurred: {e}", fg="red", err=True)
 
     # --- Cleanup ---
