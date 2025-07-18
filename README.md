@@ -141,7 +141,7 @@ source export-env.sh
 uv run songbook-tools download-cache
 
 # Run the generator (limit to 10 files for testing)
-uv run songbook-tools generate --destination-path ./test-songbook.pdf --limit 10
+uv run songbook-tools generate --destination-path ./out/test-songbook.pdf
 ```
 
 ### Testing Full Application
