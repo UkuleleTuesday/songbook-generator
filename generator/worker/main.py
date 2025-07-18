@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import tempfile
+from pathlib import Path
 import click
 from google.cloud import firestore, storage
 from flask import abort
@@ -193,7 +194,8 @@ def worker_main(cloud_event):
             with services["tracer"].start_as_current_span(
                 "generate_songbook"
             ) as gen_span:
-                out_path = tempfile.mktemp(suffix=".pdf")
+                out_path_str = tempfile.mktemp(suffix=".pdf")
+                out_path = Path(out_path_str)
                 click.echo(
                     f"Generating songbook for job {job_id} with parameters: {params}"
                 )
@@ -216,7 +218,7 @@ def worker_main(cloud_event):
                     postface_file_ids=postface_file_ids,
                     on_progress=progress_callback,
                 )
-                gen_span.set_attribute("output_path", out_path)
+                gen_span.set_attribute("output_path", str(out_path))
 
             # 4) Upload to GCS
             with services["tracer"].start_as_current_span(
@@ -227,7 +229,7 @@ def worker_main(cloud_event):
                     "Uploading generated songbook to GCS bucket: "
                     f"{services['gcs_cdn_bucket_name']}"
                 )
-                blob.upload_from_filename(out_path, content_type="application/pdf")
+                blob.upload_from_filename(out_path_str, content_type="application/pdf")
                 result_url = blob.public_url  # or use signed URL if you need auth
                 upload_span.set_attribute("gcs_bucket", services["gcs_cdn_bucket_name"])
                 upload_span.set_attribute("blob_name", f"{job_id}/songbook.pdf")
