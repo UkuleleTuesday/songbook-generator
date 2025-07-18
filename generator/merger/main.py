@@ -1,7 +1,6 @@
 import os
 import tempfile
 from typing import Optional
-from pypdf import PdfReader, PdfWriter
 from google.api_core import exceptions as gcp_exceptions
 import fitz
 import traceback
@@ -108,19 +107,20 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
     """Merge PDFs and generate TOC entries."""
     with services["tracer"].start_as_current_span("merge_pdfs") as span:
         click.echo(f"Merging {len(file_metadata)} PDF files...")
-        merger = PdfWriter()
+        merged_pdf = fitz.open()  # Create a new empty PDF
         toc_entries = []
         current_page = 0
         for file_info in file_metadata:
-            with open(file_info["path"], "rb") as pdf_file:
-                pdf_reader = PdfReader(pdf_file)
-                page_count = len(pdf_reader.pages)
+            with fitz.open(file_info["path"]) as pdf_doc:
+                page_count = len(pdf_doc)
+                merged_pdf.insert_pdf(pdf_doc)
             toc_entries.append([1, file_info["name"], current_page + 1])
             current_page += page_count
-            merger.append(file_info["path"])
+
         temp_merged_path = os.path.join(temp_dir, "merged.pdf")
-        merger.write(temp_merged_path)
-        merger.close()
+        merged_pdf.save(temp_merged_path)
+        merged_pdf.close()
+
         span.set_attribute("temp_merged_path", temp_merged_path)
         span.set_attribute("merged_files", len(file_metadata))
         span.set_attribute("toc_entries", len(toc_entries))
