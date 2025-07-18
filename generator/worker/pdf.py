@@ -36,13 +36,16 @@ def authenticate_drive(key_file_path: Optional[str] = None):
     return build("drive", "v3", credentials=creds), creds
 
 
-def init_services(key_file_path: Optional[str] = None):
+def init_services(
+    key_file_path: Optional[str] = None,
+    gcs_worker_cache_bucket: Optional[str] = None,
+):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive(key_file_path)
-        cache = caching.init_cache()
+        cache = caching.init_cache(gcs_worker_cache_bucket=gcs_worker_cache_bucket)
 
         click.echo("Authentication Details:")
         # Check for service account first by looking for the 'account' attribute
