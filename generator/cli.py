@@ -54,7 +54,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
     "--destination-path",
     "-d",
     type=click.Path(path_type=Path),
-    required=True,
+    default="out/songbook.pdf",
     help="Where to save the generated pdf",
 )
 @click.option(
