@@ -194,7 +194,7 @@ def sync_cache_command(ctx, source_folder, no_metadata, force, merge_only):
             with tempfile.NamedTemporaryFile(suffix=".pdf") as temp_output:
                 result_path = fetch_and_merge_pdfs(temp_output.name, services)
                 if result_path:
-                    click.echo(f"Successfully updated merged PDF in GCS cache.")
+                    click.echo("Successfully updated merged PDF in GCS cache.")
                 else:
                     click.echo("No PDFs found in cache to merge.", err=True)
             return
