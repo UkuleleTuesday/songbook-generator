@@ -271,7 +271,7 @@ def generate_songbook(
     drive,
     cache,
     source_folders: List[str],
-    destination_path: Path,
+    destination_path: Union[Path, str],
     limit: int,
     cover_file_id: str,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
@@ -280,6 +280,10 @@ def generate_songbook(
     on_progress=None,
 ):
     with tracer.start_as_current_span("generate_songbook") as span:
+        # Ensure destination_path is a Path object for downstream processing
+        if not isinstance(destination_path, Path):
+            destination_path = Path(destination_path)
+
         span.set_attribute("source_folders_count", len(source_folders))
         span.set_attribute("destination_path", str(destination_path))
         if limit:
