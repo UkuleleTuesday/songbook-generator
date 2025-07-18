@@ -25,11 +25,19 @@ from ..common.tracing import get_tracer, setup_tracing
 _services = None
 
 
-def _get_services():
+def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     """Initializes and returns services, using a cache for warm starts."""
     global _services
     if _services is not None:
-        return _services
+        # If a specific bucket is requested and it's different from the cached one,
+        # re-initialize. This is mainly for CLI usage.
+        if (
+            gcs_worker_cache_bucket
+            and _services.get("gcs_worker_cache_bucket") != gcs_worker_cache_bucket
+        ):
+            _services = None
+        else:
+            return _services
 
     creds, project_id = default(
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
@@ -50,7 +58,8 @@ def _get_services():
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    gcs_worker_cache_bucket = os.environ["GCS_WORKER_CACHE_BUCKET"]
+    if not gcs_worker_cache_bucket:
+        gcs_worker_cache_bucket = os.environ["GCS_WORKER_CACHE_BUCKET"]
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
@@ -60,6 +69,7 @@ def _get_services():
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
+        "gcs_worker_cache_bucket": gcs_worker_cache_bucket,  # Cache the name for re-init check
     }
     return _services
 

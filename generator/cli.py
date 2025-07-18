@@ -1,11 +1,16 @@
 import traceback
+import os
 import click
 from pathlib import Path
 
 
-from .common.config import load_config_folder_ids, load_cover_config
+from .common.config import (
+    get_local_cache_dir,
+    load_config_folder_ids,
+    load_cover_config,
+)
 from .merger.main import fetch_and_merge_pdfs
-from .merger.sync import sync_cache
+from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -21,11 +26,23 @@ def make_cli_progress_callback():
 
 
 @click.group()
-def cli():
-    pass
+@click.option(
+    "--gcs-bucket-cache",
+    envvar="GCS_WORKER_CACHE_BUCKET",
+    help="GCS bucket for worker cache.",
+)
+@click.option("--local-cache-dir", help="Local directory for cache.")
+@click.pass_context
+def cli(ctx, gcs_bucket_cache, local_cache_dir):
+    """Songbook Generator CLI tool."""
+    ctx.ensure_object(dict)
+    ctx.obj["GCS_BUCKET_CACHE"] = gcs_bucket_cache
+    if local_cache_dir:
+        os.environ["LOCAL_CACHE_DIR"] = local_cache_dir
 
 
 @cli.command()
+@click.pass_context
 @click.option(
     "--source-folder",
     "-s",
@@ -80,6 +97,7 @@ def cli():
     "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
 )
 def generate(
+    ctx,
     source_folder: str,
     destination_path: Path,
     open_generated_pdf,
@@ -91,7 +109,10 @@ def generate(
     service_account_key: str,
 ):
     """Generates a songbook PDF from Google Drive files."""
-    drive, cache = init_services(service_account_key)
+    drive, cache = init_services(
+        key_file_path=service_account_key,
+        gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"],
+    )
 
     client_filter = None
     if filter:
@@ -131,6 +152,7 @@ def generate(
 
 
 @cli.command(name="sync-cache")
+@click.pass_context
 @click.option(
     "--source-folder",
     "-s",
@@ -150,13 +172,15 @@ def generate(
     default=False,
     help="Force a full sync, ignoring modification times.",
 )
-def sync_cache_command(source_folder, no_metadata, force):
+def sync_cache_command(ctx, source_folder, no_metadata, force):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
 
-        services = merger_main._get_services()
+        services = merger_main._get_services(
+            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
+        )
         source_folders = list(source_folder) if source_folder else []
 
         if not source_folders:
@@ -188,14 +212,43 @@ def sync_cache_command(source_folder, no_metadata, force):
         raise click.Abort()
 
 
+@cli.command(name="download-cache")
+@click.pass_context
+def download_cache_command(ctx):
+    """Downloads the GCS cache to the local cache directory."""
+    try:
+        click.echo("Starting GCS cache download (CLI mode)")
+        from .merger import main as merger_main
+
+        services = merger_main._get_services(
+            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
+        )
+        local_cache_dir = get_local_cache_dir()
+        click.echo(f"Local cache directory: {local_cache_dir}")
+
+        download_gcs_cache_to_local(services, local_cache_dir)
+
+        click.echo("GCS cache download complete.")
+
+    except click.Abort:
+        # click.Abort is raised on purpose, so just re-raise.
+        raise
+    except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
+        click.echo("Cache download operation failed.", err=True)
+        click.echo("Error details:", err=True)
+        click.echo(traceback.format_exc(), err=True)
+        raise click.Abort()
+
+
 @cli.command(name="merge-pdfs")
+@click.pass_context
 @click.option(
     "--output",
     "-o",
     default="merged-songbook.pdf",
     help="Output file path for merged PDF (default: merged-songbook.pdf)",
 )
-def merge_pdfs(output: str):
+def merge_pdfs(ctx, output: str):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
@@ -204,7 +257,9 @@ def merge_pdfs(output: str):
         from .merger import main as merger_main
 
         # Manually get the services since we are not in a Cloud Function
-        services = merger_main._get_services()
+        services = merger_main._get_services(
+            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
+        )
         click.echo("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
