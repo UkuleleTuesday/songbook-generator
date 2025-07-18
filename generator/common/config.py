@@ -39,3 +39,8 @@ def load_config_folder_ids():
 def load_cover_config():
     config = load_config()
     return config.get("cover", {}).get("file-id", None)
+
+
+def get_local_cache_dir():
+    local_cache_dir = os.getenv("LOCAL_CACHE_DIR", DEFAULT_LOCAL_CACHE_DIR)
+    return local_cache_dir

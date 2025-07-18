@@ -3,7 +3,7 @@ import os
 import gcsfs
 from .localstorage import LocalStorageCache
 from fsspec.implementations.local import LocalFileSystem
-from ..config import DEFAULT_LOCAL_CACHE_DIR
+from ..config import get_local_cache_dir
 
 
 def init_cache():
@@ -13,6 +13,6 @@ def init_cache():
         click.echo(f"Using GCS as cache: {bucket} {region}")
         return LocalStorageCache(gcsfs.GCSFileSystem(default_location=region), bucket)
     else:
-        local_cache_dir = os.getenv("LOCAL_CACHE_DIR", DEFAULT_LOCAL_CACHE_DIR)
+        local_cache_dir = get_local_cache_dir()
         click.echo(f"Using cache dir: {local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), local_cache_dir)
