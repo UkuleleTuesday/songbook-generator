@@ -504,6 +504,7 @@ def generate_songbook(
                             raise FileNotFoundError(
                                 f"Failed to save master PDF at {destination_path}"
                             )
+        click.echo(f"SUCCESS: Completed generated PDF at {destination_path}.")
 
 
 def add_page_number(page, page_index):
