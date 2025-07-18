@@ -53,6 +53,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
 @click.option(
     "--destination-path",
     "-d",
+    type=click.Path(path_type=Path),
     required=True,
     help="Where to save the generated pdf",
 )
