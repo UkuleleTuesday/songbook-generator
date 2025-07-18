@@ -13,3 +13,6 @@ wheels/
 
 # For sikrits
 .secrets
+
+# Generated songbooks
+out/

@@ -53,7 +53,8 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
 @click.option(
     "--destination-path",
     "-d",
-    required=True,
+    type=click.Path(path_type=Path),
+    default="out/songbook.pdf",
     help="Where to save the generated pdf",
 )
 @click.option(
