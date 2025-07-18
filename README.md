@@ -128,11 +128,17 @@ This will automatically format your code according to the project's style guidel
 
 ### Local Development with CLI
 
-The easiest way to test the PDF generation functionality locally is to use the CLI:
+The easiest way to test the PDF generation functionality locally is to use the CLI. This approach leverages a pre-existing cache of PDF songsheets stored in GCS, which makes local generation much faster as it doesn't require hitting the Google Drive API for every file.
 
 ```bash
 # Install dependencies
 uv sync
+
+# Export environment variables for the CLI to use
+source export-env.sh
+
+# Download the GCS cache to your local machine. This is used by the 'generate' command.
+uv run songbook-tools download-cache
 
 # Run the generator (limit to 10 files for testing)
 uv run songbook-tools generate --destination-path ./test-songbook.pdf --limit 10
