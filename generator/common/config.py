@@ -5,6 +5,10 @@ DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/songbook-generator/config.to
 
 DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 
+DEFAULT_LOCAL_CACHE_DIR = os.path.join(
+    os.path.expanduser("~/.cache"), "songbook-generator"
+)
+
 
 def load_config(config_path=DEFAULT_CONFIG_PATH):
     if os.path.exists(config_path):

@@ -3,8 +3,7 @@ import os
 import gcsfs
 from .localstorage import LocalStorageCache
 from fsspec.implementations.local import LocalFileSystem
-
-LOCAL_CACHE_DIR = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
+from ..config import DEFAULT_LOCAL_CACHE_DIR
 
 
 def init_cache():
@@ -14,5 +13,6 @@ def init_cache():
         click.echo(f"Using GCS as cache: {bucket} {region}")
         return LocalStorageCache(gcsfs.GCSFileSystem(default_location=region), bucket)
     else:
-        click.echo(f"Using cache dir: {LOCAL_CACHE_DIR}")
-        return LocalStorageCache(LocalFileSystem(), LOCAL_CACHE_DIR)
+        local_cache_dir = os.getenv("LOCAL_CACHE_DIR", DEFAULT_LOCAL_CACHE_DIR)
+        click.echo(f"Using cache dir: {local_cache_dir}")
+        return LocalStorageCache(LocalFileSystem(), local_cache_dir)
