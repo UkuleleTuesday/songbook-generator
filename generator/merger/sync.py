@@ -102,3 +102,29 @@ def sync_cache(
             _sync_gcs_metadata_from_drive(source_folders, services)
 
         return len(all_files)
+
+
+def download_gcs_cache_to_local(services, local_cache_dir: str):
+    """
+    Downloads all files from the GCS cache bucket to a local directory.
+    """
+    with services["tracer"].start_as_current_span("download_gcs_cache_to_local") as span:
+        span.set_attribute("local_cache_dir", local_cache_dir)
+
+        cache_bucket = services["cache_bucket"]
+        blobs = list(cache_bucket.list_blobs())
+        span.set_attribute("total_blobs_to_download", len(blobs))
+
+        if not blobs:
+            click.echo("No files found in GCS cache. Nothing to download.")
+            return
+
+        click.echo(f"Found {len(blobs)} files in GCS cache. Starting download...")
+
+        for blob in blobs:
+            destination_path = os.path.join(local_cache_dir, blob.name)
+            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            click.echo(f"Downloading {blob.name} to {destination_path}")
+            blob.download_to_filename(destination_path)
+
+        click.echo("Download complete.")

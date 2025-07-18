@@ -3,9 +3,9 @@ import click
 from pathlib import Path
 
 
-from .common.config import load_config_folder_ids, load_cover_config
+from .common.config import get_local_cache_dir, load_config_folder_ids, load_cover_config
 from .merger.main import fetch_and_merge_pdfs
-from .merger.sync import sync_cache
+from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
 
@@ -183,6 +183,31 @@ def sync_cache_command(source_folder, no_metadata, force):
         raise
     except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
         click.echo("Cache sync operation failed.", err=True)
+        click.echo("Error details:", err=True)
+        click.echo(traceback.format_exc(), err=True)
+        raise click.Abort()
+
+
+@cli.command(name="download-cache")
+def download_cache_command():
+    """Downloads the GCS cache to the local cache directory."""
+    try:
+        click.echo("Starting GCS cache download (CLI mode)")
+        from .merger import main as merger_main
+
+        services = merger_main._get_services()
+        local_cache_dir = get_local_cache_dir()
+        click.echo(f"Local cache directory: {local_cache_dir}")
+
+        download_gcs_cache_to_local(services, local_cache_dir)
+
+        click.echo("GCS cache download complete.")
+
+    except click.Abort:
+        # click.Abort is raised on purpose, so just re-raise.
+        raise
+    except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
+        click.echo("Cache download operation failed.", err=True)
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
