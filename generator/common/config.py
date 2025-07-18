@@ -3,7 +3,12 @@ import toml
 
 DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/songbook-generator/config.toml")
 
-DEFAULT_GDRIVE_FOLDER_ID = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
+DEFAULT_GDRIVE_FOLDER_IDS = [
+    "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
+    "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
+]
+
+DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 DEFAULT_LOCAL_CACHE_DIR = os.path.join(
     os.path.expanduser("~/.cache"), "songbook-generator"
@@ -31,14 +36,14 @@ def load_config_folder_ids():
 
     config = load_config()
     folder_ids = config.get("song-sheets", {}).get(
-        "folder-ids", [DEFAULT_GDRIVE_FOLDER_ID]
+        "folder-ids", DEFAULT_GDRIVE_FOLDER_IDS
     )
     return folder_ids if isinstance(folder_ids, list) else [folder_ids]
 
 
 def load_cover_config():
     config = load_config()
-    return config.get("cover", {}).get("file-id", None)
+    return config.get("cover", {}).get("file-id", DEFAULT_COVER_ID)
 
 
 def get_local_cache_dir():

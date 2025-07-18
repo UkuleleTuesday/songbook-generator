@@ -43,6 +43,8 @@ class CoverGenerator:
             click.echo(
                 f"Warning: Could not apply template to cover '{document_id}'. "
                 f"This may be due to permissions. Proceeding without templating. "
+                f"Hint: make sure that the current authenticated user or service "
+                f"account has write permissions to the cover for templating to work."
                 f"Error: {e}",
                 err=True,
             )
