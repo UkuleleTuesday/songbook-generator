@@ -3,7 +3,11 @@ import click
 from pathlib import Path
 
 
-from .common.config import get_local_cache_dir, load_config_folder_ids, load_cover_config
+from .common.config import (
+    get_local_cache_dir,
+    load_config_folder_ids,
+    load_cover_config,
+)
 from .merger.main import fetch_and_merge_pdfs
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
