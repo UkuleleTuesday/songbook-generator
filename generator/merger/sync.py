@@ -5,6 +5,7 @@ import click
 from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
+from ..common.caching import init_cache
 
 
 def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
@@ -75,8 +76,6 @@ def sync_cache(
         span.set_attribute("with_metadata", with_metadata)
         if modified_after:
             span.set_attribute("modified_after", str(modified_after))
-
-        from ..common.caching import init_cache
 
         cache = init_cache()
 
