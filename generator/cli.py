@@ -1,5 +1,6 @@
 import traceback
 import os
+import tempfile
 import click
 from pathlib import Path
 
@@ -173,8 +174,14 @@ def generate(
     default=False,
     help="Force a full sync, ignoring modification times.",
 )
-def sync_cache_command(ctx, source_folder, no_metadata, force):
-    """Syncs files and metadata from Google Drive to the GCS cache."""
+@click.option(
+    "--merge-only",
+    is_flag=True,
+    default=False,
+    help="Skip sync and only update the merged PDF in GCS cache.",
+)
+def sync_cache_command(ctx, source_folder, no_metadata, force, merge_only):
+    """Syncs files to GCS cache and can optionally just update the merged PDF."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
@@ -182,6 +189,17 @@ def sync_cache_command(ctx, source_folder, no_metadata, force):
         services = merger_main._get_services(
             gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
         )
+
+        if merge_only:
+            click.echo("Merge-only mode: Updating merged PDF from cache...")
+            with tempfile.NamedTemporaryFile(suffix=".pdf") as temp_output:
+                result_path = fetch_and_merge_pdfs(temp_output.name, services)
+                if result_path:
+                    click.echo("Successfully updated merged PDF in GCS cache.")
+                else:
+                    click.echo("No PDFs found in cache to merge.", err=True)
+            return
+
         source_folders = list(source_folder) if source_folder else []
 
         if not source_folders:
