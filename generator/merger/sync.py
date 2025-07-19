@@ -116,7 +116,7 @@ def download_gcs_cache_to_local(
     ) as span:
         from ..common.caching import init_cache
 
-        local_cache = init_cache(use_gcs=False)
+        local_cache = init_cache()
         span.set_attribute("local_cache_dir", local_cache_dir)
         span.set_attribute("with_metadata", with_metadata)
 
