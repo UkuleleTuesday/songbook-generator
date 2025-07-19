@@ -21,5 +21,6 @@ export COMPUTE_SERVICE_ACCOUNT=993670465212-compute@developer.gserviceaccount.co
 export SONGBOOK_GENERATOR_SERVICE_ACCOUNT=songbook-generator@songbook-generator.iam.gserviceaccount.com
 export GENERATOR_ADD_PAGE_NUMBERS=true
 export GDRIVE_SONG_SHEETS_FOLDER_IDS=1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95,1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM
+export OTEL_SDK_DISABLED=true
 
 echo "Environment variables exported."

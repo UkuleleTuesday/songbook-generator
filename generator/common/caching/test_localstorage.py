@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timedelta, timezone
 import pytest
@@ -103,3 +104,18 @@ def test_cache_dir_created_on_init(tmp_path):
     # instantiate should create the directory
     LocalStorageCache(LocalFileSystem(), str(dirpath))
     assert dirpath.is_dir()
+
+
+def test_put_metadata(cache):
+    key = "some/file.pdf"
+    metadata = {"gdrive-file-id": "12345", "gdrive-file-name": "My Song.pdf"}
+    path = cache.put_metadata(key, metadata)
+
+    assert path.endswith(".metadata.json")
+    assert Path(path).exists()
+    assert Path(path).name == "file.pdf.metadata.json"
+
+    with open(path) as f:
+        loaded_metadata = json.load(f)
+
+    assert loaded_metadata == metadata
