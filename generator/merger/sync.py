@@ -104,7 +104,6 @@ def sync_cache(
         return len(all_files)
 
 
-
 def download_gcs_cache_to_local(
     services, local_cache_dir: str, with_metadata: bool = False
 ):
