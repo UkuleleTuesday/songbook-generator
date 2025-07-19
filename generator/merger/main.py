@@ -118,7 +118,7 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
             current_page += page_count
 
         temp_merged_path = os.path.join(temp_dir, "merged.pdf")
-        merged_pdf.save(temp_merged_path)
+        merged_pdf.ez_save(temp_merged_path)
         merged_pdf.close()
 
         span.set_attribute("temp_merged_path", temp_merged_path)
