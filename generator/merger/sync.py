@@ -104,14 +104,23 @@ def sync_cache(
         return len(all_files)
 
 
-def download_gcs_cache_to_local(services, local_cache_dir: str):
+import json
+
+def download_gcs_cache_to_local(
+    services, local_cache_dir: str, with_metadata: bool = False
+):
     """
     Downloads all files from the GCS cache bucket to a local directory.
+    If with_metadata is True, also saves blob metadata to a JSON file.
     """
     with services["tracer"].start_as_current_span(
         "download_gcs_cache_to_local"
     ) as span:
+        from ..common.caching import init_cache
+
+        local_cache = init_cache(use_gcs=False)
         span.set_attribute("local_cache_dir", local_cache_dir)
+        span.set_attribute("with_metadata", with_metadata)
 
         cache_bucket = services["cache_bucket"]
         blobs = list(cache_bucket.list_blobs())
@@ -128,5 +137,8 @@ def download_gcs_cache_to_local(services, local_cache_dir: str):
             os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             click.echo(f"Downloading {blob.name} to {destination_path}")
             blob.download_to_filename(destination_path)
+            if with_metadata and blob.metadata:
+                click.echo(f"  ... saving metadata for {blob.name}")
+                local_cache.put_metadata(blob.name, blob.metadata)
 
         click.echo("Download complete.")

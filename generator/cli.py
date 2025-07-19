@@ -215,7 +215,13 @@ def sync_cache_command(ctx, source_folder, no_metadata, force):
 
 @cli.command(name="download-cache")
 @click.pass_context
-def download_cache_command(ctx):
+@click.option(
+    "--with-metadata",
+    is_flag=True,
+    default=False,
+    help="Also download GCS object metadata and save it to a .metadata.json file.",
+)
+def download_cache_command(ctx, with_metadata):
     """Downloads the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
@@ -227,7 +233,7 @@ def download_cache_command(ctx):
         local_cache_dir = get_local_cache_dir()
         click.echo(f"Local cache directory: {local_cache_dir}")
 
-        download_gcs_cache_to_local(services, local_cache_dir)
+        download_gcs_cache_to_local(services, local_cache_dir, with_metadata)
 
         click.echo("GCS cache download complete.")
 
