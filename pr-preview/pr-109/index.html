@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Songbook Chef</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Songbook Chef</h1>
+    <img src="img/logo.png" alt="Songbook Chef Logo" style="width: 50%; height: auto;" />
+    <p>
+      Songbook Chef is an experimental songbook generator for Ukulele Tuesday.
+      Issue reports, pull requests or improvement suggestions are welcome on <a
+      href="https://github.com/jjst/songbook-generator"
+    target="_blank">GitHub</a>.
+    </p>
+    <form id="jobForm">
+      <label for="songbook-edition" title="Filter songs by songbook edition - this feature is experimental" style="display: block;">
+        Songbook Edition
+        <span class="tooltip">❓
+          <span class="tooltip-text">Filter songs to include only those tagged for a specific songbook edition. This is an experimental feature and may not work as expected.</span>
+        </span>
+      </label>
+      <select id="songbook-edition" name="songbook_edition">
+        <option value="">All editions</option>
+        <option value="regular" selected>Regular</option>
+        <option value="halloween">Halloween</option>
+        <option value="usa">USA</option>
+        <option value="womens">Women's</option>
+        <option value="pride">Pride</option>
+        <option value="valentines">Valentine's</option>
+        <option value="uk">UK</option>
+        <option value="scotland">Scotland</option>
+        <option value="ireland">Ireland</option>
+        <option value="germany">Germany</option>
+        <option value="xmas">Christmas</option>
+        <option value="canada">Canada</option>
+        <option value="italy">Italy</option>
+        <option value="sweden">Sweden</option>
+        <option value="france">France</option>
+        <option value="can2025">Canada 2025</option>
+      </select>
+      <label for="decade" title="Filter songs by decade - this feature is experimental" style="display: block;">
+        Decade
+        <span class="tooltip">❓
+          <span class="tooltip-text">Filter songs to include only those from a specific decade based on their release year. This is an experimental feature and may not work as expected.</span>
+        </span>
+      </label>
+      <select id="decade" name="decade" style="margin-bottom: 1rem;">
+        <option value="">All decades</option>
+        <option value="1950s">1950s</option>
+        <option value="1960s">1960s</option>
+        <option value="1970s">1970s</option>
+        <option value="1980s">1980s</option>
+        <option value="1990s">1990s</option>
+        <option value="2000s">2000s</option>
+        <option value="2010s">2010s</option>
+        <option value="2020s">2020s</option>
+      </select>
+      <details style="margin-bottom: 1rem;">
+        <summary>Advanced Settings</summary>
+        <label for="folders" title="Google Drive folder IDs containing song sheets (comma-separated for multiple folders)">
+          Folder IDs
+          <span class="tooltip">❓
+            <span class="tooltip-text">Google Drive folder IDs containing song sheets. Use commas to separate multiple folder IDs. The songbook generator needs to have read access to these folders to work!</span>
+          </span>
+        </label>
+        <input id="folders" name="source_folders" type="text" value="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95,1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM" required />
+        <label for="cover" title="Google Drive file ID for the cover template">
+          Cover File ID (optional)
+          <span class="tooltip">❓
+            <span class="tooltip-text">Google Drive file ID for the cover template. If left blank, no cover will be generated. The songbook generator needs to have read access to this folder to work!</span>
+          </span>
+        </label>
+        <input id="cover" name="cover_file_id" type="text" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" />
+        <label for="limit" title="Maximum number of song sheets to include in the songbook">
+          Limit
+          <span class="tooltip">❓
+            <span class="tooltip-text">Maximum number of song sheets to include. Set to 0 for no limit.</span>
+          </span>
+        </label>
+        <input id="limit" name="limit" type="number" value="0" min="0" max="500" />
+      </details>
+      <button type="submit" id="submitButton">Generate Songbook!</button>
+    </form>
+    <div id="progressContainer" style="display: none; margin-top: 1rem;">
+      <div id="progressBar" style="width: 100%; background-color: #f0f0f0; border-radius: 4px; height: 20px; margin-bottom: 0.5rem;">
+        <div id="progressFill" style="width: 0%; background-color: #4CAF50; height: 100%; border-radius: 4px; transition: width 0.3s ease;"></div>
+      </div>
+      <div id="progressText" style="font-size: 0.9rem; color: #666;">Starting...</div>
+      <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
+    </div>
+  </div>
+  <script>
+    // Determine API endpoint based on current location
+    function getApiBase() {
+      const currentPath = window.location.pathname;
+
+      // Check if we're in a PR preview environment
+      const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
+      if (prMatch) {
+        const prNumber = prMatch[1];
+        return `https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api-pr-${prNumber}`;
+      }
+
+      // Default to production API
+      return "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
+    }
+
+    const apiBase = getApiBase();
+    const submitButton = document.getElementById('submitButton');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const progressPercentage = document.getElementById('progressPercentage');
+
+    function updateProgress(progress, message) {
+      const percentage = Math.round(progress * 100);
+      progressFill.style.width = percentage + '%';
+      progressPercentage.textContent = percentage + '%';
+      if (message) {
+        progressText.textContent = message;
+      }
+    }
+
+    function showProgress() {
+      progressContainer.style.display = 'block';
+      updateProgress(0, 'Starting...');
+    }
+
+    function hideProgress() {
+      progressContainer.style.display = 'none';
+    }
+
+    function enableSubmitButton() {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Generate Songbook!';
+    }
+
+    function disableSubmitButton() {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Generating...';
+    }
+
+    function getDecadeRange(decade) {
+      const decadeMap = {
+        '1950s': { start: 1950, end: 1959 },
+        '1960s': { start: 1960, end: 1969 },
+        '1970s': { start: 1970, end: 1979 },
+        '1980s': { start: 1980, end: 1989 },
+        '1990s': { start: 1990, end: 1999 },
+        '2000s': { start: 2000, end: 2009 },
+        '2010s': { start: 2010, end: 2019 },
+        '2020s': { start: 2020, end: 2029 }
+      };
+      return decadeMap[decade];
+    }
+
+    async function pollStatus(jobId) {
+      const statusUrl = `${apiBase}/${jobId}`;
+      while (true) {
+        const res = await fetch(statusUrl, { method: 'GET' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const { status, result_url, progress, last_message } = data;
+
+        // Update progress if available
+        if (typeof progress === 'number') {
+          updateProgress(progress, last_message || `Status: ${status}`);
+        } else {
+          progressText.textContent = `Status: ${status}`;
+        }
+
+        if (status === 'completed') {
+          updateProgress(1.0, 'Completed! Starting download...');
+          return result_url;
+        }
+        if (status === 'failed') {
+          throw new Error('Job failed on server');
+        }
+        // wait before next poll
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
+
+    document.getElementById("jobForm").onsubmit = async (e) => {
+      e.preventDefault();
+
+      // Disable submit button and show progress
+      disableSubmitButton();
+      showProgress();
+
+      const form = new FormData(e.target);
+
+      // Parse comma-separated folder IDs
+      const foldersInput = form.get("source_folders");
+      const folderIds = foldersInput.split(',').map(id => id.trim()).filter(id => id.length > 0);
+
+      const payload = {
+        source_folders: folderIds,
+        preface_file_ids: ["1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"], // FIXME: hardcoding preface for now
+      };
+
+      const limitVal = Number(form.get("limit"));
+      if (limitVal > 0) {
+        payload.limit = limitVal;
+      }
+
+      const coverFileId = form.get("cover_file_id");
+      if (coverFileId) {
+        payload.cover_file_id = coverFileId;
+      }
+
+      // Build filters array
+      const filters = [];
+
+      // Add filter for songbook edition if selected
+      const songbookEdition = form.get("songbook_edition");
+      if (songbookEdition) {
+        filters.push(`specialbooks:contains:${songbookEdition}`);
+      }
+
+      // Add filter for decade if selected
+      const decade = form.get("decade");
+      if (decade) {
+        const range = getDecadeRange(decade);
+        if (range) {
+          filters.push(`year:gte:${range.start}`);
+          filters.push(`year:lte:${range.end}`);
+        }
+      }
+
+      // Set filters in payload if any exist
+      if (filters.length > 0) {
+        if (filters.length === 1) {
+          payload.filters = filters[0];
+        } else {
+          payload.filters = {
+            filters: filters,
+            operator: "AND"
+          };
+        }
+      }
+
+      try {
+        // submit job
+        updateProgress(0, 'Submitting job...');
+        const submitRes = await fetch(apiBase, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!submitRes.ok) throw new Error(submitRes.statusText);
+        const { job_id } = await submitRes.json();
+
+        updateProgress(0, 'Job submitted, waiting for processing...');
+
+        // poll until done
+        const downloadUrl = await pollStatus(job_id);
+
+        // download PDF
+        updateProgress(1.0, 'Downloading PDF...');
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "songbook.pdf";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        updateProgress(1.0, 'Download started!');
+
+      } catch (err) {
+        updateProgress(0, `Error: ${err.message}`);
+        alert("Error: " + err.message);
+      } finally {
+        enableSubmitButton();
+        // Hide progress after a delay to let user see final status
+        setTimeout(() => {
+          hideProgress();
+        }, 3000);
+      }
+    };
+  </script>
+</body>
+</html>
