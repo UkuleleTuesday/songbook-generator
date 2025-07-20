@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from fsspec.spec import AbstractFileSystem
 import os
@@ -88,3 +89,13 @@ class LocalStorageCache:
                 f.write(data)
 
             return path
+
+    def put_metadata(self, key: str, metadata: dict) -> str:
+        """
+        Store the given metadata dict as a JSON file.
+        The filename will be based on the key, with a .metadata.json suffix.
+        Returns the path to the created metadata file.
+        """
+        metadata_key = f"{key}.metadata.json"
+        metadata_json = json.dumps(metadata, indent=2)
+        return self.put(metadata_key, metadata_json.encode("utf-8"))
