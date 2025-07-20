@@ -100,14 +100,14 @@ class TocLayout:
     columns_per_page: int = 2
     column_width: int = 250
     column_spacing: int = 20
-    margin_top: int = 50
-    margin_bottom: int = 50
-    margin_left: int = 50
-    margin_right: int = 50
+    margin_top: int = 20
+    margin_bottom: int = 20
+    margin_left: int = 25
+    margin_right: int = 25
     title_height: int = 50
-    line_spacing: int = 10
+    line_spacing: int = 12
     text_font: str = DEFAULT_FONT
-    text_fontsize: int = 10
+    text_fontsize: float = 10
     title_font: str = DEFAULT_FONT
     title_fontsize: int = 16
     # With current font, fontsize and margins, this is the max length that fits and
@@ -132,14 +132,6 @@ def load_toc_config() -> TocLayout:
     config = load_config()
     toc_config = config.get("toc", {})
     layout = TocLayout()
-
-    # For backward compatibility, use page_margin if specific margins aren't set
-    default_margin = toc_config.get("page-margin", 50)
-
-    layout.margin_top = toc_config.get("margin-top", default_margin)
-    layout.margin_bottom = toc_config.get("margin-bottom", default_margin)
-    layout.margin_left = toc_config.get("margin-left", default_margin)
-    layout.margin_right = toc_config.get("margin-right", default_margin)
 
     layout.text_font = resolve_font(
         toc_config.get("text-font", layout.text_font), layout.text_font
