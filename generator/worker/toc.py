@@ -100,7 +100,10 @@ class TocLayout:
     columns_per_page: int = 2
     column_width: int = 250
     column_spacing: int = 20
-    page_margin: int = 50
+    margin_top: int = 50
+    margin_bottom: int = 50
+    margin_left: int = 50
+    margin_right: int = 50
     title_height: int = 50
     line_spacing: int = 10
     text_font: str = DEFAULT_FONT
@@ -128,8 +131,16 @@ def load_toc_config() -> TocLayout:
     """Load TOC configuration from config file."""
     config = load_config()
     toc_config = config.get("toc", {})
-
     layout = TocLayout()
+
+    # For backward compatibility, use page_margin if specific margins aren't set
+    default_margin = toc_config.get("page-margin", 50)
+
+    layout.margin_top = toc_config.get("margin-top", default_margin)
+    layout.margin_bottom = toc_config.get("margin-bottom", default_margin)
+    layout.margin_left = toc_config.get("margin-left", default_margin)
+    layout.margin_right = toc_config.get("margin-right", default_margin)
+
     layout.text_font = resolve_font(
         toc_config.get("text-font", layout.text_font), layout.text_font
     )
@@ -163,13 +174,16 @@ class TocGenerator:
         self.pdf.delete_page(0)  # Remove the temporary page
 
         available_height = (
-            page_height - self.layout.title_height - (2 * self.layout.page_margin)
+            page_height
+            - self.layout.title_height
+            - self.layout.margin_top
+            - self.layout.margin_bottom
         )
         self._lines_per_column = int(available_height // self.layout.line_spacing)
 
         # Calculate column x positions
         self._column_positions = [
-            self.layout.page_margin
+            self.layout.margin_left
             + col * (self.layout.column_width + self.layout.column_spacing)
             for col in range(self.layout.columns_per_page)
         ]
@@ -179,8 +193,8 @@ class TocGenerator:
         page = self.pdf.new_page()
         page.insert_text(
             (
-                self.layout.page_margin,
-                self.layout.page_margin + self.layout.title_height - 20,
+                self.layout.margin_left,
+                self.layout.margin_top + self.layout.title_height - 20,
             ),
             "Table of Contents",
             fontsize=self.layout.title_fontsize,
@@ -194,7 +208,7 @@ class TocGenerator:
         x = self._column_positions[self.current_column]
         y = (
             self.layout.title_height
-            + self.layout.page_margin
+            + self.layout.margin_top
             + (self.current_line_in_column * self.layout.line_spacing)
         )
         return x, y
