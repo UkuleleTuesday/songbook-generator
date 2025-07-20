@@ -104,7 +104,7 @@ class TocLayout:
     title_height: int = 50
     line_spacing: int = 10
     text_font: str = DEFAULT_FONT
-    text_fontsize: int = 9
+    text_fontsize: int = 10
     title_font: str = DEFAULT_FONT
     title_fontsize: int = 16
     # With current font, fontsize and margins, this is the max length that fits and
