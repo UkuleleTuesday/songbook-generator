@@ -345,7 +345,7 @@
         // Add to history
         const edition = form.get("songbook_edition") || 'All';
         const decade = form.get("decade") || 'All decades';
-        const songbookName = `Edition: ${edition}, Decade: ${decade} - Generated on ${new Date().toLocaleDateString()}`;
+        const songbookName = `Edition: ${edition}, Decade: ${decade} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
 
       } catch (err) {
