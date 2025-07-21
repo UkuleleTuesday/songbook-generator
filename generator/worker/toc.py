@@ -18,7 +18,9 @@ def resolve_font(font_name: str) -> fitz.Font:
     """
     try:
         font_buffer = (
-            importlib.resources.files("generator.fonts").joinpath(font_name).read_bytes()
+            importlib.resources.files("generator.fonts")
+            .joinpath(font_name)
+            .read_bytes()
         )
         return fitz.Font(fontbuffer=font_buffer)
     except Exception as e:  # noqa: BLE001 - We want to catch any error from fitz
