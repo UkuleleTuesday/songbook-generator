@@ -231,12 +231,14 @@ class TocGenerator:
             page_number_str = str(file_index + 1 + page_offset)
             file_name = file["name"]
 
-            # Calculate available width for title and dots
-            page_num_width = self.layout.text_font.text_length(
-                page_number_str, fontsize=self.layout.text_fontsize
+            # Reserve fixed width for page numbers to ensure consistent dot alignment
+            # This assumes a max of 4 digits for page numbers.
+            max_page_num_width = self.layout.text_font.text_length(
+                "9999", fontsize=self.layout.text_fontsize
             )
-            # Add a small buffer for spacing
-            available_width = self.layout.column_width - page_num_width - 5
+
+            # Calculate available width for title and dots
+            available_width = self.layout.column_width - max_page_num_width - 5
             shortened_title = generate_toc_title(file_name, max_length=100)
             title_width = self.layout.text_font.text_length(
                 shortened_title, fontsize=self.layout.text_fontsize
@@ -258,7 +260,9 @@ class TocGenerator:
             dot_width = self.layout.text_font.text_length(
                 ".", fontsize=self.layout.text_fontsize
             )
-            dots_space = self.layout.column_width - title_width - page_num_width - 10
+            dots_space = (
+                self.layout.column_width - title_width - max_page_num_width - 10
+            )
             num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
             dots = "." * num_dots
 
@@ -268,6 +272,9 @@ class TocGenerator:
                 self.layout.title_height
                 + self.layout.margin_top
                 + (current_line_in_column * self.layout.line_spacing)
+            )
+            page_num_width = self.layout.text_font.text_length(
+                page_number_str, fontsize=self.layout.text_fontsize
             )
             x_page_num = x_start + self.layout.column_width - page_num_width
 
