@@ -37,9 +37,7 @@ def resolve_font(font_name: str) -> fitz.Font:
                 font_buffer = f.read()
             return fitz.Font(fontbuffer=font_buffer)
         except FileNotFoundError as e:
-            raise TocGenerationException(
-                f"TOC font file not found: {font_name}"
-            ) from e
+            raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:
