@@ -7,6 +7,8 @@ import importlib.resources
 from ..common.config import load_config
 from ..common.tracing import get_tracer
 
+from ..common.exceptions import TocGenerationException
+
 tracer = get_tracer(__name__)
 
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
@@ -18,9 +20,12 @@ def resolve_font(font_name: str) -> fitz.Font:
     Load a font from package resources.
     If it fails, log a warning and fall back to a built-in font.
     """
-    font_buffer = (
-        importlib.resources.files("generator.fonts").joinpath(font_name).read_bytes()
-    )
+    try: # See this?
+        font_buffer = (
+            importlib.resources.files("generator.fonts").joinpath(font_name).read_bytes()
+        )
+    except Exception:  # Catch RELEVANT exception here insteadj
+        raise ValueError("Meaninful error...")
     return fitz.Font(fontbuffer=font_buffer)
 
 
