@@ -150,14 +150,22 @@
         songbooks.forEach(songbook => {
           const li = document.createElement('li');
           li.className = 'mdl-list__item';
-          const span = document.createElement('span');
-          span.className = 'mdl-list__item-primary-content';
+
+          const primaryContent = document.createElement('span');
+          primaryContent.className = 'mdl-list__item-primary-content';
+
+          const icon = document.createElement('i');
+          icon.className = 'material-icons mdl-list__item-icon';
+          icon.textContent = 'book';
+          primaryContent.appendChild(icon);
+
           const a = document.createElement('a');
           a.href = songbook.url;
           a.textContent = songbook.name;
           a.target = '_blank';
-          span.appendChild(a);
-          li.appendChild(span);
+          primaryContent.appendChild(a);
+
+          li.appendChild(primaryContent);
           historyList.appendChild(li);
         });
         historyTab.style.display = 'inline-block';
