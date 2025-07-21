@@ -25,7 +25,7 @@ your songbook. The app will show progress updates and provide a download link wh
 
 The application uses a microservices architecture deployed on Google Cloud:
 
-- **Frontend**: Static web app hosted on GitHub Pages
+- **Frontend**: Static web app hosted on GitHub Pages, built with [Material Design Lite](https://getmdl.io/).
 - **API Service** (`api/main.py`): Handles job creation, queues work via Pub/Sub, and tracks job status in Firestore
 - **Worker Service** (`generator/main.py`): Processes PDF generation jobs asynchronously
 - **CLI Tool** (`generator/cli.py`): Standalone command-line interface for local development and testing. It can also be used for songbook generation if command line is more your thing, and will generally run much faster than on GCP.
