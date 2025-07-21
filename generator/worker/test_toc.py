@@ -1,5 +1,6 @@
 import pytest
 from .toc import resolve_font, generate_toc_title, DEFAULT_FONT_NAME
+from .exceptions import TocGenerationException
 
 
 def test_resolve_font_valid_font(mocker):
@@ -17,9 +18,6 @@ def test_resolve_font_valid_font(mocker):
     mock_files.return_value.joinpath.assert_called_once_with(font_name)
     mock_path.read_bytes.assert_called_once()
     mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
-
-
-from .exceptions import TocGenerationException
 
 
 def test_resolve_font_fallback(mocker):
