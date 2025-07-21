@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
-from typing import List, Dict, Any, Tuple
+from typing import List, Tuple
 import importlib.resources
 import os
 
@@ -248,9 +248,7 @@ class TocGenerator:
             )
         )
 
-    def generate(
-        self, files: List[File], page_offset: int = 0
-    ) -> fitz.Document:
+    def generate(self, files: List[File], page_offset: int = 0) -> fitz.Document:
         """Generate the table of contents PDF."""
         if not files:
             return self.pdf
