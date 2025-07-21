@@ -123,7 +123,22 @@
     const historyList = document.getElementById('historyList');
 
     function renderHistory() {
-      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      let songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+
+      // TTL items older than 60 days
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+      const recentSongbooks = songbooks.filter(songbook => {
+        const songbookDate = new Date(songbook.date);
+        return songbookDate >= sixtyDaysAgo;
+      });
+
+      if (recentSongbooks.length < songbooks.length) {
+        songbooks = recentSongbooks;
+        localStorage.setItem('generatedSongbooks', JSON.stringify(songbooks));
+      }
+
       if (songbooks.length > 0) {
         historyList.innerHTML = '';
         songbooks.forEach(songbook => {
@@ -136,6 +151,8 @@
           historyList.appendChild(li);
         });
         historyContainer.style.display = 'block';
+      } else {
+        historyContainer.style.display = 'none';
       }
     }
 
