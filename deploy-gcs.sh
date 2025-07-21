@@ -57,6 +57,8 @@ gsutil mb \
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_CDN_BUCKET
+gsutil uniformbucketlevelaccess set on gs://$GCS_WORKER_CACHE_BUCKET
+gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_WORKER_CACHE_BUCKET
 
 
 echo "5. Setting lifecycle policies (7-day TTL) on buckets…"
