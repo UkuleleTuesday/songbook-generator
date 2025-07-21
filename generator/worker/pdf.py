@@ -197,7 +197,7 @@ def copy_pdfs(
                 if file.name not in toc_map:
                     raise PdfCacheMissException(f"File ${file.name} not found in cache")
 
-                source_page = toc_map[file_name]
+                source_page = toc_map[file.name]
 
                 # Determine how many pages this song has
                 # Find the next song's page or use the last page
