@@ -114,7 +114,7 @@ class TocLayout:
     # With current font, fontsize and margins, this is the max length that fits and
     # doesn't result in overlap between columns.
     # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 57
+    max_toc_entry_length = 62
 
 
 @dataclass
