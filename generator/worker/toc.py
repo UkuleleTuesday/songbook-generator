@@ -260,7 +260,7 @@ class TocGenerator:
             )
             dots_space = self.layout.column_width - title_width - page_num_width - 10
             num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
-            dots = " ." * (num_dots // 2)
+            dots = "." * num_dots
 
             # Positions
             x_start = column_positions[current_column]
