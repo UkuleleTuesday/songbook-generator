@@ -289,7 +289,7 @@ class TocGenerator:
             )
             dots_space = dots_rect.width - page_num_width
             num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
-            dots = "." * num_dots
+            dots = "." * max(num_dots - 3, 0)
 
             # Use fill_textbox to add dots and right-aligned page number
             tw.fill_textbox(
