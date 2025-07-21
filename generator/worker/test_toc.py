@@ -1,31 +1,57 @@
 import pytest
-from .toc import resolve_font, DEFAULT_FONT, generate_toc_title
+from .toc import resolve_font, generate_toc_title, DEFAULT_FONT_NAME
+from .exceptions import TocGenerationException
 
 
-def test_resolve_font_valid_fontfile(mocker):
-    # Mock fitz.Font to simulate successful font loading
-    mock_font = mocker.patch("fitz.Font")
-    fontfile = "valid_font.ttf"
-    result = resolve_font(fontfile, DEFAULT_FONT)
-    assert result == fontfile
-    mock_font.assert_called_once_with(fontfile=fontfile)
+def test_resolve_font_valid_font(mocker):
+    """Test that a valid font file is loaded correctly."""
+    # Mock importlib.resources to avoid file system access
+    mock_files = mocker.patch("importlib.resources.files")
+    mock_path = mock_files.return_value.joinpath.return_value
+    mock_path.read_bytes.return_value = b"font_data"
+    mock_fitz_font = mocker.patch("fitz.Font")
+
+    font_name = DEFAULT_FONT_NAME
+    resolve_font(font_name)
+
+    mock_files.assert_called_once_with("generator.fonts")
+    mock_files.return_value.joinpath.assert_called_once_with(font_name)
+    mock_path.read_bytes.assert_called_once()
+    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
 
 
-def test_resolve_font_invalid_fontfile(mocker):
-    # Mock fitz.Font to simulate font loading failure
-    mock_font = mocker.patch("fitz.Font", side_effect=Exception("Invalid font"))
-    fontfile = "invalid_font.ttf"
-    result = resolve_font(fontfile, DEFAULT_FONT)
-    assert result == DEFAULT_FONT
-    mock_font.assert_called_once_with(fontfile=fontfile)
+def test_resolve_font_fallback_to_path(mocker):
+    """Test that font loading falls back to file path on ModuleNotFoundError."""
+    # First, mock importlib.resources to fail
+    mocker.patch(
+        "importlib.resources.files", side_effect=ModuleNotFoundError("test error")
+    )
+
+    # Then, mock the file-based loading to succeed
+    mock_open = mocker.patch("builtins.open", mocker.mock_open(read_data=b"font_data"))
+    mocker.patch("os.path.join", return_value="/fake/path/to/font.ttf")
+    mocker.patch("os.path.abspath")
+    mock_fitz_font = mocker.patch("fitz.Font")
+
+    resolve_font("font.ttf")
+
+    mock_open.assert_called_once_with("/fake/path/to/font.ttf", "rb")
+    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
 
 
-def test_resolve_font_no_fontfile(mocker):
-    # Test with no fontfile provided
-    mock_font = mocker.patch("fitz.Font")
-    result = resolve_font(None, DEFAULT_FONT)
-    assert result == DEFAULT_FONT
-    mock_font.assert_not_called()
+def test_resolve_font_total_failure(mocker):
+    """Test that it raises TocGenerationException when all methods fail."""
+    # Mock both importlib.resources and file-based loading to fail
+    mocker.patch(
+        "importlib.resources.files", side_effect=ModuleNotFoundError("test error")
+    )
+    mocker.patch("builtins.open", side_effect=FileNotFoundError("test file not found"))
+    mocker.patch("os.path.abspath")
+
+    with pytest.raises(TocGenerationException) as excinfo:
+        resolve_font("non_existent_font.ttf")
+
+    assert "TOC font file not found: non_existent_font.ttf" in str(excinfo.value)
 
 
 def test_generate_toc_title_empty_string():

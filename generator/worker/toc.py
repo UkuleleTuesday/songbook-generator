@@ -1,32 +1,43 @@
-import click
 import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
+import importlib.resources
+import os
 
 from ..common.config import load_config
+from ..common.tracing import get_tracer
+from .exceptions import TocGenerationException
 
-DEFAULT_FONT = "helv"
+tracer = get_tracer(__name__)
+
+DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
+DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 
 
-def resolve_font(fontfile, fallback_font):
+def resolve_font(font_name: str) -> fitz.Font:
     """
-    Try to build a Font() using the provided fontfile path.
-    If it succeeds, return the fontfile path.
-    If it fails, log a warning and fall back to the fallback_font.
+    Load a font from package resources.
+    If it fails, log a warning and fall back to a built-in font.
     """
     try:
-        if fontfile is None:
-            raise ValueError("No fontfile provided")
-        if fontfile != DEFAULT_FONT:
-            fitz.Font(fontfile=fontfile)
-            return fontfile
-        return fallback_font
-    except Exception as e:  # noqa: BLE001 - We want to catch any error from fitz
-        click.echo(
-            f"Warning: Failed to load fontfile '{fontfile}'. Falling back to default font '{fallback_font}'. Error: {e}"
+        # Standard way to load package resources, works when installed
+        font_buffer = (
+            importlib.resources.files("generator.fonts")
+            .joinpath(font_name)
+            .read_bytes()
         )
-        return fallback_font
+        return fitz.Font(fontbuffer=font_buffer)
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Fallback for environments where the package is not installed (e.g., GCF Gen2)
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            font_path = os.path.join(current_dir, "..", "fonts", font_name)
+            with open(font_path, "rb") as f:
+                font_buffer = f.read()
+            return fitz.Font(fontbuffer=font_buffer)
+        except FileNotFoundError as e:
+            raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:
@@ -106,14 +117,14 @@ class TocLayout:
     margin_right: int = 25
     title_height: int = 50
     line_spacing: int = 12
-    text_font: str = DEFAULT_FONT
+    text_font: fitz.Font = None
     text_fontsize: float = 10
-    title_font: str = DEFAULT_FONT
+    title_font: fitz.Font = None
     title_fontsize: int = 16
     # With current font, fontsize and margins, this is the max length that fits and
     # doesn't result in overlap between columns.
     # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 57
+    max_toc_entry_length = 62
 
 
 @dataclass
@@ -133,12 +144,10 @@ def load_toc_config() -> TocLayout:
     toc_config = config.get("toc", {})
     layout = TocLayout()
 
-    layout.text_font = resolve_font(
-        toc_config.get("text-font", layout.text_font), layout.text_font
-    )
+    layout.text_font = resolve_font(toc_config.get("text-font", DEFAULT_FONT_NAME))
     layout.text_fontsize = toc_config.get("text-fontsize", layout.text_fontsize)
     layout.title_font = resolve_font(
-        toc_config.get("title-font", layout.title_font), layout.title_font
+        toc_config.get("title-font", DEFAULT_TITLE_FONT_NAME)
     )
     layout.title_fontsize = toc_config.get("title-fontsize", layout.title_fontsize)
 
@@ -151,134 +160,120 @@ class TocGenerator:
     def __init__(self, layout: TocLayout):
         self.layout = layout
         self.pdf = fitz.open()
-        self.current_page = None
-        self.current_column = 0
-        self.current_line_in_column = 0
-        self._column_positions = []
-        self._lines_per_column = 0
         self.toc_entries = []  # Store entries for later link creation
-
-    def _calculate_layout_parameters(self) -> None:
-        """Calculate layout parameters based on page dimensions."""
-        # Get page dimensions from a temporary page
-        temp_page = self.pdf.new_page()
-        page_height = temp_page.rect.height
-        self.pdf.delete_page(0)  # Remove the temporary page
-
-        available_height = (
-            page_height
-            - self.layout.title_height
-            - self.layout.margin_top
-            - self.layout.margin_bottom
-        )
-        self._lines_per_column = int(available_height // self.layout.line_spacing)
-
-        # Calculate column x positions
-        self._column_positions = [
-            self.layout.margin_left
-            + col * (self.layout.column_width + self.layout.column_spacing)
-            for col in range(self.layout.columns_per_page)
-        ]
-
-    def _create_new_page(self) -> fitz.Page:
-        """Create a new page with title."""
-        page = self.pdf.new_page()
-        page.insert_text(
-            (
-                self.layout.margin_left,
-                self.layout.margin_top + self.layout.title_height - 20,
-            ),
-            "Table of Contents",
-            fontsize=self.layout.title_fontsize,
-            fontfile=self.layout.title_font,
-            color=(0, 0, 0),
-        )
-        return page
-
-    def _get_current_position(self) -> Tuple[float, float]:
-        """Get current x, y position for text insertion."""
-        x = self._column_positions[self.current_column]
-        y = (
-            self.layout.title_height
-            + self.layout.margin_top
-            + (self.current_line_in_column * self.layout.line_spacing)
-        )
-        return x, y
-
-    def _advance_position(self) -> None:
-        """Advance to next line/column/page as needed."""
-        self.current_line_in_column += 1
-
-        # Check if we need to move to next column
-        if self.current_line_in_column >= self._lines_per_column:
-            self.current_column += 1
-            self.current_line_in_column = 0
-
-            # Check if we need to create a new page
-            if self.current_column >= self.layout.columns_per_page:
-                self.current_page = self._create_new_page()
-                self.current_column = 0
-
-    def _estimate_text_width(self, text: str) -> float:
-        """Estimate the width of text based on font size."""
-        # Rough estimation: assume each character is about 0.6 * fontsize width
-        return len(text) * self.layout.text_fontsize * 0.6
 
     def generate(
         self, files: List[Dict[str, Any]], page_offset: int = 0
     ) -> fitz.Document:
         """Generate the table of contents PDF."""
-        self._calculate_layout_parameters()
-        self.current_page = self._create_new_page()
+        if not files:
+            return self.pdf
+
+        # Create a temporary page to get dimensions
+        temp_page = self.pdf.new_page()
+        page_rect = temp_page.rect
+        self.pdf.delete_page(0)
+
+        # Create a text writer for the current page.
+        tw = fitz.TextWriter(page_rect)
+
+        # Calculate layout
+        available_height = (
+            page_rect.height
+            - self.layout.title_height
+            - self.layout.margin_top
+            - self.layout.margin_bottom
+        )
+        lines_per_column = int(available_height // self.layout.line_spacing)
+        column_positions = [
+            self.layout.margin_left
+            + col * (self.layout.column_width + self.layout.column_spacing)
+            for col in range(self.layout.columns_per_page)
+        ]
+
+        # Add title on the first page
+        title_pos = fitz.Point(
+            self.layout.margin_left,
+            self.layout.margin_top + self.layout.title_height - 20,
+        )
+        tw.append(
+            title_pos,
+            "Table of Contents",
+            font=self.layout.title_font,
+            fontsize=self.layout.title_fontsize,
+        )
+
+        current_column = 0
+        current_line_in_column = 0
+        current_page_index = 0
 
         for file_index, file in enumerate(files):
+            if current_line_in_column >= lines_per_column:
+                current_column += 1
+                current_line_in_column = 0
+                if current_column >= self.layout.columns_per_page:
+                    current_column = 0
+                    current_page_index += 1
+                    # Page is full. Write the current text writer to a new page.
+                    page = self.pdf.new_page(
+                        width=page_rect.width, height=page_rect.height
+                    )
+                    tw.write_text(page)
+                    # Create a new text writer for the new page and add title.
+                    tw = fitz.TextWriter(page_rect)
+                    tw.append(
+                        title_pos,
+                        "Table of Contents",
+                        font=self.layout.title_font,
+                        fontsize=self.layout.title_fontsize,
+                    )
+
             page_number = file_index + 1 + page_offset
             file_name = file["name"]
-            # Generate a title short enough to fit in the TOC entry.
             shortened_title = generate_toc_title(
                 file_name, max_length=self.layout.max_toc_entry_length
             )
             toc_text_line = f"{page_number} {shortened_title}"
 
-            # Insert text at current position
-            x, y = self._get_current_position()
-            self.current_page.insert_text(
+            x = column_positions[current_column]
+            y = (
+                self.layout.title_height
+                + self.layout.margin_top
+                + (current_line_in_column * self.layout.line_spacing)
+            )
+
+            tw.append(
                 (x, y),
                 toc_text_line,
+                font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
-                fontfile=self.layout.text_font,
-                color=(0, 0, 0),
             )
 
-            # Store entry information for later link creation
-            text_width = self._estimate_text_width(toc_text_line)
+            # Store entry for link creation
+            text_width = self.layout.text_font.text_length(
+                toc_text_line, fontsize=self.layout.text_fontsize
+            )
             text_height = self.layout.text_fontsize
-
-            # Create rectangle for the clickable area
             link_rect = fitz.Rect(
-                x,
-                y - text_height * 0.8,  # Slightly above baseline
-                x + text_width,
-                y + text_height * 0.2,  # Slightly below baseline
+                x, y - text_height * 0.8, x + text_width, y + text_height * 0.2
             )
 
-            # Target page is the file's position in the final PDF
-            target_page = (
-                file_index  # 0-based index for the file in the content section
+            self.toc_entries.append(
+                TocEntry(
+                    page_number=page_number,
+                    target_page=file_index,
+                    text=toc_text_line,
+                    rect=link_rect,
+                    toc_page_index=current_page_index,
+                )
             )
 
-            # Store the entry for later processing
-            toc_entry = TocEntry(
-                page_number=page_number,
-                target_page=target_page,
-                text=toc_text_line,
-                rect=link_rect,
-                toc_page_index=len(self.pdf) - 1,  # Current page index in TOC PDF
-            )
-            self.toc_entries.append(toc_entry)
+            current_line_in_column += 1
 
-            # Advance to next position
-            self._advance_position()
+        # Write the final page to the PDF, if it has content.
+        if tw.text_rect:
+            page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
+            tw.write_text(page)
 
         return self.pdf
 
@@ -295,10 +290,29 @@ def build_table_of_contents(
     Returns:
         Tuple of (TOC PDF document, list of TOC entries for link creation)
     """
-    layout = load_toc_config()
-    generator = TocGenerator(layout)
-    toc_pdf = generator.generate(files, page_offset)
-    return toc_pdf, generator.get_toc_entries()
+    with tracer.start_as_current_span("build_table_of_contents") as span:
+        layout = load_toc_config()
+        span.set_attributes(
+            {
+                "toc.layout.columns_per_page": layout.columns_per_page,
+                "toc.layout.column_width": layout.column_width,
+                "toc.layout.column_spacing": layout.column_spacing,
+                "toc.layout.margin_top": layout.margin_top,
+                "toc.layout.margin_bottom": layout.margin_bottom,
+                "toc.layout.margin_left": layout.margin_left,
+                "toc.layout.margin_right": layout.margin_right,
+                "toc.layout.title_height": layout.title_height,
+                "toc.layout.line_spacing": layout.line_spacing,
+                "toc.layout.text_font": layout.text_font.name,
+                "toc.layout.text_fontsize": layout.text_fontsize,
+                "toc.layout.title_font": layout.title_font.name,
+                "toc.layout.title_fontsize": layout.title_fontsize,
+                "toc.layout.max_toc_entry_length": layout.max_toc_entry_length,
+            }
+        )
+        generator = TocGenerator(layout)
+        toc_pdf = generator.generate(files, page_offset)
+        return toc_pdf, generator.get_toc_entries()
 
 
 def add_toc_links_to_merged_pdf(
@@ -311,31 +325,34 @@ def add_toc_links_to_merged_pdf(
         toc_entries: List of TOC entries with link information
         toc_page_offset: Offset where TOC pages start in the merged PDF
     """
-    for entry in toc_entries:
-        # Get the TOC page in the merged PDF
-        toc_page_index = toc_page_offset + entry.toc_page_index
-        if toc_page_index >= len(merged_pdf):
-            continue
+    with tracer.start_as_current_span("add_toc_links_to_merged_pdf") as span:
+        span.set_attribute("toc.entries.count", len(toc_entries))
+        span.set_attribute("toc.page_offset", toc_page_offset)
+        for entry in toc_entries:
+            # Get the TOC page in the merged PDF
+            toc_page_index = toc_page_offset + entry.toc_page_index
+            if toc_page_index >= len(merged_pdf):
+                continue
 
-        toc_page = merged_pdf[toc_page_index]
+            toc_page = merged_pdf[toc_page_index]
 
-        # Calculate the target page in the merged PDF
-        # The target page is after all TOC pages plus the file's index
-        target_page_index = (
-            toc_page_offset
-            + len({e.toc_page_index for e in toc_entries})
-            + entry.target_page
-        )
-        if target_page_index >= len(merged_pdf):
-            continue
+            # Calculate the target page in the merged PDF
+            # The target page is after all TOC pages plus the file's index
+            target_page_index = (
+                toc_page_offset
+                + len({e.toc_page_index for e in toc_entries})
+                + entry.target_page
+            )
+            if target_page_index >= len(merged_pdf):
+                continue
 
-        # Create link dictionary for internal navigation
-        link_dict = {
-            "kind": fitz.LINK_GOTO,
-            "from": entry.rect,
-            "page": target_page_index,
-            "to": fitz.Point(0, 0),  # Jump to top-left of target page
-        }
+            # Create link dictionary for internal navigation
+            link_dict = {
+                "kind": fitz.LINK_GOTO,
+                "from": entry.rect,
+                "page": target_page_index,
+                "to": fitz.Point(0, 0),  # Jump to top-left of target page
+            }
 
-        # Insert the link
-        toc_page.insert_link(link_dict)
+            # Insert the link
+            toc_page.insert_link(link_dict)
