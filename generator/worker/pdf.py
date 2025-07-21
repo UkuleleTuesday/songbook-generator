@@ -496,7 +496,7 @@ def generate_songbook(
                 with reporter.step(1, "Exporting generated PDF..."):
                     with tracer.start_as_current_span("save_pdf") as save_span:
                         destination_path.parent.mkdir(parents=True, exist_ok=True)
-                        songbook_pdf.save(destination_path)  # Save the merged PDF
+                        songbook_pdf.ez_save(destination_path)  # Save the merged PDF
                         save_span.set_attribute(
                             "output_file_size", os.path.getsize(destination_path)
                         )
