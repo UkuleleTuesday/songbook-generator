@@ -468,7 +468,7 @@ def generate_songbook(
 
                                     if final_value == 1:
                                         click.echo(
-                                            f"Passing final=1 for last postface file: {file['name']}"
+                                            f"Passing final=1 for last postface file: {file.name}"
                                         )
 
                                     songbook_pdf.insert_pdf(
