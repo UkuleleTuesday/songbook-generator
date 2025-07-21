@@ -4,6 +4,12 @@ class SongbookGenerationException(Exception):
     pass
 
 
+class TocGenerationException(SongbookGenerationException):
+    """Custom exception for errors during toc generation."""
+
+    pass
+
+
 class CoverGenerationException(SongbookGenerationException):
     """Custom exception for errors during cover generation."""
 
