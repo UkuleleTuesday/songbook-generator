@@ -8,6 +8,7 @@ import os
 from ..common.config import load_config
 from ..common.tracing import get_tracer
 from .exceptions import TocGenerationException
+from .models import File
 
 tracer = get_tracer(__name__)
 
@@ -167,7 +168,7 @@ class TocGenerator:
         tw: fitz.TextWriter,
         file_index: int,
         page_offset: int,
-        file_name: str,
+        file: File,
         x_start: float,
         y_pos: float,
         current_page_index: int,
@@ -181,7 +182,7 @@ class TocGenerator:
 
         # Calculate available width for title and truncate if necessary
         available_width = self.layout.column_width - max_page_num_width - 5
-        shortened_title = generate_toc_title(file_name, max_length=100)
+        shortened_title = generate_toc_title(file.name, max_length=100)
         title_width = self.layout.text_font.text_length(
             shortened_title, fontsize=self.layout.text_fontsize
         )
@@ -248,7 +249,7 @@ class TocGenerator:
         )
 
     def generate(
-        self, files: List[Dict[str, Any]], page_offset: int = 0
+        self, files: List[File], page_offset: int = 0
     ) -> fitz.Document:
         """Generate the table of contents PDF."""
         if not files:
@@ -313,7 +314,7 @@ class TocGenerator:
                 tw,
                 file_index,
                 page_offset,
-                file["name"],
+                file,
                 column_positions[current_column],
                 y_pos,
                 current_page_index,
@@ -332,7 +333,7 @@ class TocGenerator:
 
 
 def build_table_of_contents(
-    files: List[Dict[str, Any]], page_offset: int = 0
+    files: List[File], page_offset: int = 0
 ) -> Tuple[fitz.Document, List[TocEntry]]:
     """Build a table of contents PDF from a list of files.
 
