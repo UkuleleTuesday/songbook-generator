@@ -1,5 +1,6 @@
 from .pdf import collect_and_sort_files
 from .filters import PropertyFilter, FilterOperator
+from .models import File
 
 
 def test_collect_and_sort_files_single_folder(mocker):
@@ -8,9 +9,9 @@ def test_collect_and_sort_files_single_folder(mocker):
 
     # Mock files in non-alphabetical order
     mock_files = [
-        {"name": "zebra.pdf", "id": "3"},
-        {"name": "apple.pdf", "id": "1"},
-        {"name": "banana.pdf", "id": "2"},
+        File(name="zebra.pdf", id="3"),
+        File(name="apple.pdf", id="1"),
+        File(name="banana.pdf", id="2"),
     ]
 
     mock_query = mocker.patch(
@@ -25,9 +26,9 @@ def test_collect_and_sort_files_single_folder(mocker):
 
     # Should be sorted alphabetically by name
     expected = [
-        {"name": "apple.pdf", "id": "1"},
-        {"name": "banana.pdf", "id": "2"},
-        {"name": "zebra.pdf", "id": "3"},
+        File(name="apple.pdf", id="1"),
+        File(name="banana.pdf", id="2"),
+        File(name="zebra.pdf", id="3"),
     ]
     assert result == expected
 
@@ -41,12 +42,12 @@ def test_collect_and_sort_files_multiple_folders(mocker):
 
     # Mock files from different folders
     folder1_files = [
-        {"name": "zebra.pdf", "id": "1"},
-        {"name": "banana.pdf", "id": "2"},
+        File(name="zebra.pdf", id="1"),
+        File(name="banana.pdf", id="2"),
     ]
     folder2_files = [
-        {"name": "apple.pdf", "id": "3"},
-        {"name": "cherry.pdf", "id": "4"},
+        File(name="apple.pdf", id="3"),
+        File(name="cherry.pdf", id="4"),
     ]
 
     def mock_query_side_effect(drive, folder, filter):
@@ -68,10 +69,10 @@ def test_collect_and_sort_files_multiple_folders(mocker):
 
     # Should be sorted alphabetically across all folders
     expected = [
-        {"name": "apple.pdf", "id": "3"},
-        {"name": "banana.pdf", "id": "2"},
-        {"name": "cherry.pdf", "id": "4"},
-        {"name": "zebra.pdf", "id": "1"},
+        File(name="apple.pdf", id="3"),
+        File(name="banana.pdf", id="2"),
+        File(name="cherry.pdf", id="4"),
+        File(name="zebra.pdf", id="1"),
     ]
     assert result == expected
 
@@ -84,7 +85,7 @@ def test_collect_and_sort_files_with_client_filter(mocker):
     mock_drive = mocker.Mock()
     mock_filter = PropertyFilter("artist", FilterOperator.EQUALS, "Test Artist")
 
-    mock_files = [{"name": "test.pdf", "id": "1"}]
+    mock_files = [File(name="test.pdf", id="1")]
 
     mock_query = mocker.patch(
         "generator.worker.pdf.query_drive_files_with_client_filter"
@@ -123,8 +124,8 @@ def test_collect_and_sort_files_with_progress_step(mocker):
     mock_drive = mocker.Mock()
     mock_progress_step = mocker.Mock()
 
-    folder1_files = [{"name": "file1.pdf", "id": "1"}]
-    folder2_files = [{"name": "file2.pdf", "id": "2"}]
+    folder1_files = [File(name="file1.pdf", id="1")]
+    folder2_files = [File(name="file2.pdf", id="2")]
 
     def mock_query_side_effect(drive, folder, filter):
         if folder == "folder1":
@@ -155,8 +156,8 @@ def test_collect_and_sort_files_with_progress_step(mocker):
 
     # Verify files are still sorted correctly
     expected = [
-        {"name": "file1.pdf", "id": "1"},
-        {"name": "file2.pdf", "id": "2"},
+        File(name="file1.pdf", id="1"),
+        File(name="file2.pdf", id="2"),
     ]
     assert result == expected
 
@@ -165,7 +166,7 @@ def test_collect_and_sort_files_no_progress_step(mocker):
     """Test that no progress reporting occurs when progress_step is None."""
     mock_drive = mocker.Mock()
 
-    mock_files = [{"name": "test.pdf", "id": "1"}]
+    mock_files = [File(name="test.pdf", id="1")]
 
     mock_query = mocker.patch(
         "generator.worker.pdf.query_drive_files_with_client_filter"
@@ -187,8 +188,8 @@ def test_collect_and_sort_files_strips_artist_name(mocker):
     mock_drive = mocker.Mock()
 
     mock_files = [
-        {"name": "ab - a.pdf", "id": "1"},
-        {"name": "a - cd.pdf", "id": "2"},
+        File(name="ab - a.pdf", id="1"),
+        File(name="a - cd.pdf", id="2"),
     ]
 
     mock_query = mocker.patch(
@@ -202,8 +203,8 @@ def test_collect_and_sort_files_strips_artist_name(mocker):
     )
 
     expected = [
-        {"name": "a - cd.pdf", "id": "2"},
-        {"name": "ab - a.pdf", "id": "1"},
+        File(name="a - cd.pdf", id="2"),
+        File(name="ab - a.pdf", id="1"),
     ]
     assert result == expected
 
@@ -213,9 +214,9 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
     mock_drive = mocker.Mock()
 
     mock_files = [
-        {"name": "Zebra.pdf", "id": "1"},
-        {"name": "apple.pdf", "id": "2"},
-        {"name": "Banana.pdf", "id": "3"},
+        File(name="Zebra.pdf", id="1"),
+        File(name="apple.pdf", id="2"),
+        File(name="Banana.pdf", id="3"),
     ]
 
     mock_query = mocker.patch(
@@ -229,9 +230,9 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
     )
 
     expected = [
-        {"name": "apple.pdf", "id": "2"},
-        {"name": "Banana.pdf", "id": "3"},
-        {"name": "Zebra.pdf", "id": "1"},
+        File(name="apple.pdf", id="2"),
+        File(name="Banana.pdf", id="3"),
+        File(name="Zebra.pdf", id="1"),
     ]
     assert result == expected
 
@@ -240,9 +241,9 @@ def test_collect_and_sort_files_strips_punctuation(mocker):
     mock_drive = mocker.Mock()
 
     mock_files = [
-        {"name": "!!banana.pdf", "id": "1"},
-        {"name": "apple", "id": "2"},
-        {"name": "cucumber.pdf", "id": "3"},
+        File(name="!!banana.pdf", id="1"),
+        File(name="apple", id="2"),
+        File(name="cucumber.pdf", id="3"),
     ]
 
     mock_query = mocker.patch(
@@ -256,9 +257,9 @@ def test_collect_and_sort_files_strips_punctuation(mocker):
     )
 
     expected = [
-        {"name": "apple", "id": "2"},
-        {"name": "!!banana.pdf", "id": "1"},
-        {"name": "cucumber.pdf", "id": "3"},
+        File(name="apple", id="2"),
+        File(name="!!banana.pdf", id="1"),
+        File(name="cucumber.pdf", id="3"),
     ]
     assert result == expected
 
@@ -267,9 +268,9 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
     mock_drive = mocker.Mock()
 
     mock_files = [
-        {"name": "çb.pdf", "id": "1"},
-        {"name": "ca", "id": "2"},
-        {"name": "cz.pdf", "id": "3"},
+        File(name="çb.pdf", id="1"),
+        File(name="ca", id="2"),
+        File(name="cz.pdf", id="3"),
     ]
 
     mock_query = mocker.patch(
@@ -283,9 +284,9 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
     )
 
     expected = [
-        {"name": "ca", "id": "2"},
-        {"name": "çb.pdf", "id": "1"},
-        {"name": "cz.pdf", "id": "3"},
+        File(name="ca", id="2"),
+        File(name="çb.pdf", id="1"),
+        File(name="cz.pdf", id="3"),
     ]
     assert result == expected
 
@@ -294,9 +295,9 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
     mock_drive = mocker.Mock()
 
     mock_files = [
-        {"name": "01 things.pdf", "id": "1"},
-        {"name": "things 100 things", "id": "2"},
-        {"name": "things 001 things.pdf", "id": "3"},
+        File(name="01 things.pdf", id="1"),
+        File(name="things 100 things", id="2"),
+        File(name="things 001 things.pdf", id="3"),
     ]
 
     mock_query = mocker.patch(
@@ -309,9 +310,9 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
         source_folders=["folder1"],
     )
     expected = [
-        {"name": "01 things.pdf", "id": "1"},
-        {"name": "things 001 things.pdf", "id": "3"},
-        {"name": "things 100 things", "id": "2"},
+        File(name="01 things.pdf", id="1"),
+        File(name="things 001 things.pdf", id="3"),
+        File(name="things 100 things", id="2"),
     ]
     assert result == expected
 
@@ -322,7 +323,7 @@ def test_collect_and_sort_files_progress_increment_calculation(mocker):
     mock_progress_step = mocker.Mock()
 
     # Test with 3 folders
-    folder_files = [{"name": "file.pdf", "id": "1"}]
+    folder_files = [File(name="file.pdf", id="1")]
 
     mock_query = mocker.patch(
         "generator.worker.pdf.query_drive_files_with_client_filter"
@@ -350,11 +351,11 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
 
     def mock_query_side_effect(drive, folder, filter):
         if folder == "folder1":
-            return [{"name": "file1.pdf", "id": "1"}]
+            return [File(name="file1.pdf", id="1")]
         elif folder == "folder2":
             return []  # Empty folder
         elif folder == "folder3":
-            return [{"name": "file2.pdf", "id": "2"}]
+            return [File(name="file2.pdf", id="2")]
         return []
 
     mock_query = mocker.patch(
@@ -369,8 +370,8 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
 
     # Should only return files from non-empty folders, sorted
     expected = [
-        {"name": "file1.pdf", "id": "1"},
-        {"name": "file2.pdf", "id": "2"},
+        File(name="file1.pdf", id="1"),
+        File(name="file2.pdf", id="2"),
     ]
     assert result == expected
 

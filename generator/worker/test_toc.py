@@ -8,6 +8,7 @@ from .toc import (
     TocGenerator,
     load_toc_config,
 )
+from .models import File
 from .exceptions import TocGenerationException
 
 
@@ -158,7 +159,7 @@ def test_add_toc_entry(toc_layout):
         tw=mock_tw,
         file_index=0,
         page_offset=0,
-        file_name="A Short Title - Artist",
+        file=File(id="1", name="A Short Title - Artist"),
         x_start=25,
         y_pos=70,
         current_page_index=0,
@@ -189,7 +190,7 @@ def test_add_toc_entry_title_truncation(toc_layout):
         tw=mock_tw,
         file_index=0,
         page_offset=0,
-        file_name=long_title,
+        file=File(id="1", name=long_title),
         x_start=25,
         y_pos=70,
         current_page_index=0,

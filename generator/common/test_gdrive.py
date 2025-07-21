@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import Mock, patch
 from .gdrive import query_drive_files, build_property_filters
+from ..worker.models import File
 
 
 @pytest.fixture
@@ -23,10 +24,10 @@ def test_query_drive_files_basic(mock_drive):
     result = query_drive_files(mock_drive, "folder123")
 
     assert len(result) == 2
-    assert result[0]["id"] == "file1"
-    assert result[0]["name"] == "Song 1"
-    assert result[1]["id"] == "file2"
-    assert result[1]["name"] == "Song 2"
+    assert result[0].id == "file1"
+    assert result[0].name == "Song 1"
+    assert result[1].id == "file2"
+    assert result[1].name == "Song 2"
 
     # Verify the API was called correctly
     mock_drive.files.return_value.list.assert_called_once_with(
@@ -61,10 +62,10 @@ def test_query_drive_files_pagination(mock_drive):
     result = query_drive_files(mock_drive, "folder123")
 
     assert len(result) == 4
-    assert result[0]["id"] == "file1"
-    assert result[1]["id"] == "file2"
-    assert result[2]["id"] == "file3"
-    assert result[3]["id"] == "file4"
+    assert result[0].id == "file1"
+    assert result[1].id == "file2"
+    assert result[2].id == "file3"
+    assert result[3].id == "file4"
 
     # Verify two API calls were made
     assert mock_drive.files.return_value.list.call_count == 2
@@ -132,7 +133,7 @@ def test_query_drive_files_with_property_filters(mock_drive):
     result = query_drive_files(mock_drive, "folder123", property_filters)
 
     assert len(result) == 1
-    assert result[0]["id"] == "file1"
+    assert result[0].id == "file1"
 
     # Verify the API was called with property filters
     expected_query = (
