@@ -1,6 +1,7 @@
 from .pdf import collect_and_sort_files
 from .filters import PropertyFilter, FilterOperator
 from .models import File
+from .models import File
 
 
 def test_collect_and_sort_files_single_folder(mocker):
