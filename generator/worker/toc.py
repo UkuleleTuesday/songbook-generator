@@ -280,10 +280,21 @@ class TocGenerator:
                 y + self.layout.line_spacing,
             )
 
+            # Calculate how many dots will fit
+            page_num_width = self.layout.text_font.text_length(
+                page_number_str, fontsize=self.layout.text_fontsize
+            )
+            dot_width = self.layout.text_font.text_length(
+                ".", fontsize=self.layout.text_fontsize
+            )
+            dots_space = dots_rect.width - page_num_width
+            num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
+            dots = "." * num_dots
+
             # Use fill_textbox to add dots and right-aligned page number
             tw.fill_textbox(
                 dots_rect,
-                f".............................. {page_number_str}",  # Use a few dots to seed
+                f"{dots} {page_number_str}",
                 font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
                 align=fitz.TEXT_ALIGN_RIGHT,
