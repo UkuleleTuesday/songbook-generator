@@ -1,5 +1,13 @@
 import pytest
-from .toc import resolve_font, generate_toc_title, DEFAULT_FONT_NAME
+from unittest.mock import MagicMock, ANY
+import fitz
+from .toc import (
+    resolve_font,
+    generate_toc_title,
+    DEFAULT_FONT_NAME,
+    TocGenerator,
+    load_toc_config,
+)
 from .exceptions import TocGenerationException
 
 
@@ -129,3 +137,65 @@ def test_generate_toc_title_real_world_samples(original_title, expected_title):
     # Test with default max_length
     result = generate_toc_title(original_title, max_length=50)
     assert result == expected_title
+
+
+@pytest.fixture
+def toc_layout():
+    """Provides a default TocLayout with a mocked font."""
+    layout = load_toc_config()
+    # Mock font to control text_length for predictable testing
+    layout.text_font = MagicMock()
+    layout.text_font.text_length.side_effect = lambda text, fontsize: len(text) * 5
+    return layout
+
+
+def test_add_toc_entry(toc_layout):
+    """Test that _add_toc_entry correctly formats and adds a TOC entry."""
+    generator = TocGenerator(toc_layout)
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file_name="A Short Title - Artist",
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that title is appended
+    mock_tw.append.assert_called_with(
+        (25, 70), "A Short Title - Artist", font=ANY, fontsize=ANY
+    )
+
+    # Check that fill_textbox is called for dots and page number
+    # The text should be a number of dots, a space, and "1"
+    mock_tw.fill_textbox.assert_called_once()
+    args, kwargs = mock_tw.fill_textbox.call_args
+    dots_and_page = args[1]
+    assert dots_and_page.endswith(" 1")
+    assert dots_and_page.startswith(".")
+    assert kwargs["align"] == fitz.TEXT_ALIGN_RIGHT
+
+
+def test_add_toc_entry_title_truncation(toc_layout):
+    """Test that a long title is truncated correctly."""
+    generator = TocGenerator(toc_layout)
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    long_title = "This is a very long song title that will definitely need to be truncated - The Long Winded Singers"
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file_name=long_title,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that the appended title is shorter than the original and ends with "..."
+    appended_title = mock_tw.append.call_args[0][1]
+    assert len(appended_title) < len(long_title)
+    assert appended_title.endswith("...")

@@ -162,6 +162,91 @@ class TocGenerator:
         self.pdf = fitz.open()
         self.toc_entries = []  # Store entries for later link creation
 
+    def _add_toc_entry(
+        self,
+        tw: fitz.TextWriter,
+        file_index: int,
+        page_offset: int,
+        file_name: str,
+        x_start: float,
+        y_pos: float,
+        current_page_index: int,
+    ):
+        page_number_str = str(file_index + 1 + page_offset)
+
+        # Reserve fixed width for page numbers for consistent dot alignment
+        max_page_num_width = self.layout.text_font.text_length(
+            "9999", fontsize=self.layout.text_fontsize
+        )
+
+        # Calculate available width for title and truncate if necessary
+        available_width = self.layout.column_width - max_page_num_width - 5
+        shortened_title = generate_toc_title(file_name, max_length=100)
+        title_width = self.layout.text_font.text_length(
+            shortened_title, fontsize=self.layout.text_fontsize
+        )
+
+        if title_width > available_width:
+            avg_char_width = title_width / len(shortened_title)
+            max_chars = int(available_width / avg_char_width) - 3
+            shortened_title = shortened_title[:max_chars] + "..."
+            title_width = self.layout.text_font.text_length(
+                shortened_title, fontsize=self.layout.text_fontsize
+            )
+
+        # Append title
+        tw.append(
+            (x_start, y_pos),
+            shortened_title,
+            font=self.layout.text_font,
+            fontsize=self.layout.text_fontsize,
+        )
+
+        # Define rectangle for dots and page number
+        dots_rect = fitz.Rect(
+            x_start + title_width,
+            y_pos - self.layout.text_fontsize,  # Align with title baseline
+            x_start + self.layout.column_width,
+            y_pos + self.layout.line_spacing,
+        )
+
+        # Calculate number of dots to fill the space
+        page_num_width = self.layout.text_font.text_length(
+            page_number_str, fontsize=self.layout.text_fontsize
+        )
+        dot_width = self.layout.text_font.text_length(
+            ".", fontsize=self.layout.text_fontsize
+        )
+        dots_space = dots_rect.width - page_num_width
+        num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
+        dots = "." * max(num_dots - 3, 0)
+
+        # Fill textbox with dots and right-aligned page number
+        tw.fill_textbox(
+            dots_rect,
+            f"{dots} {page_number_str}",
+            font=self.layout.text_font,
+            fontsize=self.layout.text_fontsize,
+            align=fitz.TEXT_ALIGN_RIGHT,
+        )
+
+        # Store entry for link creation
+        link_rect = fitz.Rect(
+            x_start,
+            y_pos - self.layout.text_fontsize,
+            x_start + self.layout.column_width,
+            y_pos + self.layout.text_fontsize * 0.2,
+        )
+        self.toc_entries.append(
+            TocEntry(
+                page_number=int(page_number_str),
+                target_page=file_index,
+                text=shortened_title,
+                rect=link_rect,
+                toc_page_index=current_page_index,
+            )
+        )
+
     def generate(
         self, files: List[Dict[str, Any]], page_offset: int = 0
     ) -> fitz.Document:
@@ -169,15 +254,11 @@ class TocGenerator:
         if not files:
             return self.pdf
 
-        # Create a temporary page to get dimensions
         temp_page = self.pdf.new_page()
         page_rect = temp_page.rect
         self.pdf.delete_page(0)
 
-        # Create a text writer for the current page.
         tw = fitz.TextWriter(page_rect)
-
-        # Calculate layout
         available_height = (
             page_rect.height
             - self.layout.title_height
@@ -190,8 +271,6 @@ class TocGenerator:
             + col * (self.layout.column_width + self.layout.column_spacing)
             for col in range(self.layout.columns_per_page)
         ]
-
-        # Add title on the first page
         title_pos = fitz.Point(
             self.layout.margin_left,
             self.layout.margin_top + self.layout.title_height - 20,
@@ -209,17 +288,14 @@ class TocGenerator:
 
         for file_index, file in enumerate(files):
             if current_line_in_column >= lines_per_column:
-                current_column += 1
+                current_column = (current_column + 1) % self.layout.columns_per_page
                 current_line_in_column = 0
-                if current_column >= self.layout.columns_per_page:
-                    current_column = 0
+                if current_column == 0:
                     current_page_index += 1
-                    # Page is full. Write the current text writer to a new page.
                     page = self.pdf.new_page(
                         width=page_rect.width, height=page_rect.height
                     )
                     tw.write_text(page)
-                    # Create a new text writer for the new page and add title.
                     tw = fitz.TextWriter(page_rect)
                     tw.append(
                         title_pos,
@@ -228,49 +304,22 @@ class TocGenerator:
                         fontsize=self.layout.title_fontsize,
                     )
 
-            page_number = file_index + 1 + page_offset
-            file_name = file["name"]
-            shortened_title = generate_toc_title(
-                file_name, max_length=self.layout.max_toc_entry_length
-            )
-            toc_text_line = f"{page_number} {shortened_title}"
-
-            x = column_positions[current_column]
-            y = (
+            y_pos = (
                 self.layout.title_height
                 + self.layout.margin_top
                 + (current_line_in_column * self.layout.line_spacing)
             )
-
-            tw.append(
-                (x, y),
-                toc_text_line,
-                font=self.layout.text_font,
-                fontsize=self.layout.text_fontsize,
+            self._add_toc_entry(
+                tw,
+                file_index,
+                page_offset,
+                file["name"],
+                column_positions[current_column],
+                y_pos,
+                current_page_index,
             )
-
-            # Store entry for link creation
-            text_width = self.layout.text_font.text_length(
-                toc_text_line, fontsize=self.layout.text_fontsize
-            )
-            text_height = self.layout.text_fontsize
-            link_rect = fitz.Rect(
-                x, y - text_height * 0.8, x + text_width, y + text_height * 0.2
-            )
-
-            self.toc_entries.append(
-                TocEntry(
-                    page_number=page_number,
-                    target_page=file_index,
-                    text=toc_text_line,
-                    rect=link_rect,
-                    toc_page_index=current_page_index,
-                )
-            )
-
             current_line_in_column += 1
 
-        # Write the final page to the PDF, if it has content.
         if tw.text_rect:
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
             tw.write_text(page)
