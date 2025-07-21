@@ -3,7 +3,7 @@ import click
 import os
 from opentelemetry import trace
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 from . import progress
 from . import toc
 from . import cover
