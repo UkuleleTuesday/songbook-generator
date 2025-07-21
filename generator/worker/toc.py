@@ -164,8 +164,8 @@ class TocGenerator:
         page_rect = temp_page.rect
         self.pdf.delete_page(0)
 
-        # Create a list of text writers, one for each page.
-        text_writers = [fitz.TextWriter(page_rect)]
+        # Create a text writer for the current page.
+        tw = fitz.TextWriter(page_rect)
 
         # Calculate layout
         available_height = (
@@ -186,7 +186,7 @@ class TocGenerator:
             self.layout.margin_left,
             self.layout.margin_top + self.layout.title_height - 20,
         )
-        text_writers[0].append(
+        tw.append(
             title_pos,
             "Table of Contents",
             font=self.layout.title_font,
@@ -204,10 +204,14 @@ class TocGenerator:
                 if current_column >= self.layout.columns_per_page:
                     current_column = 0
                     current_page_index += 1
-                    # Create a new text writer for the new page
-                    text_writers.append(fitz.TextWriter(page_rect))
-                    # Add title to new page
-                    text_writers[current_page_index].append(
+                    # Page is full. Write the current text writer to a new page.
+                    page = self.pdf.new_page(
+                        width=page_rect.width, height=page_rect.height
+                    )
+                    tw.write_text(page)
+                    # Create a new text writer for the new page and add title.
+                    tw = fitz.TextWriter(page_rect)
+                    tw.append(
                         title_pos,
                         "Table of Contents",
                         font=self.layout.title_font,
@@ -228,7 +232,7 @@ class TocGenerator:
                 + (current_line_in_column * self.layout.line_spacing)
             )
 
-            text_writers[current_page_index].append(
+            tw.append(
                 (x, y),
                 toc_text_line,
                 font=self.layout.text_font,
@@ -256,8 +260,8 @@ class TocGenerator:
 
             current_line_in_column += 1
 
-        # Write each text writer to a new page in the PDF
-        for tw in text_writers:
+        # Write the final page to the PDF, if it has content.
+        if tw.text_rect:
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
             tw.write_text(page)
 
