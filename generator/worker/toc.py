@@ -1,4 +1,3 @@
-import click
 import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
@@ -19,18 +18,10 @@ def resolve_font(font_name: str) -> fitz.Font:
     Load a font from package resources.
     If it fails, log a warning and fall back to a built-in font.
     """
-    try:
-        font_buffer = (
-            importlib.resources.files("generator.fonts")
-            .joinpath(font_name)
-            .read_bytes()
-        )
-        return fitz.Font(fontbuffer=font_buffer)
-    except Exception as e:  # noqa: BLE001 - We want to catch any error from fitz
-        click.echo(
-            f"Warning: Failed to load font '{font_name}'. Falling back to default font 'helv'. Error: {e}"
-        )
-        return fitz.Font("helv")
+    font_buffer = (
+        importlib.resources.files("generator.fonts").joinpath(font_name).read_bytes()
+    )
+    return fitz.Font(fontbuffer=font_buffer)
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:
