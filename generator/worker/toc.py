@@ -6,6 +6,9 @@ from typing import List, Dict, Any, Tuple
 import importlib.resources
 
 from ..common.config import load_config
+from ..common.tracing import get_tracer
+
+tracer = get_tracer(__name__)
 
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
@@ -280,10 +283,29 @@ def build_table_of_contents(
     Returns:
         Tuple of (TOC PDF document, list of TOC entries for link creation)
     """
-    layout = load_toc_config()
-    generator = TocGenerator(layout)
-    toc_pdf = generator.generate(files, page_offset)
-    return toc_pdf, generator.get_toc_entries()
+    with tracer.start_as_current_span("build_table_of_contents") as span:
+        layout = load_toc_config()
+        span.set_attributes(
+            {
+                "toc.layout.columns_per_page": layout.columns_per_page,
+                "toc.layout.column_width": layout.column_width,
+                "toc.layout.column_spacing": layout.column_spacing,
+                "toc.layout.margin_top": layout.margin_top,
+                "toc.layout.margin_bottom": layout.margin_bottom,
+                "toc.layout.margin_left": layout.margin_left,
+                "toc.layout.margin_right": layout.margin_right,
+                "toc.layout.title_height": layout.title_height,
+                "toc.layout.line_spacing": layout.line_spacing,
+                "toc.layout.text_font": layout.text_font.name,
+                "toc.layout.text_fontsize": layout.text_fontsize,
+                "toc.layout.title_font": layout.title_font.name,
+                "toc.layout.title_fontsize": layout.title_fontsize,
+                "toc.layout.max_toc_entry_length": layout.max_toc_entry_length,
+            }
+        )
+        generator = TocGenerator(layout)
+        toc_pdf = generator.generate(files, page_offset)
+        return toc_pdf, generator.get_toc_entries()
 
 
 def add_toc_links_to_merged_pdf(
@@ -296,31 +318,34 @@ def add_toc_links_to_merged_pdf(
         toc_entries: List of TOC entries with link information
         toc_page_offset: Offset where TOC pages start in the merged PDF
     """
-    for entry in toc_entries:
-        # Get the TOC page in the merged PDF
-        toc_page_index = toc_page_offset + entry.toc_page_index
-        if toc_page_index >= len(merged_pdf):
-            continue
+    with tracer.start_as_current_span("add_toc_links_to_merged_pdf") as span:
+        span.set_attribute("toc.entries.count", len(toc_entries))
+        span.set_attribute("toc.page_offset", toc_page_offset)
+        for entry in toc_entries:
+            # Get the TOC page in the merged PDF
+            toc_page_index = toc_page_offset + entry.toc_page_index
+            if toc_page_index >= len(merged_pdf):
+                continue
 
-        toc_page = merged_pdf[toc_page_index]
+            toc_page = merged_pdf[toc_page_index]
 
-        # Calculate the target page in the merged PDF
-        # The target page is after all TOC pages plus the file's index
-        target_page_index = (
-            toc_page_offset
-            + len({e.toc_page_index for e in toc_entries})
-            + entry.target_page
-        )
-        if target_page_index >= len(merged_pdf):
-            continue
+            # Calculate the target page in the merged PDF
+            # The target page is after all TOC pages plus the file's index
+            target_page_index = (
+                toc_page_offset
+                + len({e.toc_page_index for e in toc_entries})
+                + entry.target_page
+            )
+            if target_page_index >= len(merged_pdf):
+                continue
 
-        # Create link dictionary for internal navigation
-        link_dict = {
-            "kind": fitz.LINK_GOTO,
-            "from": entry.rect,
-            "page": target_page_index,
-            "to": fitz.Point(0, 0),  # Jump to top-left of target page
-        }
+            # Create link dictionary for internal navigation
+            link_dict = {
+                "kind": fitz.LINK_GOTO,
+                "from": entry.rect,
+                "page": target_page_index,
+                "to": fitz.Point(0, 0),  # Jump to top-left of target page
+            }
 
-        # Insert the link
-        toc_page.insert_link(link_dict)
+            # Insert the link
+            toc_page.insert_link(link_dict)
