@@ -283,7 +283,7 @@ class TocGenerator:
             # Use fill_textbox to add dots and right-aligned page number
             tw.fill_textbox(
                 dots_rect,
-                f"..... {page_number_str}",  # Use a few dots to seed
+                f".............................. {page_number_str}",  # Use a few dots to seed
                 font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
                 align=fitz.TEXT_ALIGN_RIGHT,
