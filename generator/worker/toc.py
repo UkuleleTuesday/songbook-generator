@@ -263,10 +263,6 @@ class TocGenerator:
                 + self.layout.margin_top
                 + (current_line_in_column * self.layout.line_spacing)
             )
-            page_num_width = self.layout.text_font.text_length(
-                page_number_str, fontsize=self.layout.text_fontsize
-            )
-            x_page_num = x_start + self.layout.column_width - page_num_width
 
             # Append title
             tw.append(
