@@ -57,9 +57,11 @@ gsutil mb \
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_CDN_BUCKET
+gsutil uniformbucketlevelaccess set on gs://$GCS_WORKER_CACHE_BUCKET
+gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_WORKER_CACHE_BUCKET
 
 
-echo "5. Setting lifecycle policies (7-day TTL) on buckets…"
+echo "5. Setting lifecycle policies (90-day TTL) on buckets…"
 # prepare lifecycle config
 LIFECYCLE_JSON=$(mktemp)
 cat >"${LIFECYCLE_JSON}" <<EOF
@@ -67,7 +69,7 @@ cat >"${LIFECYCLE_JSON}" <<EOF
   "rule": [
     {
       "action": {"type": "Delete"},
-      "condition": {"age": 7}
+      "condition": {"age": 90}
     }
   ]
 }
