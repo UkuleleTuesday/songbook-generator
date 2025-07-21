@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Tuple
 import importlib.resources
+import os
 
 from ..common.config import load_config
 from ..common.tracing import get_tracer
@@ -20,14 +21,25 @@ def resolve_font(font_name: str) -> fitz.Font:
     If it fails, log a warning and fall back to a built-in font.
     """
     try:
+        # Standard way to load package resources, works when installed
         font_buffer = (
             importlib.resources.files("generator.fonts")
             .joinpath(font_name)
             .read_bytes()
         )
         return fitz.Font(fontbuffer=font_buffer)
-    except FileNotFoundError as e:
-        raise TocGenerationException(f"TOC font file not found: {font_name}") from e
+    except (ModuleNotFoundError, FileNotFoundError):
+        # Fallback for environments where the package is not installed (e.g., GCF Gen2)
+        try:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            font_path = os.path.join(current_dir, "..", "fonts", font_name)
+            with open(font_path, "rb") as f:
+                font_buffer = f.read()
+            return fitz.Font(fontbuffer=font_buffer)
+        except FileNotFoundError as e:
+            raise TocGenerationException(
+                f"TOC font file not found: {font_name}"
+            ) from e
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:
