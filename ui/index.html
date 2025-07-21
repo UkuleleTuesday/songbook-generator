@@ -92,6 +92,10 @@
       <div id="progressText" style="font-size: 0.9rem; color: #666;">Starting...</div>
       <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
     </div>
+    <div id="historyContainer" style="margin-top: 1rem; display: none;">
+      <h2>Previously Generated Songbooks</h2>
+      <ul id="historyList"></ul>
+    </div>
   </div>
   <script>
     // Determine API endpoint based on current location
@@ -115,6 +119,33 @@
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
     const progressPercentage = document.getElementById('progressPercentage');
+    const historyContainer = document.getElementById('historyContainer');
+    const historyList = document.getElementById('historyList');
+
+    function renderHistory() {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      if (songbooks.length > 0) {
+        historyList.innerHTML = '';
+        songbooks.forEach(songbook => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = songbook.url;
+          a.textContent = songbook.name;
+          a.target = '_blank';
+          li.appendChild(a);
+          historyList.appendChild(li);
+        });
+        historyContainer.style.display = 'block';
+      }
+    }
+
+    function addSongbookToHistory(name, url) {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      // To keep the list clean, we'll limit it to the last 10 generated songbooks
+      const newSongbooks = [{ name, url, date: new Date().toISOString() }, ...songbooks].slice(0, 10);
+      localStorage.setItem('generatedSongbooks', JSON.stringify(newSongbooks));
+      renderHistory();
+    }
 
     function updateProgress(progress, message) {
       const percentage = Math.round(progress * 100);
@@ -274,6 +305,12 @@
 
         updateProgress(1.0, 'Download started!');
 
+        // Add to history
+        const edition = form.get("songbook_edition") || 'All';
+        const decade = form.get("decade") || 'All decades';
+        const songbookName = `Edition: ${edition}, Decade: ${decade} - Generated on ${new Date().toLocaleDateString()}`;
+        addSongbookToHistory(songbookName, downloadUrl);
+
       } catch (err) {
         updateProgress(0, `Error: ${err.message}`);
         alert("Error: " + err.message);
@@ -285,6 +322,9 @@
         }, 3000);
       }
     };
+
+    // Initial render of history on page load
+    document.addEventListener('DOMContentLoaded', renderHistory);
   </script>
 </body>
 </html>
