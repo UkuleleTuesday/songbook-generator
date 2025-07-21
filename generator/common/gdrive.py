@@ -159,10 +159,15 @@ def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
     for file_id in file_ids:
         try:
             # Get file metadata from Drive
-            file_metadata = drive.files().get(fileId=file_id).execute()
+            file_metadata = (
+                drive.files()
+                .get(fileId=file_id, fields="id,name,properties,mimeType")
+                .execute()
+            )
             file_dict = {
                 "id": file_id,
                 "name": file_metadata.get("name", f"file_{file_id}"),
+                "properties": file_metadata.get("properties", {}),
             }
             files.append(file_dict)
 
