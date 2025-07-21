@@ -51,5 +51,11 @@ dev = [
 where = ["."]
 include = ["generator*"]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"generator" = ["fonts/RobotoCondensed-*.ttf"]
+
 [tool.ruff.lint]
 extend-select = ["BLE001"] # Catch all exceptions are the plague
