@@ -228,41 +228,83 @@ class TocGenerator:
                         fontsize=self.layout.title_fontsize,
                     )
 
-            page_number = file_index + 1 + page_offset
+            page_number_str = str(file_index + 1 + page_offset)
             file_name = file["name"]
-            shortened_title = generate_toc_title(
-                file_name, max_length=self.layout.max_toc_entry_length
-            )
-            toc_text_line = f"{page_number} {shortened_title}"
 
-            x = column_positions[current_column]
+            # Calculate available width for title and dots
+            page_num_width = self.layout.text_font.text_length(
+                page_number_str, fontsize=self.layout.text_fontsize
+            )
+            # Add a small buffer for spacing
+            available_width = self.layout.column_width - page_num_width - 5
+            shortened_title = generate_toc_title(file_name, max_length=100)
+            title_width = self.layout.text_font.text_length(
+                shortened_title, fontsize=self.layout.text_fontsize
+            )
+
+            # Truncate title if it's too long for the available space
+            if title_width > available_width:
+                # Estimate how many chars can fit
+                avg_char_width = title_width / len(shortened_title)
+                max_chars = int(available_width / avg_char_width) - 3
+                shortened_title = shortened_title[:max_chars] + "..."
+
+            # Recalculate title width after potential truncation
+            title_width = self.layout.text_font.text_length(
+                shortened_title, fontsize=self.layout.text_fontsize
+            )
+
+            # Calculate dots
+            dot_width = self.layout.text_font.text_length(
+                ".", fontsize=self.layout.text_fontsize
+            )
+            dots_space = self.layout.column_width - title_width - page_num_width - 10
+            num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
+            dots = " ." * (num_dots // 2)
+
+            # Positions
+            x_start = column_positions[current_column]
             y = (
                 self.layout.title_height
                 + self.layout.margin_top
                 + (current_line_in_column * self.layout.line_spacing)
             )
+            x_page_num = x_start + self.layout.column_width - page_num_width
 
+            # Append title, dots, and page number
             tw.append(
-                (x, y),
-                toc_text_line,
+                (x_start, y),
+                shortened_title,
+                font=self.layout.text_font,
+                fontsize=self.layout.text_fontsize,
+            )
+            tw.append(
+                (x_start + title_width, y),
+                dots,
+                font=self.layout.text_font,
+                fontsize=self.layout.text_fontsize,
+            )
+            tw.append(
+                (x_page_num, y),
+                page_number_str,
                 font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
             )
 
-            # Store entry for link creation
-            text_width = self.layout.text_font.text_length(
-                toc_text_line, fontsize=self.layout.text_fontsize
-            )
+            # Store entry for link creation, covering the full entry width
             text_height = self.layout.text_fontsize
             link_rect = fitz.Rect(
-                x, y - text_height * 0.8, x + text_width, y + text_height * 0.2
+                x_start,
+                y - text_height * 0.8,
+                x_start + self.layout.column_width,
+                y + text_height * 0.2,
             )
 
             self.toc_entries.append(
                 TocEntry(
-                    page_number=page_number,
+                    page_number=int(page_number_str),
                     target_page=file_index,
-                    text=toc_text_line,
+                    text=shortened_title,
                     rect=link_rect,
                     toc_page_index=current_page_index,
                 )
