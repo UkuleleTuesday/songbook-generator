@@ -256,16 +256,6 @@ class TocGenerator:
                 shortened_title, fontsize=self.layout.text_fontsize
             )
 
-            # Calculate dots
-            dot_width = self.layout.text_font.text_length(
-                ".", fontsize=self.layout.text_fontsize
-            )
-            dots_space = (
-                self.layout.column_width - title_width - max_page_num_width - 10
-            )
-            num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
-            dots = "." * num_dots
-
             # Positions
             x_start = column_positions[current_column]
             y = (
@@ -278,24 +268,29 @@ class TocGenerator:
             )
             x_page_num = x_start + self.layout.column_width - page_num_width
 
-            # Append title, dots, and page number
+            # Append title
             tw.append(
                 (x_start, y),
                 shortened_title,
                 font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
             )
-            tw.append(
-                (x_start + title_width, y),
-                dots,
-                font=self.layout.text_font,
-                fontsize=self.layout.text_fontsize,
+
+            # Define the rectangle for the dots and page number
+            dots_rect = fitz.Rect(
+                x_start + title_width,
+                y - self.layout.text_fontsize,  # Align with title baseline
+                x_start + self.layout.column_width,
+                y + self.layout.line_spacing,
             )
-            tw.append(
-                (x_page_num, y),
-                page_number_str,
+
+            # Use fill_textbox to add dots and right-aligned page number
+            tw.fill_textbox(
+                dots_rect,
+                f"..... {page_number_str}",  # Use a few dots to seed
                 font=self.layout.text_font,
                 fontsize=self.layout.text_fontsize,
+                align=fitz.TEXT_ALIGN_RIGHT,
             )
 
             # Store entry for link creation, covering the full entry width
