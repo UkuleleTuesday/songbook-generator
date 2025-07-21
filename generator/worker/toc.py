@@ -164,8 +164,8 @@ class TocGenerator:
         page_rect = temp_page.rect
         self.pdf.delete_page(0)
 
-        # Create a text writer for the whole TOC generation process
-        tw = fitz.TextWriter(page_rect)
+        # Create a list of text writers, one for each page.
+        text_writers = [fitz.TextWriter(page_rect)]
 
         # Calculate layout
         available_height = (
@@ -186,7 +186,7 @@ class TocGenerator:
             self.layout.margin_left,
             self.layout.margin_top + self.layout.title_height - 20,
         )
-        tw.append(
+        text_writers[0].append(
             title_pos,
             "Table of Contents",
             font=self.layout.title_font,
@@ -204,8 +204,10 @@ class TocGenerator:
                 if current_column >= self.layout.columns_per_page:
                     current_column = 0
                     current_page_index += 1
+                    # Create a new text writer for the new page
+                    text_writers.append(fitz.TextWriter(page_rect))
                     # Add title to new page
-                    tw.append(
+                    text_writers[current_page_index].append(
                         title_pos,
                         "Table of Contents",
                         font=self.layout.title_font,
@@ -226,7 +228,7 @@ class TocGenerator:
                 + (current_line_in_column * self.layout.line_spacing)
             )
 
-            tw.append(
+            text_writers[current_page_index].append(
                 (x, y),
                 toc_text_line,
                 font=self.layout.text_font,
@@ -254,9 +256,8 @@ class TocGenerator:
 
             current_line_in_column += 1
 
-        # Write all text to the PDF pages
-        num_pages = current_page_index + 1
-        for i in range(num_pages):
+        # Write each text writer to a new page in the PDF
+        for tw in text_writers:
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
             tw.write_text(page)
 
