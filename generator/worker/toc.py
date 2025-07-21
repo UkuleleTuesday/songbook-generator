@@ -6,8 +6,7 @@ import importlib.resources
 
 from ..common.config import load_config
 from ..common.tracing import get_tracer
-
-from ..common.exceptions import TocGenerationException
+from .exceptions import TocGenerationException
 
 tracer = get_tracer(__name__)
 
@@ -20,13 +19,15 @@ def resolve_font(font_name: str) -> fitz.Font:
     Load a font from package resources.
     If it fails, log a warning and fall back to a built-in font.
     """
-    try: # See this?
+    try:
         font_buffer = (
-            importlib.resources.files("generator.fonts").joinpath(font_name).read_bytes()
+            importlib.resources.files("generator.fonts")
+            .joinpath(font_name)
+            .read_bytes()
         )
-    except Exception:  # Catch RELEVANT exception here insteadj
-        raise ValueError("Meaninful error...")
-    return fitz.Font(fontbuffer=font_buffer)
+        return fitz.Font(fontbuffer=font_buffer)
+    except FileNotFoundError as e:
+        raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:

@@ -19,21 +19,21 @@ def test_resolve_font_valid_font(mocker):
     mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
 
 
+from .exceptions import TocGenerationException
+
+
 def test_resolve_font_fallback(mocker):
-    """Test that it falls back to a built-in font on failure."""
+    """Test that it raises TocGenerationException on failure."""
     # Mock importlib.resources to simulate file not found
-    mock_files = mocker.patch("importlib.resources.files")
-    mock_files.return_value.joinpath.side_effect = FileNotFoundError
+    mocker.patch(
+        "importlib.resources.files",
+        side_effect=FileNotFoundError("Font file not found."),
+    )
 
-    mock_fitz_font = mocker.patch("fitz.Font")
-    mock_echo = mocker.patch("click.echo")
+    with pytest.raises(TocGenerationException) as excinfo:
+        resolve_font("non_existent_font.ttf")
 
-    font_name = "non_existent_font.ttf"
-    resolve_font(font_name)
-
-    mock_echo.assert_called_once()
-    assert "Falling back to default font 'helv'" in mock_echo.call_args[0][0]
-    mock_fitz_font.assert_called_once_with("helv")
+    assert "TOC font file not found: non_existent_font.ttf" in str(excinfo.value)
 
 
 def test_generate_toc_title_empty_string():
