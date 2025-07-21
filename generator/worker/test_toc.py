@@ -1,31 +1,39 @@
 import pytest
-from .toc import resolve_font, DEFAULT_FONT, generate_toc_title
+from .toc import resolve_font, generate_toc_title, DEFAULT_FONT_NAME
 
 
-def test_resolve_font_valid_fontfile(mocker):
-    # Mock fitz.Font to simulate successful font loading
-    mock_font = mocker.patch("fitz.Font")
-    fontfile = "valid_font.ttf"
-    result = resolve_font(fontfile, DEFAULT_FONT)
-    assert result == fontfile
-    mock_font.assert_called_once_with(fontfile=fontfile)
+def test_resolve_font_valid_font(mocker):
+    """Test that a valid font file is loaded correctly."""
+    # Mock importlib.resources to avoid file system access
+    mock_files = mocker.patch("importlib.resources.files")
+    mock_path = mock_files.return_value.joinpath.return_value
+    mock_path.read_bytes.return_value = b"font_data"
+    mock_fitz_font = mocker.patch("fitz.Font")
+
+    font_name = DEFAULT_FONT_NAME
+    resolve_font(font_name)
+
+    mock_files.assert_called_once_with("generator.fonts")
+    mock_files.return_value.joinpath.assert_called_once_with(font_name)
+    mock_path.read_bytes.assert_called_once()
+    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
 
 
-def test_resolve_font_invalid_fontfile(mocker):
-    # Mock fitz.Font to simulate font loading failure
-    mock_font = mocker.patch("fitz.Font", side_effect=Exception("Invalid font"))
-    fontfile = "invalid_font.ttf"
-    result = resolve_font(fontfile, DEFAULT_FONT)
-    assert result == DEFAULT_FONT
-    mock_font.assert_called_once_with(fontfile=fontfile)
+def test_resolve_font_fallback(mocker):
+    """Test that it falls back to a built-in font on failure."""
+    # Mock importlib.resources to simulate file not found
+    mock_files = mocker.patch("importlib.resources.files")
+    mock_files.return_value.joinpath.side_effect = FileNotFoundError
 
+    mock_fitz_font = mocker.patch("fitz.Font")
+    mock_echo = mocker.patch("click.echo")
 
-def test_resolve_font_no_fontfile(mocker):
-    # Test with no fontfile provided
-    mock_font = mocker.patch("fitz.Font")
-    result = resolve_font(None, DEFAULT_FONT)
-    assert result == DEFAULT_FONT
-    mock_font.assert_not_called()
+    font_name = "non_existent_font.ttf"
+    resolve_font(font_name)
+
+    mock_echo.assert_called_once()
+    assert "Falling back to default font 'helv'" in mock_echo.call_args[0][0]
+    mock_fitz_font.assert_called_once_with("helv")
 
 
 def test_generate_toc_title_empty_string():
