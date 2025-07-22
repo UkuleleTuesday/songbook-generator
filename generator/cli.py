@@ -185,7 +185,9 @@ def generate(
     default=False,
     help="Update tags on Drive files in addition to syncing to GCS cache.",
 )
-def sync_cache_command(ctx, source_folder, no_metadata, force, update_tags_only, update_tags):
+def sync_cache_command(
+    ctx, source_folder, no_metadata, force, update_tags_only, update_tags
+):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
