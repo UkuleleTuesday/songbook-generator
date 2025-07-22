@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 import fitz
 from .toc import (
     resolve_font,
