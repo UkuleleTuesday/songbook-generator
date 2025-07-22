@@ -268,4 +268,4 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
 
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args[0][1]
-    assert "Ready Song *" in appended_title
+    assert "Ready Song*" in appended_title
