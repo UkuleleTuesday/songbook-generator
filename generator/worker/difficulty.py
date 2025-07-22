@@ -57,4 +57,7 @@ def assign_difficulty_bins(files: List[File], num_bins: int = 5) -> None:
     # Assign the calculated bin back to the file properties
     for i, file in enumerate(files):
         bin_index = int(diffs[i])
+        # Files with invalid/missing difficulty are marked as -1, should be bin 0.
+        if bin_index == -1:
+            bin_index = 0
         file.properties["difficulty_bin"] = str(bin_index)
