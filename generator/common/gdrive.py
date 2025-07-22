@@ -74,7 +74,7 @@ def query_drive_files(
                 .list(
                     q=query,
                     pageSize=1000,
-                    fields="nextPageToken, files(id,name,properties,mimeType)",
+                    fields="nextPageToken, files(id,name,parents,properties,mimeType)",
                     orderBy="name_natural",
                     pageToken=page_token,
                 )
@@ -88,6 +88,7 @@ def query_drive_files(
                         name=f["name"],
                         properties=f.get("properties", {}),
                         mimeType=f.get("mimeType"),
+                        parents=f.get("parents", []),
                     )
                 )
             page_token = resp.get("nextPageToken")

@@ -6,6 +6,8 @@ from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
 from ..common.caching import init_cache
+from ..worker.models import File
+from .tags import Tagger
 
 
 def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
@@ -18,7 +20,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         for folder_id in source_folders:
             files = gdrive.query_drive_files(services["drive"], folder_id)
             all_drive_files.extend(files)
-        drive_file_map = {file["id"]: file for file in all_drive_files}
+        drive_file_map = {file.id: file for file in all_drive_files}
         span.set_attribute("drive_files_found", len(all_drive_files))
 
         prefix = "song-sheets/"
@@ -35,7 +37,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
                 continue
 
             drive_file = drive_file_map[drive_file_id]
-            expected_name = drive_file.get("name", "")
+            expected_name = drive_file.name
             current_metadata = blob.metadata or {}
 
             if current_metadata.get(
@@ -61,11 +63,30 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         )
 
 
+def _get_files_to_update(
+    drive_service,
+    source_folders: List[str],
+    modified_after: Optional[datetime] = None,
+) -> List[File]:
+    """
+    Query Google Drive for files in given folders modified after a certain time.
+    """
+    all_files: List[File] = []
+    for folder_id in source_folders:
+        files = gdrive.query_drive_files(
+            drive_service, folder_id, modified_after=modified_after
+        )
+        all_files.extend(files)
+    return all_files
+
+
 def sync_cache(
     source_folders: List[str],
     services,
     with_metadata: bool = True,
     modified_after: Optional[datetime] = None,
+    update_tags_only: bool = False,
+    update_tags: bool = False,
 ) -> int:
     """
     Ensure that files in the given drive source folders are synced into the GCS cache.
@@ -78,29 +99,40 @@ def sync_cache(
             span.set_attribute("modified_after", str(modified_after))
 
         cache = init_cache()
+        tagger = Tagger(services["drive"])
 
-        all_files = []
-        for folder_id in source_folders:
-            files = gdrive.query_drive_files(
-                services["drive"], folder_id, modified_after=modified_after
+        files_to_update = _get_files_to_update(
+            services["drive"], source_folders, modified_after
+        )
+
+        span.set_attribute("total_files_found", len(files_to_update))
+        if modified_after:
+            span.set_attribute(
+                "files_to_update",
+                ", ".join([f.name for f in files_to_update]) or "None",
             )
-            all_files.extend(files)
+        else:
+            span.set_attribute("files_to_update", "all")
 
-        span.set_attribute("total_files_found", len(all_files))
-
-        if not all_files:
+        if not files_to_update:
             click.echo("No new or modified files to sync.")
             return 0
 
-        for file in all_files:
-            with services["tracer"].start_as_current_span("sync_file"):
-                click.echo(f"Syncing {file['name']} (ID: {file['id']})")
-                gdrive.download_file_stream(services["drive"], file, cache)
+        for file in files_to_update:
+            if update_tags or update_tags_only:
+                with services["tracer"].start_as_current_span("update_file_tags"):
+                    click.echo(f"Updating tags for {file.name} (ID: {file.id})")
+                    tagger.update_tags(file)
 
-        if with_metadata:
+            if not update_tags_only:
+                with services["tracer"].start_as_current_span("sync_file"):
+                    click.echo(f"Syncing {file.name} (ID: {file.id})")
+                    gdrive.download_file_stream(services["drive"], file, cache)
+
+        if with_metadata and not update_tags_only:
             _sync_gcs_metadata_from_drive(source_folders, services)
 
-        return len(all_files)
+        return len(files_to_update)
 
 
 def download_gcs_cache_to_local(

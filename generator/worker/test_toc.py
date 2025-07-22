@@ -247,3 +247,25 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     appended_title = mock_tw.append.call_args[0][1]
     assert appended_title.startswith("◔ ")
     assert "Easy Song" in appended_title
+
+
+def test_add_toc_entry_ready_to_play_status(toc_layout):
+    """Test that a '*' is added for READY_TO_PLAY status."""
+    generator = TocGenerator(toc_layout)
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that title is appended with the '*'
+    appended_title = mock_tw.append.call_args[0][1]
+    assert "Ready Song*" in appended_title
