@@ -226,7 +226,7 @@ def test_add_toc_entry_title_truncation(toc_layout):
     )
 
     # Check that the appended title is shorter than the original and ends with "..."
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert len(appended_title) < len(long_title)
     assert appended_title.endswith("...")
 
@@ -251,7 +251,7 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     )
 
     # Check that title is appended with the correct symbol
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert appended_title.startswith("◑ ")
     assert "Medium Song" in appended_title
 
@@ -274,7 +274,7 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
     )
 
     # Check that title is appended with the '*'
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert "Ready Song*" in appended_title
 
 
