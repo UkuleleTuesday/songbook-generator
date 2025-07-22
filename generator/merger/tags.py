@@ -1,7 +1,11 @@
+import json
 from typing import Any, Callable, Dict, List, Optional
+
+from ..common.tracing import get_tracer
 
 # A list to hold all tagged functions
 _TAGGERS: List[Callable[[Dict[str, Any]], Any]] = []
+tracer = get_tracer(__name__)
 
 # Folder IDs for status checking.
 # Ref: generator/common/config.py:DEFAULT_GDRIVE_FOLDER_IDS
@@ -25,26 +29,30 @@ class Tagger:
 
         For each function decorated with @tag, this function calls it with the
         file object. If the function returns a value other than None, it updates
-        the file's `appProperties` with the function name as the key and the
+        the file's `properties` with the function name as the key and the
         return value as the value.
         """
-        new_properties = {}
-        for tagger in _TAGGERS:
-            tag_name = tagger.__name__
-            tag_value = tagger(file)
-            if tag_value is not None:
-                new_properties[tag_name] = str(tag_value)
+        with tracer.start_as_current_span(
+            "update_tags", attributes={"file.id": file["id"], "file.name": file["name"]}
+        ) as span:
+            new_properties = {}
+            for tagger in _TAGGERS:
+                tag_name = tagger.__name__
+                tag_value = tagger(file)
+                if tag_value is not None:
+                    new_properties[tag_name] = str(tag_value)
 
-        if new_properties:
-            # Preserve existing properties by doing a read-modify-write.
-            updated_properties = file.get("properties", {}).copy()
-            updated_properties.update(new_properties)
+            if new_properties:
+                span.set_attribute("new_properties", json.dumps(new_properties))
+                # Preserve existing properties by doing a read-modify-write.
+                updated_properties = file.get("properties", {}).copy()
+                updated_properties.update(new_properties)
 
-            self.drive_service.files().update(
-                fileId=file["id"],
-                body={"properties": updated_properties},
-                fields="properties",
-            ).execute()
+                self.drive_service.files().update(
+                    fileId=file["id"],
+                    body={"properties": updated_properties},
+                    fields="properties",
+                ).execute()
 
 
 @tag
