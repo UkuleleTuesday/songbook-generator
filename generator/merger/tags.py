@@ -15,30 +15,35 @@ def tag(func: Callable[[Dict[str, Any]], Any]) -> Callable[[Dict[str, Any]], Any
     return func
 
 
-def update_tags(drive_service: Any, file: Dict[str, Any]):
-    """
-    Update Google Drive file properties based on registered tag functions.
+class Tagger:
+    def __init__(self, drive_service: Any):
+        self.drive_service = drive_service
 
-    For each function decorated with @tag, this function calls it with the
-    file object. If the function returns a value other than None, it updates
-    the file's `appProperties` with the function name as the key and the
-    return value as the value.
-    """
-    properties_to_update = {}
-    for tagger in _TAGGERS:
-        tag_name = tagger.__name__
-        tag_value = tagger(file)
-        if tag_value is not None:
-            properties_to_update[tag_name] = str(tag_value)
+    def update_tags(self, file: Dict[str, Any]):
+        """
+        Update Google Drive file properties based on registered tag functions.
 
-    if properties_to_update:
-        # Note: This will overwrite existing appProperties. A read-modify-write
-        # would be needed to preserve other properties. For now, this is fine.
-        drive_service.files().update(
-            fileId=file["id"],
-            body={"appProperties": properties_to_update},
-            fields="appProperties",
-        ).execute()
+        For each function decorated with @tag, this function calls it with the
+        file object. If the function returns a value other than None, it updates
+        the file's `appProperties` with the function name as the key and the
+        return value as the value.
+        """
+        properties_to_update = {}
+        for tagger in _TAGGERS:
+            tag_name = tagger.__name__
+            tag_value = tagger(file)
+            if tag_value is not None:
+                properties_to_update[tag_name] = str(tag_value)
+
+        if properties_to_update:
+            # Note: This will overwrite existing appProperties. A
+            # read-modify-write would be needed to preserve other properties.
+            # For now, this is fine.
+            self.drive_service.files().update(
+                fileId=file["id"],
+                body={"appProperties": properties_to_update},
+                fields="appProperties",
+            ).execute()
 
 
 @tag
