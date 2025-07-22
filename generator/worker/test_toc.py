@@ -11,6 +11,7 @@ from .toc import (
 )
 from .models import File
 from .exceptions import TocGenerationException
+from . import toc
 
 
 def test_resolve_font_valid_font(mocker):
@@ -65,24 +66,21 @@ def test_resolve_font_total_failure(mocker):
 
 
 @pytest.mark.parametrize(
-    "difficulty,expected_symbol",
+    "difficulty_bin,expected_symbol",
     [
-        (0, "○"),
-        (0.9, "○"),
-        (1, "◔"),
-        (1.9, "◔"),
-        (2, "◑"),
-        (2.9, "◑"),
-        (3, "◕"),
-        (3.9, "◕"),
-        (4, "●"),
+        (0, ""),  # Bin 0 is for invalid/no difficulty
+        (1, "○"),
+        (2, "◔"),
+        (3, "◑"),
+        (4, "◕"),
         (5, "●"),
-        (100, "●"),
+        (6, ""),  # Out of range should return no symbol
+        (-1, ""),  # Out of range should return no symbol
     ],
 )
-def test_difficulty_symbol(difficulty, expected_symbol):
-    """Test that difficulty_symbol returns the correct symbol for a given value."""
-    assert difficulty_symbol(difficulty) == expected_symbol
+def test_difficulty_symbol(difficulty_bin, expected_symbol):
+    """Test that difficulty_symbol returns the correct symbol for a given bin."""
+    assert difficulty_symbol(difficulty_bin) == expected_symbol
 
 
 def test_generate_toc_title_empty_string():
@@ -230,7 +228,7 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file_with_difficulty = File(
-        id="1", name="Easy Song", properties={"difficulty": "1.5"}
+        id="1", name="Medium Song", properties={"difficulty_bin": "3"}
     )
 
     generator._add_toc_entry(
@@ -245,8 +243,8 @@ def test_add_toc_entry_with_difficulty(toc_layout):
 
     # Check that title is appended with the correct symbol
     appended_title = mock_tw.append.call_args[0][1]
-    assert appended_title.startswith("◔ ")
-    assert "Easy Song" in appended_title
+    assert appended_title.startswith("◑ ")
+    assert "Medium Song" in appended_title
 
 
 def test_add_toc_entry_ready_to_play_status(toc_layout):
@@ -269,3 +267,15 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args[0][1]
     assert "Ready Song*" in appended_title
+
+
+def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
+    """Verify that assign_difficulty_bins is called."""
+    mock_assign_bins = mocker.patch("generator.worker.toc.assign_difficulty_bins")
+    mocker.patch("generator.worker.toc.load_toc_config")
+    mocker.patch("generator.worker.toc.TocGenerator.generate")
+
+    files = [File(id="1", name="Song 1")]
+    toc.build_table_of_contents(files)
+
+    mock_assign_bins.assert_called_once_with(files)
