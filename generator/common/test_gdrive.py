@@ -32,7 +32,7 @@ def test_query_drive_files_basic(mock_drive):
     mock_drive.files.return_value.list.assert_called_once_with(
         q="'folder123' in parents and trashed = false",
         pageSize=1000,
-        fields="nextPageToken, files(id,name,properties,mimeType)",
+        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
     )
@@ -144,7 +144,7 @@ def test_query_drive_files_with_property_filters(mock_drive):
     mock_drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=1000,
-        fields="nextPageToken, files(id,name,properties,mimeType)",
+        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
     )
