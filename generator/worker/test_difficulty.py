@@ -1,4 +1,3 @@
-import pytest
 
 from .difficulty import assign_difficulty_bins
 from .models import File
