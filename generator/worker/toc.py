@@ -134,7 +134,7 @@ class TocLayout:
     # With current font, fontsize and margins, this is the max length that fits and
     # doesn't result in overlap between columns.
     # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 62
+    max_toc_entry_length = 58
 
 
 @dataclass
@@ -249,6 +249,8 @@ class TocGenerator:
         dots = "." * max(num_dots - 3, 0)
 
         # Fill textbox with dots and right-aligned page number
+        print(full_title) 
+        print(f"{dots} {page_number_str}")
         tw.fill_textbox(
             dots_rect,
             f"{dots} {page_number_str}",
