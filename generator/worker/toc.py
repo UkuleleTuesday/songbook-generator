@@ -188,13 +188,28 @@ class TocGenerator:
     ):
         page_number_str = str(file_index + 1 + page_offset)
 
+        # Get difficulty symbol
+        symbol = ""
+        difficulty_str = file.properties.get("difficulty")
+        if difficulty_str:
+            try:
+                difficulty = float(difficulty_str)
+                symbol = difficulty_symbol(difficulty) + " "
+            except (ValueError, TypeError):
+                pass  # Ignore if not a valid float
+
         # Reserve fixed width for page numbers for consistent dot alignment
         max_page_num_width = self.layout.text_font.text_length(
             "9999", fontsize=self.layout.text_fontsize
         )
+        symbol_width = self.layout.text_font.text_length(
+            symbol, fontsize=self.layout.text_fontsize
+        )
 
         # Calculate available width for title and truncate if necessary
-        available_width = self.layout.column_width - max_page_num_width - 5
+        available_width = (
+            self.layout.column_width - max_page_num_width - 5 - symbol_width
+        )
         shortened_title = generate_toc_title(file.name, max_length=100)
         title_width = self.layout.text_font.text_length(
             shortened_title, fontsize=self.layout.text_fontsize
@@ -204,14 +219,16 @@ class TocGenerator:
             avg_char_width = title_width / len(shortened_title)
             max_chars = int(available_width / avg_char_width) - 3
             shortened_title = shortened_title[:max_chars] + "..."
-            title_width = self.layout.text_font.text_length(
-                shortened_title, fontsize=self.layout.text_fontsize
-            )
+
+        full_title = f"{symbol}{shortened_title}"
+        title_width = self.layout.text_font.text_length(
+            full_title, fontsize=self.layout.text_fontsize
+        )
 
         # Append title
         tw.append(
             (x_start, y_pos),
-            shortened_title,
+            full_title,
             font=self.layout.text_font,
             fontsize=self.layout.text_fontsize,
         )
