@@ -41,17 +41,12 @@ def resolve_font(font_name: str) -> fitz.Font:
             raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
-def difficulty_symbol(difficulty: float) -> str:
-    """Return a symbol representing the difficulty level."""
-    if difficulty < 1:
-        return "○"
-    if difficulty < 2:
-        return "◔"
-    if difficulty < 3:
-        return "◑"
-    if difficulty < 4:
-        return "◕"
-    return "●"
+def difficulty_symbol(difficulty_bin: int) -> str:
+    """Return a symbol representing the difficulty level from a bin."""
+    symbols = ["", "○", "◔", "◑", "◕", "●"]
+    if 0 <= difficulty_bin < len(symbols):
+        return symbols[difficulty_bin]
+    return ""  # Default to no symbol if bin is out of range
 
 
 def generate_toc_title(original_title: str, max_length: int) -> str:
@@ -190,13 +185,15 @@ class TocGenerator:
 
         # Get difficulty symbol
         symbol = ""
-        difficulty_str = file.properties.get("difficulty")
-        if difficulty_str:
+        difficulty_bin_str = file.properties.get("difficulty_bin")
+        if difficulty_bin_str:
             try:
-                difficulty = float(difficulty_str)
-                symbol = difficulty_symbol(difficulty) + " "
+                difficulty_bin = int(difficulty_bin_str)
+                symbol_char = difficulty_symbol(difficulty_bin)
+                if symbol_char:
+                    symbol = symbol_char + " "
             except (ValueError, TypeError):
-                pass  # Ignore if not a valid float
+                pass  # Ignore if not a valid integer
 
         # Reserve fixed width for page numbers for consistent dot alignment
         max_page_num_width = self.layout.text_font.text_length(

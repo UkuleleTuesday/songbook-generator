@@ -230,7 +230,7 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file_with_difficulty = File(
-        id="1", name="Easy Song", properties={"difficulty": "1.5"}
+        id="1", name="Medium Song", properties={"difficulty_bin": "3"}
     )
 
     generator._add_toc_entry(
@@ -245,8 +245,8 @@ def test_add_toc_entry_with_difficulty(toc_layout):
 
     # Check that title is appended with the correct symbol
     appended_title = mock_tw.append.call_args[0][1]
-    assert appended_title.startswith("◔ ")
-    assert "Easy Song" in appended_title
+    assert appended_title.startswith("◑ ")
+    assert "Medium Song" in appended_title
 
 
 def test_add_toc_entry_ready_to_play_status(toc_layout):
