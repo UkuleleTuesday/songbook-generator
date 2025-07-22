@@ -99,7 +99,7 @@
           </div>
         </div>
         <div id="progressContainer" style="display: none; padding: 1rem;">
-          <div id="progressBar" class="mdl-progress mdl-js-progress"></div>
+          <div id="progressBar" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>
           <div id="progressText" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Starting...</div>
           <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
         </div>
@@ -182,8 +182,19 @@
       renderHistory();
     }
 
+    function setIndeterminate(indeterminate) {
+      if (indeterminate) {
+        progressBar.classList.add('mdl-progress__indeterminate');
+      } else {
+        progressBar.classList.remove('mdl-progress__indeterminate');
+      }
+    }
+
     function updateProgress(progress, message) {
       const percentage = Math.round(progress * 100);
+      if (progress > 0) {
+        setIndeterminate(false);
+      }
       if (progressBar.MaterialProgress) {
         progressBar.MaterialProgress.setProgress(percentage);
       }
@@ -195,6 +206,7 @@
 
     function showProgress() {
       progressContainer.style.display = 'block';
+      setIndeterminate(true);
       updateProgress(0, 'Starting...');
     }
 
