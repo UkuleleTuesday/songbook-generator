@@ -41,6 +41,19 @@ def resolve_font(font_name: str) -> fitz.Font:
             raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
+def difficulty_symbol(difficulty: float) -> str:
+    """Return a symbol representing the difficulty level."""
+    if difficulty < 1:
+        return "○"
+    if difficulty < 2:
+        return "◔"
+    if difficulty < 3:
+        return "◑"
+    if difficulty < 4:
+        return "◕"
+    return "●"
+
+
 def generate_toc_title(original_title: str, max_length: int) -> str:
     """
     Generate a shortened title for TOC entries using simple heuristics.

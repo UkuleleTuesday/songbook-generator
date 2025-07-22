@@ -7,6 +7,7 @@ from .toc import (
     DEFAULT_FONT_NAME,
     TocGenerator,
     load_toc_config,
+    difficulty_symbol,
 )
 from .models import File
 from .exceptions import TocGenerationException
@@ -61,6 +62,27 @@ def test_resolve_font_total_failure(mocker):
         resolve_font("non_existent_font.ttf")
 
     assert "TOC font file not found: non_existent_font.ttf" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "difficulty,expected_symbol",
+    [
+        (0, "○"),
+        (0.9, "○"),
+        (1, "◔"),
+        (1.9, "◔"),
+        (2, "◑"),
+        (2.9, "◑"),
+        (3, "◕"),
+        (3.9, "◕"),
+        (4, "●"),
+        (5, "●"),
+        (100, "●"),
+    ],
+)
+def test_difficulty_symbol(difficulty, expected_symbol):
+    """Test that difficulty_symbol returns the correct symbol for a given value."""
+    assert difficulty_symbol(difficulty) == expected_symbol
 
 
 def test_generate_toc_title_empty_string():
