@@ -116,9 +116,10 @@ def sync_cache(
             return 0
 
         for file in files_to_update:
-            with services["tracer"].start_as_current_span("sync_file"):
+            with services["tracer"].start_as_current_span("update_file_tags"):
                 click.echo(f"Updating tags for {file['name']} (ID: {file['id']})")
                 tagger.update_tags(file)
+            with services["tracer"].start_as_current_span("sync_file"):
                 click.echo(f"Syncing {file['name']} (ID: {file['id']})")
                 gdrive.download_file_stream(services["drive"], file, cache)
 
