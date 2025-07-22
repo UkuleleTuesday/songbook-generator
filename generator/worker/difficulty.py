@@ -18,6 +18,9 @@ def assign_difficulty_bins(files: List[File], num_bins: int = 5) -> None:
         files: A list of File objects to process.
         num_bins: The number of difficulty bins to use.
     """
+    # FIXME: Logic ported from UTDocxMerger.py - needs revisiting.
+    # See https://github.com/UkuleleTuesday/songbook-generator/issues/121
+
     if not files:
         return
 
