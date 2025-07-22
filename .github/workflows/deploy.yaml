@@ -188,6 +188,8 @@ jobs:
         --entry-point: "worker"
         --memory: "1Gi"
         --cpu: "1"
+        --concurrency: 1
+        --max-instances: 1
         --allow-unauthenticated: true
         --set-env-vars:
           SERVICE_NAME: "songbook-generator"
