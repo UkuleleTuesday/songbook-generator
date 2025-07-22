@@ -39,9 +39,9 @@ def test_update_tags_with_status_tag(mock_drive_service):
 
     tagger.update_tags(file_to_tag)
 
-    expected_body = {"appProperties": {"status": "APPROVED"}}
+    expected_body = {"properties": {"status": "APPROVED"}}
     mock_drive_service.files.return_value.update.assert_called_once_with(
-        fileId="file123", body=expected_body, fields="appProperties"
+        fileId="file123", body=expected_body, fields="properties"
     )
 
 
@@ -55,8 +55,8 @@ def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
-def test_update_tags_with_multiple_tags(mock_drive_service):
-    """Test that multiple tags are collected and applied."""
+def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_service):
+    """Test that multiple tags are applied and existing properties preserved."""
 
     @tag
     def another_tag(file):
@@ -64,19 +64,24 @@ def test_update_tags_with_multiple_tags(mock_drive_service):
 
     try:
         tagger = Tagger(mock_drive_service)
-        file_to_tag = {"id": "file123", "parents": [FOLDER_ID_APPROVED]}
+        file_to_tag = {
+            "id": "file123",
+            "parents": [FOLDER_ID_APPROVED],
+            "properties": {"existing_prop": "existing_value"},
+        }
 
         tagger.update_tags(file_to_tag)
 
-        expected_body = {
-            "appProperties": {"status": "APPROVED", "another_tag": "another_value"}
+        expected_properties = {
+            "status": "APPROVED",
+            "another_tag": "another_value",
+            "existing_prop": "existing_value",
         }
+        expected_body = {"properties": expected_properties}
 
-        # Use mock.call to check the body regardless of dict order
-        update_call = mock_drive_service.files.return_value.update.call_args
-        assert update_call.kwargs["fileId"] == "file123"
-        assert update_call.kwargs["fields"] == "appProperties"
-        assert update_call.kwargs["body"] == expected_body
+        mock_drive_service.files.return_value.update.assert_called_once_with(
+            fileId="file123", body=expected_body, fields="properties"
+        )
 
     finally:
         # Clean up the dynamically added tag to not affect other tests

@@ -28,20 +28,21 @@ class Tagger:
         the file's `appProperties` with the function name as the key and the
         return value as the value.
         """
-        properties_to_update = {}
+        new_properties = {}
         for tagger in _TAGGERS:
             tag_name = tagger.__name__
             tag_value = tagger(file)
             if tag_value is not None:
-                properties_to_update[tag_name] = str(tag_value)
+                new_properties[tag_name] = str(tag_value)
 
-        if properties_to_update:
-            # Note: This will overwrite existing appProperties. A
-            # read-modify-write would be needed to preserve other properties.
-            # For now, this is fine.
+        if new_properties:
+            # Preserve existing properties by doing a read-modify-write.
+            updated_properties = file.get("properties", {}).copy()
+            updated_properties.update(new_properties)
+
             self.drive_service.files().update(
                 fileId=file["id"],
-                body={"properties": properties_to_update},
+                body={"properties": updated_properties},
                 fields="properties",
             ).execute()
 
