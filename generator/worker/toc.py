@@ -216,11 +216,6 @@ class TocGenerator:
             shortened_title, fontsize=self.layout.text_fontsize
         )
 
-        if title_width > available_width:
-            avg_char_width = title_width / len(shortened_title)
-            max_chars = int(available_width / avg_char_width) - 3
-            shortened_title = shortened_title[:max_chars] + "..."
-
         full_title = f"{symbol}{shortened_title}"
         title_width = self.layout.text_font.text_length(
             full_title, fontsize=self.layout.text_fontsize
