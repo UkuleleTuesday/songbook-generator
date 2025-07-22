@@ -216,6 +216,11 @@ class TocGenerator:
             full_title, fontsize=self.layout.text_fontsize
         )
 
+        # If title is wider than the column, it will cause an error.
+        # This can happen if the title has many wide characters.
+        if title_width >= self.layout.column_width:
+            title_width = self.layout.column_width
+
         # Append title
         tw.append(
             (x_start, y_pos),
