@@ -46,6 +46,7 @@ class Tagger:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
                 updated_properties = file.get("properties", {}).copy()
+                span.set_attribute("current_properties", json.dumps(updated_properties))
                 updated_properties.update(new_properties)
 
                 self.drive_service.files().update(
