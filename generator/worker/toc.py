@@ -15,6 +15,7 @@ tracer = get_tracer(__name__)
 
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
+DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
 
 def resolve_font(font_name: str) -> fitz.Font:
@@ -128,6 +129,7 @@ class TocLayout:
     title_height: int = 50
     line_spacing: int = 12
     text_font: fitz.Font = None
+    text_semibold_font: fitz.Font = None
     text_fontsize: float = 10
     title_font: fitz.Font = None
     title_fontsize: int = 16
@@ -155,6 +157,9 @@ def load_toc_config() -> TocLayout:
     layout = TocLayout()
 
     layout.text_font = resolve_font(toc_config.get("text-font", DEFAULT_FONT_NAME))
+    layout.text_semibold_font = resolve_font(
+        toc_config.get("text-semibold-font", DEFAULT_TEXT_SEMIBOLD_FONT_NAME)
+    )
     layout.text_fontsize = toc_config.get("text-fontsize", layout.text_fontsize)
     layout.title_font = resolve_font(
         toc_config.get("title-font", DEFAULT_TITLE_FONT_NAME)
@@ -253,14 +258,38 @@ class TocGenerator:
         num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
         dots = "." * max(num_dots - 3, 0)
 
-        # Fill textbox with dots and right-aligned page number
-        tw.fill_textbox(
-            dots_rect,
-            f"{dots} {page_number_str}",
-            font=self.layout.text_font,
-            fontsize=self.layout.text_fontsize,
-            align=fitz.TEXT_ALIGN_RIGHT,
+        # Manually draw dots and page number to allow for different fonts
+        page_num_width_semibold = self.layout.text_semibold_font.text_length(
+            page_number_str, fontsize=self.layout.text_fontsize
         )
+
+        # Draw page number (right-aligned)
+        page_num_pos_x = x_start + self.layout.column_width - page_num_width_semibold
+        tw.append(
+            (page_num_pos_x, y_pos),
+            page_number_str,
+            font=self.layout.text_semibold_font,
+            fontsize=self.layout.text_fontsize,
+        )
+
+        # Draw dots
+        dots_start_x = x_start + title_width
+        dots_end_x = page_num_pos_x - self.layout.text_font.text_length(
+            " ", fontsize=self.layout.text_fontsize
+        )
+        dots_width = dots_end_x - dots_start_x
+        dot_width = self.layout.text_font.text_length(
+            ".", fontsize=self.layout.text_fontsize
+        )
+        if dot_width > 0:
+            num_dots = int(dots_width / dot_width)
+            dots = "." * max(0, num_dots)
+            tw.append(
+                (dots_start_x, y_pos),
+                f"{dots} ",
+                font=self.layout.text_font,
+                fontsize=self.layout.text_fontsize,
+            )
 
         # Store entry for link creation
         link_rect = fitz.Rect(
