@@ -61,6 +61,23 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         )
 
 
+def _get_files_to_update(
+    drive_service,
+    source_folders: List[str],
+    modified_after: Optional[datetime] = None,
+) -> List[dict]:
+    """
+    Query Google Drive for files in given folders modified after a certain time.
+    """
+    all_files = []
+    for folder_id in source_folders:
+        files = gdrive.query_drive_files(
+            drive_service, folder_id, modified_after=modified_after
+        )
+        all_files.extend(files)
+    return all_files
+
+
 def sync_cache(
     source_folders: List[str],
     services,
@@ -79,20 +96,24 @@ def sync_cache(
 
         cache = init_cache()
 
-        all_files = []
-        for folder_id in source_folders:
-            files = gdrive.query_drive_files(
-                services["drive"], folder_id, modified_after=modified_after
+        files_to_update = _get_files_to_update(
+            services["drive"], source_folders, modified_after
+        )
+
+        span.set_attribute("total_files_found", len(files_to_update))
+        if modified_after:
+            span.set_attribute(
+                "files_to_update",
+                ", ".join([f["name"] for f in files_to_update]) or "None",
             )
-            all_files.extend(files)
+        else:
+            span.set_attribute("files_to_update", "all")
 
-        span.set_attribute("total_files_found", len(all_files))
-
-        if not all_files:
+        if not files_to_update:
             click.echo("No new or modified files to sync.")
             return 0
 
-        for file in all_files:
+        for file in files_to_update:
             with services["tracer"].start_as_current_span("sync_file"):
                 click.echo(f"Syncing {file['name']} (ID: {file['id']})")
                 gdrive.download_file_stream(services["drive"], file, cache)
@@ -100,7 +121,7 @@ def sync_cache(
         if with_metadata:
             _sync_gcs_metadata_from_drive(source_folders, services)
 
-        return len(all_files)
+        return len(files_to_update)
 
 
 def download_gcs_cache_to_local(
