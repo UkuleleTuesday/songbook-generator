@@ -210,7 +210,10 @@ class TocGenerator:
         available_width = (
             self.layout.column_width - max_page_num_width - 5 - symbol_width
         )
-        shortened_title = generate_toc_title(file.name, max_length=100)
+        file_name = file.name
+        if file.properties.get("status") == "READY_TO_PLAY":
+            file_name += " *"
+        shortened_title = generate_toc_title(file_name, max_length=100)
         title_width = self.layout.text_font.text_length(
             shortened_title, fontsize=self.layout.text_fontsize
         )
