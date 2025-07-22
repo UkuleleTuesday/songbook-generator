@@ -35,7 +35,11 @@ def test_status_tagger():
 def test_update_tags_with_status_tag(mock_drive_service):
     """Test Tagger.update_tags with the status tag."""
     tagger = Tagger(mock_drive_service)
-    file_to_tag = {"id": "file123", "parents": [FOLDER_ID_APPROVED]}
+    file_to_tag = {
+        "id": "file123",
+        "name": "test.pdf",
+        "parents": [FOLDER_ID_APPROVED],
+    }
 
     tagger.update_tags(file_to_tag)
 
@@ -48,7 +52,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
 def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):
     """Test that no update is made if the tag function returns None."""
     tagger = Tagger(mock_drive_service)
-    file_to_tag = {"id": "file123", "parents": ["other_folder"]}
+    file_to_tag = {"id": "file123", "name": "test.pdf", "parents": ["other_folder"]}
 
     tagger.update_tags(file_to_tag)
 
@@ -66,6 +70,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_servic
         tagger = Tagger(mock_drive_service)
         file_to_tag = {
             "id": "file123",
+            "name": "test.pdf",
             "parents": [FOLDER_ID_APPROVED],
             "properties": {"existing_prop": "existing_value"},
         }
@@ -100,7 +105,11 @@ def test_update_tags_no_tags_defined(mock_drive_service):
 
     try:
         tagger = Tagger(mock_drive_service)
-        file_to_tag = {"id": "file123", "parents": [FOLDER_ID_APPROVED]}
+        file_to_tag = {
+            "id": "file123",
+            "name": "test.pdf",
+            "parents": [FOLDER_ID_APPROVED],
+        }
         tagger.update_tags(file_to_tag)
         mock_drive_service.files.return_value.update.assert_not_called()
     finally:
