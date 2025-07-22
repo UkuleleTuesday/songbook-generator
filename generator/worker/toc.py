@@ -216,11 +216,6 @@ class TocGenerator:
             full_title, fontsize=self.layout.text_fontsize
         )
 
-        # If title is wider than the column, it will cause an error.
-        # This can happen if the title has many wide characters.
-        if title_width >= self.layout.column_width:
-            title_width = self.layout.column_width
-
         # Append title
         tw.append(
             (x_start, y_pos),
@@ -229,35 +224,38 @@ class TocGenerator:
             fontsize=self.layout.text_fontsize,
         )
 
-        # Define rectangle for dots and page number
-        dots_rect = fitz.Rect(
-            x_start + title_width,
-            y_pos - self.layout.text_fontsize,  # Align with title baseline
-            x_start + self.layout.column_width,
-            y_pos + self.layout.line_spacing,
-        )
+        # If title is wider than the column, it will cause an error.
+        # This can happen if the title has many wide characters. We avoid drawing dots.
+        if title_width < self.layout.column_width:
+            # Define rectangle for dots and page number
+            dots_rect = fitz.Rect(
+                x_start + title_width,
+                y_pos - self.layout.text_fontsize,  # Align with title baseline
+                x_start + self.layout.column_width,
+                y_pos + self.layout.line_spacing,
+            )
 
-        # Calculate number of dots to fill the space
-        page_num_width = self.layout.text_font.text_length(
-            page_number_str, fontsize=self.layout.text_fontsize
-        )
-        dot_width = self.layout.text_font.text_length(
-            ".", fontsize=self.layout.text_fontsize
-        )
-        dots_space = dots_rect.width - page_num_width
-        num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
-        dots = "." * max(num_dots - 3, 0)
+            # Calculate number of dots to fill the space
+            page_num_width = self.layout.text_font.text_length(
+                page_number_str, fontsize=self.layout.text_fontsize
+            )
+            dot_width = self.layout.text_font.text_length(
+                ".", fontsize=self.layout.text_fontsize
+            )
+            dots_space = dots_rect.width - page_num_width
+            num_dots = int(dots_space / dot_width) if dot_width > 0 else 0
+            dots = "." * max(num_dots - 3, 0)
 
-        # Fill textbox with dots and right-aligned page number
-        print(full_title) 
-        print(f"{dots} {page_number_str}")
-        tw.fill_textbox(
-            dots_rect,
-            f"{dots} {page_number_str}",
-            font=self.layout.text_font,
-            fontsize=self.layout.text_fontsize,
-            align=fitz.TEXT_ALIGN_RIGHT,
-        )
+            # Fill textbox with dots and right-aligned page number
+            print(full_title)
+            print(f"{dots} {page_number_str}")
+            tw.fill_textbox(
+                dots_rect,
+                f"{dots} {page_number_str}",
+                font=self.layout.text_font,
+                fontsize=self.layout.text_fontsize,
+                align=fitz.TEXT_ALIGN_RIGHT,
+            )
 
         # Store entry for link creation
         link_rect = fitz.Rect(
