@@ -41,8 +41,8 @@ class Tagger:
             # For now, this is fine.
             self.drive_service.files().update(
                 fileId=file["id"],
-                body={"appProperties": properties_to_update},
-                fields="appProperties",
+                body={"properties": properties_to_update},
+                fields="properties",
             ).execute()
 
 
