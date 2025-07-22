@@ -51,13 +51,16 @@ def difficulty_symbol(difficulty_bin: int) -> str:
     return ""  # Default to no symbol if bin is out of range
 
 
-def generate_toc_title(original_title: str, max_length: int) -> str:
+def generate_toc_title(
+    original_title: str, max_length: int, is_ready_to_play: bool = False
+) -> str:
     """
     Generate a shortened title for TOC entries using simple heuristics.
 
     Args:
         original_title: The original song title
         max_length: Maximum allowed length for the title
+        is_ready_to_play: If True, appends a '*' to the title.
 
     Returns:
         Shortened title that fits within max_length
@@ -112,6 +115,9 @@ def generate_toc_title(original_title: str, max_length: int) -> str:
         else:
             title = title[:max_length]
 
+    if is_ready_to_play:
+        title += "*"
+
     return title
 
 
@@ -136,7 +142,7 @@ class TocLayout:
     # With current font, fontsize and margins, this is the max length that fits and
     # doesn't result in overlap between columns.
     # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 62
+    max_toc_entry_length = 60
 
 
 @dataclass
@@ -201,35 +207,13 @@ class TocGenerator:
             except (ValueError, TypeError):
                 pass  # Ignore if not a valid integer
 
-        # Reserve fixed width for page numbers for consistent dot alignment
-        max_page_num_width = self.layout.text_font.text_length(
-            "9999", fontsize=self.layout.text_fontsize
+        shortened_title = generate_toc_title(
+            file.name,
+            max_length=self.layout.max_toc_entry_length,
+            is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
-        symbol_width = self.layout.text_font.text_length(
-            symbol, fontsize=self.layout.text_fontsize
-        )
-
-        # Calculate available width for title and truncate if necessary
-        available_width = (
-            self.layout.column_width - max_page_num_width - 5 - symbol_width
-        )
-        file_name = file.name
-        shortened_title = generate_toc_title(file_name, max_length=100)
-        if file.properties.get("status") == "READY_TO_PLAY":
-            shortened_title += "*"
-        title_width = self.layout.text_font.text_length(
-            shortened_title, fontsize=self.layout.text_fontsize
-        )
-
-        if title_width > available_width:
-            avg_char_width = title_width / len(shortened_title)
-            max_chars = int(available_width / avg_char_width) - 3
-            shortened_title = shortened_title[:max_chars] + "..."
 
         full_title = f"{symbol}{shortened_title}"
-        title_width = self.layout.text_font.text_length(
-            full_title, fontsize=self.layout.text_fontsize
-        )
 
         # Append title
         tw.append(
@@ -237,6 +221,10 @@ class TocGenerator:
             full_title,
             font=self.layout.text_font,
             fontsize=self.layout.text_fontsize,
+        )
+
+        title_width = self.layout.text_font.text_length(
+            full_title, fontsize=self.layout.text_fontsize
         )
 
         # Manually draw dots and page number to allow for different fonts
