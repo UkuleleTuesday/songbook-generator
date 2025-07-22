@@ -1,6 +1,8 @@
 import json
 from typing import Any, Callable, Dict, List, Optional
 
+import click
+
 from ..common.tracing import get_tracer
 
 # A list to hold all tagged functions
@@ -45,9 +47,14 @@ class Tagger:
             if new_properties:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
-                updated_properties = file.get("properties", {}).copy()
-                span.set_attribute("current_properties", json.dumps(updated_properties))
+                current_properties = file.get("properties", {}).copy()
+                click.echo(f"  Current properties: {json.dumps(current_properties)}")
+                span.set_attribute(
+                    "current_properties", json.dumps(current_properties)
+                )
+                updated_properties = current_properties
                 updated_properties.update(new_properties)
+                click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
 
                 self.drive_service.files().update(
                     fileId=file["id"],
