@@ -204,10 +204,6 @@ class TocGenerator:
             symbol, fontsize=self.layout.text_fontsize
         )
 
-        # Calculate available width for title and truncate if necessary
-        available_width = (
-            self.layout.column_width - max_page_num_width - 5 - symbol_width
-        )
         file_name = file.name
         shortened_title = generate_toc_title(
             file_name, max_length=self.layout.max_toc_entry_length
