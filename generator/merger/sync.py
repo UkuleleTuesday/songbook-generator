@@ -85,7 +85,8 @@ def sync_cache(
     services,
     with_metadata: bool = True,
     modified_after: Optional[datetime] = None,
-    tags_only: bool = False,
+    update_tags_only: bool = False,
+    update_tags: bool = False,
 ) -> int:
     """
     Ensure that files in the given drive source folders are synced into the GCS cache.
@@ -118,16 +119,17 @@ def sync_cache(
             return 0
 
         for file in files_to_update:
-            with services["tracer"].start_as_current_span("update_file_tags"):
-                click.echo(f"Updating tags for {file.name} (ID: {file.id})")
-                tagger.update_tags(file)
+            if update_tags or update_tags_only:
+                with services["tracer"].start_as_current_span("update_file_tags"):
+                    click.echo(f"Updating tags for {file.name} (ID: {file.id})")
+                    tagger.update_tags(file)
 
-            if not tags_only:
+            if not update_tags_only:
                 with services["tracer"].start_as_current_span("sync_file"):
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
                     gdrive.download_file_stream(services["drive"], file, cache)
 
-        if with_metadata and not tags_only:
+        if with_metadata and not update_tags_only:
             _sync_gcs_metadata_from_drive(source_folders, services)
 
         return len(files_to_update)

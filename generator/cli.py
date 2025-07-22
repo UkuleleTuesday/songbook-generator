@@ -174,12 +174,18 @@ def generate(
     help="Force a full sync, ignoring modification times.",
 )
 @click.option(
-    "--tags-only",
+    "--update-tags-only",
     is_flag=True,
     default=False,
     help="Only update tags on Drive files, do not sync to GCS cache.",
 )
-def sync_cache_command(ctx, source_folder, no_metadata, force, tags_only):
+@click.option(
+    "--update-tags",
+    is_flag=True,
+    default=False,
+    help="Update tags on Drive files in addition to syncing to GCS cache.",
+)
+def sync_cache_command(ctx, source_folder, no_metadata, force, update_tags_only, update_tags):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
@@ -206,7 +212,8 @@ def sync_cache_command(ctx, source_folder, no_metadata, force, tags_only):
             services,
             with_metadata=not no_metadata,
             modified_after=last_merge_time,
-            tags_only=tags_only,
+            update_tags_only=update_tags_only,
+            update_tags=update_tags,
         )
         click.echo("Cache synchronization complete.")
 
