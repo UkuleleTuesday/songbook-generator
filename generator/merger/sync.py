@@ -6,6 +6,7 @@ from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
 from ..common.caching import init_cache
+from .tags import Tagger
 
 
 def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
@@ -95,6 +96,7 @@ def sync_cache(
             span.set_attribute("modified_after", str(modified_after))
 
         cache = init_cache()
+        tagger = Tagger(services["drive"])
 
         files_to_update = _get_files_to_update(
             services["drive"], source_folders, modified_after
@@ -115,6 +117,8 @@ def sync_cache(
 
         for file in files_to_update:
             with services["tracer"].start_as_current_span("sync_file"):
+                click.echo(f"Updating tags for {file['name']} (ID: {file['id']})")
+                tagger.update_tags(file)
                 click.echo(f"Syncing {file['name']} (ID: {file['id']})")
                 gdrive.download_file_stream(services["drive"], file, cache)
 
