@@ -51,13 +51,16 @@ def difficulty_symbol(difficulty_bin: int) -> str:
     return ""  # Default to no symbol if bin is out of range
 
 
-def generate_toc_title(original_title: str, max_length: int) -> str:
+def generate_toc_title(
+    original_title: str, max_length: int, is_ready_to_play: bool = False
+) -> str:
     """
     Generate a shortened title for TOC entries using simple heuristics.
 
     Args:
         original_title: The original song title
         max_length: Maximum allowed length for the title
+        is_ready_to_play: If True, appends a '*' to the title.
 
     Returns:
         Shortened title that fits within max_length
@@ -111,6 +114,9 @@ def generate_toc_title(original_title: str, max_length: int) -> str:
                 title = title[:truncate_length] + "..."
         else:
             title = title[:max_length]
+
+    if is_ready_to_play:
+        title += "*"
 
     return title
 
@@ -202,18 +208,12 @@ class TocGenerator:
                 pass  # Ignore if not a valid integer
 
         shortened_title = generate_toc_title(
-            file.name, max_length=self.layout.max_toc_entry_length
-        )
-        if file.properties.get("status") == "READY_TO_PLAY":
-            shortened_title += "*"
-        title_width = self.layout.text_font.text_length(
-            shortened_title, fontsize=self.layout.text_fontsize
+            file.name,
+            max_length=self.layout.max_toc_entry_length,
+            is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
 
         full_title = f"{symbol}{shortened_title}"
-        title_width = self.layout.text_font.text_length(
-            full_title, fontsize=self.layout.text_fontsize
-        )
 
         # Append title
         tw.append(
@@ -221,6 +221,10 @@ class TocGenerator:
             full_title,
             font=self.layout.text_font,
             fontsize=self.layout.text_fontsize,
+        )
+
+        title_width = self.layout.text_font.text_length(
+            full_title, fontsize=self.layout.text_fontsize
         )
 
         # Manually draw dots and page number to allow for different fonts

@@ -90,6 +90,13 @@ def test_generate_toc_title_empty_string():
     assert result == ""
 
 
+def test_generate_toc_title_empty_string_ready_to_play():
+    """Test with empty string that is ready to play."""
+    title = ""
+    result = generate_toc_title(title, max_length=60, is_ready_to_play=True)
+    assert result == "*"
+
+
 def test_generate_toc_title_very_short_max_length():
     """Test with very short max length."""
     title = "Long Title"
@@ -215,6 +222,7 @@ def test_add_toc_entry_title_truncation(toc_layout):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     long_title = "This is a very long song title that will definitely need to be truncated - The Long Winded Singers"
+    toc_layout.max_toc_entry_length = 50
     generator._add_toc_entry(
         tw=mock_tw,
         file_index=0,
@@ -254,6 +262,14 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     appended_title = mock_tw.append.call_args_list[0].args[1]
     assert appended_title.startswith("◑ ")
     assert "Medium Song" in appended_title
+
+
+def test_generate_toc_title_truncation_with_ready_to_play():
+    """Test that a long title is truncated and still gets a '*'."""
+    long_title = "This is a very long song title that will definitely need to be truncated to see the effect"
+    result = generate_toc_title(long_title, max_length=50, is_ready_to_play=True)
+    assert result.endswith("...*")
+    assert len(result) < len(long_title)
 
 
 def test_add_toc_entry_ready_to_play_status(toc_layout):
