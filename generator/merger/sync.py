@@ -19,7 +19,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         for folder_id in source_folders:
             files = gdrive.query_drive_files(services["drive"], folder_id)
             all_drive_files.extend(files)
-        drive_file_map = {file["id"]: file for file in all_drive_files}
+        drive_file_map = {file.id: file for file in all_drive_files}
         span.set_attribute("drive_files_found", len(all_drive_files))
 
         prefix = "song-sheets/"
@@ -36,7 +36,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
                 continue
 
             drive_file = drive_file_map[drive_file_id]
-            expected_name = drive_file.get("name", "")
+            expected_name = drive_file.name
             current_metadata = blob.metadata or {}
 
             if current_metadata.get(
@@ -70,7 +70,7 @@ def _get_files_to_update(
     """
     Query Google Drive for files in given folders modified after a certain time.
     """
-    all_files = []
+    all_files: List[File] = []
     for folder_id in source_folders:
         files = gdrive.query_drive_files(
             drive_service, folder_id, modified_after=modified_after
@@ -107,7 +107,7 @@ def sync_cache(
         if modified_after:
             span.set_attribute(
                 "files_to_update",
-                ", ".join([f["name"] for f in files_to_update]) or "None",
+                ", ".join([f.name for f in files_to_update]) or "None",
             )
         else:
             span.set_attribute("files_to_update", "all")
@@ -118,12 +118,12 @@ def sync_cache(
 
         for file in files_to_update:
             with services["tracer"].start_as_current_span("update_file_tags"):
-                click.echo(f"Updating tags for {file['name']} (ID: {file['id']})")
+                click.echo(f"Updating tags for {file.name} (ID: {file.id})")
                 tagger.update_tags(file)
 
             if not tags_only:
                 with services["tracer"].start_as_current_span("sync_file"):
-                    click.echo(f"Syncing {file['name']} (ID: {file['id']})")
+                    click.echo(f"Syncing {file.name} (ID: {file.id})")
                     gdrive.download_file_stream(services["drive"], file, cache)
 
         if with_metadata and not tags_only:

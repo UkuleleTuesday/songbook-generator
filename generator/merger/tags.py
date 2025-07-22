@@ -4,9 +4,10 @@ from typing import Any, Callable, Dict, List, Optional
 import click
 
 from ..common.tracing import get_tracer
+from ..worker.models import File
 
 # A list to hold all tagged functions
-_TAGGERS: List[Callable[[Dict[str, Any]], Any]] = []
+_TAGGERS: List[Callable[[File], Any]] = []
 tracer = get_tracer(__name__)
 
 # Folder IDs for status checking.
@@ -15,7 +16,7 @@ FOLDER_ID_APPROVED = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 
 
-def tag(func: Callable[[Dict[str, Any]], Any]) -> Callable[[Dict[str, Any]], Any]:
+def tag(func: Callable[[File], Any]) -> Callable[[File], Any]:
     """Decorator to register a function as a tag generator."""
     _TAGGERS.append(func)
     return func
@@ -25,7 +26,7 @@ class Tagger:
     def __init__(self, drive_service: Any):
         self.drive_service = drive_service
 
-    def update_tags(self, file: Dict[str, Any]):
+    def update_tags(self, file: File):
         """
         Update Google Drive file properties based on registered tag functions.
 
@@ -35,7 +36,7 @@ class Tagger:
         return value as the value.
         """
         with tracer.start_as_current_span(
-            "update_tags", attributes={"file.id": file["id"], "file.name": file["name"]}
+            "update_tags", attributes={"file.id": file.id, "file.name": file.name}
         ) as span:
             new_properties = {}
             for tagger in _TAGGERS:
@@ -47,7 +48,7 @@ class Tagger:
             if new_properties:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
-                current_properties = file.get("properties", {}).copy()
+                current_properties = file.properties.copy()
                 click.echo(f"  Current properties: {json.dumps(current_properties)}")
                 span.set_attribute("current_properties", json.dumps(current_properties))
                 updated_properties = current_properties
@@ -55,18 +56,17 @@ class Tagger:
                 click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
 
                 self.drive_service.files().update(
-                    fileId=file["id"],
+                    fileId=file.id,
                     body={"properties": updated_properties},
                     fields="properties",
                 ).execute()
 
 
 @tag
-def status(file: Dict[str, Any]) -> Optional[str]:
+def status(file: File) -> Optional[str]:
     """Determine the status of a file based on its parent folder."""
-    parents = file.get("parents", [])
-    if FOLDER_ID_APPROVED in parents:
+    if FOLDER_ID_APPROVED in file.parents:
         return "APPROVED"
-    if FOLDER_ID_READY_TO_PLAY in parents:
+    if FOLDER_ID_READY_TO_PLAY in file.parents:
         return "READY_TO_PLAY"
     return None
