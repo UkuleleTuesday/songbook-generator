@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, ANY
+from unittest.mock import MagicMock
 import fitz
 from .toc import (
     resolve_font,
@@ -167,6 +167,10 @@ def toc_layout():
     # Mock font to control text_length for predictable testing
     layout.text_font = MagicMock()
     layout.text_font.text_length.side_effect = lambda text, fontsize: len(text) * 5
+    layout.text_semibold_font = MagicMock()
+    layout.text_semibold_font.text_length.side_effect = (
+        lambda text, fontsize: len(text) * 5
+    )
     return layout
 
 
@@ -185,19 +189,24 @@ def test_add_toc_entry(toc_layout):
         current_page_index=0,
     )
 
-    # Check that title is appended
-    mock_tw.append.assert_called_with(
-        (25, 70), "A Short Title - Artist", font=ANY, fontsize=ANY
-    )
+    # Check that append is called multiple times (for title, page number, dots)
+    assert mock_tw.append.call_count > 1
+    calls = mock_tw.append.call_args_list
 
-    # Check that fill_textbox is called for dots and page number
-    # The text should be a number of dots, a space, and "1"
-    mock_tw.fill_textbox.assert_called_once()
-    args, kwargs = mock_tw.fill_textbox.call_args
-    dots_and_page = args[1]
-    assert dots_and_page.endswith(" 1")
-    assert dots_and_page.startswith(".")
-    assert kwargs["align"] == fitz.TEXT_ALIGN_RIGHT
+    # Check title call
+    title_call = calls[0]
+    assert title_call.args[1] == "A Short Title - Artist"
+    assert title_call.kwargs["font"] == toc_layout.text_font
+
+    # Check page number call (semibold font)
+    page_num_call = calls[1]
+    assert page_num_call.args[1] == "1"
+    assert page_num_call.kwargs["font"] == toc_layout.text_semibold_font
+
+    # Check dots call
+    dots_call = calls[2]
+    assert dots_call.args[1].startswith(".")
+    assert dots_call.kwargs["font"] == toc_layout.text_font
 
 
 def test_add_toc_entry_title_truncation(toc_layout):
@@ -217,7 +226,7 @@ def test_add_toc_entry_title_truncation(toc_layout):
     )
 
     # Check that the appended title is shorter than the original and ends with "..."
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert len(appended_title) < len(long_title)
     assert appended_title.endswith("...")
 
@@ -242,7 +251,7 @@ def test_add_toc_entry_with_difficulty(toc_layout):
     )
 
     # Check that title is appended with the correct symbol
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert appended_title.startswith("◑ ")
     assert "Medium Song" in appended_title
 
@@ -265,7 +274,7 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
     )
 
     # Check that title is appended with the '*'
-    appended_title = mock_tw.append.call_args[0][1]
+    appended_title = mock_tw.append.call_args_list[0].args[1]
     assert "Ready Song*" in appended_title
 
 
