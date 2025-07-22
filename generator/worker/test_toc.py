@@ -65,24 +65,21 @@ def test_resolve_font_total_failure(mocker):
 
 
 @pytest.mark.parametrize(
-    "difficulty,expected_symbol",
+    "difficulty_bin,expected_symbol",
     [
-        (0, "○"),
-        (0.9, "○"),
-        (1, "◔"),
-        (1.9, "◔"),
-        (2, "◑"),
-        (2.9, "◑"),
-        (3, "◕"),
-        (3.9, "◕"),
-        (4, "●"),
+        (0, ""),  # Bin 0 is for invalid/no difficulty
+        (1, "○"),
+        (2, "◔"),
+        (3, "◑"),
+        (4, "◕"),
         (5, "●"),
-        (100, "●"),
+        (6, ""),  # Out of range should return no symbol
+        (-1, ""),  # Out of range should return no symbol
     ],
 )
-def test_difficulty_symbol(difficulty, expected_symbol):
-    """Test that difficulty_symbol returns the correct symbol for a given value."""
-    assert difficulty_symbol(difficulty) == expected_symbol
+def test_difficulty_symbol(difficulty_bin, expected_symbol):
+    """Test that difficulty_symbol returns the correct symbol for a given bin."""
+    assert difficulty_symbol(difficulty_bin) == expected_symbol
 
 
 def test_generate_toc_title_empty_string():
