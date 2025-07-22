@@ -7,6 +7,7 @@ import os
 
 from ..common.config import load_config
 from ..common.tracing import get_tracer
+from .difficulty import assign_difficulty_bins
 from .exceptions import TocGenerationException
 from .models import File
 
@@ -369,6 +370,8 @@ def build_table_of_contents(
         Tuple of (TOC PDF document, list of TOC entries for link creation)
     """
     with tracer.start_as_current_span("build_table_of_contents") as span:
+        assign_difficulty_bins(files)
+
         layout = load_toc_config()
         span.set_attributes(
             {

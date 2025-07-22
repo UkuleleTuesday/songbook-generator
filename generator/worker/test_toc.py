@@ -11,6 +11,7 @@ from .toc import (
 )
 from .models import File
 from .exceptions import TocGenerationException
+from . import toc
 
 
 def test_resolve_font_valid_font(mocker):
@@ -266,3 +267,15 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args[0][1]
     assert "Ready Song*" in appended_title
+
+
+def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
+    """Verify that assign_difficulty_bins is called."""
+    mock_assign_bins = mocker.patch("generator.worker.toc.assign_difficulty_bins")
+    mocker.patch("generator.worker.toc.load_toc_config")
+    mocker.patch("generator.worker.toc.TocGenerator.generate")
+
+    files = [File(id="1", name="Song 1")]
+    toc.build_table_of_contents(files)
+
+    mock_assign_bins.assert_called_once_with(files)
