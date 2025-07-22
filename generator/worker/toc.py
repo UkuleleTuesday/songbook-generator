@@ -214,7 +214,16 @@ class TocGenerator:
             self.layout.column_width - max_page_num_width - 5 - symbol_width
         )
         file_name = file.name
-        shortened_title = generate_toc_title(file_name, max_length=100)
+
+        # Estimate max characters based on available width
+        avg_char_width = self.layout.text_font.text_length(
+            "a", fontsize=self.layout.text_fontsize
+        )
+        max_chars = 100  # Fallback
+        if avg_char_width > 0:
+            max_chars = int(available_width / avg_char_width)
+
+        shortened_title = generate_toc_title(file_name, max_length=max_chars)
         if file.properties.get("status") == "READY_TO_PLAY":
             shortened_title += "*"
         title_width = self.layout.text_font.text_length(
