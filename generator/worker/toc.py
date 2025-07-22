@@ -136,7 +136,7 @@ class TocLayout:
     # With current font, fontsize and margins, this is the max length that fits and
     # doesn't result in overlap between columns.
     # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 62
+    max_toc_entry_length = 60
 
 
 @dataclass
@@ -201,29 +201,9 @@ class TocGenerator:
             except (ValueError, TypeError):
                 pass  # Ignore if not a valid integer
 
-        # Reserve fixed width for page numbers for consistent dot alignment
-        max_page_num_width = self.layout.text_font.text_length(
-            "9999", fontsize=self.layout.text_fontsize
+        shortened_title = generate_toc_title(
+            file.name, max_length=self.layout.max_toc_entry_length
         )
-        symbol_width = self.layout.text_font.text_length(
-            symbol, fontsize=self.layout.text_fontsize
-        )
-
-        # Calculate available width for title and truncate if necessary
-        available_width = (
-            self.layout.column_width - max_page_num_width - 5 - symbol_width
-        )
-        file_name = file.name
-
-        # Estimate max characters based on available width
-        avg_char_width = self.layout.text_font.text_length(
-            "a", fontsize=self.layout.text_fontsize
-        )
-        max_chars = 100  # Fallback
-        if avg_char_width > 0:
-            max_chars = int(available_width / avg_char_width)
-
-        shortened_title = generate_toc_title(file_name, max_length=max_chars)
         if file.properties.get("status") == "READY_TO_PLAY":
             shortened_title += "*"
         title_width = self.layout.text_font.text_length(
