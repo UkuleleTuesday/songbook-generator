@@ -45,6 +45,7 @@ class Tagger:
                 if tag_value is not None:
                     new_properties[tag_name] = str(tag_value)
 
+            click.echo(f"New properties: {json.dumps(new_properties)}")
             if new_properties:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
