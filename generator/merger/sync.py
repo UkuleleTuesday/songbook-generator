@@ -6,6 +6,7 @@ from google.api_core import exceptions as gcp_exceptions
 
 from ..common import gdrive
 from ..common.caching import init_cache
+from ..worker.models import File
 from .tags import Tagger
 
 
@@ -66,7 +67,7 @@ def _get_files_to_update(
     drive_service,
     source_folders: List[str],
     modified_after: Optional[datetime] = None,
-) -> List[dict]:
+) -> List[File]:
     """
     Query Google Drive for files in given folders modified after a certain time.
     """
