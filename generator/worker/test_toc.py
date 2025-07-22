@@ -7,7 +7,9 @@ from .toc import (
     DEFAULT_FONT_NAME,
     TocGenerator,
     load_toc_config,
+    difficulty_symbol,
 )
+from .models import File
 from .exceptions import TocGenerationException
 
 
@@ -60,6 +62,27 @@ def test_resolve_font_total_failure(mocker):
         resolve_font("non_existent_font.ttf")
 
     assert "TOC font file not found: non_existent_font.ttf" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "difficulty,expected_symbol",
+    [
+        (0, "○"),
+        (0.9, "○"),
+        (1, "◔"),
+        (1.9, "◔"),
+        (2, "◑"),
+        (2.9, "◑"),
+        (3, "◕"),
+        (3.9, "◕"),
+        (4, "●"),
+        (5, "●"),
+        (100, "●"),
+    ],
+)
+def test_difficulty_symbol(difficulty, expected_symbol):
+    """Test that difficulty_symbol returns the correct symbol for a given value."""
+    assert difficulty_symbol(difficulty) == expected_symbol
 
 
 def test_generate_toc_title_empty_string():
@@ -158,7 +181,7 @@ def test_add_toc_entry(toc_layout):
         tw=mock_tw,
         file_index=0,
         page_offset=0,
-        file_name="A Short Title - Artist",
+        file=File(id="1", name="A Short Title - Artist"),
         x_start=25,
         y_pos=70,
         current_page_index=0,
@@ -189,7 +212,7 @@ def test_add_toc_entry_title_truncation(toc_layout):
         tw=mock_tw,
         file_index=0,
         page_offset=0,
-        file_name=long_title,
+        file=File(id="1", name=long_title),
         x_start=25,
         y_pos=70,
         current_page_index=0,
@@ -199,3 +222,28 @@ def test_add_toc_entry_title_truncation(toc_layout):
     appended_title = mock_tw.append.call_args[0][1]
     assert len(appended_title) < len(long_title)
     assert appended_title.endswith("...")
+
+
+def test_add_toc_entry_with_difficulty(toc_layout):
+    """Test that a difficulty symbol is added to the TOC entry."""
+    generator = TocGenerator(toc_layout)
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    file_with_difficulty = File(
+        id="1", name="Easy Song", properties={"difficulty": "1.5"}
+    )
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file_with_difficulty,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that title is appended with the correct symbol
+    appended_title = mock_tw.append.call_args[0][1]
+    assert appended_title.startswith("◔ ")
+    assert "Easy Song" in appended_title

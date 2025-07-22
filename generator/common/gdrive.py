@@ -7,6 +7,7 @@ import io
 from opentelemetry import trace
 
 from ..worker.filters import FilterGroup, PropertyFilter
+from ..worker.models import File
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
@@ -38,7 +39,7 @@ def query_drive_files(
     source_folder,
     property_filters: Optional[Dict[str, str]] = None,
     modified_after: Optional[datetime] = None,
-):
+) -> List[File]:
     """
     Query Google Drive files with optional property filtering.
 
@@ -80,7 +81,15 @@ def query_drive_files(
                 .execute()
             )
 
-            files.extend(resp.get("files", []))
+            for f in resp.get("files", []):
+                files.append(
+                    File(
+                        id=f["id"],
+                        name=f["name"],
+                        properties=f.get("properties", {}),
+                        mimeType=f.get("mimeType"),
+                    )
+                )
             page_token = resp.get("nextPageToken")
 
             if not page_token:
@@ -111,7 +120,7 @@ def query_drive_files_with_client_filter(
     drive,
     source_folder,
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
-):
+) -> List[File]:
     """
     Query Google Drive files and apply client-side filtering.
 
@@ -133,8 +142,7 @@ def query_drive_files_with_client_filter(
     # Apply client-side filtering
     filtered_files = []
     for file in all_files:
-        properties = file.get("properties", {})
-        if client_filter.matches(properties):
+        if client_filter.matches(file.properties):
             filtered_files.append(file)
 
     click.echo(
@@ -143,7 +151,9 @@ def query_drive_files_with_client_filter(
     return filtered_files
 
 
-def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
+def get_files_metadata_by_ids(
+    drive, file_ids: List[str], progress_step=None
+) -> List[File]:
     """
     Get file metadata by their Google Drive IDs.
 
@@ -153,23 +163,29 @@ def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
         progress_step: Optional progress step for reporting
 
     Returns:
-        List of file dictionaries with metadata
+        List of file objects with metadata
     """
     files = []
     for file_id in file_ids:
         try:
             # Get file metadata from Drive
-            file_metadata = drive.files().get(fileId=file_id).execute()
-            file_dict = {
-                "id": file_id,
-                "name": file_metadata.get("name", f"file_{file_id}"),
-            }
-            files.append(file_dict)
+            file_metadata = (
+                drive.files()
+                .get(fileId=file_id, fields="id,name,properties,mimeType")
+                .execute()
+            )
+            file_obj = File(
+                id=file_id,
+                name=file_metadata.get("name", f"file_{file_id}"),
+                properties=file_metadata.get("properties", {}),
+                mimeType=file_metadata.get("mimeType"),
+            )
+            files.append(file_obj)
 
             if progress_step:
                 progress_step.increment(
                     1 / len(file_ids),
-                    f"Retrieved metadata for {file_dict['name']}",
+                    f"Retrieved metadata for {file_obj.name}",
                 )
         except HttpError as e:
             click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
@@ -182,7 +198,7 @@ def get_files_metadata_by_ids(drive, file_ids: List[str], progress_step=None):
     return files
 
 
-def stream_file_bytes(drive, files: List[dict], cache) -> Generator[bytes, None, None]:
+def stream_file_bytes(drive, files: List[File], cache) -> Generator[bytes, None, None]:
     """
     Generator that yields the bytes of each file.
     Files are fetched from cache if available, otherwise downloaded from Drive.
@@ -253,20 +269,19 @@ def download_file(
     return data
 
 
-def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
+def download_file_stream(drive, file: File, cache) -> io.BytesIO:
     """
     Fetches the PDF export of a Google Doc, using a LocalStorageCache.
     Only re-downloads if remote modifiedTime is newer than the cached file.
     Returns a BytesIO stream of the file.
     """
     # Google Docs need to be exported, while regular PDFs can be downloaded directly.
-    mime_type = file.get("mimeType")
-    should_export = mime_type == "application/vnd.google-apps.document"
+    should_export = file.mimeType == "application/vnd.google-apps.document"
 
     pdf_data = download_file(
         drive,
-        file["id"],
-        file["name"],
+        file.id,
+        file.name,
         cache,
         "song-sheets",
         "application/pdf",
@@ -275,7 +290,7 @@ def download_file_stream(drive, file: Dict[str, str], cache) -> io.BytesIO:
     return io.BytesIO(pdf_data)
 
 
-def download_file_bytes(drive, file: Dict[str, str], cache) -> bytes:
+def download_file_bytes(drive, file: File, cache) -> bytes:
     """
     Legacy function for backward compatibility.
     Fetches the PDF export and returns raw bytes.

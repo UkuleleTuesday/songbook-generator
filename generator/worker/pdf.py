@@ -3,7 +3,7 @@ import click
 import os
 from opentelemetry import trace
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 from . import progress
 from . import toc
 from . import cover
@@ -18,6 +18,7 @@ from ..common.gdrive import (
     get_files_metadata_by_ids,
     query_drive_files_with_client_filter,
 )
+from .models import File
 from ..common.tracing import get_tracer
 from natsort import natsorted
 from unidecode import unidecode
@@ -80,15 +81,15 @@ def init_services(
         return drive, cache
 
 
-def _create_song_sort_key(file_obj: Dict) -> str:
-    name = file_obj.get("name", "")
+def _create_song_sort_key(file_obj: File) -> str:
+    name = file_obj.name
     title = name.split(" - ")[0] if " - " in name else name
     title_no_accents = unidecode(title)
     title_no_punctuation = re.sub(r"[\W_]+", "", title_no_accents)
     return title_no_punctuation.lower()
 
 
-def _sort_titles(files: List[Dict]):
+def _sort_titles(files: List[File]) -> List[File]:
     return natsorted(files, key=_create_song_sort_key)
 
 
@@ -97,7 +98,7 @@ def collect_and_sort_files(
     source_folders: List[str],
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
-):
+) -> List[File]:
     """
     Collect files from multiple Google Drive folders and sort them alphabetically by name.
 
@@ -141,7 +142,7 @@ def collect_and_sort_files(
 
 def copy_pdfs(
     destination_pdf,
-    files,
+    files: List[File],
     cache,
     page_offset,
     progress_step,
@@ -192,13 +193,11 @@ def copy_pdfs(
             copied_pages = 0
 
             for file_number, file in enumerate(files):
-                file_name = file["name"]
-
                 # Look for this file in the cached PDF's TOC
-                if file_name not in toc_map:
-                    raise PdfCacheMissException(f"File ${file_name} not found in cache")
+                if file.name not in toc_map:
+                    raise PdfCacheMissException(f"File ${file.name} not found in cache")
 
-                source_page = toc_map[file_name]
+                source_page = toc_map[file.name]
 
                 # Determine how many pages this song has
                 # Find the next song's page or use the last page
@@ -207,7 +206,7 @@ def copy_pdfs(
 
                 # Find current song in TOC to determine page range
                 for i, (level, title, page_num) in enumerate(cached_toc):
-                    if title == file_name:
+                    if title == file.name:
                         current_toc_index = i
                         break
 
@@ -240,7 +239,7 @@ def copy_pdfs(
                         # On the first page of the song, add a link from the title to the TOC
                         if page_offset_in_song == 0:
                             # Use the full filename as the song title for searching
-                            song_title = file_name
+                            song_title = file.name
 
                             # Search for the title on the page
                             text_instances = dest_page.search_for(song_title)
@@ -419,7 +418,7 @@ def generate_songbook(
                                         widgets=False,
                                         final=0,
                                     )
-                                    step.increment(1, f"Added preface: {file['name']}")
+                                    step.increment(1, f"Added preface: {file.name}")
                             preface_span.set_attribute(
                                 "preface_files_added", len(preface_files)
                             )
@@ -469,7 +468,7 @@ def generate_songbook(
 
                                     if final_value == 1:
                                         click.echo(
-                                            f"Passing final=1 for last postface file: {file['name']}"
+                                            f"Passing final=1 for last postface file: {file.name}"
                                         )
 
                                     songbook_pdf.insert_pdf(
@@ -481,7 +480,7 @@ def generate_songbook(
                                         widgets=False,
                                         final=final_value,
                                     )
-                                    step.increment(1, f"Added postface: {file['name']}")
+                                    step.increment(1, f"Added postface: {file.name}")
                             postface_span.set_attribute(
                                 "postface_files_added", len(postface_files)
                             )
