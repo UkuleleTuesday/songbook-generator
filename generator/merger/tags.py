@@ -50,9 +50,7 @@ class Tagger:
                 # Preserve existing properties by doing a read-modify-write.
                 current_properties = file.properties.copy()
                 click.echo(f"  Current properties: {json.dumps(current_properties)}")
-                span.set_attribute(
-                    "current_properties", json.dumps(current_properties)
-                )
+                span.set_attribute("current_properties", json.dumps(current_properties))
                 updated_properties = current_properties
                 updated_properties.update(new_properties)
                 click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
