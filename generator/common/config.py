@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -76,13 +76,13 @@ class Caching(BaseModel):
 class Tracing(BaseModel):
     enabled: bool = Field(default=False)
 
-    @field_validator("enabled", mode="before")
-    def check_otel_sdk_disabled(cls, v):
+    @model_validator(mode="before")
+    def check_otel_sdk_disabled(cls, data):
         # This allows enabling tracing by setting OTEL_SDK_DISABLED=false
         # while keeping it disabled by default.
         if os.environ.get("OTEL_SDK_DISABLED", "true").lower() == "false":
-            return True
-        return v
+            data = {"enabled": True}
+        return data
 
 
 class Settings(BaseSettings):
