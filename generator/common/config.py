@@ -73,6 +73,18 @@ class Caching(BaseModel):
     local: CachingLocal = Field(default_factory=CachingLocal)
 
 
+class Tracing(BaseModel):
+    enabled: bool = Field(default=False)
+
+    @field_validator("enabled", mode="before")
+    def check_otel_sdk_disabled(cls, v):
+        # This allows enabling tracing by setting OTEL_SDK_DISABLED=false
+        # while keeping it disabled by default.
+        if os.environ.get("OTEL_SDK_DISABLED", "true").lower() == "false":
+            return True
+        return v
+
+
 class Settings(BaseSettings):
     """
     Application settings, loaded from config files, environment variables, etc.
@@ -82,6 +94,7 @@ class Settings(BaseSettings):
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
+    tracing: Tracing = Field(default_factory=Tracing)
 
     model_config = SettingsConfigDict(
         env_prefix="SONGBOOK_",
