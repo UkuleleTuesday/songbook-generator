@@ -28,3 +28,8 @@ text_fontsize = 10
 title_font = "RobotoCondensed-Bold.ttf"
 title_fontsize = 16
 max_toc_entry_length = 60
+
+[local]
+# The local directory where song sheets and other assets are cached.
+# It can also be overridden by setting the `SONGBOOK_LOCAL__CACHE_DIR` environment variable.
+cache_dir = "~/.cache/songbook-generator"

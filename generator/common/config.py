@@ -11,10 +11,6 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
-DEFAULT_LOCAL_CACHE_DIR = os.path.join(
-    os.path.expanduser("~/.cache"), "songbook-generator"
-)
-
 
 class SongSheets(BaseModel):
     folder_ids: List[str] = Field(
@@ -53,6 +49,10 @@ class Toc(BaseModel):
         return v
 
 
+class Local(BaseModel):
+    cache_dir: str = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
+
+
 class Settings(BaseSettings):
     """
     Application settings, loaded from config files, environment variables, etc.
@@ -61,6 +61,7 @@ class Settings(BaseSettings):
     song_sheets: SongSheets = Field(default_factory=SongSheets)
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
+    local: Local = Field(default_factory=Local)
 
     model_config = SettingsConfigDict(
         env_prefix="SONGBOOK_",
@@ -87,8 +88,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
-
-def get_local_cache_dir():
-    local_cache_dir = os.getenv("LOCAL_CACHE_DIR", DEFAULT_LOCAL_CACHE_DIR)
-    return local_cache_dir
