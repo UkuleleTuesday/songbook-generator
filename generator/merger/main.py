@@ -16,7 +16,7 @@ from googleapiclient.discovery import build
 from google.cloud import storage
 
 from . import sync
-from ..common.config import load_config_folder_ids
+from ..common.config import get_settings
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -227,13 +227,11 @@ def merger_main(request):
             # Get source folders from request payload, or fall back to config
             request_json = request.get_json(silent=True)
             force_sync = request_json.get("force", False) if request_json else False
-            source_folders = (
-                request_json.get("source_folders")
-                if request_json
-                else load_config_folder_ids()
-            )
+            source_folders = request_json.get(
+                "source_folders"
+            ) or get_settings().song_sheets.folder_ids
             if not source_folders:
-                source_folders = load_config_folder_ids()
+                source_folders = get_settings().song_sheets.folder_ids
 
             # Add source_folders to span attributes for tracing
             if source_folders:
