@@ -107,8 +107,13 @@ def generate(
     service_account_key: str,
 ):
     """Generates a songbook PDF from Google Drive files."""
-    drive, cache = init_services(
+    from .common.caching import init_cache
+
+    drive, _ = init_services(
         key_file_path=service_account_key,
+        local_cache_dir=ctx.obj.get("LOCAL_CACHE_DIR"),
+    )
+    cache = init_cache(
         gcs_worker_cache_bucket=ctx.obj.get("GCS_BUCKET_CACHE"),
         local_cache_dir=ctx.obj.get("LOCAL_CACHE_DIR"),
     )
