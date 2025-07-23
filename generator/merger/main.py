@@ -25,19 +25,11 @@ from ..common.tracing import get_tracer, setup_tracing
 _services = None
 
 
-def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
+def _get_services():
     """Initializes and returns services, using a cache for warm starts."""
     global _services
     if _services is not None:
-        # If a specific bucket is requested and it's different from the cached one,
-        # re-initialize. This is mainly for CLI usage.
-        if (
-            gcs_worker_cache_bucket
-            and _services.get("gcs_worker_cache_bucket") != gcs_worker_cache_bucket
-        ):
-            _services = None
-        else:
-            return _services
+        return _services
 
     creds, project_id = default(
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
@@ -58,9 +50,7 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # If gcs_worker_cache_bucket is not provided via CLI, use settings
-    if not gcs_worker_cache_bucket:
-        gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
+    gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
 
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
@@ -71,7 +61,6 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
-        "gcs_worker_cache_bucket": gcs_worker_cache_bucket,  # Cache the name for re-init check
     }
     return _services
 

@@ -1,7 +1,6 @@
 import os
 from functools import lru_cache
-from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional
 
 from pydantic import (
     AliasChoices,
@@ -12,9 +11,7 @@ from pydantic import (
 )
 from pydantic_settings import (
     BaseSettings,
-    PydanticBaseSettingsSource,
     SettingsConfigDict,
-    TomlConfigSettingsSource,
 )
 
 
@@ -24,7 +21,7 @@ class SongSheets(BaseModel):
             "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
             "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
         ],
-        validation_alias=AliasChoices("song_sheets_folder_ids", "GDRIVE_SONG_SHEETS_FOLDER_IDS"),
+        validation_alias=AliasChoices("GDRIVE_SONG_SHEETS_FOLDER_IDS"),
     )
 
 
@@ -62,22 +59,20 @@ class Toc(BaseModel):
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
         "songbook-generator-cache-europe-west1",
-        validation_alias=AliasChoices(
-            "caching_gcs_worker_cache_bucket", "GCS_WORKER_CACHE_BUCKET"
-        ),
+        validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET"),
     )
     region: Optional[str] = Field(
-        None, validation_alias=AliasChoices("caching_gcs_region", "GCP_REGION")
+        None, validation_alias=AliasChoices("GCP_REGION")
     )
 
 
 class CachingLocal(BaseModel):
     enabled: bool = Field(
-        True, validation_alias=AliasChoices("caching_local_enabled", "LOCAL_CACHE_ENABLED")
+        True, validation_alias=AliasChoices("LOCAL_CACHE_ENABLED")
     )
     dir: Optional[str] = Field(
         os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
-        validation_alias=AliasChoices("caching_local_dir", "LOCAL_CACHE_DIR"),
+        validation_alias=AliasChoices("LOCAL_CACHE_DIR"),
     )
 
 
@@ -101,7 +96,7 @@ class Tracing(BaseModel):
 
 class Settings(BaseSettings):
     """
-    Application settings, loaded from config files, environment variables, etc.
+    Application settings, loaded from environment variables.
     """
 
     song_sheets: SongSheets = Field(default_factory=SongSheets)
@@ -110,25 +105,9 @@ class Settings(BaseSettings):
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
 
-    @classmethod
-    def customise_sources(
-        cls,
-        settings_cls: type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        file_secret_settings: PydanticBaseSettingsSource,
-    ) -> Tuple[PydanticBaseSettingsSource, ...]:
-        return (
-            init_settings,
-            env_settings,
-            TomlConfigSettingsSource(settings_cls),
-        )
-
     model_config = SettingsConfigDict(
-        toml_file=Path(__file__).parent.parent / "config.toml",
-        customise_sources=customise_sources,
         case_sensitive=False,
+        env_nested_delimiter="__",
     )
 
 
