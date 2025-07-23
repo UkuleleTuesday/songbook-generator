@@ -100,11 +100,11 @@ def test_generate_cover_basic(
     assert result == mock_pdf
 
 
-@patch("generator.common.config.load_cover_config")
+@patch("generator.worker.cover.get_settings")
 @patch("generator.worker.cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
+def test_generate_cover_no_cover_configured(mock_echo, mock_get_settings):
     """Test when no cover file is configured."""
-    mock_load_config.return_value = None
+    mock_get_settings.return_value.cover.file_id = None
     with (
         patch("generator.worker.cover.get_credentials"),
         patch("generator.worker.cover.build"),
@@ -206,12 +206,12 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(mock_cache, "cover123")
 
 
-@patch("generator.common.config.load_cover_config")
+@patch("generator.worker.cover.get_settings")
 @patch("generator.worker.cover.fitz.open")
 @patch("generator.worker.cover.build")
 @patch("generator.worker.cover.get_credentials")
 def test_generate_cover_uses_provided_cover_id(
-    mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
+    mock_get_credentials, mock_build, mock_fitz, mock_get_settings, tmp_path
 ):
     """Test that provided cover_file_id takes precedence over config."""
     pdf_content = b"fake pdf content"
@@ -248,4 +248,4 @@ def test_generate_cover_uses_provided_cover_id(
         mock_cache.get.return_value = None
         cover.generate_cover(mock_cache, "provided_cover123")
 
-    mock_load_config.assert_not_called()
+    mock_get_settings.assert_not_called()
