@@ -110,12 +110,8 @@ class Settings(BaseSettings):
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
 
-    model_config = SettingsConfigDict(
-        toml_file=Path(__file__).parent.parent / "config.toml",
-    )
-
     @classmethod
-    def settings_customise_sources(
+    def customise_sources(
         cls,
         settings_cls: type[BaseSettings],
         init_settings: PydanticBaseSettingsSource,
@@ -128,6 +124,12 @@ class Settings(BaseSettings):
             env_settings,
             TomlConfigSettingsSource(settings_cls),
         )
+
+    model_config = SettingsConfigDict(
+        toml_file=Path(__file__).parent.parent / "config.toml",
+        customise_sources=customise_sources,
+        case_sensitive=False,
+    )
 
 
 @lru_cache
