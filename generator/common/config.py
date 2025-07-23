@@ -19,14 +19,12 @@ class SongSheets(BaseModel):
         default=[
             "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
             "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
-        ]
+        ],
     )
 
 
 class Cover(BaseModel):
-    file_id: Optional[str] = Field(
-        default="1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
-    )
+    file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class Toc(BaseModel):
@@ -58,15 +56,15 @@ class Toc(BaseModel):
 
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
-        default="songbook-generator-cache-europe-west1"
+        "songbook-generator-cache-europe-west1"
     )
-    region: Optional[str] = Field(default=None)
+    region: Optional[str] = Field(None)
 
 
 class CachingLocal(BaseModel):
-    enabled: bool = Field(default=True)
+    enabled: bool = Field(True)
     dir: Optional[str] = Field(
-        default=os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
+        os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
     )
 
 
@@ -99,10 +97,29 @@ class Settings(BaseSettings):
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
 
-    model_config = SettingsConfigDict(
-        case_sensitive=False,
-        env_nested_delimiter="_",
-    )
+    @model_validator(mode="after")
+    def apply_env_overrides(self) -> "Settings":
+        # Handle GDRIVE_SONG_SHEETS_FOLDER_IDS
+        if folder_ids_env := os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS"):
+            self.song_sheets.folder_ids = folder_ids_env.split(",")
+
+        # Handle GCS cache settings
+        if gcs_bucket_env := os.getenv("GCS_WORKER_CACHE_BUCKET"):
+            self.caching.gcs.worker_cache_bucket = gcs_bucket_env
+        if gcp_region_env := os.getenv("GCP_REGION"):
+            self.caching.gcs.region = gcp_region_env
+
+        # Handle local cache settings
+        if (local_cache_enabled_env := os.getenv("LOCAL_CACHE_ENABLED")) is not None:
+            self.caching.local.enabled = (
+                local_cache_enabled_env.lower() in ("true", "1")
+            )
+        if local_cache_dir_env := os.getenv("LOCAL_CACHE_DIR"):
+            self.caching.local.dir = local_cache_dir_env
+
+        return self
+
+    model_config = SettingsConfigDict(case_sensitive=False)
 
 
 @lru_cache
