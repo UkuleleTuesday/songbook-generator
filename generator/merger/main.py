@@ -54,7 +54,7 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     if "GOOGLE_CLOUD_PROJECT" not in os.environ:
         os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
-    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger-local")
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
