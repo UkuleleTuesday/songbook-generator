@@ -209,9 +209,7 @@ def test_generate_cover_corrupted_pdf(
 
 @patch("generator.worker.cover.gdrive.download_file")
 @patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
-def test_generate_cover_uses_provided_cover_id(
-    mock_apply_replacements, mock_download
-):
+def test_generate_cover_uses_provided_cover_id(mock_apply_replacements, mock_download):
     """Test that a provided cover_file_id is used instead of the one from config."""
     # This config has a different file_id
     mock_config = config.Cover(file_id="config_cover_id")
