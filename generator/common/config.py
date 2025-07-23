@@ -61,18 +61,16 @@ class Toc(BaseModel):
 
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
-        default="songbook-generator-cache-europe-west1",
-        validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET"),
+        "songbook-generator-cache-europe-west1",
+        alias="GCS_WORKER_CACHE_BUCKET",
     )
-    region: Optional[str] = Field(
-        default=None, validation_alias=AliasChoices("GCP_REGION")
-    )
+    region: Optional[str] = Field(None, alias="GCP_REGION")
 
 
 class CachingLocal(BaseModel):
     dir: Optional[str] = Field(
-        default=os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
-        validation_alias=AliasChoices("LOCAL_CACHE_DIR"),
+        os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
+        alias="LOCAL_CACHE_DIR",
     )
 
 
