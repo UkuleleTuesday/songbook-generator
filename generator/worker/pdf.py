@@ -44,9 +44,7 @@ def init_services(key_file_path: Optional[str] = None):
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive(key_file_path)
-        cache = caching.init_cache(
-            local_cache_dir=local_cache_dir, gcp_region=settings.caching.gcs.region
-        )
+        cache = caching.init_cache()
 
         click.echo("Authentication Details:")
         # Check for service account first by looking for the 'account' attribute
