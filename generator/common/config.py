@@ -111,7 +111,6 @@ class Settings(BaseSettings):
     tracing: Tracing = Field(default_factory=Tracing)
 
     model_config = SettingsConfigDict(
-        env_prefix="SONGBOOK_",
         toml_file=Path(__file__).parent.parent / "config.toml",
     )
 
