@@ -20,9 +20,7 @@ def init_cache(
 
     # CLI arguments take precedence over config settings
     should_use_gcs = use_gcs if use_gcs is not None else caching_settings.use_gcs
-    bucket_name = (
-        gcs_worker_cache_bucket or caching_settings.gcs.worker_cache_bucket
-    )
+    bucket_name = gcs_worker_cache_bucket or caching_settings.gcs.worker_cache_bucket
     gcp_region = caching_settings.gcs.region
 
     if should_use_gcs is None:
