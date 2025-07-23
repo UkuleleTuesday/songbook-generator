@@ -227,9 +227,10 @@ def merger_main(request):
             # Get source folders from request payload, or fall back to config
             request_json = request.get_json(silent=True)
             force_sync = request_json.get("force", False) if request_json else False
-            source_folders = request_json.get(
-                "source_folders"
-            ) or get_settings().song_sheets.folder_ids
+            source_folders = (
+                request_json.get("source_folders")
+                or get_settings().song_sheets.folder_ids
+            )
             if not source_folders:
                 source_folders = get_settings().song_sheets.folder_ids
 
