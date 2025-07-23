@@ -59,7 +59,9 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     tracer = get_tracer(__name__)
 
     if not gcs_worker_cache_bucket:
-        gcs_worker_cache_bucket = os.environ["GCS_WORKER_CACHE_BUCKET"]
+        gcs_worker_cache_bucket = os.environ.get("GCS_WORKER_CACHE_BUCKET")
+    if not gcs_worker_cache_bucket:
+        raise ValueError("GCS_WORKER_CACHE_BUCKET environment variable must be set.")
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
