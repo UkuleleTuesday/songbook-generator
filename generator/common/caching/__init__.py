@@ -17,6 +17,7 @@ def init_cache(
     Can be forced to use GCS or local via `use_gcs` boolean.
     """
     settings = get_settings()
+    print(settings)
     caching_settings = settings.caching
 
     # CLI arguments take precedence over config settings
