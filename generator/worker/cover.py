@@ -3,7 +3,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from ..common import config, gdrive, tracing
+from ..common import config, gdrive
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
