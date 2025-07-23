@@ -127,6 +127,7 @@ jobs:
           OTEL_SERVICE_NAME: "songbook-api"
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api"
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
         EOF
 
@@ -204,6 +205,7 @@ jobs:
           OTEL_SERVICE_NAME: "songbook-generator"
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-generator"
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
         EOF
         gcloud functions deploy "$WORKER_FN_NAME" --flags-file="$FLAGS_FILE"
@@ -273,6 +275,7 @@ jobs:
           OTEL_SERVICE_NAME: "songbook-merger"
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger"
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
         EOF
         gcloud functions deploy "$MERGER_FN_NAME" --flags-file="$FLAGS_FILE"
