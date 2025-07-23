@@ -13,7 +13,8 @@ def test_apply_template_replacements_permission_error(mock_echo):
     """Test that a permission error is handled gracefully."""
     docs_http = HttpMockSequence([({"status": "403"}, "Permission denied")])
     docs = build("docs", "v1", http=docs_http)
-    generator = cover.CoverGenerator(Mock(), Mock(), docs)
+    mock_config = config.Cover(file_id="doc123")
+    generator = cover.CoverGenerator(Mock(), Mock(), docs, mock_config)
 
     generator._apply_template_replacements("doc123", {"{{PLACEHOLDER}}": "value"})
 
@@ -29,9 +30,10 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download):
     mock_docs = Mock()
     mock_cache = Mock()
     mock_download.return_value = b"fake-pdf-content"  # Fix for fitz.open
+    mock_config = config.Cover(file_id="cover123")
 
     generator = cover.CoverGenerator(
-        mock_cache, mock_drive, mock_docs, enable_templating=True
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=True
     )
     with patch("fitz.open"):
         generator.generate_cover("cover123")
@@ -100,16 +102,13 @@ def test_generate_cover_basic(
     assert result == mock_pdf
 
 
-@patch("generator.common.config.get_settings")
 @patch("generator.worker.cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_get_settings):
+def test_generate_cover_no_cover_configured(mock_echo):
     """Test when no cover file is configured."""
-    mock_get_settings.return_value.cover.file_id = None
-    with (
-        patch("generator.worker.cover.get_credentials"),
-        patch("generator.worker.cover.build"),
-    ):
-        result = cover.generate_cover(Mock())
+    mock_config = config.Cover(file_id=None)
+    generator = cover.CoverGenerator(Mock(), Mock(), Mock(), mock_config)
+    result = generator.generate_cover()
+
     assert result is None
     mock_echo.assert_called_once_with(
         "No cover file ID configured. Skipping cover generation."
@@ -139,10 +138,11 @@ def test_generate_cover_templating_disabled(
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
     mock_cache = Mock()
+    mock_config = config.Cover(file_id="cover123")
 
     # Now we can test the real CoverGenerator logic
     generator = cover.CoverGenerator(
-        mock_cache, mock_drive, mock_docs, enable_templating=False
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=False
     )
     result = generator.generate_cover("cover123")
 

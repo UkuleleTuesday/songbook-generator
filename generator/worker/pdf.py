@@ -377,7 +377,10 @@ def generate_songbook(
                             "drive", "v3", credentials=cover_creds
                         )
                         cover_generator = cover.CoverGenerator(
-                            cache, drive_write_service, docs_write_service
+                            cache,
+                            drive_write_service,
+                            docs_write_service,
+                            cover_config=config.get_settings().cover,
                         )
                         cover_pdf = cover_generator.generate_cover(cover_file_id)
 

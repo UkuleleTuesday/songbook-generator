@@ -3,7 +3,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from ..common import config, gdrive
+from ..common import config, gdrive, tracing
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
@@ -11,10 +11,18 @@ DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class CoverGenerator:
-    def __init__(self, cache, drive_service, docs_service, enable_templating=True):
+    def __init__(
+        self,
+        cache,
+        drive_service,
+        docs_service,
+        cover_config: config.Cover,
+        enable_templating=True,
+    ):
         self.cache = cache
         self.drive = drive_service
         self.docs = docs_service
+        self.config = cover_config
         self.enable_templating = enable_templating
 
     def _apply_template_replacements(self, document_id: str, replacement_map: dict):
@@ -66,7 +74,7 @@ class CoverGenerator:
 
     def generate_cover(self, cover_file_id=None):
         if not cover_file_id:
-            cover_file_id = config.get_settings().cover.file_id
+            cover_file_id = self.config.file_id
             if not cover_file_id:
                 click.echo("No cover file ID configured. Skipping cover generation.")
                 return None
