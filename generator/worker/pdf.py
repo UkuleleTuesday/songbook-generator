@@ -40,7 +40,6 @@ def authenticate_drive(key_file_path: Optional[str] = None):
 def init_services(key_file_path: Optional[str] = None):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
-    settings = config.get_settings()
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive(key_file_path)
