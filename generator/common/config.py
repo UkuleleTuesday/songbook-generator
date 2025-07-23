@@ -102,10 +102,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
-        # A dot is not a valid char in env vars, so this forces pydantic
-        # to look for the validation_alias instead of trying to build a
-        # nested env var name.
-        env_nested_delimiter=".",
+        env_nested_delimiter="_",
     )
 
 
