@@ -127,5 +127,6 @@ def generate_cover(cache, cover_file_id=None):
     )
     docs_write = build("docs", "v1", credentials=creds)
     drive_write = build("drive", "v3", credentials=creds)
-    generator = CoverGenerator(cache, drive_write, docs_write)
+    cover_config = config.get_settings().cover
+    generator = CoverGenerator(cache, drive_write, docs_write, cover_config)
     return generator.generate_cover(cover_file_id)

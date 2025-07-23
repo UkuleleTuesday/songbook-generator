@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import Mock, patch
 import fitz
 from . import cover
+from ..common import config
 
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpMockSequence
