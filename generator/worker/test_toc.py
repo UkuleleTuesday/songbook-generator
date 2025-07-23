@@ -209,10 +209,10 @@ def test_add_toc_entry(mock_toc_generator):
     assert title_call.args[1] == "A Short Title - Artist"
     assert title_call.kwargs["font"] == generator.text_font
 
-    # Check page number call (semibold font)
+    # Check page number call (page number font)
     page_num_call = calls[1]
     assert page_num_call.args[1] == "1"
-    assert page_num_call.kwargs["font"] == generator.text_semibold_font
+    assert page_num_call.kwargs["font"] == generator.page_number_font
 
     # Check dots call
     dots_call = calls[2]

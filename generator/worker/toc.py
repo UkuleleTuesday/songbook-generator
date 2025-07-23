@@ -140,7 +140,7 @@ class TocGenerator:
     def __init__(self, config: Toc):
         self.config = config
         self.text_font = resolve_font(self.config.text_font)
-        self.text_semibold_font = resolve_font(self.config.text_semibold_font)
+        self.page_number_font = resolve_font(self.config.page_number_font)
         self.title_font = resolve_font(self.config.title_font)
         self.pdf = fitz.open()
         self.toc_entries = []  # Store entries for later link creation
@@ -190,16 +190,16 @@ class TocGenerator:
         )
 
         # Manually draw dots and page number to allow for different fonts
-        page_num_width_semibold = self.text_semibold_font.text_length(
+        page_num_width = self.page_number_font.text_length(
             page_number_str, fontsize=self.config.text_fontsize
         )
 
         # Draw page number (right-aligned)
-        page_num_pos_x = x_start + self.config.column_width - page_num_width_semibold
+        page_num_pos_x = x_start + self.config.column_width - page_num_width
         tw.append(
             (page_num_pos_x, y_pos),
             page_number_str,
-            font=self.text_semibold_font,
+            font=self.page_number_font,
             fontsize=self.config.text_fontsize,
         )
 

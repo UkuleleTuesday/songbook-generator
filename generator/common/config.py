@@ -43,7 +43,7 @@ class Toc(BaseModel):
     title_height: int = 50
     line_spacing: int = 12
     text_font: str = "RobotoCondensed-Regular.ttf"
-    text_semibold_font: str = "RobotoCondensed-SemiBold.ttf"
+    page_number_font: str = "RobotoCondensed-SemiBold.ttf"
     text_fontsize: float = 10.0
     title_font: str = "RobotoCondensed-Bold.ttf"
     title_fontsize: int = 16
