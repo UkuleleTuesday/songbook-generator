@@ -147,7 +147,7 @@ def generate(
     )
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
-        click.launch(destination_path)
+        click.launch(str(destination_path))
 
 
 @cli.command(name="sync-cache")
