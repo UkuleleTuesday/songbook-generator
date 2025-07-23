@@ -30,11 +30,21 @@ class Cover(BaseModel):
 
 
 class Toc(BaseModel):
+    columns_per_page: int = 2
+    column_width: int = 250
+    column_spacing: int = 20
+    margin_top: int = 20
+    margin_bottom: int = 20
+    margin_left: int = 25
+    margin_right: int = 25
+    title_height: int = 50
+    line_spacing: int = 12
     text_font: str = "RobotoCondensed-Regular.ttf"
     text_semibold_font: str = "RobotoCondensed-SemiBold.ttf"
     text_fontsize: float = 10.0
     title_font: str = "RobotoCondensed-Bold.ttf"
     title_fontsize: int = 16
+    max_toc_entry_length: int = 60
 
     @field_validator("*", mode="before")
     def empty_str_to_none(cls, v):

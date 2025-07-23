@@ -13,8 +13,18 @@ folder_ids = [
 file_id = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 [toc]
+columns_per_page = 2
+column_width = 250
+column_spacing = 20
+margin_top = 20
+margin_bottom = 20
+margin_left = 25
+margin_right = 25
+title_height = 50
+line_spacing = 12
 text_font = "RobotoCondensed-Regular.ttf"
 text_semibold_font = "RobotoCondensed-SemiBold.ttf"
 text_fontsize = 10
 title_font = "RobotoCondensed-Bold.ttf"
 title_fontsize = 16
+max_toc_entry_length = 60

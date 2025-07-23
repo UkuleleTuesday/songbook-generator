@@ -121,28 +121,6 @@ def generate_toc_title(
     return title
 
 
-@dataclass
-class TocLayout:
-    """Configuration for TOC layout and styling."""
-
-    columns_per_page: int = 2
-    column_width: int = 250
-    column_spacing: int = 20
-    margin_top: int = 20
-    margin_bottom: int = 20
-    margin_left: int = 25
-    margin_right: int = 25
-    title_height: int = 50
-    line_spacing: int = 12
-    text_font: fitz.Font = None
-    text_semibold_font: fitz.Font = None
-    text_fontsize: float = 10
-    title_font: fitz.Font = None
-    title_fontsize: int = 16
-    # With current font, fontsize and margins, this is the max length that fits and
-    # doesn't result in overlap between columns.
-    # Obviously highly dependent on the font and fontsize used.
-    max_toc_entry_length = 60
 
 
 @dataclass
@@ -156,26 +134,16 @@ class TocEntry:
     toc_page_index: int
 
 
-def load_toc_config() -> TocLayout:
-    """Load TOC configuration from config file."""
-    settings = get_settings()
-    toc_config = settings.toc
-    layout = TocLayout()
-
-    layout.text_font = resolve_font(toc_config.text_font)
-    layout.text_semibold_font = resolve_font(toc_config.text_semibold_font)
-    layout.text_fontsize = toc_config.text_fontsize
-    layout.title_font = resolve_font(toc_config.title_font)
-    layout.title_fontsize = toc_config.title_fontsize
-
-    return layout
 
 
 class TocGenerator:
     """Generates table of contents PDF with multi-column, multi-page layout."""
 
-    def __init__(self, layout: TocLayout):
-        self.layout = layout
+    def __init__(self):
+        self.config = get_settings().toc
+        self.text_font = resolve_font(self.config.text_font)
+        self.text_semibold_font = resolve_font(self.config.text_semibold_font)
+        self.title_font = resolve_font(self.config.title_font)
         self.pdf = fitz.open()
         self.toc_entries = []  # Store entries for later link creation
 
@@ -205,7 +173,7 @@ class TocGenerator:
 
         shortened_title = generate_toc_title(
             file.name,
-            max_length=self.layout.max_toc_entry_length,
+            max_length=self.config.max_toc_entry_length,
             is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
 
@@ -215,53 +183,51 @@ class TocGenerator:
         tw.append(
             (x_start, y_pos),
             full_title,
-            font=self.layout.text_font,
-            fontsize=self.layout.text_fontsize,
+            font=self.text_font,
+            fontsize=self.config.text_fontsize,
         )
 
-        title_width = self.layout.text_font.text_length(
-            full_title, fontsize=self.layout.text_fontsize
+        title_width = self.text_font.text_length(
+            full_title, fontsize=self.config.text_fontsize
         )
 
         # Manually draw dots and page number to allow for different fonts
-        page_num_width_semibold = self.layout.text_semibold_font.text_length(
-            page_number_str, fontsize=self.layout.text_fontsize
+        page_num_width_semibold = self.text_semibold_font.text_length(
+            page_number_str, fontsize=self.config.text_fontsize
         )
 
         # Draw page number (right-aligned)
-        page_num_pos_x = x_start + self.layout.column_width - page_num_width_semibold
+        page_num_pos_x = x_start + self.config.column_width - page_num_width_semibold
         tw.append(
             (page_num_pos_x, y_pos),
             page_number_str,
-            font=self.layout.text_semibold_font,
-            fontsize=self.layout.text_fontsize,
+            font=self.text_semibold_font,
+            fontsize=self.config.text_fontsize,
         )
 
         # Draw dots
         dots_start_x = x_start + title_width
-        dots_end_x = page_num_pos_x - self.layout.text_font.text_length(
-            " ", fontsize=self.layout.text_fontsize
+        dots_end_x = page_num_pos_x - self.text_font.text_length(
+            " ", fontsize=self.config.text_fontsize
         )
         dots_width = dots_end_x - dots_start_x
-        dot_width = self.layout.text_font.text_length(
-            ".", fontsize=self.layout.text_fontsize
-        )
+        dot_width = self.text_font.text_length(".", fontsize=self.config.text_fontsize)
         if dot_width > 0:
             num_dots = int(dots_width / dot_width)
             dots = "." * max(0, num_dots)
             tw.append(
                 (dots_start_x, y_pos),
                 f"{dots} ",
-                font=self.layout.text_font,
-                fontsize=self.layout.text_fontsize,
+                font=self.text_font,
+                fontsize=self.config.text_fontsize,
             )
 
         # Store entry for link creation
         link_rect = fitz.Rect(
             x_start,
-            y_pos - self.layout.text_fontsize,
-            x_start + self.layout.column_width,
-            y_pos + self.layout.text_fontsize * 0.2,
+            y_pos - self.config.text_fontsize,
+            x_start + self.config.column_width,
+            y_pos + self.config.text_fontsize * 0.2,
         )
         self.toc_entries.append(
             TocEntry(
@@ -285,25 +251,25 @@ class TocGenerator:
         tw = fitz.TextWriter(page_rect)
         available_height = (
             page_rect.height
-            - self.layout.title_height
-            - self.layout.margin_top
-            - self.layout.margin_bottom
+            - self.config.title_height
+            - self.config.margin_top
+            - self.config.margin_bottom
         )
-        lines_per_column = int(available_height // self.layout.line_spacing)
+        lines_per_column = int(available_height // self.config.line_spacing)
         column_positions = [
-            self.layout.margin_left
-            + col * (self.layout.column_width + self.layout.column_spacing)
-            for col in range(self.layout.columns_per_page)
+            self.config.margin_left
+            + col * (self.config.column_width + self.config.column_spacing)
+            for col in range(self.config.columns_per_page)
         ]
         title_pos = fitz.Point(
-            self.layout.margin_left,
-            self.layout.margin_top + self.layout.title_height - 20,
+            self.config.margin_left,
+            self.config.margin_top + self.config.title_height - 20,
         )
         tw.append(
             title_pos,
             "Table of Contents",
-            font=self.layout.title_font,
-            fontsize=self.layout.title_fontsize,
+            font=self.title_font,
+            fontsize=self.config.title_fontsize,
         )
 
         current_column = 0
@@ -312,7 +278,7 @@ class TocGenerator:
 
         for file_index, file in enumerate(files):
             if current_line_in_column >= lines_per_column:
-                current_column = (current_column + 1) % self.layout.columns_per_page
+                current_column = (current_column + 1) % self.config.columns_per_page
                 current_line_in_column = 0
                 if current_column == 0:
                     current_page_index += 1
@@ -324,14 +290,14 @@ class TocGenerator:
                     tw.append(
                         title_pos,
                         "Table of Contents",
-                        font=self.layout.title_font,
-                        fontsize=self.layout.title_fontsize,
+                        font=self.title_font,
+                        fontsize=self.config.title_fontsize,
                     )
 
             y_pos = (
-                self.layout.title_height
-                + self.layout.margin_top
-                + (current_line_in_column * self.layout.line_spacing)
+                self.config.title_height
+                + self.config.margin_top
+                + (current_line_in_column * self.config.line_spacing)
             )
             self._add_toc_entry(
                 tw,
@@ -366,26 +332,15 @@ def build_table_of_contents(
     with tracer.start_as_current_span("build_table_of_contents") as span:
         assign_difficulty_bins(files)
 
-        layout = load_toc_config()
+        config = get_settings().toc
         span.set_attributes(
             {
-                "toc.layout.columns_per_page": layout.columns_per_page,
-                "toc.layout.column_width": layout.column_width,
-                "toc.layout.column_spacing": layout.column_spacing,
-                "toc.layout.margin_top": layout.margin_top,
-                "toc.layout.margin_bottom": layout.margin_bottom,
-                "toc.layout.margin_left": layout.margin_left,
-                "toc.layout.margin_right": layout.margin_right,
-                "toc.layout.title_height": layout.title_height,
-                "toc.layout.line_spacing": layout.line_spacing,
-                "toc.layout.text_font": layout.text_font.name,
-                "toc.layout.text_fontsize": layout.text_fontsize,
-                "toc.layout.title_font": layout.title_font.name,
-                "toc.layout.title_fontsize": layout.title_fontsize,
-                "toc.layout.max_toc_entry_length": layout.max_toc_entry_length,
+                f"toc.{key}": value
+                for key, value in config.model_dump().items()
+                if value is not None
             }
         )
-        generator = TocGenerator(layout)
+        generator = TocGenerator()
         toc_pdf = generator.generate(files, page_offset)
         return toc_pdf, generator.get_toc_entries()
 
