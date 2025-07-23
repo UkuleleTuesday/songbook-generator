@@ -129,6 +129,7 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
         EOF
 
         gcloud functions deploy "$API_FN_NAME" --flags-file="$FLAGS_FILE"
@@ -207,6 +208,7 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
         EOF
         gcloud functions deploy "$WORKER_FN_NAME" --flags-file="$FLAGS_FILE"
 
@@ -277,6 +279,7 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
         EOF
         gcloud functions deploy "$MERGER_FN_NAME" --flags-file="$FLAGS_FILE"
 

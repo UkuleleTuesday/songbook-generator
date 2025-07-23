@@ -45,6 +45,12 @@ def init_cache(
         fs = gcsfs.GCSFileSystem(default_location=final_gcp_region)
         return LocalStorageCache(fs, bucket_name)
     else:
+        if not caching_settings.local.enabled:
+            raise ValueError(
+                "Local cache is disabled and GCS cache is not configured. "
+                "No cache backend available."
+            )
+
         final_local_cache_dir = (
             local_cache_dir
             if local_cache_dir is not None

@@ -68,6 +68,7 @@ class CachingGcs(BaseModel):
 
 
 class CachingLocal(BaseModel):
+    enabled: bool = Field(True, alias="LOCAL_CACHE_ENABLED")
     dir: Optional[str] = Field(
         os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
         alias="LOCAL_CACHE_DIR",
