@@ -53,7 +53,9 @@ class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
         default=None, validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET")
     )
-    region: Optional[str] = Field(default=None, validation_alias=AliasChoices("GCP_REGION"))
+    region: Optional[str] = Field(
+        default=None, validation_alias=AliasChoices("GCP_REGION")
+    )
 
 
 class CachingLocal(BaseModel):

@@ -27,7 +27,8 @@ def make_cli_progress_callback():
     help="GCS bucket for worker cache. Overrides config and GCS_WORKER_CACHE_BUCKET env var.",
 )
 @click.option(
-    "--local-cache-dir", help="Local directory for cache. Overrides config and LOCAL_CACHE_DIR."
+    "--local-cache-dir",
+    help="Local directory for cache. Overrides config and LOCAL_CACHE_DIR.",
 )
 @click.pass_context
 def cli(ctx, gcs_bucket_cache, local_cache_dir):
