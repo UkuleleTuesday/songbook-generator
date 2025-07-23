@@ -282,5 +282,13 @@ def merge_pdfs(output: str):
         raise click.Abort()
 
 
+@cli.command(name="print-settings")
+def print_settings():
+    """Prints the current settings for debugging purposes."""
+    click.echo("Current application settings:")
+    settings = get_settings()
+    click.echo(settings.model_dump_json(indent=2))
+
+
 if __name__ == "__main__":
     cli()
