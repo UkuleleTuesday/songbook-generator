@@ -9,7 +9,7 @@ from . import toc
 from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from ..common import caching
+from ..common import caching, config
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from .filters import PropertyFilter, FilterGroup

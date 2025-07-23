@@ -9,6 +9,7 @@ from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
 from .exceptions import TocGenerationException
 from .models import File
+from ..common.config import get_settings, Toc
 
 tracer = get_tracer(__name__)
 
@@ -129,9 +130,6 @@ class TocEntry:
     text: str
     rect: fitz.Rect
     toc_page_index: int
-
-
-from ..common.config import get_settings, Toc
 
 
 class TocGenerator:
