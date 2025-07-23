@@ -49,13 +49,19 @@ class Toc(BaseModel):
         return v
 
 
+class CachingGcs(BaseModel):
+    worker_cache_bucket: Optional[str] = None
+    region: Optional[str] = None
+
+
+class CachingLocal(BaseModel):
+    dir: str = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
+
+
 class Caching(BaseModel):
     use_gcs: Optional[bool] = None
-    gcs_worker_cache_bucket: Optional[str] = None
-    gcp_region: Optional[str] = None
-    local_cache_dir: str = os.path.join(
-        os.path.expanduser("~/.cache"), "songbook-generator"
-    )
+    gcs: CachingGcs = Field(default_factory=CachingGcs)
+    local: CachingLocal = Field(default_factory=CachingLocal)
 
 
 class Settings(BaseSettings):

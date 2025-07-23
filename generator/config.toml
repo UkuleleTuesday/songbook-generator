@@ -30,17 +30,19 @@ title_fontsize = 16
 max_toc_entry_length = 60
 
 [caching]
-# The local directory where song sheets and other assets are cached.
-# It can be overridden by setting the `SONGBOOK_CACHING__LOCAL_CACHE_DIR` environment variable.
-local_cache_dir = "~/.cache/songbook-generator"
 # If true, forces the use of GCS for caching. If false, forces local file system.
 # If unset, GCS is used if both `gcs_worker_cache_bucket` and `gcp_region` are set.
 # use_gcs =
 
+[caching.gcs]
 # The GCS bucket used for caching worker assets.
-# Can be overridden by setting the `SONGBOOK_CACHING__GCS_WORKER_CACHE_BUCKET` environment variable.
-# gcs_worker_cache_bucket = "songbook-generator-cache"
-
+# Can be overridden by setting the `SONGBOOK_CACHING__GCS__WORKER_CACHE_BUCKET` environment variable.
+# worker_cache_bucket = "songbook-generator-cache"
 # The GCP region for the cache bucket.
-# Can be overridden by setting the `SONGBOOK_CACHING__GCP_REGION` environment variable.
-# gcp_region = "europe-west1"
+# Can be overridden by setting the `SONGBOOK_CACHING__GCS__REGION` environment variable.
+# region = "europe-west1"
+
+[caching.local]
+# The local directory where song sheets and other assets are cached.
+# It can be overridden by setting the `SONGBOOK_CACHING__LOCAL__DIR` environment variable.
+dir = "~/.cache/songbook-generator"

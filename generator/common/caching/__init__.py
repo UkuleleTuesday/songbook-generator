@@ -20,8 +20,10 @@ def init_cache(
 
     # CLI arguments take precedence over config settings
     should_use_gcs = use_gcs if use_gcs is not None else caching_settings.use_gcs
-    bucket_name = gcs_worker_cache_bucket or caching_settings.gcs_worker_cache_bucket
-    gcp_region = caching_settings.gcp_region
+    bucket_name = (
+        gcs_worker_cache_bucket or caching_settings.gcs.worker_cache_bucket
+    )
+    gcp_region = caching_settings.gcs.region
 
     if should_use_gcs is None:
         should_use_gcs = bool(bucket_name and gcp_region)
@@ -35,6 +37,6 @@ def init_cache(
         fs = gcsfs.GCSFileSystem(default_location=gcp_region)
         return LocalStorageCache(fs, bucket_name)
     else:
-        local_cache_dir = os.path.expanduser(caching_settings.local_cache_dir)
+        local_cache_dir = os.path.expanduser(caching_settings.local.dir)
         click.echo(f"Using cache dir: {local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), local_cache_dir)
