@@ -207,46 +207,30 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(mock_cache, "cover123")
 
 
-@patch("generator.common.config.get_settings")
-@patch("generator.worker.cover.fitz.open")
-@patch("generator.worker.cover.build")
-@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.gdrive.download_file")
+@patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
 def test_generate_cover_uses_provided_cover_id(
-    mock_get_credentials, mock_build, mock_fitz, mock_get_settings, tmp_path
+    mock_apply_replacements, mock_download
 ):
-    """Test that provided cover_file_id takes precedence over config."""
-    pdf_content = b"fake pdf content"
-    drive_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
-            ),
-            ({"status": "200"}, pdf_content),
-        ]
-    )
-    docs_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-        ]
-    )
-    mock_drive = build("drive", "v3", http=drive_http)
-    mock_docs = build("docs", "v1", http=docs_http)
-    mock_build.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
-    mock_fitz.return_value = Mock()
+    """Test that a provided cover_file_id is used instead of the one from config."""
+    # This config has a different file_id
+    mock_config = config.Cover(file_id="config_cover_id")
 
-    with patch("generator.common.caching.LocalStorageCache") as mock_cache:
-        mock_cache.get.return_value = None
-        cover.generate_cover(mock_cache, "provided_cover123")
+    # Mock services
+    mock_drive = Mock()
+    mock_docs = Mock()
+    mock_cache = Mock()
+    mock_download.return_value = b"fake-pdf-content"
 
-    mock_get_settings.assert_not_called()
+    generator = cover.CoverGenerator(
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=True
+    )
+
+    with patch("fitz.open"):
+        # Call generate_cover with a specific file_id
+        generator.generate_cover(cover_file_id="provided_cover_id")
+
+    # Assert that download_file was called with the provided_cover_id, not the one from config
+    mock_download.assert_called_once()
+    called_args = mock_download.call_args[0]
+    assert called_args[1] == "provided_cover_id"
