@@ -66,7 +66,7 @@ class CoverGenerator:
 
     def generate_cover(self, cover_file_id=None):
         if not cover_file_id:
-            cover_file_id = config.load_cover_config()
+            cover_file_id = config.get_settings().cover.file_id
             if not cover_file_id:
                 click.echo("No cover file ID configured. Skipping cover generation.")
                 return None

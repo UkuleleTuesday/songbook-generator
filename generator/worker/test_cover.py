@@ -100,7 +100,7 @@ def test_generate_cover_basic(
     assert result == mock_pdf
 
 
-@patch("generator.worker.cover.get_settings")
+@patch("generator.common.config.get_settings")
 @patch("generator.worker.cover.click.echo")
 def test_generate_cover_no_cover_configured(mock_echo, mock_get_settings):
     """Test when no cover file is configured."""
@@ -206,7 +206,7 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(mock_cache, "cover123")
 
 
-@patch("generator.worker.cover.get_settings")
+@patch("generator.common.config.get_settings")
 @patch("generator.worker.cover.fitz.open")
 @patch("generator.worker.cover.build")
 @patch("generator.worker.cover.get_credentials")
