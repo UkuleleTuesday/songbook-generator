@@ -49,14 +49,13 @@ class Toc(BaseModel):
         return v
 
 
-class Local(BaseModel):
-    cache_dir: str = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
-
-
 class Caching(BaseModel):
     use_gcs: Optional[bool] = None
     gcs_worker_cache_bucket: Optional[str] = None
     gcp_region: Optional[str] = None
+    local_cache_dir: str = os.path.join(
+        os.path.expanduser("~/.cache"), "songbook-generator"
+    )
 
 
 class Settings(BaseSettings):
@@ -67,7 +66,6 @@ class Settings(BaseSettings):
     song_sheets: SongSheets = Field(default_factory=SongSheets)
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
-    local: Local = Field(default_factory=Local)
     caching: Caching = Field(default_factory=Caching)
 
     model_config = SettingsConfigDict(

@@ -29,12 +29,10 @@ title_font = "RobotoCondensed-Bold.ttf"
 title_fontsize = 16
 max_toc_entry_length = 60
 
-[local]
-# The local directory where song sheets and other assets are cached.
-# It can also be overridden by setting the `SONGBOOK_LOCAL__CACHE_DIR` environment variable.
-cache_dir = "~/.cache/songbook-generator"
-
 [caching]
+# The local directory where song sheets and other assets are cached.
+# It can be overridden by setting the `SONGBOOK_CACHING__LOCAL_CACHE_DIR` environment variable.
+local_cache_dir = "~/.cache/songbook-generator"
 # If true, forces the use of GCS for caching. If false, forces local file system.
 # If unset, GCS is used if both `gcs_worker_cache_bucket` and `gcp_region` are set.
 # use_gcs =

@@ -35,6 +35,6 @@ def init_cache(
         fs = gcsfs.GCSFileSystem(default_location=gcp_region)
         return LocalStorageCache(fs, bucket_name)
     else:
-        local_cache_dir = os.path.expanduser(settings.local.cache_dir)
+        local_cache_dir = os.path.expanduser(caching_settings.local_cache_dir)
         click.echo(f"Using cache dir: {local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), local_cache_dir)
