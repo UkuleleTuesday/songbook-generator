@@ -169,9 +169,7 @@ def test_generate_toc_title_real_world_samples(original_title, expected_title):
 @pytest.fixture
 def mock_toc_generator(mocker):
     """Provides a TocGenerator with mocked fonts and config."""
-    mocker.patch(
-        "generator.worker.toc.get_settings"
-    )  # Prevent actual settings loading
+    mocker.patch("generator.worker.toc.get_settings")  # Prevent actual settings loading
     mock_resolve_font = mocker.patch("generator.worker.toc.resolve_font")
 
     mock_font = MagicMock()
