@@ -10,7 +10,6 @@ from ..config import get_settings
 def init_cache(
     gcs_worker_cache_bucket: Optional[str] = None,
     use_gcs: Optional[bool] = None,
-    local_cache_dir: Optional[str] = None,
 ):
     """
     Initializes the cache, using either GCS or local filesystem.
@@ -47,11 +46,6 @@ def init_cache(
                 "No cache backend available."
             )
 
-        final_local_cache_dir = (
-            local_cache_dir
-            if local_cache_dir is not None
-            else caching_settings.local.dir
-        )
-        final_local_cache_dir = os.path.expanduser(final_local_cache_dir)
+        final_local_cache_dir = os.path.expanduser(caching_settings.local.dir)
         click.echo(f"Using cache dir: {final_local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), final_local_cache_dir)

@@ -37,9 +37,7 @@ def authenticate_drive(key_file_path: Optional[str] = None):
     return build("drive", "v3", credentials=creds), creds
 
 
-def init_services(
-    key_file_path: Optional[str] = None, local_cache_dir: Optional[str] = None
-):
+def init_services(key_file_path: Optional[str] = None):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
     settings = config.get_settings()

@@ -35,7 +35,8 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
     """Songbook Generator CLI tool."""
     ctx.ensure_object(dict)
     ctx.obj["GCS_BUCKET_CACHE"] = gcs_bucket_cache
-    ctx.obj["LOCAL_CACHE_DIR"] = local_cache_dir
+    if local_cache_dir:
+        os.environ["LOCAL_CACHE_DIR"] = str(local_cache_dir)
 
 
 @cli.command()
@@ -111,11 +112,9 @@ def generate(
 
     drive, _ = init_services(
         key_file_path=service_account_key,
-        local_cache_dir=ctx.obj.get("LOCAL_CACHE_DIR"),
     )
     cache = init_cache(
         gcs_worker_cache_bucket=ctx.obj.get("GCS_BUCKET_CACHE"),
-        local_cache_dir=ctx.obj.get("LOCAL_CACHE_DIR"),
     )
 
     client_filter = None
