@@ -21,7 +21,7 @@ class SongSheets(BaseModel):
             "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
             "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
         ],
-        validation_alias=AliasChoices("GDRIVE_SONG_SHEETS_FOLDER_IDS"),
+        validation_alias="GDRIVE_SONG_SHEETS_FOLDER_IDS",
     )
 
 
@@ -59,20 +59,16 @@ class Toc(BaseModel):
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
         "songbook-generator-cache-europe-west1",
-        validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET"),
+        validation_alias="GCS_WORKER_CACHE_BUCKET",
     )
-    region: Optional[str] = Field(
-        None, validation_alias=AliasChoices("GCP_REGION")
-    )
+    region: Optional[str] = Field(None, validation_alias="GCP_REGION")
 
 
 class CachingLocal(BaseModel):
-    enabled: bool = Field(
-        True, validation_alias=AliasChoices("LOCAL_CACHE_ENABLED")
-    )
+    enabled: bool = Field(True, validation_alias="LOCAL_CACHE_ENABLED")
     dir: Optional[str] = Field(
         os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
-        validation_alias=AliasChoices("LOCAL_CACHE_DIR"),
+        validation_alias="LOCAL_CACHE_DIR",
     )
 
 
@@ -107,7 +103,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
-        env_nested_delimiter="__",
+        # A dot is not a valid char in env vars, so this forces pydantic
+        # to look for the validation_alias instead of trying to build a
+        # nested env var name.
+        env_nested_delimiter=".",
     )
 
 
