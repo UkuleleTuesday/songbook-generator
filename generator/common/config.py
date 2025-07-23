@@ -53,6 +53,12 @@ class Local(BaseModel):
     cache_dir: str = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
 
 
+class Caching(BaseModel):
+    use_gcs: Optional[bool] = None
+    gcs_worker_cache_bucket: Optional[str] = None
+    gcp_region: Optional[str] = None
+
+
 class Settings(BaseSettings):
     """
     Application settings, loaded from config files, environment variables, etc.
@@ -62,6 +68,7 @@ class Settings(BaseSettings):
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
     local: Local = Field(default_factory=Local)
+    caching: Caching = Field(default_factory=Caching)
 
     model_config = SettingsConfigDict(
         env_prefix="SONGBOOK_",

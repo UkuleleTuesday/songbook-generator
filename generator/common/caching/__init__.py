@@ -15,19 +15,26 @@ def init_cache(
     The GCS bucket can be specified via argument or environment variable.
     Can be forced to use GCS or local via `use_gcs` boolean.
     """
-    # Determine whether to use GCS based on the use_gcs flag or auto-detection
-    should_use_gcs = use_gcs
-    bucket_name = gcs_worker_cache_bucket or os.getenv("GCS_WORKER_CACHE_BUCKET")
-    gcp_region = os.getenv("GCP_REGION")
+    settings = get_settings()
+    caching_settings = settings.caching
+
+    # CLI arguments take precedence over config settings
+    should_use_gcs = use_gcs if use_gcs is not None else caching_settings.use_gcs
+    bucket_name = gcs_worker_cache_bucket or caching_settings.gcs_worker_cache_bucket
+    gcp_region = caching_settings.gcp_region
 
     if should_use_gcs is None:
         should_use_gcs = bool(bucket_name and gcp_region)
 
     if should_use_gcs:
+        if not bucket_name or not gcp_region:
+            raise ValueError(
+                "GCS caching is enabled, but bucket name or GCP region is not configured."
+            )
         click.echo(f"Using GCS as cache: {bucket_name} {gcp_region}")
         fs = gcsfs.GCSFileSystem(default_location=gcp_region)
         return LocalStorageCache(fs, bucket_name)
     else:
-        local_cache_dir = os.path.expanduser(get_settings().local.cache_dir)
+        local_cache_dir = os.path.expanduser(settings.local.cache_dir)
         click.echo(f"Using cache dir: {local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), local_cache_dir)
