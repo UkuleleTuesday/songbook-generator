@@ -1,33 +1,31 @@
 # Default configuration for the Songbook Generator.
-# This file can be overridden by environment variables.
-# For example, to override the cover file_id, set the environment variable:
-# SONGBOOK_COVER__FILE_ID="your_file_id"
+# This file is intended for overriding default settings.
+# Default values are defined in `generator/common/config.py`.
 
 [song_sheets]
-folder_ids = [
-    "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
-    "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
-]
+# A list of Google Drive folder IDs to source song sheets from.
+# folder_ids = []
 
 [cover]
-file_id = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+# The Google Drive file ID for the cover page template.
+# file_id = ""
 
 [toc]
-columns_per_page = 2
-column_width = 250
-column_spacing = 20
-margin_top = 20
-margin_bottom = 20
-margin_left = 25
-margin_right = 25
-title_height = 50
-line_spacing = 12
-text_font = "RobotoCondensed-Regular.ttf"
-text_semibold_font = "RobotoCondensed-SemiBold.ttf"
-text_fontsize = 10
-title_font = "RobotoCondensed-Bold.ttf"
-title_fontsize = 16
-max_toc_entry_length = 60
+# columns_per_page = 2
+# column_width = 250
+# column_spacing = 20
+# margin_top = 20
+# margin_bottom = 20
+# margin_left = 25
+# margin_right = 25
+# title_height = 50
+# line_spacing = 12
+# text_font = "RobotoCondensed-Regular.ttf"
+# text_semibold_font = "RobotoCondensed-SemiBold.ttf"
+# text_fontsize = 10
+# title_font = "RobotoCondensed-Bold.ttf"
+# title_fontsize = 16
+# max_toc_entry_length = 60
 
 [caching]
 # If true, forces the use of GCS for caching. If false, forces local file system.
@@ -44,5 +42,5 @@ max_toc_entry_length = 60
 
 [caching.local]
 # The local directory where song sheets and other assets are cached.
-# It can be overridden by setting the `SONGBOOK_CACHING__LOCAL__DIR` environment variable.
-dir = "~/.cache/songbook-generator"
+# It can be overridden by setting the `SONGBO-OK_CACHING__LOCAL__DIR` environment variable.
+# dir = "~/.cache/songbook-generator"

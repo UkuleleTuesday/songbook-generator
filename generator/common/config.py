@@ -22,7 +22,7 @@ class SongSheets(BaseModel):
 
 
 class Cover(BaseModel):
-    file_id: str = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+    file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class Toc(BaseModel):
@@ -55,7 +55,9 @@ class CachingGcs(BaseModel):
 
 
 class CachingLocal(BaseModel):
-    dir: str = os.path.join(os.path.expanduser("~/.cache"), "songbook-generator")
+    dir: Optional[str] = os.path.join(
+        os.path.expanduser("~/.cache"), "songbook-generator"
+    )
 
 
 class Caching(BaseModel):
