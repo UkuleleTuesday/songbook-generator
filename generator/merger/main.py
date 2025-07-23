@@ -21,8 +21,6 @@ from ..common.config import get_settings
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
 
-DEFAULT_GCS_WORKER_CACHE_BUCKET = "songbook-generator-cache-europe-west1"
-
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
 
@@ -60,10 +58,10 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
+    # If gcs_worker_cache_bucket is not provided via CLI, use settings
     if not gcs_worker_cache_bucket:
-        gcs_worker_cache_bucket = os.environ.get(
-            "GCS_WORKER_CACHE_BUCKET", DEFAULT_GCS_WORKER_CACHE_BUCKET
-        )
+        gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
+
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 

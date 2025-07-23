@@ -24,17 +24,17 @@ def make_cli_progress_callback():
 @click.group()
 @click.option(
     "--gcs-bucket-cache",
-    envvar="GCS_WORKER_CACHE_BUCKET",
-    help="GCS bucket for worker cache.",
+    help="GCS bucket for worker cache. Overrides config and GCS_WORKER_CACHE_BUCKET env var.",
 )
-@click.option("--local-cache-dir", help="Local directory for cache.")
+@click.option(
+    "--local-cache-dir", help="Local directory for cache. Overrides config and LOCAL_CACHE_DIR."
+)
 @click.pass_context
 def cli(ctx, gcs_bucket_cache, local_cache_dir):
     """Songbook Generator CLI tool."""
     ctx.ensure_object(dict)
     ctx.obj["GCS_BUCKET_CACHE"] = gcs_bucket_cache
-    if local_cache_dir:
-        os.environ["LOCAL_CACHE_DIR"] = local_cache_dir
+    ctx.obj["LOCAL_CACHE_DIR"] = local_cache_dir
 
 
 @cli.command()
@@ -108,7 +108,8 @@ def generate(
     """Generates a songbook PDF from Google Drive files."""
     drive, cache = init_services(
         key_file_path=service_account_key,
-        gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"],
+        gcs_worker_cache_bucket=ctx.obj.get("GCS_BUCKET_CACHE"),
+        local_cache_dir=ctx.obj.get("LOCAL_CACHE_DIR"),
     )
 
     client_filter = None

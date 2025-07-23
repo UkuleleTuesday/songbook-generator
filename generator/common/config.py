@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -50,13 +50,16 @@ class Toc(BaseModel):
 
 
 class CachingGcs(BaseModel):
-    worker_cache_bucket: Optional[str] = None
-    region: Optional[str] = None
+    worker_cache_bucket: Optional[str] = Field(
+        default=None, validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET")
+    )
+    region: Optional[str] = Field(default=None, validation_alias=AliasChoices("GCP_REGION"))
 
 
 class CachingLocal(BaseModel):
-    dir: Optional[str] = os.path.join(
-        os.path.expanduser("~/.cache"), "songbook-generator"
+    dir: Optional[str] = Field(
+        default=os.path.join(os.path.expanduser("~/.cache"), "songbook-generator"),
+        validation_alias=AliasChoices("LOCAL_CACHE_DIR"),
     )
 
 
