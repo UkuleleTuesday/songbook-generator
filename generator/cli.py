@@ -4,11 +4,7 @@ import click
 from pathlib import Path
 
 
-from .common.config import (
-    get_local_cache_dir,
-    load_config_folder_ids,
-    load_cover_config,
-)
+from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
@@ -47,7 +43,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
     "--source-folder",
     "-s",
     multiple=True,
-    default=load_config_folder_ids(),
+    default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to read files from (can be passed multiple times)",
 )
 @click.option(
@@ -65,7 +61,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
 @click.option(
     "--cover-file-id",
     "-c",
-    default=load_cover_config(),
+    default=lambda: get_settings().cover.file_id,
     help="File ID of the cover",
 )
 @click.option(
@@ -158,7 +154,7 @@ def generate(
     "--source-folder",
     "-s",
     multiple=True,
-    default=load_config_folder_ids(),
+    default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to sync from (can be passed multiple times)",
 )
 @click.option(
@@ -246,10 +242,12 @@ def download_cache_command(ctx, with_metadata):
         services = merger_main._get_services(
             gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
         )
-        local_cache_dir = get_local_cache_dir()
+        local_cache_dir = get_settings().caching.local.dir
         click.echo(f"Local cache directory: {local_cache_dir}")
 
-        download_gcs_cache_to_local(services, local_cache_dir, with_metadata)
+        download_gcs_cache_to_local(
+            services, os.path.expanduser(local_cache_dir), with_metadata
+        )
 
         click.echo("GCS cache download complete.")
 
