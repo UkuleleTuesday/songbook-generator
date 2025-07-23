@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import List, Tuple
 
 from pydantic import BaseModel, Field
 from pydantic_settings import (
