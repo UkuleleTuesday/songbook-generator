@@ -121,8 +121,6 @@ def generate_toc_title(
     return title
 
 
-
-
 @dataclass
 class TocEntry:
     """Information about a TOC entry for later link creation."""
@@ -132,8 +130,6 @@ class TocEntry:
     text: str
     rect: fitz.Rect
     toc_page_index: int
-
-
 
 
 class TocGenerator:
