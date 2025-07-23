@@ -3,7 +3,13 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple, Optional
 
-from pydantic import AliasChoices, BaseModel, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -43,7 +49,10 @@ class Toc(BaseModel):
     title_fontsize: int = 16
     max_toc_entry_length: int = 60
 
-    @field_validator("*", mode="before")
+    @field_validator(
+        "*",
+        mode="before",
+    )
     def empty_str_to_none(cls, v):
         if v == "":
             return None
