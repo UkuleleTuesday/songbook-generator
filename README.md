@@ -137,15 +137,14 @@ The easiest way to test the PDF generation functionality locally is to use the C
 # Install dependencies
 uv sync
 
-# Export environment variables for the CLI to use
-source export-env.sh
-
 # Download the GCS cache to your local machine. This is used by the 'generate' command.
 uv run songbook-tools download-cache
 
-# Run the generator (limit to 10 files for testing)
-uv run songbook-tools generate --destination-path ./out/test-songbook.pdf
+# Run the generator (will output to ./out/songbook.pdf by default)
+uv run songbook-tools generate
 ```
+
+Run `uv run songbook-tools --help` for more commands and options.
 
 ### Testing Full Application
 
