@@ -17,7 +17,8 @@ class SongSheets(BaseModel):
         default=[
             "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
             "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
-        ]
+        ],
+        validation_alias=AliasChoices("GDRIVE_SONG_SHEETS_FOLDER_IDS"),
     )
 
 
