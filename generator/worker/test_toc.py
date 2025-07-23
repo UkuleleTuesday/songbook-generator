@@ -169,10 +169,11 @@ def test_generate_toc_title_real_world_samples(original_title, expected_title):
 @pytest.fixture
 def mock_toc_generator(mocker):
     """Provides a TocGenerator with mocked fonts and config."""
-    mock_settings = mocker.patch("generator.worker.toc.get_settings")
-    mock_settings.return_value.toc.max_toc_entry_length = 60
-    mock_settings.return_value.toc.text_fontsize = 10.0
-    mock_settings.return_value.toc.column_width = 250
+    mock_config = toc.Toc(
+        max_toc_entry_length=60,
+        text_fontsize=10.0,
+        column_width=250,
+    )
 
     mock_resolve_font = mocker.patch("generator.worker.toc.resolve_font")
 
@@ -180,7 +181,7 @@ def mock_toc_generator(mocker):
     mock_font.text_length.side_effect = lambda text, fontsize: len(text) * 5
     mock_resolve_font.return_value = mock_font
 
-    generator = TocGenerator()
+    generator = TocGenerator(config=mock_config)
     return generator
 
 

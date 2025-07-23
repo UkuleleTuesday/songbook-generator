@@ -5,7 +5,6 @@ from typing import List, Tuple
 import importlib.resources
 import os
 
-from ..common.config import get_settings
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
 from .exceptions import TocGenerationException
@@ -132,11 +131,14 @@ class TocEntry:
     toc_page_index: int
 
 
+from ..common.config import get_settings, Toc
+
+
 class TocGenerator:
     """Generates table of contents PDF with multi-column, multi-page layout."""
 
-    def __init__(self):
-        self.config = get_settings().toc
+    def __init__(self, config: Toc):
+        self.config = config
         self.text_font = resolve_font(self.config.text_font)
         self.text_semibold_font = resolve_font(self.config.text_semibold_font)
         self.title_font = resolve_font(self.config.title_font)
@@ -336,7 +338,7 @@ def build_table_of_contents(
                 if value is not None
             }
         )
-        generator = TocGenerator()
+        generator = TocGenerator(config)
         toc_pdf = generator.generate(files, page_offset)
         return toc_pdf, generator.get_toc_entries()
 
