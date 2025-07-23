@@ -44,12 +44,14 @@ def init_services(
 ):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
+    settings = config.get_settings()
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive(key_file_path)
         cache = caching.init_cache(
             gcs_worker_cache_bucket=gcs_worker_cache_bucket,
             local_cache_dir=local_cache_dir,
+            gcp_region=settings.caching.gcs.region,
         )
 
         click.echo("Authentication Details:")
