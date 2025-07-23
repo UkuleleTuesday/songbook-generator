@@ -1,0 +1,13 @@
+# Default configuration for the Songbook Generator.
+# This file can be overridden by environment variables.
+# For example, to override the cover file_id, set the environment variable:
+# SONGBOOK_COVER__FILE_ID="your_file_id"
+
+[song_sheets]
+folder_ids = [
+    "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
+    "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
+]
+
+[cover]
+file_id = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"

@@ -1,49 +1,67 @@
 import os
-import toml
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, List, Tuple
 
-DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/songbook-generator/config.toml")
-
-DEFAULT_GDRIVE_FOLDER_IDS = [
-    "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
-    "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
-]
-
-DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+from pydantic import BaseModel, Field
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+    TomlConfigSettingsSource,
+)
 
 DEFAULT_LOCAL_CACHE_DIR = os.path.join(
     os.path.expanduser("~/.cache"), "songbook-generator"
 )
 
 
-def load_config(config_path=DEFAULT_CONFIG_PATH):
-    if os.path.exists(config_path):
-        return toml.load(config_path)
-    else:
-        return toml.loads("")
-
-
-def load_config_folder_ids():
-    """
-    Load GDrive folder IDs from environment or config file.
-    Priority order:
-    1. GDRIVE_SONG_SHEETS_FOLDER_IDS environment variable (comma-separated).
-    2. Local config file (~/.config/songbook-generator/config.toml).
-    3. Hardcoded default.
-    """
-    env_folders = os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS")
-    if env_folders:
-        return [folder.strip() for folder in env_folders.split(",")]
-
-    config = load_config()
-    folder_ids = config.get("song-sheets", {}).get(
-        "folder-ids", DEFAULT_GDRIVE_FOLDER_IDS
+class SongSheets(BaseModel):
+    folder_ids: List[str] = Field(
+        default=[
+            "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
+            "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
+        ]
     )
-    return folder_ids if isinstance(folder_ids, list) else [folder_ids]
 
 
-def load_cover_config():
-    config = load_config()
-    return config.get("cover", {}).get("file-id", DEFAULT_COVER_ID)
+class Cover(BaseModel):
+    file_id: str = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+
+
+class Settings(BaseSettings):
+    """
+    Application settings, loaded from config files, environment variables, etc.
+    """
+
+    song_sheets: SongSheets = Field(default_factory=SongSheets)
+    cover: Cover = Field(default_factory=Cover)
+
+    model_config = SettingsConfigDict(
+        env_prefix="SONGBOOK_",
+        env_nested_delimiter="__",
+        toml_file=Path(__file__).parent.parent / "config.toml",
+    )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            TomlConfigSettingsSource(settings_cls),
+        )
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
 
 
 def get_local_cache_dir():
