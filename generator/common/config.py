@@ -52,7 +52,8 @@ class Toc(BaseModel):
 
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field(
-        default=None, validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET")
+        default="songbook-generator-cache-europe-west1",
+        validation_alias=AliasChoices("GCS_WORKER_CACHE_BUCKET"),
     )
     region: Optional[str] = Field(
         default=None, validation_alias=AliasChoices("GCP_REGION")
