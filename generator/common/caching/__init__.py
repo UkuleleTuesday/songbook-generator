@@ -4,7 +4,7 @@ from typing import Optional
 import gcsfs
 from .localstorage import LocalStorageCache
 from fsspec.implementations.local import LocalFileSystem
-from ..config import get_local_cache_dir
+from ..config import get_settings
 
 
 def init_cache(
@@ -28,6 +28,6 @@ def init_cache(
         fs = gcsfs.GCSFileSystem(default_location=gcp_region)
         return LocalStorageCache(fs, bucket_name)
     else:
-        local_cache_dir = get_local_cache_dir()
+        local_cache_dir = os.path.expanduser(get_settings().local.cache_dir)
         click.echo(f"Using cache dir: {local_cache_dir}")
         return LocalStorageCache(LocalFileSystem(), local_cache_dir)
