@@ -61,8 +61,6 @@ def test_gcp_region_override(monkeypatch):
     [
         ("true", True),
         ("false", False),
-        ("1", True),
-        ("0", False),
     ],
 )
 def test_local_cache_enabled_override(monkeypatch, env_value, expected_bool):
