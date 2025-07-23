@@ -55,9 +55,7 @@ class Toc(BaseModel):
 
 
 class CachingGcs(BaseModel):
-    worker_cache_bucket: Optional[str] = Field(
-        "songbook-generator-cache-europe-west1"
-    )
+    worker_cache_bucket: Optional[str] = Field("songbook-generator-cache-europe-west1")
     region: Optional[str] = Field(None)
 
 
@@ -111,8 +109,9 @@ class Settings(BaseSettings):
 
         # Handle local cache settings
         if (local_cache_enabled_env := os.getenv("LOCAL_CACHE_ENABLED")) is not None:
-            self.caching.local.enabled = (
-                local_cache_enabled_env.lower() in ("true", "1")
+            self.caching.local.enabled = local_cache_enabled_env.lower() in (
+                "true",
+                "1",
             )
         if local_cache_dir_env := os.getenv("LOCAL_CACHE_DIR"):
             self.caching.local.dir = local_cache_dir_env
