@@ -5,7 +5,7 @@ from typing import List, Tuple
 import importlib.resources
 import os
 
-from ..common.config import load_config
+from ..common.config import get_settings
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
 from .exceptions import TocGenerationException
@@ -158,19 +158,15 @@ class TocEntry:
 
 def load_toc_config() -> TocLayout:
     """Load TOC configuration from config file."""
-    config = load_config()
-    toc_config = config.get("toc", {})
+    settings = get_settings()
+    toc_config = settings.toc
     layout = TocLayout()
 
-    layout.text_font = resolve_font(toc_config.get("text-font", DEFAULT_FONT_NAME))
-    layout.text_semibold_font = resolve_font(
-        toc_config.get("text-semibold-font", DEFAULT_TEXT_SEMIBOLD_FONT_NAME)
-    )
-    layout.text_fontsize = toc_config.get("text-fontsize", layout.text_fontsize)
-    layout.title_font = resolve_font(
-        toc_config.get("title-font", DEFAULT_TITLE_FONT_NAME)
-    )
-    layout.title_fontsize = toc_config.get("title-fontsize", layout.title_fontsize)
+    layout.text_font = resolve_font(toc_config.text_font)
+    layout.text_semibold_font = resolve_font(toc_config.text_semibold_font)
+    layout.text_fontsize = toc_config.text_fontsize
+    layout.title_font = resolve_font(toc_config.title_font)
+    layout.title_fontsize = toc_config.title_fontsize
 
     return layout
 

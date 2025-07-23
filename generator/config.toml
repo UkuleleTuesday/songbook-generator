@@ -11,3 +11,10 @@ folder_ids = [
 
 [cover]
 file_id = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+
+[toc]
+text_font = "RobotoCondensed-Regular.ttf"
+text_semibold_font = "RobotoCondensed-SemiBold.ttf"
+text_fontsize = 10
+title_font = "RobotoCondensed-Bold.ttf"
+title_fontsize = 16

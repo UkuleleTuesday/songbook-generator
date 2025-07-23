@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import List, Tuple
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -29,6 +29,20 @@ class Cover(BaseModel):
     file_id: str = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
+class Toc(BaseModel):
+    text_font: str = "RobotoCondensed-Regular.ttf"
+    text_semibold_font: str = "RobotoCondensed-SemiBold.ttf"
+    text_fontsize: float = 10.0
+    title_font: str = "RobotoCondensed-Bold.ttf"
+    title_fontsize: int = 16
+
+    @field_validator("*", mode="before")
+    def empty_str_to_none(cls, v):
+        if v == "":
+            return None
+        return v
+
+
 class Settings(BaseSettings):
     """
     Application settings, loaded from config files, environment variables, etc.
@@ -36,6 +50,7 @@ class Settings(BaseSettings):
 
     song_sheets: SongSheets = Field(default_factory=SongSheets)
     cover: Cover = Field(default_factory=Cover)
+    toc: Toc = Field(default_factory=Toc)
 
     model_config = SettingsConfigDict(
         env_prefix="SONGBOOK_",
