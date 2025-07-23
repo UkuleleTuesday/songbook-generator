@@ -11,7 +11,6 @@ def init_cache(
     gcs_worker_cache_bucket: Optional[str] = None,
     use_gcs: Optional[bool] = None,
     local_cache_dir: Optional[str] = None,
-    gcp_region: Optional[str] = None,
 ):
     """
     Initializes the cache, using either GCS or local filesystem.
@@ -28,10 +27,7 @@ def init_cache(
         if gcs_worker_cache_bucket is not None
         else caching_settings.gcs.worker_cache_bucket
     )
-    # Argument takes precedence over settings
-    final_gcp_region = (
-        gcp_region if gcp_region is not None else caching_settings.gcs.region
-    )
+    final_gcp_region = caching_settings.gcs.region
 
     if should_use_gcs is None:
         should_use_gcs = bool(bucket_name and final_gcp_region)
