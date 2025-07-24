@@ -85,6 +85,7 @@ def cli(ctx):
     "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
 )
 def generate(
+    ctx,
     source_folder: str,
     destination_path: Path,
     open_generated_pdf,
