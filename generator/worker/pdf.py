@@ -9,7 +9,7 @@ from . import toc
 from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from ..common import caching
+from ..common import caching, config
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from .filters import PropertyFilter, FilterGroup
@@ -37,16 +37,13 @@ def authenticate_drive(key_file_path: Optional[str] = None):
     return build("drive", "v3", credentials=creds), creds
 
 
-def init_services(
-    key_file_path: Optional[str] = None,
-    gcs_worker_cache_bucket: Optional[str] = None,
-):
+def init_services(key_file_path: Optional[str] = None):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
 
     with tracer.start_as_current_span("init_services"):
         drive, creds = authenticate_drive(key_file_path)
-        cache = caching.init_cache(gcs_worker_cache_bucket=gcs_worker_cache_bucket)
+        cache = caching.init_cache()
 
         click.echo("Authentication Details:")
         # Check for service account first by looking for the 'account' attribute
@@ -373,7 +370,10 @@ def generate_songbook(
                             "drive", "v3", credentials=cover_creds
                         )
                         cover_generator = cover.CoverGenerator(
-                            cache, drive_write_service, docs_write_service
+                            cache,
+                            drive_write_service,
+                            docs_write_service,
+                            cover_config=config.get_settings().cover,
                         )
                         cover_pdf = cover_generator.generate_cover(cover_file_id)
 

@@ -16,30 +16,20 @@ from googleapiclient.discovery import build
 from google.cloud import storage
 
 from . import sync
-from ..common.config import load_config_folder_ids
+from ..common.config import get_settings
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
-
-DEFAULT_GCS_WORKER_CACHE_BUCKET = "songbook-generator-cache-europe-west1"
 
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
 
 
-def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
+def _get_services():
     """Initializes and returns services, using a cache for warm starts."""
     global _services
     if _services is not None:
-        # If a specific bucket is requested and it's different from the cached one,
-        # re-initialize. This is mainly for CLI usage.
-        if (
-            gcs_worker_cache_bucket
-            and _services.get("gcs_worker_cache_bucket") != gcs_worker_cache_bucket
-        ):
-            _services = None
-        else:
-            return _services
+        return _services
 
     creds, project_id = default(
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
@@ -60,10 +50,8 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    if not gcs_worker_cache_bucket:
-        gcs_worker_cache_bucket = os.environ.get(
-            "GCS_WORKER_CACHE_BUCKET", DEFAULT_GCS_WORKER_CACHE_BUCKET
-        )
+    gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
+
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
@@ -73,7 +61,6 @@ def _get_services(gcs_worker_cache_bucket: Optional[str] = None):
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
-        "gcs_worker_cache_bucket": gcs_worker_cache_bucket,  # Cache the name for re-init check
     }
     return _services
 
@@ -229,11 +216,10 @@ def merger_main(request):
             force_sync = request_json.get("force", False) if request_json else False
             source_folders = (
                 request_json.get("source_folders")
-                if request_json
-                else load_config_folder_ids()
+                or get_settings().song_sheets.folder_ids
             )
             if not source_folders:
-                source_folders = load_config_folder_ids()
+                source_folders = get_settings().song_sheets.folder_ids
 
             # Add source_folders to span attributes for tracing
             if source_folders:

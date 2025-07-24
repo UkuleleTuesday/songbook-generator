@@ -3,6 +3,7 @@ import pytest
 from unittest.mock import Mock, patch
 import fitz
 from . import cover
+from ..common import config
 
 from googleapiclient.discovery import build
 from googleapiclient.http import HttpMockSequence
@@ -13,7 +14,8 @@ def test_apply_template_replacements_permission_error(mock_echo):
     """Test that a permission error is handled gracefully."""
     docs_http = HttpMockSequence([({"status": "403"}, "Permission denied")])
     docs = build("docs", "v1", http=docs_http)
-    generator = cover.CoverGenerator(Mock(), Mock(), docs)
+    mock_config = config.Cover(file_id="doc123")
+    generator = cover.CoverGenerator(Mock(), Mock(), docs, mock_config)
 
     generator._apply_template_replacements("doc123", {"{{PLACEHOLDER}}": "value"})
 
@@ -29,9 +31,10 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download):
     mock_docs = Mock()
     mock_cache = Mock()
     mock_download.return_value = b"fake-pdf-content"  # Fix for fitz.open
+    mock_config = config.Cover(file_id="cover123")
 
     generator = cover.CoverGenerator(
-        mock_cache, mock_drive, mock_docs, enable_templating=True
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=True
     )
     with patch("fitz.open"):
         generator.generate_cover("cover123")
@@ -100,16 +103,13 @@ def test_generate_cover_basic(
     assert result == mock_pdf
 
 
-@patch("generator.common.config.load_cover_config")
 @patch("generator.worker.cover.click.echo")
-def test_generate_cover_no_cover_configured(mock_echo, mock_load_config):
+def test_generate_cover_no_cover_configured(mock_echo):
     """Test when no cover file is configured."""
-    mock_load_config.return_value = None
-    with (
-        patch("generator.worker.cover.get_credentials"),
-        patch("generator.worker.cover.build"),
-    ):
-        result = cover.generate_cover(Mock())
+    mock_config = config.Cover(file_id=None)
+    generator = cover.CoverGenerator(Mock(), Mock(), Mock(), mock_config)
+    result = generator.generate_cover()
+
     assert result is None
     mock_echo.assert_called_once_with(
         "No cover file ID configured. Skipping cover generation."
@@ -139,10 +139,11 @@ def test_generate_cover_templating_disabled(
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
     mock_cache = Mock()
+    mock_config = config.Cover(file_id="cover123")
 
     # Now we can test the real CoverGenerator logic
     generator = cover.CoverGenerator(
-        mock_cache, mock_drive, mock_docs, enable_templating=False
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=False
     )
     result = generator.generate_cover("cover123")
 
@@ -206,46 +207,28 @@ def test_generate_cover_corrupted_pdf(
         cover.generate_cover(mock_cache, "cover123")
 
 
-@patch("generator.common.config.load_cover_config")
-@patch("generator.worker.cover.fitz.open")
-@patch("generator.worker.cover.build")
-@patch("generator.worker.cover.get_credentials")
-def test_generate_cover_uses_provided_cover_id(
-    mock_get_credentials, mock_build, mock_fitz, mock_load_config, tmp_path
-):
-    """Test that provided cover_file_id takes precedence over config."""
-    pdf_content = b"fake pdf content"
-    drive_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
-            ),
-            ({"status": "200"}, pdf_content),
-        ]
-    )
-    docs_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-        ]
-    )
-    mock_drive = build("drive", "v3", http=drive_http)
-    mock_docs = build("docs", "v1", http=docs_http)
-    mock_build.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
-    mock_fitz.return_value = Mock()
+@patch("generator.worker.cover.gdrive.download_file")
+@patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
+def test_generate_cover_uses_provided_cover_id(mock_apply_replacements, mock_download):
+    """Test that a provided cover_file_id is used instead of the one from config."""
+    # This config has a different file_id
+    mock_config = config.Cover(file_id="config_cover_id")
 
-    with patch("generator.common.caching.LocalStorageCache") as mock_cache:
-        mock_cache.get.return_value = None
-        cover.generate_cover(mock_cache, "provided_cover123")
+    # Mock services
+    mock_drive = Mock()
+    mock_docs = Mock()
+    mock_cache = Mock()
+    mock_download.return_value = b"fake-pdf-content"
 
-    mock_load_config.assert_not_called()
+    generator = cover.CoverGenerator(
+        mock_cache, mock_drive, mock_docs, mock_config, enable_templating=True
+    )
+
+    with patch("fitz.open"):
+        # Call generate_cover with a specific file_id
+        generator.generate_cover(cover_file_id="provided_cover_id")
+
+    # Assert that download_file was called with the provided_cover_id, not the one from config
+    mock_download.assert_called_once()
+    called_args = mock_download.call_args[0]
+    assert called_args[1] == "provided_cover_id"

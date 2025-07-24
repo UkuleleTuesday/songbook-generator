@@ -15,14 +15,14 @@ import grpc
 from google.auth.transport.grpc import AuthMetadataPlugin
 
 
-def setup_tracing(service_name):
-    # Standard way to disable OpenTelemetry SDK.
-    if os.environ.get("OTEL_SDK_DISABLED", "false").lower() == "true":
-        trace.set_tracer_provider(NoOpTracerProvider())
-        return
+from .config import get_settings
 
-    # Only set up real tracing if we are in a GCP environment.
-    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+
+def setup_tracing(service_name):
+    settings = get_settings()
+
+    # If tracing is disabled via config, use the NoOp provider.
+    if not settings.tracing.enabled:
         trace.set_tracer_provider(NoOpTracerProvider())
         return
 
@@ -65,10 +65,10 @@ def setup_tracing(service_name):
 
 def get_tracer(name: str):
     """Get a tracer instance."""
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    settings = get_settings()
 
-    if not project_id:
-        # Return OpenTelemetry's built-in no-op tracer for local development
+    if not settings.tracing.enabled:
+        # Return OpenTelemetry's built-in no-op tracer if disabled.
         return trace.NoOpTracer()
 
     return trace.get_tracer(name)

@@ -4,11 +4,7 @@ import click
 from pathlib import Path
 
 
-from .common.config import (
-    get_local_cache_dir,
-    load_config_folder_ids,
-    load_cover_config,
-)
+from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
@@ -26,19 +22,10 @@ def make_cli_progress_callback():
 
 
 @click.group()
-@click.option(
-    "--gcs-bucket-cache",
-    envvar="GCS_WORKER_CACHE_BUCKET",
-    help="GCS bucket for worker cache.",
-)
-@click.option("--local-cache-dir", help="Local directory for cache.")
 @click.pass_context
-def cli(ctx, gcs_bucket_cache, local_cache_dir):
+def cli(ctx):
     """Songbook Generator CLI tool."""
     ctx.ensure_object(dict)
-    ctx.obj["GCS_BUCKET_CACHE"] = gcs_bucket_cache
-    if local_cache_dir:
-        os.environ["LOCAL_CACHE_DIR"] = local_cache_dir
 
 
 @cli.command()
@@ -47,7 +34,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
     "--source-folder",
     "-s",
     multiple=True,
-    default=load_config_folder_ids(),
+    default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to read files from (can be passed multiple times)",
 )
 @click.option(
@@ -65,7 +52,7 @@ def cli(ctx, gcs_bucket_cache, local_cache_dir):
 @click.option(
     "--cover-file-id",
     "-c",
-    default=load_cover_config(),
+    default=lambda: get_settings().cover.file_id,
     help="File ID of the cover",
 )
 @click.option(
@@ -110,10 +97,12 @@ def generate(
     service_account_key: str,
 ):
     """Generates a songbook PDF from Google Drive files."""
-    drive, cache = init_services(
+    from .common.caching import init_cache
+
+    drive, _ = init_services(
         key_file_path=service_account_key,
-        gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"],
     )
+    cache = init_cache()
 
     client_filter = None
     if filter:
@@ -149,7 +138,7 @@ def generate(
     )
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")
-        click.launch(destination_path)
+        click.launch(str(destination_path))
 
 
 @cli.command(name="sync-cache")
@@ -158,7 +147,7 @@ def generate(
     "--source-folder",
     "-s",
     multiple=True,
-    default=load_config_folder_ids(),
+    default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to sync from (can be passed multiple times)",
 )
 @click.option(
@@ -186,16 +175,14 @@ def generate(
     help="Update tags on Drive files in addition to syncing to GCS cache.",
 )
 def sync_cache_command(
-    ctx, source_folder, no_metadata, force, update_tags_only, update_tags
+    source_folder, no_metadata, force, update_tags_only, update_tags
 ):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
 
-        services = merger_main._get_services(
-            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
-        )
+        services = merger_main._get_services()
         source_folders = list(source_folder) if source_folder else []
 
         if not source_folders:
@@ -230,26 +217,25 @@ def sync_cache_command(
 
 
 @cli.command(name="download-cache")
-@click.pass_context
 @click.option(
     "--with-metadata",
     is_flag=True,
     default=False,
     help="Also download GCS object metadata and save it to a .metadata.json file.",
 )
-def download_cache_command(ctx, with_metadata):
+def download_cache_command(with_metadata):
     """Downloads the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
         from .merger import main as merger_main
 
-        services = merger_main._get_services(
-            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
-        )
-        local_cache_dir = get_local_cache_dir()
+        services = merger_main._get_services()
+        local_cache_dir = get_settings().caching.local.dir
         click.echo(f"Local cache directory: {local_cache_dir}")
 
-        download_gcs_cache_to_local(services, local_cache_dir, with_metadata)
+        download_gcs_cache_to_local(
+            services, os.path.expanduser(local_cache_dir), with_metadata
+        )
 
         click.echo("GCS cache download complete.")
 
@@ -264,14 +250,13 @@ def download_cache_command(ctx, with_metadata):
 
 
 @cli.command(name="merge-pdfs")
-@click.pass_context
 @click.option(
     "--output",
     "-o",
     default="merged-songbook.pdf",
     help="Output file path for merged PDF (default: merged-songbook.pdf)",
 )
-def merge_pdfs(ctx, output: str):
+def merge_pdfs(output: str):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
@@ -280,9 +265,7 @@ def merge_pdfs(ctx, output: str):
         from .merger import main as merger_main
 
         # Manually get the services since we are not in a Cloud Function
-        services = merger_main._get_services(
-            gcs_worker_cache_bucket=ctx.obj["GCS_BUCKET_CACHE"]
-        )
+        services = merger_main._get_services()
         click.echo("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
@@ -300,6 +283,14 @@ def merge_pdfs(ctx, output: str):
         click.echo("Error details:", err=True)
         click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
+
+
+@cli.command(name="print-settings")
+def print_settings():
+    """Prints the current settings for debugging purposes."""
+    click.echo("Current application settings:")
+    settings = get_settings()
+    click.echo(settings.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,6 @@ from .toc import (
     generate_toc_title,
     DEFAULT_FONT_NAME,
     TocGenerator,
-    load_toc_config,
     difficulty_symbol,
 )
 from .models import File
@@ -168,22 +167,27 @@ def test_generate_toc_title_real_world_samples(original_title, expected_title):
 
 
 @pytest.fixture
-def toc_layout():
-    """Provides a default TocLayout with a mocked font."""
-    layout = load_toc_config()
-    # Mock font to control text_length for predictable testing
-    layout.text_font = MagicMock()
-    layout.text_font.text_length.side_effect = lambda text, fontsize: len(text) * 5
-    layout.text_semibold_font = MagicMock()
-    layout.text_semibold_font.text_length.side_effect = (
-        lambda text, fontsize: len(text) * 5
+def mock_toc_generator(mocker):
+    """Provides a TocGenerator with mocked fonts and config."""
+    mock_config = toc.Toc(
+        max_toc_entry_length=60,
+        text_fontsize=10.0,
+        column_width=250,
     )
-    return layout
+
+    mock_resolve_font = mocker.patch("generator.worker.toc.resolve_font")
+
+    mock_font = MagicMock()
+    mock_font.text_length.side_effect = lambda text, fontsize: len(text) * 5
+    mock_resolve_font.return_value = mock_font
+
+    generator = TocGenerator(config=mock_config)
+    return generator
 
 
-def test_add_toc_entry(toc_layout):
+def test_add_toc_entry(mock_toc_generator):
     """Test that _add_toc_entry correctly formats and adds a TOC entry."""
-    generator = TocGenerator(toc_layout)
+    generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     generator._add_toc_entry(
@@ -203,26 +207,26 @@ def test_add_toc_entry(toc_layout):
     # Check title call
     title_call = calls[0]
     assert title_call.args[1] == "A Short Title - Artist"
-    assert title_call.kwargs["font"] == toc_layout.text_font
+    assert title_call.kwargs["font"] == generator.text_font
 
-    # Check page number call (semibold font)
+    # Check page number call (page number font)
     page_num_call = calls[1]
     assert page_num_call.args[1] == "1"
-    assert page_num_call.kwargs["font"] == toc_layout.text_semibold_font
+    assert page_num_call.kwargs["font"] == generator.page_number_font
 
     # Check dots call
     dots_call = calls[2]
     assert dots_call.args[1].startswith(".")
-    assert dots_call.kwargs["font"] == toc_layout.text_font
+    assert dots_call.kwargs["font"] == generator.text_font
 
 
-def test_add_toc_entry_title_truncation(toc_layout):
+def test_add_toc_entry_title_truncation(mock_toc_generator):
     """Test that a long title is truncated correctly."""
-    generator = TocGenerator(toc_layout)
+    generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     long_title = "This is a very long song title that will definitely need to be truncated - The Long Winded Singers"
-    toc_layout.max_toc_entry_length = 50
+    generator.config.max_toc_entry_length = 50
     generator._add_toc_entry(
         tw=mock_tw,
         file_index=0,
@@ -239,9 +243,9 @@ def test_add_toc_entry_title_truncation(toc_layout):
     assert appended_title.endswith("...")
 
 
-def test_add_toc_entry_with_difficulty(toc_layout):
+def test_add_toc_entry_with_difficulty(mock_toc_generator):
     """Test that a difficulty symbol is added to the TOC entry."""
-    generator = TocGenerator(toc_layout)
+    generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file_with_difficulty = File(
@@ -272,9 +276,9 @@ def test_generate_toc_title_truncation_with_ready_to_play():
     assert len(result) < len(long_title)
 
 
-def test_add_toc_entry_ready_to_play_status(toc_layout):
+def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     """Test that a '*' is added for READY_TO_PLAY status."""
-    generator = TocGenerator(toc_layout)
+    generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
@@ -297,8 +301,8 @@ def test_add_toc_entry_ready_to_play_status(toc_layout):
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
     """Verify that assign_difficulty_bins is called."""
     mock_assign_bins = mocker.patch("generator.worker.toc.assign_difficulty_bins")
-    mocker.patch("generator.worker.toc.load_toc_config")
-    mocker.patch("generator.worker.toc.TocGenerator.generate")
+    mocker.patch("generator.worker.toc.get_settings")
+    mocker.patch("generator.worker.toc.TocGenerator")
 
     files = [File(id="1", name="Song 1")]
     toc.build_table_of_contents(files)

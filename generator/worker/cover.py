@@ -11,10 +11,18 @@ DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class CoverGenerator:
-    def __init__(self, cache, drive_service, docs_service, enable_templating=True):
+    def __init__(
+        self,
+        cache,
+        drive_service,
+        docs_service,
+        cover_config: config.Cover,
+        enable_templating=True,
+    ):
         self.cache = cache
         self.drive = drive_service
         self.docs = docs_service
+        self.config = cover_config
         self.enable_templating = enable_templating
 
     def _apply_template_replacements(self, document_id: str, replacement_map: dict):
@@ -66,7 +74,7 @@ class CoverGenerator:
 
     def generate_cover(self, cover_file_id=None):
         if not cover_file_id:
-            cover_file_id = config.load_cover_config()
+            cover_file_id = self.config.file_id
             if not cover_file_id:
                 click.echo("No cover file ID configured. Skipping cover generation.")
                 return None
@@ -119,5 +127,6 @@ def generate_cover(cache, cover_file_id=None):
     )
     docs_write = build("docs", "v1", credentials=creds)
     drive_write = build("drive", "v3", credentials=creds)
-    generator = CoverGenerator(cache, drive_write, docs_write)
+    cover_config = config.get_settings().cover
+    generator = CoverGenerator(cache, drive_write, docs_write, cover_config)
     return generator.generate_cover(cover_file_id)
