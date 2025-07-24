@@ -31,16 +31,10 @@ def _get_services():
     if _services is not None:
         return _services
 
-    creds, project_id = default(
-        scopes=["https://www.googleapis.com/auth/drive.readonly"]
-    )
-    if not project_id:
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
+    settings = get_settings()
 
-    if not project_id:
-        raise ValueError(
-            "Could not determine GCP project ID. Please set GOOGLE_CLOUD_PROJECT."
-        )
+    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    project_id = settings.google_cloud.project_id
 
     os.environ["GCP_PROJECT_ID"] = project_id
     if "GOOGLE_CLOUD_PROJECT" not in os.environ:
