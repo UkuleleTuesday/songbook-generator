@@ -72,6 +72,10 @@ class Caching(BaseModel):
     local: CachingLocal = Field(default_factory=CachingLocal)
 
 
+class GoogleCloud(BaseModel):
+    project_id: Optional[str] = Field("songbook-generator")
+
+
 class Tracing(BaseModel):
     enabled: bool = Field(default=False)
 
@@ -89,6 +93,7 @@ class Settings(BaseSettings):
     Application settings, loaded from environment variables.
     """
 
+    google_cloud: GoogleCloud = Field(default_factory=GoogleCloud)
     song_sheets: SongSheets = Field(default_factory=SongSheets)
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
@@ -97,6 +102,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def apply_env_overrides(self) -> "Settings":
+        # Handle Google Cloud settings
+        if gcp_project_id_env := (
+            os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
+        ):
+            self.google_cloud.project_id = gcp_project_id_env
+
         # Handle GDRIVE_SONG_SHEETS_FOLDER_IDS
         if folder_ids_env := os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS"):
             self.song_sheets.folder_ids = folder_ids_env.split(",")

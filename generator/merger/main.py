@@ -1,5 +1,6 @@
 import os
 import tempfile
+from functools import lru_cache
 from typing import Optional
 import PyPDF2
 from google.api_core import exceptions as gcp_exceptions
@@ -21,48 +22,36 @@ from ..common.config import get_settings
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
 
-# Cache for initialized clients to avoid re-initialization on warm starts
-_services = None
 
-
+@lru_cache(maxsize=1)
 def _get_services():
     """Initializes and returns services, using a cache for warm starts."""
-    global _services
-    if _services is not None:
-        return _services
+    settings = get_settings()
 
     creds, project_id = default(
         scopes=["https://www.googleapis.com/auth/drive.readonly"]
     )
-    if not project_id:
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
-
-    if not project_id:
-        raise ValueError(
-            "Could not determine GCP project ID. Please set GOOGLE_CLOUD_PROJECT."
-        )
-
-    os.environ["GCP_PROJECT_ID"] = project_id
-    if "GOOGLE_CLOUD_PROJECT" not in os.environ:
-        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+    if project_id:
+        os.environ["GCP_PROJECT_ID"] = project_id
+        if "GOOGLE_CLOUD_PROJECT" not in os.environ:
+            os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
     service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
+    gcs_worker_cache_bucket = settings.caching.gcs.worker_cache_bucket
 
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
     drive_service = build("drive", "v3", credentials=creds)
 
-    _services = {
+    return {
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
     }
-    return _services
 
 
 def _fetch_pdf_blobs(services):
