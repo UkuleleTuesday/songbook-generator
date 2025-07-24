@@ -33,18 +33,19 @@ def _get_services():
 
     settings = get_settings()
 
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
-    project_id = settings.google_cloud.project_id
-
-    os.environ["GCP_PROJECT_ID"] = project_id
-    if "GOOGLE_CLOUD_PROJECT" not in os.environ:
-        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+    creds, project_id = default(
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    if project_id:
+        os.environ["GCP_PROJECT_ID"] = project_id
+        if "GOOGLE_CLOUD_PROJECT" not in os.environ:
+            os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
     service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    gcs_worker_cache_bucket = get_settings().caching.gcs.worker_cache_bucket
+    gcs_worker_cache_bucket = settings.caching.gcs.worker_cache_bucket
 
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
