@@ -22,6 +22,7 @@ from ..common.config import get_settings
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
 
+
 @lru_cache(maxsize=1)
 def _get_services():
     """Initializes and returns services, using a cache for warm starts."""
