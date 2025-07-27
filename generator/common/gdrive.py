@@ -298,3 +298,56 @@ def download_file_bytes(drive, file: File, cache) -> bytes:
     """
     with download_file_stream(drive, file, cache) as stream:
         return stream.getvalue()
+
+
+def get_file_properties(drive, file_id: str) -> Optional[Dict[str, str]]:
+    """
+    Get custom properties for a given Google Drive file.
+
+    Args:
+        drive: Authenticated Google Drive service
+        file_id: The ID of the file.
+
+    Returns:
+        A dictionary of properties, or None if the file is not found.
+    """
+    try:
+        file_metadata = (
+            drive.files().get(fileId=file_id, fields="properties").execute()
+        )
+        return file_metadata.get("properties", {})
+    except HttpError as e:
+        if e.resp.status == 404:
+            click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
+            return None
+        click.echo(f"An API error occurred: {e}", err=True)
+        return None
+
+
+def set_file_property(drive, file_id: str, key: str, value: str) -> bool:
+    """
+    Sets a custom property on a Google Drive file.
+
+    Args:
+        drive: Authenticated Google Drive service
+        file_id: The ID of the file to update.
+        key: The property key to set.
+        value: The property value to set.
+
+    Returns:
+        True if successful, False otherwise.
+    """
+    try:
+        # First, get the current properties to not overwrite them
+        file_metadata = (
+            drive.files().get(fileId=file_id, fields="properties").execute()
+        )
+        properties = file_metadata.get("properties", {})
+        properties[key] = value
+
+        body = {"properties": properties}
+        drive.files().update(fileId=file_id, body=body).execute()
+        return True
+    except HttpError as e:
+        click.echo(f"An error occurred: {e}", err=True)
+        return False
