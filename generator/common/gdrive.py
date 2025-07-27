@@ -312,9 +312,7 @@ def get_file_properties(drive, file_id: str) -> Optional[Dict[str, str]]:
         A dictionary of properties, or None if the file is not found.
     """
     try:
-        file_metadata = (
-            drive.files().get(fileId=file_id, fields="properties").execute()
-        )
+        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
         return file_metadata.get("properties", {})
     except HttpError as e:
         if e.resp.status == 404:
@@ -339,9 +337,7 @@ def set_file_property(drive, file_id: str, key: str, value: str) -> bool:
     """
     try:
         # First, get the current properties to not overwrite them
-        file_metadata = (
-            drive.files().get(fileId=file_id, fields="properties").execute()
-        )
+        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
         properties = file_metadata.get("properties", {})
         properties[key] = value
 
