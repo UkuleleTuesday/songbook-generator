@@ -6,6 +6,8 @@ from pathlib import Path
 
 from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
+import json
+from .common.gdrive import get_file_properties, set_file_property
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
@@ -291,6 +293,60 @@ def print_settings():
     click.echo("Current application settings:")
     settings = get_settings()
     click.echo(settings.model_dump_json(indent=2))
+
+
+@cli.group()
+def tags():
+    """Get and set tags (custom properties) on Google Drive files."""
+
+
+@tags.command(name="get")
+@click.argument("gdrive_file_id")
+@click.argument("key", required=False)
+@click.option(
+    "--service-account-key",
+    envvar="GOOGLE_APPLICATION_CREDENTIALS",
+    type=click.Path(exists=True),
+    help="Path to a service account key file for authentication. "
+    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+)
+def get_tag(gdrive_file_id, key, service_account_key):
+    """Get a specific tag or all tags for a Google Drive file."""
+    drive, _ = init_services(key_file_path=service_account_key)
+    properties = get_file_properties(drive, gdrive_file_id)
+
+    if properties is None:
+        raise click.Abort()
+
+    if key:
+        if key in properties:
+            click.echo(properties[key])
+        else:
+            click.echo(f"Error: Tag '{key}' not found.", err=True)
+            raise click.Abort()
+    else:
+        click.echo(json.dumps(properties, indent=2))
+
+
+@tags.command(name="set")
+@click.argument("gdrive_file_id")
+@click.argument("key")
+@click.argument("value")
+@click.option(
+    "--service-account-key",
+    envvar="GOOGLE_APPLICATION_CREDENTIALS",
+    type=click.Path(exists=True),
+    help="Path to a service account key file for authentication. "
+    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+)
+def set_tag(gdrive_file_id, key, value, service_account_key):
+    """Set a tag on a Google Drive file."""
+    drive, _ = init_services(key_file_path=service_account_key)
+    if set_file_property(drive, gdrive_file_id, key, value):
+        click.echo(f"Successfully set tag '{key}' to '{value}'.")
+    else:
+        click.echo("Failed to set tag.", err=True)
+        raise click.Abort()
 
 
 if __name__ == "__main__":
