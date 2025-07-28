@@ -209,6 +209,28 @@ uv run songbook-tools tags get <YOUR_FILE_ID> difficulty
 uv run songbook-tools tags set "Chaise Longue" difficulty easy
 ```
 
+**Example: Add a song to the "Regular" Songbook**
+
+The "regular" songbook is generated from songs that have the `specialbooks` tag set to include `regular`. Here's how to add a song to it.
+
+First, check the current `specialbooks` tag for the song. Let's say we want to add "Hate To Say I Told You So", which is currently only in the "Sweden" book.
+
+```bash
+uv run songbook-tools tags get "Hate To Say" specialbooks
+```
+
+This might return:
+
+```
+sweden
+```
+
+To add it to the regular book while keeping it in the Sweden book, update the tag with a comma-separated list:
+
+```bash
+uv run songbook-tools tags set "Hate To Say" specialbooks "sweden,regular"
+```
+
 #### `print-settings`
 Prints the current application settings, which are loaded from environment variables and the local config file. This is useful for debugging configuration issues.
 
