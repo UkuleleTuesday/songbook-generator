@@ -193,18 +193,18 @@ uv run songbook-tools merge-pdfs --output out/merged.pdf
 #### `tags`
 A group of commands to manage custom properties (tags) on Google Drive files.
 
-- **`tags get <gdrive_file_id> [key]`**: Get all tags for a file, or the value of a specific tag.
-- **`tags set <gdrive_file_id> <key> <value>`**: Set a tag on a file.
+- **`tags get <gdrive_file_id> [key]`**: Get all tags for a file (song sheet), or the value of a specific tag.
+- **`tags set <gdrive_file_id> <key> <value>`**: Set a tag on a file (song sheet).
 
 ```bash
 # Get all tags for a file
 uv run songbook-tools tags get <YOUR_FILE_ID>
 
 # Get a specific tag
-uv run songbook-tools tags get <YOUR_FILE_ID> difficulty
+uv run songbook-tools tags get <YOUR_FILE_ID> specialbooks # which books is this song part of
 
 # Set a tag
-uv run songbook-tools tags set <YOUR_FILE_ID> difficulty easy
+uv run songbook-tools tags set <YOUR_FILE_ID> specialbooks "regular,ireland" # tags this book as part of the ireland and regular books
 ```
 
 #### `print-settings`
