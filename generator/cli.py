@@ -101,11 +101,10 @@ def generate(
     """Generates a songbook PDF from Google Drive files."""
     from .common.caching import init_cache
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         key_file_path=service_account_key,
         scopes=["https://www.googleapis.com/auth/drive"],
     )
-    cache = init_cache()
 
     client_filter = None
     if filter:
