@@ -298,10 +298,45 @@ def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
 
+from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
+
+
+def _resolve_file_id(drive, file_identifier: str) -> str:
+    """
+    Resolve a file identifier to a Google Drive file ID.
+    If it's not a valid ID, search by name.
+    """
+    # Simple check if it looks like a Google Drive file ID
+    if len(file_identifier) > 20 and not (" " in file_identifier):
+        return file_identifier  # Assume it's an ID
+
+    # Otherwise, search by name
+    settings = get_settings()
+    source_folders = settings.song_sheets.folder_ids
+    found_files = search_files_by_name(drive, file_identifier, source_folders)
+
+    if not found_files:
+        click.echo(f"Error: No file found matching '{file_identifier}'.", err=True)
+        raise click.Abort()
+
+    if len(found_files) > 1:
+        click.echo(
+            f"Error: Found multiple files matching '{file_identifier}'. Please be more specific or use a file ID.",
+            err=True,
+        )
+        for f in found_files:
+            click.echo(f"  - {f.name} (ID: {f.id})", err=True)
+        raise click.Abort()
+
+    file_id = found_files[0].id
+    click.echo(f"Found file: {found_files[0].name} (ID: {file_id})")
+    return file_id
+
+
 @tags.command(name="get")
-@click.argument("gdrive_file_id")
+@click.argument("file_identifier")
 @click.argument("key", required=False)
-def get_tag(gdrive_file_id, key):
+def get_tag(file_identifier, key):
     """Get a specific tag or all tags for a Google Drive file."""
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
@@ -317,7 +352,8 @@ def get_tag(gdrive_file_id, key):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    properties = get_file_properties(drive, gdrive_file_id)
+    file_id = _resolve_file_id(drive, file_identifier)
+    properties = get_file_properties(drive, file_id)
 
     if properties is None:
         raise click.Abort()
@@ -333,10 +369,10 @@ def get_tag(gdrive_file_id, key):
 
 
 @tags.command(name="set")
-@click.argument("gdrive_file_id")
+@click.argument("file_identifier")
 @click.argument("key")
 @click.argument("value")
-def set_tag(gdrive_file_id, key, value):
+def set_tag(file_identifier, key, value):
     """Set a tag on a Google Drive file."""
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
@@ -351,7 +387,8 @@ def set_tag(gdrive_file_id, key, value):
     drive, _ = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    if set_file_property(drive, gdrive_file_id, key, value):
+    file_id = _resolve_file_id(drive, file_identifier)
+    if set_file_property(drive, file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
         click.echo("Failed to set tag.", err=True)
