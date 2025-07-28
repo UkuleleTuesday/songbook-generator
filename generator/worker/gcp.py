@@ -1,25 +1,27 @@
 from typing import List, Optional
-from google.auth import default, credentials
-from google.oauth2 import service_account
+from google.auth import default, credentials, impersonated_credentials
 
 
 def get_credentials(
-    scopes: List[str], key_file_path: Optional[str] = None
+    scopes: List[str], target_principal: Optional[str] = None
 ) -> credentials.Credentials:
     """
-    Get Google API credentials for the given scopes.
+    Get Google API credentials for given scopes, with optional impersonation.
 
     Args:
         scopes: List of OAuth2 scopes to request.
-        key_file_path: Optional path to a service account key file.
+        target_principal: The service account to impersonate.
 
     Returns:
         A Google credentials object.
     """
-    if key_file_path:
-        return service_account.Credentials.from_service_account_file(
-            key_file_path, scopes=scopes
+    creds, _ = default(scopes=scopes)
+
+    if target_principal:
+        creds = impersonated_credentials.Credentials(
+            source_credentials=creds,
+            target_principal=target_principal,
+            target_scopes=scopes,
         )
-    else:
-        creds, _ = default(scopes=scopes)
-        return creds
+
+    return creds
