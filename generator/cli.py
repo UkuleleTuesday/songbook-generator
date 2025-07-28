@@ -91,12 +91,11 @@ def generate(
     postface_file_id,
 ):
     """Generates a songbook PDF from Google Drive files."""
-    from .common.caching import init_cache
 
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get("songbook-generator")
     if not credential_config:
-        click.echo(f"Error: credential config 'songbook-generator' not found.", err=True)
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
         raise click.Abort()
 
     drive, cache = init_services(
@@ -298,7 +297,7 @@ def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
 
-from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
+from .common.gdrive import search_files_by_name
 
 
 def _resolve_file_id(drive, file_identifier: str) -> str:
@@ -307,7 +306,7 @@ def _resolve_file_id(drive, file_identifier: str) -> str:
     If it's not a valid ID, search by name.
     """
     # Simple check if it looks like a Google Drive file ID
-    if len(file_identifier) > 20 and not (" " in file_identifier):
+    if len(file_identifier) > 20 and " " not in file_identifier:
         return file_identifier  # Assume it's an ID
 
     # Otherwise, search by name
@@ -344,7 +343,7 @@ def get_tag(file_identifier, key):
     )
     if not credential_config:
         click.echo(
-            f"Error: credential config 'songbook-metadata-writer' not found.", err=True
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
         )
         raise click.Abort()
 
@@ -380,7 +379,7 @@ def set_tag(file_identifier, key, value):
     )
     if not credential_config:
         click.echo(
-            f"Error: credential config 'songbook-metadata-writer' not found.", err=True
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
         )
         raise click.Abort()
 
