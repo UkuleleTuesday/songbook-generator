@@ -7,7 +7,7 @@ from pathlib import Path
 from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 import json
-from .common.gdrive import get_file_properties, set_file_property
+from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
@@ -79,13 +79,6 @@ def cli(ctx):
     multiple=True,
     help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
 )
-@click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
-)
 def generate(
     ctx,
     source_folder: str,
@@ -96,15 +89,19 @@ def generate(
     filter,
     preface_file_id,
     postface_file_id,
-    service_account_key: str,
 ):
     """Generates a songbook PDF from Google Drive files."""
-    from .common.caching import init_cache
 
-    drive, _ = init_services(
-        key_file_path=service_account_key,
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
     )
-    cache = init_cache()
 
     client_filter = None
     if filter:
@@ -300,20 +297,59 @@ def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
 
+def _resolve_file_id(drive, file_identifier: str) -> str:
+    """
+    Resolve a file identifier to a Google Drive file ID.
+    If it's not a valid ID, search by name.
+    """
+    # Simple check if it looks like a Google Drive file ID
+    if len(file_identifier) > 20 and " " not in file_identifier:
+        return file_identifier  # Assume it's an ID
+
+    # Otherwise, search by name
+    settings = get_settings()
+    source_folders = settings.song_sheets.folder_ids
+    found_files = search_files_by_name(drive, file_identifier, source_folders)
+
+    if not found_files:
+        click.echo(f"Error: No file found matching '{file_identifier}'.", err=True)
+        raise click.Abort()
+
+    if len(found_files) > 1:
+        click.echo(
+            f"Error: Found multiple files matching '{file_identifier}'. Please be more specific or use a file ID.",
+            err=True,
+        )
+        for f in found_files:
+            click.echo(f"  - {f.name} (ID: {f.id})", err=True)
+        raise click.Abort()
+
+    file_id = found_files[0].id
+    click.echo(f"Found file: {found_files[0].name} (ID: {file_id})")
+    return file_id
+
+
 @tags.command(name="get")
-@click.argument("gdrive_file_id")
+@click.argument("file_identifier")
 @click.argument("key", required=False)
-@click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
-)
-def get_tag(gdrive_file_id, key, service_account_key):
+def get_tag(file_identifier, key):
     """Get a specific tag or all tags for a Google Drive file."""
-    drive, _ = init_services(key_file_path=service_account_key)
-    properties = get_file_properties(drive, gdrive_file_id)
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, _ = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
+    file_id = _resolve_file_id(drive, file_identifier)
+    properties = get_file_properties(drive, file_id)
 
     if properties is None:
         raise click.Abort()
@@ -329,20 +365,26 @@ def get_tag(gdrive_file_id, key, service_account_key):
 
 
 @tags.command(name="set")
-@click.argument("gdrive_file_id")
+@click.argument("file_identifier")
 @click.argument("key")
 @click.argument("value")
-@click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
-)
-def set_tag(gdrive_file_id, key, value, service_account_key):
+def set_tag(file_identifier, key, value):
     """Set a tag on a Google Drive file."""
-    drive, _ = init_services(key_file_path=service_account_key)
-    if set_file_property(drive, gdrive_file_id, key, value):
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, _ = init_services(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
+    )
+    file_id = _resolve_file_id(drive, file_identifier)
+    if set_file_property(drive, file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
         click.echo("Failed to set tag.", err=True)

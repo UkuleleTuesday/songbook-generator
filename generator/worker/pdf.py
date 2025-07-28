@@ -14,6 +14,7 @@ from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from .filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
+    client,
     download_file_stream,
     get_files_metadata_by_ids,
     query_drive_files_with_client_filter,
@@ -27,22 +28,18 @@ import re
 tracer = get_tracer(__name__)
 
 
-def authenticate_drive(key_file_path: Optional[str] = None):
-    """Authenticate with Google Drive API."""
-    scopes = [
-        "https://www.googleapis.com/auth/drive.readonly",
-        "https://www.googleapis.com/auth/drive.metadata.readonly",
-    ]
-    creds = get_credentials(scopes, key_file_path)
-    return build("drive", "v3", credentials=creds), creds
-
-
-def init_services(key_file_path: Optional[str] = None):
+def init_services(
+    scopes: Optional[List[str]] = None, target_principal: Optional[str] = None
+):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
 
     with tracer.start_as_current_span("init_services"):
-        drive, creds = authenticate_drive(key_file_path)
+        if scopes is None:
+            scopes = ["https://www.googleapis.com/auth/drive.readonly"]
+
+        creds = get_credentials(scopes=scopes, target_principal=target_principal)
+        drive = client(credentials=creds)
         cache = caching.init_cache()
 
         click.echo("Authentication Details:")
@@ -357,11 +354,13 @@ def generate_songbook(
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
+                        settings = config.get_settings()
+                        credential_config = settings.google_cloud.credentials.get(
+                            "songbook-generator"
+                        )
                         cover_creds = get_credentials(
-                            scopes=[
-                                "https://www.googleapis.com/auth/documents",
-                                "https://www.googleapis.com/auth/drive",
-                            ]
+                            scopes=credential_config.scopes,
+                            target_principal=credential_config.principal,
                         )
                         docs_write_service = build(
                             "docs", "v1", credentials=cover_creds

@@ -72,8 +72,26 @@ class Caching(BaseModel):
     local: CachingLocal = Field(default_factory=CachingLocal)
 
 
+class GoogleCloudCredentials(BaseModel):
+    principal: str
+    scopes: List[str]
+
+
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
+    credentials: dict[str, GoogleCloudCredentials] = {
+        "songbook-generator": GoogleCloudCredentials(
+            principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
+            scopes=[
+                "https://www.googleapis.com/auth/drive",
+                "https://www.googleapis.com/auth/documents",
+            ],
+        ),
+        "songbook-metadata-writer": GoogleCloudCredentials(
+            principal="songbook-metadata-writer@songbook-generator.iam.gserviceaccount.com",
+            scopes=["https://www.googleapis.com/auth/drive.metadata"],
+        ),
+    }
 
 
 class Tracing(BaseModel):
