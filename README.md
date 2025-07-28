@@ -196,15 +196,17 @@ A group of commands to manage custom properties (tags) on Google Drive files.
 - **`tags get <gdrive_file_id> [key]`**: Get all tags for a file (song sheet), or the value of a specific tag.
 - **`tags set <gdrive_file_id> <key> <value>`**: Set a tag on a file (song sheet).
 
+These commands impersonate the `songbook-metadata-writer` service account by default.
+
 ```bash
 # Get all tags for a file
 uv run songbook-tools tags get <YOUR_FILE_ID>
 
 # Get a specific tag
-uv run songbook-tools tags get <YOUR_FILE_ID> specialbooks # which books is this song part of
+uv run songbook-tools tags get <YOUR_FILE_ID> difficulty
 
 # Set a tag
-uv run songbook-tools tags set <YOUR_FILE_ID> specialbooks "regular,ireland" # tags this book as part of the ireland and regular books
+uv run songbook-tools tags set <YOUR_FILE_ID> difficulty easy
 ```
 
 #### `print-settings`

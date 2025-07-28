@@ -29,7 +29,7 @@ tracer = get_tracer(__name__)
 
 
 def init_services(
-    key_file_path: Optional[str] = None, scopes: Optional[List[str]] = None
+    scopes: Optional[List[str]] = None, target_principal: Optional[str] = None
 ):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
@@ -37,7 +37,8 @@ def init_services(
     with tracer.start_as_current_span("init_services"):
         if scopes is None:
             scopes = ["https://www.googleapis.com/auth/drive.readonly"]
-        creds = get_credentials(scopes, key_file_path)
+
+        creds = get_credentials(scopes=scopes, target_principal=target_principal)
         drive = client(credentials=creds)
         cache = caching.init_cache()
 

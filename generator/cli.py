@@ -80,11 +80,10 @@ def cli(ctx):
     help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
 )
 @click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+    "--as",
+    "impersonate_as",
+    default="songbook-generator",
+    help="Which service account to impersonate (from config).",
 )
 def generate(
     ctx,
@@ -96,14 +95,20 @@ def generate(
     filter,
     preface_file_id,
     postface_file_id,
-    service_account_key: str,
+    impersonate_as: str,
 ):
     """Generates a songbook PDF from Google Drive files."""
     from .common.caching import init_cache
 
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(impersonate_as)
+    if not credential_config:
+        click.echo(f"Error: credential config '{impersonate_as}' not found.", err=True)
+        raise click.Abort()
+
     drive, cache = init_services(
-        key_file_path=service_account_key,
-        scopes=["https://www.googleapis.com/auth/drive"],
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
     )
 
     client_filter = None
@@ -304,17 +309,22 @@ def tags():
 @click.argument("gdrive_file_id")
 @click.argument("key", required=False)
 @click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+    "--as",
+    "impersonate_as",
+    default="songbook-metadata-writer",
+    help="Which service account to impersonate (from config).",
 )
-def get_tag(gdrive_file_id, key, service_account_key):
+def get_tag(gdrive_file_id, key, impersonate_as):
     """Get a specific tag or all tags for a Google Drive file."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(impersonate_as)
+    if not credential_config:
+        click.echo(f"Error: credential config '{impersonate_as}' not found.", err=True)
+        raise click.Abort()
+
     drive, _ = init_services(
-        key_file_path=service_account_key,
         scopes=["https://www.googleapis.com/auth/drive.metadata.readonly"],
+        target_principal=credential_config.principal,
     )
     properties = get_file_properties(drive, gdrive_file_id)
 
@@ -336,17 +346,21 @@ def get_tag(gdrive_file_id, key, service_account_key):
 @click.argument("key")
 @click.argument("value")
 @click.option(
-    "--service-account-key",
-    envvar="GOOGLE_APPLICATION_CREDENTIALS",
-    type=click.Path(exists=True),
-    help="Path to a service account key file for authentication. "
-    "Can also be set via GOOGLE_APPLICATION_CREDENTIALS env var.",
+    "--as",
+    "impersonate_as",
+    default="songbook-metadata-writer",
+    help="Which service account to impersonate (from config).",
 )
-def set_tag(gdrive_file_id, key, value, service_account_key):
+def set_tag(gdrive_file_id, key, value, impersonate_as):
     """Set a tag on a Google Drive file."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(impersonate_as)
+    if not credential_config:
+        click.echo(f"Error: credential config '{impersonate_as}' not found.", err=True)
+        raise click.Abort()
+
     drive, _ = init_services(
-        key_file_path=service_account_key,
-        scopes=["https://www.googleapis.com/auth/drive.metadata"],
+        scopes=credential_config.scopes, target_principal=credential_config.principal
     )
     if set_file_property(drive, gdrive_file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
