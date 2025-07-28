@@ -7,7 +7,7 @@ from pathlib import Path
 from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 import json
-from .common.gdrive import get_file_properties, set_file_property
+from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .worker.filters import FilterParser
 from .worker.pdf import generate_songbook, init_services
@@ -295,9 +295,6 @@ def print_settings():
 @cli.group()
 def tags():
     """Get and set tags (custom properties) on Google Drive files."""
-
-
-from .common.gdrive import search_files_by_name
 
 
 def _resolve_file_id(drive, file_identifier: str) -> str:
