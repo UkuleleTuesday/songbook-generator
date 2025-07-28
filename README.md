@@ -146,6 +146,74 @@ uv run songbook-tools generate
 
 Run `uv run songbook-tools --help` for more commands and options.
 
+### CLI Commands
+
+The `songbook-tools` CLI provides several commands for local development and utility tasks. Here's a summary of the available commands. Run `uv run songbook-tools [COMMAND] --help` for a full list of options.
+
+#### `generate`
+Generates a songbook PDF from files in Google Drive. This is the primary command for local testing of the end-to-end PDF generation process.
+
+```bash
+# Basic usage with default settings
+uv run songbook-tools generate
+
+# Generate with a limit and open the PDF when done
+uv run songbook-tools generate --limit 10 --open-generated-pdf
+
+# Filter songs by property
+uv run songbook-tools generate --filter "difficulty:in:easy,medium"
+```
+
+#### `download-cache`
+Downloads the GCS cache (containing song sheets and metadata) to your local machine. This is useful for speeding up local `generate` commands.
+
+```bash
+uv run songbook-tools download-cache
+```
+
+#### `sync-cache`
+Syncs files and metadata from Google Drive to the GCS cache. This command is typically run by the Merger service in the cloud but can be triggered locally.
+
+```bash
+# Sync new and modified files from Google Drive to the GCS cache
+uv run songbook-tools sync-cache
+
+# Force a full sync, ignoring modification times
+uv run songbook-tools sync-cache --force
+```
+
+#### `merge-pdfs`
+Merges all individual song sheet PDFs from the local cache into a single, large PDF with a table of contents. This is a sub-step of the `sync-cache` process.
+
+```bash
+# Create a merged PDF from the cached song sheets
+uv run songbook-tools merge-pdfs --output out/merged.pdf
+```
+
+#### `tags`
+A group of commands to manage custom properties (tags) on Google Drive files.
+
+- **`tags get <gdrive_file_id> [key]`**: Get all tags for a file, or the value of a specific tag.
+- **`tags set <gdrive_file_id> <key> <value>`**: Set a tag on a file.
+
+```bash
+# Get all tags for a file
+uv run songbook-tools tags get <YOUR_FILE_ID>
+
+# Get a specific tag
+uv run songbook-tools tags get <YOUR_FILE_ID> difficulty
+
+# Set a tag
+uv run songbook-tools tags set <YOUR_FILE_ID> difficulty easy
+```
+
+#### `print-settings`
+Prints the current application settings, which are loaded from environment variables and the local config file. This is useful for debugging configuration issues.
+
+```bash
+uv run songbook-tools print-settings
+```
+
 ### Testing Full Application
 
 For testing the complete web application including the asynchronous job processing:
