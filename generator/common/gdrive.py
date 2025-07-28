@@ -23,7 +23,8 @@ def search_files_by_name(
     """Search for files by name across multiple folders."""
     parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
     # Format for Drive API query, e.g., "name contains 'My Song'"
-    query = f"name contains '{file_name.replace(\"'\", \"\\\\'\")}' and ({' or '.join(parent_queries)}) and trashed = false"
+    escaped_file_name = file_name.replace("'", "\\'")
+    query = f"name contains '{escaped_file_name}' and ({' or '.join(parent_queries)}) and trashed = false"
 
     click.echo(f"Searching for file matching '{file_name}'...")
     click.echo(f"Executing Drive API query: {query}")
