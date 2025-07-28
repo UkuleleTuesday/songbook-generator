@@ -354,11 +354,13 @@ def generate_songbook(
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
+                        settings = config.get_settings()
+                        credential_config = settings.google_cloud.credentials.get(
+                            "songbook-generator"
+                        )
                         cover_creds = get_credentials(
-                            scopes=[
-                                "https://www.googleapis.com/auth/documents",
-                                "https://www.googleapis.com/auth/drive",
-                            ]
+                            scopes=credential_config.scopes,
+                            target_principal=credential_config.principal,
                         )
                         docs_write_service = build(
                             "docs", "v1", credentials=cover_creds
