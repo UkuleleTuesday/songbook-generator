@@ -5,9 +5,21 @@ from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
 from opentelemetry import trace
+from googleapiclient.discovery import build
 
 from ..worker.filters import FilterGroup, PropertyFilter
 from ..worker.models import File
+from ..worker.gcp import get_credentials
+
+
+def authenticate(
+    key_file_path: Optional[str] = None, scopes: Optional[List[str]] = None
+):
+    """Authenticate with Google Drive API."""
+    if scopes is None:
+        scopes = ["https://www.googleapis.com/auth/drive.readonly"]
+    creds = get_credentials(scopes, key_file_path)
+    return build("drive", "v3", credentials=creds), creds
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:

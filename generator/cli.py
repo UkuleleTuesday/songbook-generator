@@ -103,6 +103,7 @@ def generate(
 
     drive, _ = init_services(
         key_file_path=service_account_key,
+        scopes=["https://www.googleapis.com/auth/drive"],
     )
     cache = init_cache()
 
@@ -312,7 +313,10 @@ def tags():
 )
 def get_tag(gdrive_file_id, key, service_account_key):
     """Get a specific tag or all tags for a Google Drive file."""
-    drive, _ = init_services(key_file_path=service_account_key)
+    drive, _ = init_services(
+        key_file_path=service_account_key,
+        scopes=["https://www.googleapis.com/auth/drive.metadata.readonly"],
+    )
     properties = get_file_properties(drive, gdrive_file_id)
 
     if properties is None:
@@ -341,7 +345,10 @@ def get_tag(gdrive_file_id, key, service_account_key):
 )
 def set_tag(gdrive_file_id, key, value, service_account_key):
     """Set a tag on a Google Drive file."""
-    drive, _ = init_services(key_file_path=service_account_key)
+    drive, _ = init_services(
+        key_file_path=service_account_key,
+        scopes=["https://www.googleapis.com/auth/drive.metadata"],
+    )
     if set_file_property(drive, gdrive_file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:

@@ -14,6 +14,7 @@ from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from .filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
+    authenticate,
     download_file_stream,
     get_files_metadata_by_ids,
     query_drive_files_with_client_filter,
@@ -27,19 +28,14 @@ import re
 tracer = get_tracer(__name__)
 
 
-def authenticate_drive(key_file_path: Optional[str] = None):
-    """Authenticate with Google Drive API."""
-    scopes = ["https://www.googleapis.com/auth/drive"]
-    creds = get_credentials(scopes, key_file_path)
-    return build("drive", "v3", credentials=creds), creds
-
-
-def init_services(key_file_path: Optional[str] = None):
+def init_services(
+    key_file_path: Optional[str] = None, scopes: Optional[List[str]] = None
+):
     """Initializes and authenticates services, logging auth details."""
     main_span = trace.get_current_span()
 
     with tracer.start_as_current_span("init_services"):
-        drive, creds = authenticate_drive(key_file_path)
+        drive, creds = authenticate(key_file_path=key_file_path, scopes=scopes)
         cache = caching.init_cache()
 
         click.echo("Authentication Details:")
