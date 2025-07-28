@@ -29,9 +29,7 @@ tracer = get_tracer(__name__)
 
 def authenticate_drive(key_file_path: Optional[str] = None):
     """Authenticate with Google Drive API."""
-    scopes = [
-        "https://www.googleapis.com/auth/drive"
-    ]
+    scopes = ["https://www.googleapis.com/auth/drive"]
     creds = get_credentials(scopes, key_file_path)
     return build("drive", "v3", credentials=creds), creds
 
