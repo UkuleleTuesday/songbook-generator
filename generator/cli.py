@@ -297,7 +297,7 @@ def editions():
     """Manage songbook editions for songs."""
 
 
-@editions.command(name="add")
+@editions.command(name="add-song")
 @click.argument("edition_name")
 @click.argument("file_identifier")
 def add_song_to_edition(edition_name, file_identifier):
@@ -343,7 +343,7 @@ def add_song_to_edition(edition_name, file_identifier):
         raise click.Abort()
 
 
-@editions.command(name="remove")
+@editions.command(name="remove-song")
 @click.argument("edition_name")
 @click.argument("file_identifier")
 def remove_song_from_edition(edition_name, file_identifier):
