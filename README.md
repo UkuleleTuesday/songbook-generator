@@ -190,6 +190,27 @@ Merges all individual song sheet PDFs from the local cache into a single, large 
 uv run songbook-tools merge-pdfs --output out/merged.pdf
 ```
 
+#### `editions`
+A group of commands to manage which songbook editions a song belongs to. This is a shortcut for managing the `specialbooks` tag.
+
+- **`editions add-song <edition_name> <file_identifier>`**: Adds a song to a specific edition.
+- **`editions remove-song <edition_name> <file_identifier>`**: Removes a song from a specific edition.
+- **`editions list <file_identifier>`**: Lists all editions a song belongs to.
+
+The `file_identifier` can be a Google Drive file ID or a partial file name to search for.
+
+```bash
+# Add the song "Chaise Longue" to the "regular" and "test" editions
+uv run songbook-tools editions add-song regular "Chaise Longue"
+uv run songbook-tools editions add-song test "Chaise Longue"
+
+# List the editions it belongs to
+uv run songbook-tools editions list "Chaise Longue"
+
+# Remove it from the "test" edition
+uv run songbook-tools editions remove-song test "Chaise Longue"
+```
+
 #### `tags`
 A group of commands to manage custom properties (tags) on Google Drive files.
 
