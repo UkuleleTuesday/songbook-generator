@@ -293,6 +293,57 @@ def print_settings():
 
 
 @cli.group()
+def editions():
+    """Manage songbook editions for songs."""
+
+
+@editions.command(name="add")
+@click.argument("edition_name")
+@click.argument("file_identifier")
+def add_song_to_edition(edition_name, file_identifier):
+    """Adds a song to a specific songbook edition (specialbooks tag)."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, _ = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
+
+    file_id = _resolve_file_id(drive, file_identifier)
+
+    properties = get_file_properties(drive, file_id)
+    if properties is None:
+        # Error message is handled by get_file_properties
+        raise click.Abort()
+
+    special_books_raw = properties.get("specialbooks", "")
+    current_editions = {s.strip() for s in special_books_raw.split(",") if s.strip()}
+
+    if edition_name in current_editions:
+        click.echo(f"Song is already in the '{edition_name}' edition.")
+        return
+
+    current_editions.add(edition_name)
+    new_value = ",".join(sorted(list(current_editions)))
+
+    if set_file_property(drive, file_id, "specialbooks", new_value):
+        click.echo(
+            f"Successfully added song to '{edition_name}' edition. New 'specialbooks' value: '{new_value}'"
+        )
+    else:
+        click.echo("Failed to add song to edition.", err=True)
+        raise click.Abort()
+
+
+@cli.group()
 def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
