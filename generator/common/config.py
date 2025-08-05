@@ -1,4 +1,5 @@
 import os
+import yaml
 from functools import lru_cache
 from typing import List, Optional, Union
 
@@ -128,6 +129,19 @@ class Settings(BaseSettings):
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
+    editions: List[Edition] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    def load_editions_from_yaml(cls, values):
+        config_path = os.path.join(
+            os.path.dirname(__file__), "..", "config", "songbooks.yaml"
+        )
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                editions_data = yaml.safe_load(f)
+                if editions_data:
+                    values["editions"] = editions_data
+        return values
 
     @model_validator(mode="after")
     def apply_env_overrides(self) -> "Settings":
