@@ -27,6 +27,15 @@ class Cover(BaseModel):
     file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
+class Edition(BaseModel):
+    id: str
+    description: str
+    cover_file_id: Optional[str] = None
+    preface_file_ids: Optional[List[str]] = None
+    postface_file_ids: Optional[List[str]] = None
+    filters: Optional[List[str]] = None
+
+
 class Toc(BaseModel):
     columns_per_page: int = 2
     column_width: int = 250
