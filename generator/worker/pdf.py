@@ -288,7 +288,7 @@ def generate_songbook_from_edition(
                 client_filter = FilterGroup(operator="AND", filters=edition.filters)
 
         if client_filter:
-            span.set_attribute("client_filter", str(client_filter.dict()))
+            span.set_attribute("client_filter", str(client_filter.model_dump()))
 
         return generate_songbook(
             drive=drive,

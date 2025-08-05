@@ -283,7 +283,6 @@
 
       const payload = {
         source_folders: folderIds,
-        preface_file_ids: ["1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"], // FIXME: hardcoding preface for now
       };
 
       const limitVal = Number(form.get("limit"));
@@ -296,34 +295,32 @@
         payload.cover_file_id = coverFileId;
       }
 
-      // Build filters array
-      const filters = [];
-
-      // Add filter for songbook edition if selected
       const songbookEdition = form.get("songbook_edition");
       if (songbookEdition) {
-        filters.push(`specialbooks:contains:${songbookEdition}`);
-      }
+        payload.edition = songbookEdition;
+      } else {
+        // Build filters array for non-edition mode
+        const filters = [];
 
-      // Add filter for decade if selected
-      const decade = form.get("decade");
-      if (decade) {
-        const range = getDecadeRange(decade);
-        if (range) {
-          filters.push(`year:gte:${range.start}`);
-          filters.push(`year:lte:${range.end}`);
+        // Add filter for decade if selected
+        const decade = form.get("decade");
+        if (decade) {
+          const range = getDecadeRange(decade);
+          if (range) {
+            filters.push(`year:gte:${range.start}`);
+            filters.push(`year:lte:${range.end}`);
+          }
         }
-      }
 
-      // Set filters in payload if any exist
-      if (filters.length > 0) {
-        if (filters.length === 1) {
-          payload.filters = filters[0];
-        } else {
-          payload.filters = {
-            filters: filters,
-            operator: "AND"
-          };
+        if (filters.length > 0) {
+          if (filters.length === 1) {
+            payload.filters = filters[0];
+          } else {
+            payload.filters = {
+              filters: filters,
+              operator: "AND"
+            };
+          }
         }
       }
 

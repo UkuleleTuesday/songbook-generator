@@ -9,7 +9,8 @@ from flask import abort
 import traceback
 from ..common.filters import parse_filters
 
-from .pdf import generate_songbook, init_services
+from .pdf import generate_songbook, generate_songbook_from_edition, init_services
+from ..common.config import get_settings
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -113,33 +114,6 @@ def worker_main(cloud_event):
             if postface_file_ids:
                 main_span.set_attribute("postface_files_count", len(postface_file_ids))
 
-            # Parse filters parameter
-            filters_param = params.get("filters")
-            client_filter = None
-            if filters_param:
-                with services["tracer"].start_as_current_span(
-                    "parse_filters"
-                ) as filter_span:
-                    try:
-                        client_filter = parse_filters(filters_param)
-                        click.echo(f"Parsed client filter: {client_filter}")
-                        filter_span.set_attribute("has_filters", True)
-                        if client_filter:
-                            filter_span.set_attribute(
-                                "filter_type", type(client_filter).__name__
-                            )
-                    except ValueError as e:
-                        click.echo(f"Error parsing filters: {e}", err=True)
-                        filter_span.set_attribute("error", str(e))
-                        job_ref.update(
-                            {
-                                "status": "FAILED",
-                                "completed_at": firestore.SERVER_TIMESTAMP,
-                                "error": f"Invalid filter format: {str(e)}",
-                            }
-                        )
-                        return
-
             # 3) Generate into a temp file
             with services["tracer"].start_as_current_span(
                 "generate_songbook"
@@ -149,25 +123,56 @@ def worker_main(cloud_event):
                 click.echo(
                     f"Generating songbook for job {job_id} with parameters: {params}"
                 )
-                if preface_file_ids:
-                    click.echo(f"Using {len(preface_file_ids)} preface files")
-                if postface_file_ids:
-                    click.echo(f"Using {len(postface_file_ids)} postface files")
-
-                # Create progress callback and pass it to generate_songbook
                 progress_callback = make_progress_callback(job_ref)
-                generate_songbook(
-                    drive=drive,
-                    cache=cache,
-                    source_folders=source_folders,
-                    destination_path=out_path,
-                    limit=limit,
-                    cover_file_id=cover_file_id,
-                    client_filter=client_filter,
-                    preface_file_ids=preface_file_ids,
-                    postface_file_ids=postface_file_ids,
-                    on_progress=progress_callback,
-                )
+                edition_id = params.get("edition")
+
+                if edition_id:
+                    settings = get_settings()
+                    selected_edition = next(
+                        (e for e in settings.editions if e.id == edition_id), None
+                    )
+                    if not selected_edition:
+                        raise ValueError(f"Edition '{edition_id}' not found.")
+
+                    click.echo(
+                        f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
+                    )
+                    generate_songbook_from_edition(
+                        drive=drive,
+                        cache=cache,
+                        source_folders=source_folders,
+                        destination_path=out_path,
+                        edition=selected_edition,
+                        limit=limit,
+                        on_progress=progress_callback,
+                    )
+                else:
+                    # Legacy mode: Parse filters parameter
+                    filters_param = params.get("filters")
+                    client_filter = None
+                    if filters_param:
+                        try:
+                            client_filter = parse_filters(filters_param)
+                        except ValueError as e:
+                            raise ValueError(f"Invalid filter format: {str(e)}") from e
+
+                    if preface_file_ids:
+                        click.echo(f"Using {len(preface_file_ids)} preface files")
+                    if postface_file_ids:
+                        click.echo(f"Using {len(postface_file_ids)} postface files")
+
+                    generate_songbook(
+                        drive=drive,
+                        cache=cache,
+                        source_folders=source_folders,
+                        destination_path=out_path,
+                        limit=limit,
+                        cover_file_id=cover_file_id,
+                        client_filter=client_filter,
+                        preface_file_ids=preface_file_ids,
+                        postface_file_ids=postface_file_ids,
+                        on_progress=progress_callback,
+                    )
                 gen_span.set_attribute("output_path", str(out_path))
 
             # 4) Upload to GCS
