@@ -12,7 +12,9 @@ def runner():
 def test_generate_command_with_edition(runner, mocker):
     """Test the generate command with a valid edition."""
     mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
-    mocker.patch("generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock()))
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
 
     result = runner.invoke(cli, ["generate", "--edition", "regular"])
 
@@ -23,7 +25,9 @@ def test_generate_command_with_edition(runner, mocker):
 
 def test_generate_command_with_invalid_edition(runner, mocker):
     """Test the generate command with an invalid edition."""
-    mocker.patch("generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock()))
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
     result = runner.invoke(cli, ["generate", "--edition", "nonexistent"])
 
     assert result.exit_code != 0
@@ -33,7 +37,9 @@ def test_generate_command_with_invalid_edition(runner, mocker):
 
 def test_generate_command_with_conflicting_flags(runner, mocker):
     """Test that using --edition with conflicting flags fails."""
-    mocker.patch("generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock()))
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
     result = runner.invoke(
         cli, ["generate", "--edition", "regular", "--filter", "artist:Test"]
     )
@@ -45,11 +51,11 @@ def test_generate_command_with_conflicting_flags(runner, mocker):
 def test_generate_command_legacy_mode(runner, mocker):
     """Test the generate command without an edition (legacy mode)."""
     mock_generate = mocker.patch("generator.cli.generate_songbook")
-    mocker.patch("generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock()))
-
-    result = runner.invoke(
-        cli, ["generate", "--filter", "artist:equals:Someone"]
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
+
+    result = runner.invoke(cli, ["generate", "--filter", "artist:equals:Someone"])
 
     assert result.exit_code == 0
     assert "Applying client-side filter: artist:equals:Someone" in result.output

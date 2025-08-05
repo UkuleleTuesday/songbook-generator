@@ -40,7 +40,9 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     assert call_args["limit"] == 10
 
 
-def test_generate_songbook_from_edition_composite_filter(mock_generate_songbook, mocker):
+def test_generate_songbook_from_edition_composite_filter(
+    mock_generate_songbook, mocker
+):
     """Test an edition with multiple filters gets combined into a FilterGroup."""
     mock_drive = mocker.Mock()
     mock_cache = mocker.Mock()
@@ -48,8 +50,12 @@ def test_generate_songbook_from_edition_composite_filter(mock_generate_songbook,
         id="composite-edition",
         description="A test edition",
         filters=[
-            PropertyFilter(key="status", operator=FilterOperator.EQUALS, value="APPROVED"),
-            PropertyFilter(key="year", operator=FilterOperator.GREATER_EQUAL, value=2000),
+            PropertyFilter(
+                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
+            ),
+            PropertyFilter(
+                key="year", operator=FilterOperator.GREATER_EQUAL, value=2000
+            ),
         ],
         cover_file_id="cover123",
         preface_file_ids=["preface123"],

@@ -115,7 +115,7 @@ class FilterParser:
 
 
 def parse_filters(
-    filters_param: Union[str, list, dict, None]
+    filters_param: Union[str, list, dict, None],
 ) -> Optional[Union[PropertyFilter, FilterGroup]]:
     """
     Parse the filters parameter from the API request into filter objects.
