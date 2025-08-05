@@ -1,6 +1,5 @@
 from click.testing import CliRunner
 from .cli import cli
-from .common.config import get_settings
 import pytest
 
 

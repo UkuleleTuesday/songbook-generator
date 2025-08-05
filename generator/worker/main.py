@@ -8,7 +8,6 @@ from google.cloud import firestore, storage
 from flask import abort
 import traceback
 from ..common.filters import parse_filters
-from typing import Union, Optional
 
 from .pdf import generate_songbook, init_services
 
