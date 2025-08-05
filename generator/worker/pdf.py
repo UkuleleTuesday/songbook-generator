@@ -42,35 +42,26 @@ def init_services(
         drive = client(credentials=creds)
         cache = caching.init_cache()
 
-        click.echo("Authentication Details:")
         # Check for service account first by looking for the 'account' attribute
         if hasattr(creds, "account") and creds.account:
             auth_type = "Service Account"
             email = creds.account
-            click.echo(f"  Type: {auth_type}")
-            click.echo(f"  Email: {email}")
             main_span.set_attribute("auth.type", auth_type)
             main_span.set_attribute("auth.email", email)
         # Then check for user credentials
         elif hasattr(creds, "token"):
             auth_type = "User Credentials"
-            click.echo(f"  Type: {auth_type}")
             try:
                 about = drive.about().get(fields="user").execute()
                 user_info = about.get("user")
                 if user_info:
                     user_name = user_info.get("displayName")
                     email = user_info.get("emailAddress")
-                    click.echo(f"  User: {user_name}")
-                    click.echo(f"  Email: {email}")
                     main_span.set_attribute("auth.type", auth_type)
                     main_span.set_attribute("auth.email", email)
                     main_span.set_attribute("auth.user", user_name)
-            except HttpError as e:
-                click.echo(f"  Could not retrieve user info: {e}")
-        else:
-            click.echo(f"  Type: {type(creds)}")
-        click.echo(f"  Scopes: {creds.scopes}")
+            except HttpError:
+                pass  # Ignore errors fetching user info
         main_span.set_attribute("auth.scopes", str(creds.scopes))
         return drive, cache
 
