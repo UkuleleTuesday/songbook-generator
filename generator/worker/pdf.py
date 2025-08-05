@@ -12,7 +12,7 @@ from googleapiclient.errors import HttpError
 from ..common import caching, config
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
-from .filters import PropertyFilter, FilterGroup
+from ..common.filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
     client,
     download_file_stream,

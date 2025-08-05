@@ -9,7 +9,7 @@ from .merger.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
 from .merger.sync import download_gcs_cache_to_local, sync_cache
-from .worker.filters import FilterParser
+from .common.filters import FilterParser
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 

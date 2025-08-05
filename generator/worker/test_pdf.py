@@ -1,5 +1,5 @@
 from .pdf import collect_and_sort_files
-from .filters import PropertyFilter, FilterOperator
+from ..common.filters import PropertyFilter, FilterOperator
 from .models import File
 
 

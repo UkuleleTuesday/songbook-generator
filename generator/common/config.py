@@ -14,7 +14,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from generator.worker.filters import FilterGroup, PropertyFilter
+from generator.common.filters import FilterGroup, PropertyFilter
 
 
 class SongSheets(BaseModel):
