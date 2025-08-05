@@ -1,5 +1,6 @@
 - id: "regular"
-  description: "The regular songbook, containing all standard songs."
+  title: "Ukulele Tuesday - Regular Songbook"
+  description: "The current edition of the Ukulele Tuesday regular songbook, containing the current songs used during our Tuesday sessions."
   cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface_file_ids:
     - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
@@ -9,7 +10,8 @@
       value: "regular"
 
 - id: "complete"
-  description: "Complete collection of all available songs (approved and ready to play)."
+  title: "Ukulele Tuesday - Complete Collection Songbook"
+  description: "The complete collection of all available Ukulele Tuesday songs sheets."
   cover_file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
   filters:
     - operator: "OR"
