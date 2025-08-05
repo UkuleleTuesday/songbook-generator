@@ -1,6 +1,81 @@
-from .pdf import collect_and_sort_files
-from ..common.filters import PropertyFilter, FilterOperator
+import pytest
+from ..common.config import Edition
+from .pdf import collect_and_sort_files, generate_songbook_from_edition
+from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
+
+
+@pytest.fixture
+def mock_generate_songbook(mocker):
+    return mocker.patch("generator.worker.pdf.generate_songbook")
+
+
+def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
+    """Test generating a songbook from an edition with a single filter."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+    edition = Edition(
+        id="test-edition",
+        description="A test edition",
+        filters=[
+            PropertyFilter(
+                key="specialbooks", operator=FilterOperator.CONTAINS, value="test"
+            )
+        ],
+    )
+
+    generate_songbook_from_edition(
+        drive=mock_drive,
+        cache=mock_cache,
+        source_folders=["folder1"],
+        destination_path="out.pdf",
+        edition=edition,
+        limit=10,
+    )
+
+    mock_generate_songbook.assert_called_once()
+    call_args = mock_generate_songbook.call_args[1]
+    assert call_args["drive"] == mock_drive
+    assert call_args["client_filter"] == edition.filters[0]
+    assert call_args["limit"] == 10
+
+
+def test_generate_songbook_from_edition_composite_filter(mock_generate_songbook, mocker):
+    """Test an edition with multiple filters gets combined into a FilterGroup."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+    edition = Edition(
+        id="composite-edition",
+        description="A test edition",
+        filters=[
+            PropertyFilter(key="status", operator=FilterOperator.EQUALS, value="APPROVED"),
+            PropertyFilter(key="year", operator=FilterOperator.GREATER_EQUAL, value=2000),
+        ],
+        cover_file_id="cover123",
+        preface_file_ids=["preface123"],
+    )
+
+    generate_songbook_from_edition(
+        drive=mock_drive,
+        cache=mock_cache,
+        source_folders=[],
+        destination_path="out.pdf",
+        edition=edition,
+        limit=None,
+    )
+
+    mock_generate_songbook.assert_called_once()
+    call_args = mock_generate_songbook.call_args[1]
+
+    # Check that a FilterGroup was created
+    client_filter = call_args["client_filter"]
+    assert isinstance(client_filter, FilterGroup)
+    assert client_filter.operator == "AND"
+    assert len(client_filter.filters) == 2
+
+    # Check other parameters are passed through
+    assert call_args["cover_file_id"] == "cover123"
+    assert call_args["preface_file_ids"] == ["preface123"]
 
 
 def test_collect_and_sort_files_single_folder(mocker):
