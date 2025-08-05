@@ -36,39 +36,8 @@
                   <input value="regular" type="hidden" name="songbook_edition" />
                   <label class="mdl-textfield__label" for="songbook-edition">Songbook Edition</label>
                   <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="songbook-edition">
-                    <li class="mdl-menu__item" data-val="">All editions</li>
                     <li class="mdl-menu__item" data-val="regular" data-selected="true">Regular</li>
-                    <li class="mdl-menu__item" data-val="halloween">Halloween</li>
-                    <li class="mdl-menu__item" data-val="usa">USA</li>
-                    <li class="mdl-menu__item" data-val="womens">Women's</li>
-                    <li class="mdl-menu__item" data-val="pride">Pride</li>
-                    <li class="mdl-menu__item" data-val="valentines">Valentine's</li>
-                    <li class="mdl-menu__item" data-val="uk">UK</li>
-                    <li class="mdl-menu__item" data-val="scotland">Scotland</li>
-                    <li class="mdl-menu__item" data-val="ireland">Ireland</li>
-                    <li class="mdl-menu__item" data-val="germany">Germany</li>
-                    <li class="mdl-menu__item" data-val="xmas">Christmas</li>
-                    <li class="mdl-menu__item" data-val="canada">Canada</li>
-                    <li class="mdl-menu__item" data-val="italy">Italy</li>
-                    <li class="mdl-menu__item" data-val="sweden">Sweden</li>
-                    <li class="mdl-menu__item" data-val="france">France</li>
-                    <li class="mdl-menu__item" data-val="can2025">Canada 2025</li>
-                  </ul>
-                </div>
-                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label getmdl-select">
-                  <input class="mdl-textfield__input" value="All decades" id="decade" readonly />
-                  <input value="" type="hidden" name="decade" />
-                  <label class="mdl-textfield__label" for="decade">Decade</label>
-                  <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="decade">
-                    <li class="mdl-menu__item" data-val="" data-selected="true">All decades</li>
-                    <li class="mdl-menu__item" data-val="1950s">1950s</li>
-                    <li class="mdl-menu__item" data-val="1960s">1960s</li>
-                    <li class="mdl-menu__item" data-val="1970s">1970s</li>
-                    <li class="mdl-menu__item" data-val="1980s">1980s</li>
-                    <li class="mdl-menu__item" data-val="1990s">1990s</li>
-                    <li class="mdl-menu__item" data-val="2000s">2000s</li>
-                    <li class="mdl-menu__item" data-val="2010s">2010s</li>
-                    <li class="mdl-menu__item" data-val="2020s">2020s</li>
+                    <li class="mdl-menu__item" data-val="complete">Complete Collection</li>
                   </ul>
                 </div>
                 <details style="margin: 1rem 0;">
@@ -296,33 +265,7 @@
       }
 
       const songbookEdition = form.get("songbook_edition");
-      if (songbookEdition) {
-        payload.edition = songbookEdition;
-      } else {
-        // Build filters array for non-edition mode
-        const filters = [];
-
-        // Add filter for decade if selected
-        const decade = form.get("decade");
-        if (decade) {
-          const range = getDecadeRange(decade);
-          if (range) {
-            filters.push(`year:gte:${range.start}`);
-            filters.push(`year:lte:${range.end}`);
-          }
-        }
-
-        if (filters.length > 0) {
-          if (filters.length === 1) {
-            payload.filters = filters[0];
-          } else {
-            payload.filters = {
-              filters: filters,
-              operator: "AND"
-            };
-          }
-        }
-      }
+      payload.edition = songbookEdition;
 
       try {
         // submit job
@@ -352,9 +295,10 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const edition = form.get("songbook_edition") || 'All';
-        const decade = form.get("decade") || 'All decades';
-        const songbookName = `Edition: ${edition}, Decade: ${decade} - Generated on ${new Date().toLocaleString('en-GB')}`;
+        const editionInput = document.querySelector('input[name="songbook_edition"]');
+        const selectedOption = document.querySelector(`.mdl-menu__item[data-val="${editionInput.value}"]`);
+        const editionText = selectedOption ? selectedOption.textContent : 'Custom';
+        const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
 
       } catch (err) {
