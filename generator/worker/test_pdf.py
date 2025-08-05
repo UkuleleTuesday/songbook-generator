@@ -104,7 +104,8 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
     mocker.patch("generator.worker.pdf.get_files_metadata_by_ids", return_value=[])
     mocker.patch("generator.worker.cover.CoverGenerator.generate_cover", return_value=fitz.open())
     mocker.patch(
-        "generator.worker.toc.build_table_of_contents", return_value=(fitz.open(), [])
+        "generator.worker.toc.build_table_of_contents",
+        side_effect=lambda files, page_offset: (fitz.open(), []),
     )
     mocker.patch("generator.worker.pdf.copy_pdfs")
     mocker.patch("generator.worker.toc.add_toc_links_to_merged_pdf")
