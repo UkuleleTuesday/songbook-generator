@@ -7,7 +7,7 @@ import click
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
-from .filters import FilterParser, PropertyFilter, FilterGroup
+from ..common.filters import FilterParser, PropertyFilter, FilterGroup
 from typing import Union, Optional
 
 from .pdf import generate_songbook, init_services
