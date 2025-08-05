@@ -35,7 +35,7 @@ class Edition(BaseModel):
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None
-    filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
+    filters: List[Union[FilterGroup, PropertyFilter]]
 
 
 class Toc(BaseModel):
