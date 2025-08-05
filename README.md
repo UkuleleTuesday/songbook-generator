@@ -151,16 +151,22 @@ Run `uv run songbook-tools --help` for more commands and options.
 The `songbook-tools` CLI provides several commands for local development and utility tasks. Here's a summary of the available commands. Run `uv run songbook-tools [COMMAND] --help` for a full list of options.
 
 #### `generate`
-Generates a songbook PDF from files in Google Drive. This is the primary command for local testing of the end-to-end PDF generation process.
+Generates a songbook PDF from files in Google Drive. This is the primary command for local testing of the end-to-end PDF generation process. You can either specify a predefined edition or use manual flags for filtering and customization. When using `--edition`, other flags like `--filter`, `--cover-file-id`, etc., are not allowed.
 
 ```bash
-# Basic usage with default settings
+# Generate a specific edition (e.g., the "regular" songbook)
+uv run songbook-tools generate --edition regular
+
+# Generate the "complete" edition
+uv run songbook-tools generate --edition complete
+
+# Basic usage with default settings (manual mode)
 uv run songbook-tools generate
 
 # Generate with a limit and open the PDF when done
 uv run songbook-tools generate --limit 10 --open-generated-pdf
 
-# Filter songs by property
+# Filter songs by property (cannot be used with --edition)
 uv run songbook-tools generate --filter "difficulty:in:easy,medium"
 ```
 

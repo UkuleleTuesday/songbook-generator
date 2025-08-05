@@ -112,6 +112,8 @@ jobs:
         --gen2: true
         --region: "${{ env.GCP_REGION }}"
         --runtime: "python312"
+        --memory: "512MiB"
+        --cpu: "0.5"
         --trigger-http: true
         --source: "generator"
         --entry-point: "api"

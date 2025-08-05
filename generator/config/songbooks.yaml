@@ -1,0 +1,22 @@
+- id: "regular"
+  description: "The regular songbook, containing all standard songs."
+  cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+  preface_file_ids:
+    - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
+  filters:
+    - key: "specialbooks"
+      operator: "contains"
+      value: "regular"
+
+- id: "complete"
+  description: "Complete collection of all available songs (approved and ready to play)."
+  cover_file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
+  filters:
+    - operator: "OR"
+      filters:
+        - key: "status"
+          operator: "equals"
+          value: "READY_TO_PLAY"
+        - key: "status"
+          operator: "equals"
+          value: "APPROVED"

@@ -7,7 +7,7 @@ import io
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
-from ..worker.filters import FilterGroup, PropertyFilter
+from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
 from google.auth import credentials
 

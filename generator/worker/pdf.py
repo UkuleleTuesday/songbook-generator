@@ -12,7 +12,7 @@ from googleapiclient.errors import HttpError
 from ..common import caching, config
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
-from .filters import PropertyFilter, FilterGroup
+from ..common.filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
     client,
     download_file_stream,
@@ -249,6 +249,50 @@ def copy_pdfs(
 
             span.set_attribute("copied_pages", copied_pages)
             span.set_attribute("final_page_count", current_page)
+
+
+def generate_songbook_from_edition(
+    drive,
+    cache,
+    source_folders: List[str],
+    destination_path: Path,
+    edition: config.Edition,
+    limit: int,
+    on_progress=None,
+):
+    """
+    Generate a songbook based on a predefined Edition configuration.
+
+    This function acts as a wrapper around `generate_songbook`, using the
+    settings defined in the provided `edition` object.
+    """
+    with tracer.start_as_current_span("generate_songbook_from_edition") as span:
+        span.set_attribute("edition.id", edition.id)
+        span.set_attribute("edition.description", edition.description)
+
+        # Combine filters from the edition into a single FilterGroup if necessary
+        client_filter = None
+        if edition.filters:
+            if len(edition.filters) == 1:
+                client_filter = edition.filters[0]
+            else:
+                client_filter = FilterGroup(operator="AND", filters=edition.filters)
+
+        if client_filter:
+            span.set_attribute("client_filter", str(client_filter.model_dump()))
+
+        return generate_songbook(
+            drive=drive,
+            cache=cache,
+            source_folders=source_folders,
+            destination_path=destination_path,
+            limit=limit,
+            cover_file_id=edition.cover_file_id,
+            client_filter=client_filter,
+            preface_file_ids=edition.preface_file_ids,
+            postface_file_ids=edition.postface_file_ids,
+            on_progress=on_progress,
+        )
 
 
 def generate_songbook(

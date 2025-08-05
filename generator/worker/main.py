@@ -7,10 +7,10 @@ import click
 from google.cloud import firestore, storage
 from flask import abort
 import traceback
-from .filters import FilterParser, PropertyFilter, FilterGroup
-from typing import Union, Optional
+from ..common.filters import parse_filters
 
-from .pdf import generate_songbook, init_services
+from .pdf import generate_songbook, generate_songbook_from_edition, init_services
+from ..common.config import get_settings
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -60,55 +60,6 @@ def make_progress_callback(job_ref):
         job_ref.update(update)
 
     return _callback
-
-
-def parse_filters(filters_param) -> Optional[Union[PropertyFilter, FilterGroup]]:
-    """
-    Parse the filters parameter from the API request into filter objects.
-
-    Args:
-        filters_param: Can be a string, list of strings, or dict representing filters
-
-    Returns:
-        PropertyFilter, FilterGroup, or None if no filters
-    """
-    if not filters_param:
-        return None
-
-    if isinstance(filters_param, str):
-        # Single filter string
-        return FilterParser.parse_simple_filter(filters_param)
-
-    if isinstance(filters_param, list):
-        # List of filter strings - combine with AND logic
-        parsed_filters = []
-        for filter_str in filters_param:
-            parsed_filters.append(FilterParser.parse_simple_filter(filter_str))
-
-        if len(parsed_filters) == 1:
-            return parsed_filters[0]
-        else:
-            return FilterGroup(parsed_filters, "AND")
-
-    if isinstance(filters_param, dict):
-        # Complex filter object - would need more sophisticated parsing
-        # For now, just handle simple cases
-        if "filters" in filters_param:
-            filter_list = filters_param["filters"]
-            operator = filters_param.get("operator", "AND")
-
-            parsed_filters = []
-            for f in filter_list:
-                if isinstance(f, str):
-                    parsed_filters.append(FilterParser.parse_simple_filter(f))
-                # Could handle nested filter objects here
-
-            if len(parsed_filters) == 1:
-                return parsed_filters[0]
-            else:
-                return FilterGroup(parsed_filters, operator)
-
-    return None
 
 
 def worker_main(cloud_event):
@@ -163,33 +114,6 @@ def worker_main(cloud_event):
             if postface_file_ids:
                 main_span.set_attribute("postface_files_count", len(postface_file_ids))
 
-            # Parse filters parameter
-            filters_param = params.get("filters")
-            client_filter = None
-            if filters_param:
-                with services["tracer"].start_as_current_span(
-                    "parse_filters"
-                ) as filter_span:
-                    try:
-                        client_filter = parse_filters(filters_param)
-                        click.echo(f"Parsed client filter: {client_filter}")
-                        filter_span.set_attribute("has_filters", True)
-                        if client_filter:
-                            filter_span.set_attribute(
-                                "filter_type", type(client_filter).__name__
-                            )
-                    except ValueError as e:
-                        click.echo(f"Error parsing filters: {e}", err=True)
-                        filter_span.set_attribute("error", str(e))
-                        job_ref.update(
-                            {
-                                "status": "FAILED",
-                                "completed_at": firestore.SERVER_TIMESTAMP,
-                                "error": f"Invalid filter format: {str(e)}",
-                            }
-                        )
-                        return
-
             # 3) Generate into a temp file
             with services["tracer"].start_as_current_span(
                 "generate_songbook"
@@ -199,25 +123,56 @@ def worker_main(cloud_event):
                 click.echo(
                     f"Generating songbook for job {job_id} with parameters: {params}"
                 )
-                if preface_file_ids:
-                    click.echo(f"Using {len(preface_file_ids)} preface files")
-                if postface_file_ids:
-                    click.echo(f"Using {len(postface_file_ids)} postface files")
-
-                # Create progress callback and pass it to generate_songbook
                 progress_callback = make_progress_callback(job_ref)
-                generate_songbook(
-                    drive=drive,
-                    cache=cache,
-                    source_folders=source_folders,
-                    destination_path=out_path,
-                    limit=limit,
-                    cover_file_id=cover_file_id,
-                    client_filter=client_filter,
-                    preface_file_ids=preface_file_ids,
-                    postface_file_ids=postface_file_ids,
-                    on_progress=progress_callback,
-                )
+                edition_id = params.get("edition")
+
+                if edition_id:
+                    settings = get_settings()
+                    selected_edition = next(
+                        (e for e in settings.editions if e.id == edition_id), None
+                    )
+                    if not selected_edition:
+                        raise ValueError(f"Edition '{edition_id}' not found.")
+
+                    click.echo(
+                        f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
+                    )
+                    generate_songbook_from_edition(
+                        drive=drive,
+                        cache=cache,
+                        source_folders=source_folders,
+                        destination_path=out_path,
+                        edition=selected_edition,
+                        limit=limit,
+                        on_progress=progress_callback,
+                    )
+                else:
+                    # Legacy mode: Parse filters parameter
+                    filters_param = params.get("filters")
+                    client_filter = None
+                    if filters_param:
+                        try:
+                            client_filter = parse_filters(filters_param)
+                        except ValueError as e:
+                            raise ValueError(f"Invalid filter format: {str(e)}") from e
+
+                    if preface_file_ids:
+                        click.echo(f"Using {len(preface_file_ids)} preface files")
+                    if postface_file_ids:
+                        click.echo(f"Using {len(postface_file_ids)} postface files")
+
+                    generate_songbook(
+                        drive=drive,
+                        cache=cache,
+                        source_folders=source_folders,
+                        destination_path=out_path,
+                        limit=limit,
+                        cover_file_id=cover_file_id,
+                        client_filter=client_filter,
+                        preface_file_ids=preface_file_ids,
+                        postface_file_ids=postface_file_ids,
+                        on_progress=progress_callback,
+                    )
                 gen_span.set_attribute("output_path", str(out_path))
 
             # 4) Upload to GCS
