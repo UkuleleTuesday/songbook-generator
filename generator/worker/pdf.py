@@ -292,6 +292,8 @@ def generate_songbook_from_edition(
             preface_file_ids=edition.preface_file_ids,
             postface_file_ids=edition.postface_file_ids,
             on_progress=on_progress,
+            title=edition.title,
+            subject=edition.description,
         )
 
 
@@ -306,10 +308,16 @@ def generate_songbook(
     preface_file_ids: Optional[List[str]] = None,
     postface_file_ids: Optional[List[str]] = None,
     on_progress=None,
+    title: Optional[str] = None,
+    subject: Optional[str] = None,
 ):
     with tracer.start_as_current_span("generate_songbook") as span:
         span.set_attribute("source_folders_count", len(source_folders))
         span.set_attribute("destination_path", str(destination_path))
+        if title:
+            span.set_attribute("pdf.title", title)
+        if subject:
+            span.set_attribute("pdf.subject", subject)
         if limit:
             span.set_attribute("limit", limit)
         if cover_file_id:
@@ -525,6 +533,19 @@ def generate_songbook(
                         toc.add_toc_links_to_merged_pdf(
                             songbook_pdf, toc_entries, toc_start_page
                         )
+
+                with reporter.step(1, "Setting PDF metadata..."):
+                    with tracer.start_as_current_span("set_metadata"):
+                        metadata = {
+                            "author": "Ukulele Tuesday",
+                            "producer": "PyMuPDF",
+                            "creator": "Ukulele Tuesday Songbook Generator",
+                        }
+                        if title:
+                            metadata["title"] = title
+                        if subject:
+                            metadata["subject"] = subject
+                        songbook_pdf.set_metadata(metadata)
 
                 with reporter.step(1, "Exporting generated PDF..."):
                     with tracer.start_as_current_span("save_pdf") as save_span:
