@@ -16,6 +16,7 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     mock_cache = mocker.Mock()
     edition = Edition(
         id="test-edition",
+        title="Test Edition",
         description="A test edition",
         filters=[
             PropertyFilter(
@@ -48,6 +49,7 @@ def test_generate_songbook_from_edition_composite_filter(
     mock_cache = mocker.Mock()
     edition = Edition(
         id="composite-edition",
+        title="Composite Edition",
         description="A test edition",
         filters=[
             PropertyFilter(
