@@ -92,7 +92,7 @@ class FilterParser:
         if len(parts) == 2:
             # Default to equals: "artist:Beatles"
             key, value = parts
-            return PropertyFilter(key, FilterOperator.EQUALS, value)
+            return PropertyFilter(key=key, operator=FilterOperator.EQUALS, value=value)
         elif len(parts) == 3:
             # Explicit operator: "specialbooks:contains:regular"
             key, op_str, value = parts
@@ -107,7 +107,7 @@ class FilterParser:
             if operator == FilterOperator.IN:
                 value = [v.strip() for v in value.split(",")]
 
-            return PropertyFilter(key, operator, value)
+            return PropertyFilter(key=key, operator=operator, value=value)
         else:
             raise ValueError(
                 f"Invalid filter format: {filter_str}. Use 'key:value' or 'key:operator:value'"
