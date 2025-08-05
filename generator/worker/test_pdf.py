@@ -1,7 +1,11 @@
 import fitz
 import pytest
 from ..common.config import Edition
-from .pdf import collect_and_sort_files, generate_songbook, generate_songbook_from_edition
+from .pdf import (
+    collect_and_sort_files,
+    generate_songbook,
+    generate_songbook_from_edition,
+)
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
 
@@ -99,10 +103,13 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
 
     # Mock dependencies to isolate metadata setting
     mocker.patch(
-        "generator.worker.pdf.collect_and_sort_files", return_value=[File(name="Test Song.pdf", id="123")]
+        "generator.worker.pdf.collect_and_sort_files",
+        return_value=[File(name="Test Song.pdf", id="123")],
     )
     mocker.patch("generator.worker.pdf.get_files_metadata_by_ids", return_value=[])
-    mocker.patch("generator.worker.cover.CoverGenerator.generate_cover", return_value=fitz.open())
+    mocker.patch(
+        "generator.worker.cover.CoverGenerator.generate_cover", return_value=fitz.open()
+    )
     mocker.patch(
         "generator.worker.toc.build_table_of_contents",
         side_effect=lambda files, page_offset: (fitz.open().new_page().parent, []),
