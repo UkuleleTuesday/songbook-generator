@@ -39,6 +39,8 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     assert call_args["drive"] == mock_drive
     assert call_args["client_filter"] == edition.filters[0]
     assert call_args["limit"] == 10
+    assert call_args["title"] == "Test Edition"
+    assert call_args["subject"] == "A test edition"
 
 
 def test_generate_songbook_from_edition_composite_filter(
@@ -84,6 +86,8 @@ def test_generate_songbook_from_edition_composite_filter(
     # Check other parameters are passed through
     assert call_args["cover_file_id"] == "cover123"
     assert call_args["preface_file_ids"] == ["preface123"]
+    assert call_args["title"] == "Composite Edition"
+    assert call_args["subject"] == "A test edition"
 
 
 def test_collect_and_sort_files_single_folder(mocker):
