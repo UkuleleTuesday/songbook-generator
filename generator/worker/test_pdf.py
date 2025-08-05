@@ -83,7 +83,9 @@ def test_collect_and_sort_files_multiple_folders(mocker):
 def test_collect_and_sort_files_with_client_filter(mocker):
     """Test that client filter is passed through correctly."""
     mock_drive = mocker.Mock()
-    mock_filter = PropertyFilter("artist", FilterOperator.EQUALS, "Test Artist")
+    mock_filter = PropertyFilter(
+        key="artist", operator=FilterOperator.EQUALS, value="Test Artist"
+    )
 
     mock_files = [File(name="test.pdf", id="1")]
 
