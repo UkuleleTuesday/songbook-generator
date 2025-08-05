@@ -7,3 +7,16 @@
     - key: "specialbooks"
       operator: "contains"
       value: "regular"
+
+- id: "complete"
+  description: "Complete collection of all available songs (approved and ready to play)."
+  cover_file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
+  filters:
+    - operator: "OR"
+      filters:
+        - key: "status"
+          operator: "equals"
+          value: "READY_TO_PLAY"
+        - key: "status"
+          operator: "equals"
+          value: "APPROVED"
