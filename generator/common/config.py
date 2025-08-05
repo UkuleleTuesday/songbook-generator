@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -12,6 +12,8 @@ from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
 )
+
+from generator.worker.filters import FilterGroup, PropertyFilter
 
 
 class SongSheets(BaseModel):
@@ -33,7 +35,7 @@ class Edition(BaseModel):
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None
-    filters: Optional[List[str]] = None
+    filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
 
 
 class Toc(BaseModel):

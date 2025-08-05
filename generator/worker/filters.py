@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Union
 from enum import Enum
+from typing import List, Union
+
+from pydantic import BaseModel
 
 
 class FilterOperator(Enum):
@@ -14,8 +18,7 @@ class FilterOperator(Enum):
     IN = "in"
 
 
-@dataclass
-class PropertyFilter:
+class PropertyFilter(BaseModel):
     """Represents a single property filter condition."""
 
     key: str
@@ -60,12 +63,11 @@ class PropertyFilter:
         return False
 
 
-@dataclass
-class FilterGroup:
+class FilterGroup(BaseModel):
     """Represents a group of filters with AND/OR logic."""
 
-    filters: List[Union[PropertyFilter, "FilterGroup"]]
     operator: str = "AND"  # "AND" or "OR"
+    filters: List[Union[PropertyFilter, FilterGroup]]
 
     def matches(self, file_properties: dict) -> bool:
         """Check if a file's properties match this filter group."""
