@@ -18,6 +18,7 @@ from google.cloud import storage
 
 from . import sync
 from ..common.config import get_settings
+from ..worker.gcp import get_credentials
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -28,13 +29,21 @@ def _get_services():
     """Initializes and returns services, using a cache for warm starts."""
     settings = get_settings()
 
-    creds, project_id = default(
-        scopes=["https://www.googleapis.com/auth/drive.readonly"]
-    )
+    # Determine project ID from default credentials
+    _, project_id = default()
     if project_id:
         os.environ["GCP_PROJECT_ID"] = project_id
         if "GOOGLE_CLOUD_PROJECT" not in os.environ:
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+
+    credential_config = settings.google_cloud.credentials.get("songbook-merger")
+    if not credential_config:
+        raise click.Abort("Credential config 'songbook-merger' not found.")
+
+    creds = get_credentials(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
 
     service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
