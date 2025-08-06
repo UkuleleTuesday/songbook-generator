@@ -58,35 +58,30 @@ def create_test_pdf_with_subset_font(
     return doc
 
 
-def test_normalize_pdf_fonts_replaces_subset_font():
+def test_normalize_pdf_fonts_replaces_subset_font(mock_fontra, tmp_path):
     """Verify that a subset font is replaced with its full version."""
-    # Create a dummy font file for the normalizer to find
-    font_path = Path("Verdana.ttf")
-    font_path.write_bytes(fitz.Font("helv").buffer)
+    mock_fontra.return_value = MagicMock(path=str(tmp_path / "Verdana.ttf"))
+    (tmp_path / "Verdana.ttf").write_bytes(fitz.Font("helv").buffer)
 
-    # Mock find_font_path to return our dummy font
-    with patch(
-        "generator.common.fonts.find_font_path", return_value=str(font_path)
-    ) as mock_find_font:
-        # Create a PDF with a subset font
-        input_doc = fitz.open()
-        input_doc = create_test_pdf_with_subset_font(input_doc)
-        input_bytes = input_doc.tobytes()
-        input_doc.close()
+    # Create a PDF with a subset font
+    input_doc = fitz.open()
+    input_doc = create_test_pdf_with_subset_font(input_doc)
+    input_bytes = input_doc.tobytes()
+    input_doc.close()
 
-        # Normalize the PDF
-        output_bytes = normalize_pdf_fonts(input_bytes)
-        output_doc = fitz.open(stream=output_bytes, filetype="pdf")
+    # Normalize the PDF
+    output_bytes = normalize_pdf_fonts(input_bytes)
+    output_doc = fitz.open(stream=output_bytes, filetype="pdf")
 
-        # Assertions
-        mock_find_font.assert_called_once_with("Verdana")
-        found_fonts = {
-            font[2].decode() for page in output_doc for font in page.get_fonts()
-        }
-        assert "Verdana" in found_fonts
-        assert "ABCDEF+Verdana" not in found_fonts
-
-    font_path.unlink()  # Clean up dummy font file
+    # Assertions
+    mock_fontra.assert_called_once_with("Verdana", "Regular")
+    found_fonts = {
+        font[2].decode("utf-8", "ignore")
+        for page in output_doc
+        for font in page.get_fonts()
+    }
+    assert "Verdana" in found_fonts
+    assert "ABCDEF+Verdana" not in found_fonts
 
 
 def test_normalize_pdf_fonts_no_subsets():
@@ -100,11 +95,11 @@ def test_normalize_pdf_fonts_no_subsets():
     assert output_bytes == input_bytes
 
 
-def test_normalize_pdf_fonts_font_not_found():
+def test_normalize_pdf_fonts_font_not_found(mock_fontra):
     """Test that normalization is skipped for a font that cannot be found."""
-    with patch(
-        "generator.common.fonts.find_font_path", return_value=None
-    ) as mock_find:
+    mock_fontra.return_value = None  # Mock fontra failing
+
+    with patch("pathlib.Path.exists", return_value=False):  # Mock local fallback failing
         input_doc = fitz.open()
         input_doc = create_test_pdf_with_subset_font(
             input_doc, font_name="GHIJKL+NonExistentFont"
@@ -114,7 +109,7 @@ def test_normalize_pdf_fonts_font_not_found():
 
         # The font should not have been replaced, original bytes returned
         assert input_bytes == output_bytes
-        mock_find.assert_called_once_with("NonExistentFont")
+        mock_fontra.assert_called_once_with("NonExistentFont", "Regular")
 
 
 @pytest.mark.parametrize(
