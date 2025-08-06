@@ -86,18 +86,22 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     Returns:
         The processed PDF content as bytes, or the original bytes if no changes were made.
     """
+    print("\n--- Running normalize_pdf_fonts ---")
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     if not doc.is_pdf or doc.page_count == 0:
+        print(f"DEBUG: PDF has {doc.page_count} pages. Skipping normalization.")
         return pdf_bytes
 
+    print(f"DEBUG: PDF has {doc.page_count} pages. Starting normalization.")
     # A map of {old_xref: new_xref} for font replacement
     font_xref_map: Dict[int, int] = {}
     # A map of {base_font_name: new_xref} to avoid re-embedding the same font
     embedded_fonts: Dict[str, int] = {}
 
     # Check fonts on all pages as they can differ
-    for page in doc:
+    for i, page in enumerate(doc):
         fonts_on_page = page.get_fonts(full=True)
+        print(f"DEBUG: Page {i} fonts: {fonts_on_page}")
         for font_info in fonts_on_page:
             xref = font_info[0]
             name = font_info[2]
@@ -145,9 +149,11 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
                 )
 
     if not font_xref_map:
+        print("DEBUG: No subset fonts found to replace.")
         doc.close()
         return pdf_bytes
 
+    print(f"DEBUG: Remapping fonts: {font_xref_map}")
     doc.clean_contents(remap=font_xref_map)
     new_pdf_bytes = doc.tobytes(garbage=4, deflate=True)
     doc.close()
