@@ -48,22 +48,17 @@ def create_test_pdf_with_subset_font(
     doc, font_name="ABCDEF+Verdana", text="Hello"
 ) -> fitz.Document:
     """Helper to create a PDF with a subset-like font name."""
-    print("\n--- Running create_test_pdf_with_subset_font ---")
     if doc.page_count == 0:
         doc.new_page()
     page = doc[0]
 
     font_buffer = fitz.Font("helv").buffer
-    print(f"DEBUG: Inserting font with name '{font_name}'")
     page.insert_font(fontname=font_name, fontbuffer=font_buffer)
-    print("DEBUG: Font inserted.")
 
     # We must use `insert_text` with `fontname` for this to work in a test context.
     # The TextWriter approach requires a valid `fitz.Font` object, which we can't create
     # for a font that is only defined within the page's resources.
-    print("DEBUG: Inserting text with the custom font name.")
     page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
-    print("DEBUG: Text inserted.")
     return doc
 
 
