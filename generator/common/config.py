@@ -32,6 +32,7 @@ class Cover(BaseModel):
 
 class Edition(BaseModel):
     id: str
+    title: str
     description: str
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
