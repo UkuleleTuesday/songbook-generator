@@ -11,7 +11,7 @@ MINIMAL_PDF_BYTES = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 o
 
 @pytest.fixture
 def mock_fontra():
-    with patch("fontra.find_font_path") as mock_get:
+    with patch("fontra.system.find_font_path") as mock_get:
         yield mock_get
 
 
@@ -44,7 +44,9 @@ def create_test_pdf_with_subset_font(
     doc, font_name="ABCDEF+Verdana", text="Hello"
 ) -> fitz.Document:
     """Helper to create a PDF with a subset-like font name."""
-    page = doc.new_page()
+    if doc.page_count == 0:
+        doc.new_page()
+    page = doc[0]
     # Create a dummy font and rename it to simulate a subset font
     font_buffer = fitz.Font("helv").buffer
     page.insert_font(fontbuffer=font_buffer, fontname=font_name)

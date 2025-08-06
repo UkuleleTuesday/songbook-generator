@@ -4,8 +4,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
 
-import fontra
 import fitz
+import fontra.system
 
 # Local fallback fonts directory
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
@@ -25,7 +25,7 @@ def find_font_path(font_name: str) -> Optional[str]:
     """
     try:
         # fontra is good at parsing names like "Verdana-Bold"
-        font_path = fontra.find_font_path(font_name)
+        font_path = fontra.system.find_font_path(font_name)
         if font_path:
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
