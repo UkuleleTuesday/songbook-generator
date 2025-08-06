@@ -5,11 +5,17 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import fitz
-import fontra.system
+import fontra
 
 # Local fallback fonts directory
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 logger = logging.getLogger(__name__)
+
+# Initialize fontra's font database on module load
+try:
+    fontra.init_fontdb()
+except Exception as e:
+    logger.error("Failed to initialize fontra's font database: %s", e)
 
 
 @lru_cache(maxsize=128)
@@ -24,9 +30,14 @@ def find_font_path(font_name: str) -> Optional[str]:
         The path to the font file, or None if not found.
     """
     try:
-        # fontra is good at parsing names like "Verdana-Bold"
-        font_path = fontra.system.find_font_path(font_name)
-        if font_path:
+        # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
+        parts = font_name.split("-")
+        family = parts[0]
+        style = parts[1] if len(parts) > 1 else "Regular"
+
+        font_ref = fontra.get_font(family, style)
+        if font_ref and font_ref.path:
+            font_path = str(font_ref.path)
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
     except Exception as e:
