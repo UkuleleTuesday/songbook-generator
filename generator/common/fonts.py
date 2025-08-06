@@ -100,15 +100,9 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
         fonts_on_page = page.get_fonts(full=True)
         for font_info in fonts_on_page:
             xref = font_info[0]
-            name = font_info[4]  # The font name is at index 4
+            name_str = font_info[4]  # The font name is at index 4, and is a string
             # Already processed this font xref
             if xref in font_xref_map:
-                continue
-
-            try:
-                # Use 'ignore' for robustness against malformed font names
-                name_str = name.decode("utf-8", "ignore")
-            except (UnicodeDecodeError, AttributeError):
                 continue
 
             match = SUBSET_FONT_RE.match(name_str)

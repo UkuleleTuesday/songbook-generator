@@ -79,7 +79,9 @@ def test_normalize_pdf_fonts_replaces_subset_font(mock_fontra, tmp_path):
 
     # Assertions
     mock_fontra.assert_called_once_with("Verdana", "Regular")
-    found_fonts = {font[4] for page in output_doc for font in page.get_fonts()}
+    found_fonts = {
+        font[4] for page in output_doc for font in page.get_fonts()
+    }
     assert "Verdana" in found_fonts
     assert "ABCDEF+Verdana" not in found_fonts
 
