@@ -8,6 +8,7 @@ from opentelemetry import trace
 from googleapiclient.discovery import build
 
 from .filters import FilterGroup, PropertyFilter
+from .fonts import normalize_pdf_fonts
 from ..worker.models import File
 from google.auth import credentials
 
@@ -305,6 +306,19 @@ def download_file(
         _, done = downloader.next_chunk()
 
     data = buffer.getvalue()
+
+    # If we exported a Google Doc to PDF, normalize its fonts before caching.
+    # This reduces final songbook size significantly.
+    if export and mime_type == "application/pdf":
+        click.echo(f"Normalizing fonts for {file_name}...")
+        try:
+            data = normalize_pdf_fonts(data)
+        except Exception as e:
+            click.echo(
+                f"Font normalization failed for {file_name} ({file_id}), caching original file. Error: {e}",
+                err=True,
+            )
+
     # GCSFS supports setting metadata on upload via `metadata` kwarg.
     # The local file system fsspec impl does not support this.
     try:
