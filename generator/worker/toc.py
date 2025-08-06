@@ -2,15 +2,16 @@ import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
 from typing import List, Tuple
-import importlib.resources
-import os
+import logging
 
+from ..common.fonts import find_font_path
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
 from .exceptions import TocGenerationException
 from .models import File
 from ..common.config import get_settings, Toc
 
+logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
@@ -19,28 +20,32 @@ DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
 
 def resolve_font(font_name: str) -> fitz.Font:
-    """
-    Load a font from package resources.
-    If it fails, log a warning and fall back to a built-in font.
-    """
-    try:
-        # Standard way to load package resources, works when installed
-        font_buffer = (
-            importlib.resources.files("generator.fonts")
-            .joinpath(font_name)
-            .read_bytes()
+    """Finds and loads a font by its name, returning a fitz.Font object."""
+    font_path = find_font_path(font_name)
+    if not font_path:
+        # Fallback to a very common system font if the requested one is not found
+        fallback_font_name = (
+            "Verdana-Bold" if "bold" in font_name.lower() else "Verdana"
         )
-        return fitz.Font(fontbuffer=font_buffer)
-    except (ModuleNotFoundError, FileNotFoundError):
-        # Fallback for environments where the package is not installed (e.g., GCF Gen2)
-        try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            font_path = os.path.join(current_dir, "..", "fonts", font_name)
-            with open(font_path, "rb") as f:
-                font_buffer = f.read()
-            return fitz.Font(fontbuffer=font_buffer)
-        except FileNotFoundError as e:
-            raise TocGenerationException(f"TOC font file not found: {font_name}") from e
+        logger.warning(
+            "Font '%s' not found. Falling back to '%s'",
+            font_name,
+            fallback_font_name,
+        )
+        font_path = find_font_path(fallback_font_name)
+        if not font_path:
+            # If even Verdana is missing, something is very wrong. Use a built-in.
+            logger.error(
+                "Fallback font '%s' not found. Using built-in helv.", fallback_font_name
+            )
+            return fitz.Font("helv")
+    try:
+        return fitz.Font(fontfile=font_path)
+    except Exception as e:
+        logger.error(
+            "Failed to load font from path '%s': %s. Using built-in.", font_path, e
+        )
+        return fitz.Font("helv")
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:
