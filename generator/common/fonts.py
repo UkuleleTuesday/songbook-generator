@@ -147,7 +147,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
 
     # Replace the old font objects (xrefs) with references to the new ones.
     for old_xref, new_xref in font_xref_map.items():
-        doc.xref_set_object(old_xref, f"{new_xref} 0 R")
+        doc.update_object(old_xref, f"{new_xref} 0 R")
 
     # Save the document with garbage collection to remove the orphaned subset font objects.
     new_pdf_bytes = doc.tobytes(garbage=3, deflate=True)
