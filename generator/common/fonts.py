@@ -128,9 +128,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
             try:
                 # Embed the full font into the current page's resources.
                 # This makes it available throughout the document.
-                new_xref = page.insert_font(
-                    fontfile=font_path, fontname=base_font_name
-                )
+                new_xref = page.insert_font(fontfile=font_path, fontname=base_font_name)
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
             except Exception as e:

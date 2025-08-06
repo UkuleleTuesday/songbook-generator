@@ -7,7 +7,6 @@ import logging
 from ..common.fonts import find_font_path
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
-from .exceptions import TocGenerationException
 from .models import File
 from ..common.config import get_settings, Toc
 

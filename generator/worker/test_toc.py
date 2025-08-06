@@ -4,12 +4,10 @@ import fitz
 from .toc import (
     resolve_font,
     generate_toc_title,
-    DEFAULT_FONT_NAME,
     TocGenerator,
     difficulty_symbol,
 )
 from .models import File
-from .exceptions import TocGenerationException
 from . import toc
 
 

@@ -1,7 +1,6 @@
 import fitz
 import pytest
 from unittest.mock import patch, MagicMock
-from pathlib import Path
 
 from .fonts import find_font_path, normalize_pdf_fonts, SUBSET_FONT_RE
 
@@ -79,9 +78,7 @@ def test_normalize_pdf_fonts_replaces_subset_font(mock_fontra, tmp_path):
 
     # Assertions
     mock_fontra.assert_called_once_with("Verdana", "Regular")
-    found_fonts = {
-        font[4] for page in output_doc for font in page.get_fonts()
-    }
+    found_fonts = {font[4] for page in output_doc for font in page.get_fonts()}
     assert "Verdana" in found_fonts
     assert "ABCDEF+Verdana" not in found_fonts
 
@@ -101,7 +98,9 @@ def test_normalize_pdf_fonts_font_not_found(mock_fontra):
     """Test that normalization is skipped for a font that cannot be found."""
     mock_fontra.return_value = None  # Mock fontra failing
 
-    with patch("pathlib.Path.exists", return_value=False):  # Mock local fallback failing
+    with patch(
+        "pathlib.Path.exists", return_value=False
+    ):  # Mock local fallback failing
         input_doc = fitz.open()
         input_doc = create_test_pdf_with_subset_font(
             input_doc, font_name="GHIJKL+NonExistentFont"
