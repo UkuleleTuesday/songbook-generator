@@ -7,8 +7,8 @@ import io
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
-from generator.merger.pdf_font_normalizer import normalize_pdf_fonts
 from .filters import FilterGroup, PropertyFilter
+from .fonts import normalize_pdf_fonts
 from ..worker.models import File
 from google.auth import credentials
 
