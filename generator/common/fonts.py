@@ -25,7 +25,7 @@ def find_font_path(font_name: str) -> Optional[str]:
     """
     try:
         # fontra is good at parsing names like "Verdana-Bold"
-        font_path = fontra.get_font_path(font_name)
+        font_path = fontra.find_font_path(font_name)
         if font_path:
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
@@ -87,8 +87,9 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     # Check fonts on all pages as they can differ
     for page in doc:
         fonts_on_page = page.get_fonts(full=True)
-        for font in fonts_on_page:
-            xref, _, name, _, _, _ = font
+        for font_info in fonts_on_page:
+            xref = font_info[0]
+            name = font_info[2]
             # Already processed this font xref
             if xref in font_xref_map:
                 continue

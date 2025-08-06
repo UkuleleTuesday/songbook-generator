@@ -15,53 +15,46 @@ from . import toc
 
 def test_resolve_font_valid_font(mocker):
     """Test that a valid font file is loaded correctly."""
-    # Mock importlib.resources to avoid file system access
-    mock_files = mocker.patch("importlib.resources.files")
-    mock_path = mock_files.return_value.joinpath.return_value
-    mock_path.read_bytes.return_value = b"font_data"
+    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
+    mock_find_font.return_value = "/fake/path/to/font.ttf"
+
     mock_fitz_font = mocker.patch("fitz.Font")
 
-    font_name = DEFAULT_FONT_NAME
-    resolve_font(font_name)
+    resolve_font("SomeFont.ttf")
 
-    mock_files.assert_called_once_with("generator.fonts")
-    mock_files.return_value.joinpath.assert_called_once_with(font_name)
-    mock_path.read_bytes.assert_called_once()
-    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
+    mock_find_font.assert_called_once_with("SomeFont.ttf")
+    mock_fitz_font.assert_called_once_with(fontfile="/fake/path/to/font.ttf")
 
 
 def test_resolve_font_fallback_to_path(mocker):
-    """Test that font loading falls back to file path on ModuleNotFoundError."""
-    # First, mock importlib.resources to fail
-    mocker.patch(
-        "importlib.resources.files", side_effect=ModuleNotFoundError("test error")
-    )
+    """Test that font loading falls back to a different font."""
+    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
+    # First find fails, second for "Verdana" succeeds.
+    mock_find_font.side_effect = [None, "/system/fonts/Verdana.ttf"]
 
-    # Then, mock the file-based loading to succeed
-    mock_open = mocker.patch("builtins.open", mocker.mock_open(read_data=b"font_data"))
-    mocker.patch("os.path.join", return_value="/fake/path/to/font.ttf")
-    mocker.patch("os.path.abspath")
     mock_fitz_font = mocker.patch("fitz.Font")
 
-    resolve_font("font.ttf")
+    resolve_font("MissingFont.ttf")
 
-    mock_open.assert_called_once_with("/fake/path/to/font.ttf", "rb")
-    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
+    assert mock_find_font.call_count == 2
+    mock_find_font.assert_any_call("MissingFont.ttf")
+    mock_find_font.assert_any_call("Verdana")
+    mock_fitz_font.assert_called_once_with(fontfile="/system/fonts/Verdana.ttf")
 
 
 def test_resolve_font_total_failure(mocker):
-    """Test that it raises TocGenerationException when all methods fail."""
-    # Mock both importlib.resources and file-based loading to fail
-    mocker.patch(
-        "importlib.resources.files", side_effect=ModuleNotFoundError("test error")
-    )
-    mocker.patch("builtins.open", side_effect=FileNotFoundError("test file not found"))
-    mocker.patch("os.path.abspath")
+    """Test that it falls back to built-in font when all methods fail."""
+    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
+    mock_find_font.return_value = None  # All lookups fail
 
-    with pytest.raises(TocGenerationException) as excinfo:
-        resolve_font("non_existent_font.ttf")
+    mock_fitz_font = mocker.patch("fitz.Font")
 
-    assert "TOC font file not found: non_existent_font.ttf" in str(excinfo.value)
+    resolve_font("non_existent_font.ttf")
+
+    # Should have tried original font, then fallback Verdana
+    assert mock_find_font.call_count == 2
+    # Should have created a built-in font
+    mock_fitz_font.assert_called_once_with("helv")
 
 
 @pytest.mark.parametrize(

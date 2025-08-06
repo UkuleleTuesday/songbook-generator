@@ -11,7 +11,7 @@ MINIMAL_PDF_BYTES = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 o
 
 @pytest.fixture
 def mock_fontra():
-    with patch("fontra.get_font_path") as mock_get:
+    with patch("fontra.find_font_path") as mock_get:
         yield mock_get
 
 
@@ -130,5 +130,6 @@ def test_subset_font_re(name, expected_base):
 
 def test_normalize_pdf_fonts_empty_pdf():
     """Test that an empty/invalid PDF is returned as is."""
-    assert normalize_pdf_fonts(b"") == b""
+    with pytest.raises(fitz.EmptyFileError):
+        normalize_pdf_fonts(b"")
     assert normalize_pdf_fonts(MINIMAL_PDF_BYTES) == MINIMAL_PDF_BYTES
