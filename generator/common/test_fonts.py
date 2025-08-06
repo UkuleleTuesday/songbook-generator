@@ -54,7 +54,11 @@ def create_test_pdf_with_subset_font(
     # Create a dummy font and rename it to simulate a subset font
     font_buffer = fitz.Font("helv").buffer
     page.insert_font(fontbuffer=font_buffer, fontname=font_name)
-    page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
+
+    # Use a TextWriter to ensure the font is properly registered in page resources
+    tw = fitz.TextWriter(page.rect)
+    tw.append((50, 72), text, font=fitz.Font(fontname=font_name), fontsize=11)
+    tw.write_text(page)
     return doc
 
 
