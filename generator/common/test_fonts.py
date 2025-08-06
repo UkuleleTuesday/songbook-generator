@@ -51,13 +51,18 @@ def create_test_pdf_with_subset_font(
     if doc.page_count == 0:
         doc.new_page()
     page = doc[0]
-    # Create a dummy font and rename it to simulate a subset font
+
+    # Create a font object from a buffer, and then insert it into the page with a custom name.
+    # This is the correct way to create a font that can be referenced later.
     font_buffer = fitz.Font("helv").buffer
-    page.insert_font(fontbuffer=font_buffer, fontname=font_name)
+    custom_font = fitz.Font(fontbuffer=font_buffer)
+    page.insert_font(fontname=font_name, fontbuffer=custom_font.buffer)
 
     # Use a TextWriter to ensure the font is properly registered in page resources
     tw = fitz.TextWriter(page.rect)
-    tw.append((50, 72), text, font=fitz.Font(fontname=font_name), fontsize=11)
+    # When appending, we must create a new font object for the text writer,
+    # but we can do it from the buffer of the font we already created.
+    tw.append((50, 72), text, font=fitz.Font(fontname=font_name, fontbuffer=font_buffer), fontsize=11)
     tw.write_text(page)
     return doc
 
