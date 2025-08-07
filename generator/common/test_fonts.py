@@ -53,7 +53,7 @@ def test_find_font_path_not_found(mock_fontra, tmp_path):
 
 def create_test_pdf_with_subset_font(
     doc, font_name="ABCDEF+Verdana", text="Hello"
-) -> None:
+) -> fitz.Document:
     """Helper to create a PDF with a subset-like font name."""
     if doc.page_count == 0:
         doc.new_page()
@@ -62,6 +62,7 @@ def create_test_pdf_with_subset_font(
     font = fitz.Font("helv")
     page.insert_font(fontname=font_name, fontbuffer=font.buffer)
     page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
+    return doc
 
 
 # --- Tests for _gather_font_replacements ---
