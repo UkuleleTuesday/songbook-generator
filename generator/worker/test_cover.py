@@ -45,11 +45,12 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
     # Check that replacements were applied and then reverted
     assert mock_apply_replacements.call_count == 2
     mock_gdrive_client.download_file.assert_called_once_with(
-        "cover123",
-        "Cover-cover123",
-        "covers",
-        "application/pdf",
+        file_id="cover123",
+        file_name="Cover-cover123",
+        cache_prefix="covers",
+        mime_type="application/pdf",
         export=True,
+        normalize_pdf_fonts=False,
     )
 
 
@@ -112,11 +113,12 @@ def test_generate_cover_templating_disabled(mock_fitz):
 
     assert result == mock_pdf
     mock_gdrive_client.download_file.assert_called_once_with(
-        "cover123",
-        "Cover-cover123",
-        "covers",
-        "application/pdf",
+        file_id="cover123",
+        file_name="Cover-cover123",
+        cache_prefix="covers",
+        mime_type="application/pdf",
         export=False,
+        normalize_pdf_fonts=False,
     )
     mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
@@ -163,5 +165,5 @@ def test_generate_cover_uses_provided_cover_id(
 
     # Assert that download_file was called with the provided_cover_id, not the one from config
     mock_gdrive_client.download_file.assert_called_once()
-    called_args = mock_gdrive_client.download_file.call_args[0]
-    assert called_args[0] == "provided_cover_id"
+    called_kwargs = mock_gdrive_client.download_file.call_args[1]
+    assert called_kwargs["file_id"] == "provided_cover_id"
