@@ -202,6 +202,94 @@ class GoogleDriveClient:
         )
         return filtered_files
 
+    def stream_file_bytes(
+        self, files: List[File]
+    ) -> Generator[bytes, None, None]:
+        """
+        Generator that yields the bytes of each file.
+        Files are fetched from cache if available, otherwise downloaded from Drive.
+        """
+        for f in files:
+            with download_file_stream(self, f) as stream:
+                yield stream.getvalue()
+
+    def download_file(
+        self,
+        file_id: str,
+        file_name: str,
+        cache_prefix: str,
+        mime_type: str = "application/pdf",
+        export: bool = True,
+    ) -> bytes:
+        """
+        Generic file downloader with caching.
+
+        Can either download a file directly or export a Google Doc to a specific format.
+        """
+        span = trace.get_current_span()
+        cache_key = f"{cache_prefix}/{file_id}.pdf"
+        span.set_attribute("cache.key", cache_key)
+
+        details = (
+            self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+        )
+        remote_ts = datetime.fromisoformat(
+            details["modifiedTime"].replace("Z", "+00:00")
+        )
+        span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
+
+        try:
+            cached = self.cache.get(cache_key, newer_than=remote_ts)
+            if cached:
+                span.set_attribute("cache.hit", True)
+                click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+                return cached
+        except FileNotFoundError:
+            # This is an expected cache miss for local storage, not an error.
+            pass
+        except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
+            span.set_attribute("cache.error", str(e))
+            click.echo(
+                f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+            )
+
+        span.set_attribute("cache.hit", False)
+        click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
+        if export:
+            request = self.drive.files().export_media(
+                fileId=file_id, mimeType=mime_type
+            )
+        else:
+            request = self.drive.files().get_media(fileId=file_id)
+
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+
+        data = buffer.getvalue()
+
+        # If we exported a Google Doc to PDF, normalize its fonts before caching.
+        # This reduces final songbook size significantly.
+        if export and mime_type == "application/pdf":
+            click.echo(f"Normalizing fonts for {file_name}...")
+            try:
+                data = normalize_pdf_fonts(data)
+            except RuntimeError as e:
+                click.echo(
+                    f"Font normalization failed for {file_name} ({file_id}), caching original file. Error: {e}",
+                    err=True,
+                )
+
+        # GCSFS supports setting metadata on upload via `metadata` kwarg.
+        # The local file system fsspec impl does not support this.
+        try:
+            self.cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
+        except TypeError:
+            # Fallback for filesystems that don't support metadata
+            self.cache.put(cache_key, data)
+        return data
 
 
 def get_files_metadata_by_ids(
@@ -251,91 +339,7 @@ def get_files_metadata_by_ids(
     return files
 
 
-def stream_file_bytes(drive, files: List[File], cache) -> Generator[bytes, None, None]:
-    """
-    Generator that yields the bytes of each file.
-    Files are fetched from cache if available, otherwise downloaded from Drive.
-    """
-    for f in files:
-        with download_file_stream(drive, f, cache) as stream:
-            yield stream.getvalue()
-
-
-def download_file(
-    drive,
-    file_id: str,
-    file_name: str,
-    cache,
-    cache_prefix: str,
-    mime_type: str = "application/pdf",
-    export: bool = True,
-) -> bytes:
-    """
-    Generic file downloader with caching.
-
-    Can either download a file directly or export a Google Doc to a specific format.
-    """
-    span = trace.get_current_span()
-    cache_key = f"{cache_prefix}/{file_id}.pdf"
-    span.set_attribute("cache.key", cache_key)
-
-    details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-    remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
-    span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
-
-    try:
-        cached = cache.get(cache_key, newer_than=remote_ts)
-        if cached:
-            span.set_attribute("cache.hit", True)
-            click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-            return cached
-    except FileNotFoundError:
-        # This is an expected cache miss for local storage, not an error.
-        pass
-    except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
-        span.set_attribute("cache.error", str(e))
-        click.echo(
-            f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
-        )
-
-    span.set_attribute("cache.hit", False)
-    click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
-    if export:
-        request = drive.files().export_media(fileId=file_id, mimeType=mime_type)
-    else:
-        request = drive.files().get_media(fileId=file_id)
-
-    buffer = io.BytesIO()
-    downloader = MediaIoBaseDownload(buffer, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
-
-    data = buffer.getvalue()
-
-    # If we exported a Google Doc to PDF, normalize its fonts before caching.
-    # This reduces final songbook size significantly.
-    if export and mime_type == "application/pdf":
-        click.echo(f"Normalizing fonts for {file_name}...")
-        try:
-            data = normalize_pdf_fonts(data)
-        except RuntimeError as e:
-            click.echo(
-                f"Font normalization failed for {file_name} ({file_id}), caching original file. Error: {e}",
-                err=True,
-            )
-
-    # GCSFS supports setting metadata on upload via `metadata` kwarg.
-    # The local file system fsspec impl does not support this.
-    try:
-        cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
-    except TypeError:
-        # Fallback for filesystems that don't support metadata
-        cache.put(cache_key, data)
-    return data
-
-
-def download_file_stream(drive, file: File, cache) -> io.BytesIO:
+def download_file_stream(gdrive_client: GoogleDriveClient, file: File) -> io.BytesIO:
     """
     Fetches the PDF export of a Google Doc, using a LocalStorageCache.
     Only re-downloads if remote modifiedTime is newer than the cached file.
@@ -344,11 +348,9 @@ def download_file_stream(drive, file: File, cache) -> io.BytesIO:
     # Google Docs need to be exported, while regular PDFs can be downloaded directly.
     should_export = file.mimeType == "application/vnd.google-apps.document"
 
-    pdf_data = download_file(
-        drive,
+    pdf_data = gdrive_client.download_file(
         file.id,
         file.name,
-        cache,
         "song-sheets",
         "application/pdf",
         export=should_export,
@@ -361,7 +363,8 @@ def download_file_bytes(drive, file: File, cache) -> bytes:
     Legacy function for backward compatibility.
     Fetches the PDF export and returns raw bytes.
     """
-    with download_file_stream(drive, file, cache) as stream:
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    with download_file_stream(gdrive_client, file) as stream:
         return stream.getvalue()
 
 
