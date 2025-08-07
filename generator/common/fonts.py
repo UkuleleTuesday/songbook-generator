@@ -33,6 +33,7 @@ def find_font_path(font_name: str) -> Optional[str]:
     """
     try:
         # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
+        print(f"XXX FONT NAME = {font_name}")
         parts = font_name.split("-")
         family = parts[0]
         style = parts[1] if len(parts) > 1 else "Regular"
