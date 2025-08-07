@@ -2,18 +2,12 @@ import fitz
 import pytest
 from unittest.mock import patch, MagicMock
 
-from .fonts import (
-    find_font_path,
-    resolve_font,
-)
+from .fonts import resolve_font
 
 
-@patch("generator.common.fonts.find_font_path")
 @patch("importlib.resources.files")
 @patch("fitz.Font")
-def test_resolve_font_from_package_resources(
-    mock_fitz_font, mock_importlib_files, mock_find_font_path
-):
+def test_resolve_font_from_package_resources(mock_fitz_font, mock_importlib_files):
     """Test that a font is loaded from package resources if available."""
     # Setup mock for importlib.resources
     mock_font_file = MagicMock()
@@ -25,49 +19,33 @@ def test_resolve_font_from_package_resources(
     mock_importlib_files.assert_called_once_with("generator.fonts")
     mock_importlib_files.return_value.joinpath.assert_called_once_with("SomeFont.ttf")
     mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
-    mock_find_font_path.assert_not_called()
 
 
-@patch("generator.common.fonts.find_font_path")
 @patch("importlib.resources.files", side_effect=FileNotFoundError)
+@patch("os.path.dirname")
+@patch("builtins.open")
 @patch("fitz.Font")
-def test_resolve_font_from_system_path(
-    mock_fitz_font, mock_importlib_files, mock_find_font_path
+def test_resolve_font_fallback_to_filesystem(
+    mock_fitz_font, mock_open, mock_dirname, mock_importlib_files
 ):
-    """Test that a font is loaded from a system path when not in resources."""
-    mock_find_font_path.return_value = "/fake/path/to/font.ttf"
+    """Test that it falls back to filesystem for GCF-like environments."""
+    mock_dirname.return_value = "/fake/path/to/common"
+    mock_file = MagicMock()
+    mock_file.read.return_value = b"font_data_from_file"
+    mock_open.return_value.__enter__.return_value = mock_file
 
     resolve_font("SomeFont.ttf")
 
-    mock_find_font_path.assert_called_once_with("SomeFont.ttf")
-    mock_fitz_font.assert_called_once_with(fontfile="/fake/path/to/font.ttf")
+    mock_importlib_files.assert_called_once_with("generator.fonts")
+    mock_open.assert_called_once_with("/fake/path/to/fonts/SomeFont.ttf", "rb")
+    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data_from_file")
 
 
-@patch("generator.common.fonts.find_font_path", return_value=None)
 @patch("importlib.resources.files", side_effect=FileNotFoundError)
-@patch("fitz.Font")
-def test_resolve_font_fallback_to_fitz_search(
-    mock_fitz_font, mock_importlib_files, mock_find_font_path
-):
-    """Test that it falls back to fitz's built-in search."""
-    resolve_font("SomeFont-Bold")
-
-    mock_fitz_font.assert_called_once_with("SomeFont-Bold")
-
-
-@patch("generator.common.fonts.find_font_path", return_value=None)
-@patch("importlib.resources.files", side_effect=FileNotFoundError)
-def test_resolve_font_total_failure(mock_importlib_files, mock_find_font_path):
+@patch("builtins.open", side_effect=FileNotFoundError)
+def test_resolve_font_total_failure(mock_open, mock_importlib_files):
     """Test that an exception is raised when all methods fail."""
+    with pytest.raises(FileNotFoundError) as excinfo:
+        resolve_font("NonExistentFont.ttf")
 
-    def fitz_font_side_effect(font_name, *args, **kwargs):
-        if font_name == "NonExistentFont":
-            raise RuntimeError("Font not found")
-        return MagicMock()
-
-    with patch(
-        "fitz.Font", side_effect=fitz_font_side_effect
-    ) as mock_fitz_font, pytest.raises(FileNotFoundError):
-        resolve_font("NonExistentFont")
-
-    mock_fitz_font.assert_called_once_with("NonExistentFont")
+    assert "Font file not found for: NonExistentFont.ttf" in str(excinfo.value)
