@@ -18,6 +18,30 @@ def client(credentials: credentials.Credentials):
     return build("drive", "v3", credentials=credentials)
 
 
+def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
+    """
+    Build Google Drive API query filters for custom properties.
+
+    Args:
+        property_filters: Dict of property_name -> value pairs to filter by
+
+    Returns:
+        String of property filter conditions to append to the main query
+    """
+    if not property_filters:
+        return ""
+
+    filters = []
+    for prop_name, prop_value in property_filters.items():
+        # Escape single quotes in property values
+        escaped_value = prop_value.replace("'", "\\'")
+        filters.append(
+            f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}"
+        )
+
+    return " and " + " and ".join(filters) if filters else ""
+
+
 class GoogleDriveClient:
     def __init__(self, credentials: credentials.Credentials, cache):
         self.drive = client(credentials)
@@ -59,31 +83,6 @@ class GoogleDriveClient:
         except HttpError as e:
             click.echo(f"Error querying Drive API: {e}", err=True)
             return []
-
-
-def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
-    """
-    Build Google Drive API query filters for custom properties.
-
-    Args:
-        property_filters: Dict of property_name -> value pairs to filter by
-
-    Returns:
-        String of property filter conditions to append to the main query
-    """
-    if not property_filters:
-        return ""
-
-    filters = []
-    for prop_name, prop_value in property_filters.items():
-        # Escape single quotes in property values
-        escaped_value = prop_value.replace("'", "\\'")
-        filters.append(
-            f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}"
-        )
-
-    return " and " + " and ".join(filters) if filters else ""
-
 
     def query_drive_files(
         self,
@@ -202,6 +201,7 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
             f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
         )
         return filtered_files
+
 
 
 def get_files_metadata_by_ids(
