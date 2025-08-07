@@ -182,8 +182,10 @@ def _gather_font_replacements(
                 continue
 
             try:
+                # PDF font names should not contain spaces. Replace with a hyphen.
+                postscript_font_name = base_font_name.replace(" ", "-")
                 new_xref = page.insert_font(
-                    fontfile=font_path, fontname=base_font_name
+                    fontfile=font_path, fontname=postscript_font_name
                 )
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
