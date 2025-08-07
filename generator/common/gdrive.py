@@ -61,7 +61,7 @@ class GoogleDriveClient:
             return []
 
 
-def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
+def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
     """
     Build Google Drive API query filters for custom properties.
 
@@ -103,7 +103,7 @@ def query_drive_files(
         List of files, or empty list if error occurs
     """
     base_query = f"'{source_folder}' in parents and trashed = false"
-    property_query = build_property_filters(property_filters)
+    property_query = _build_property_filters(property_filters)
     query = base_query + property_query
 
     if modified_after:

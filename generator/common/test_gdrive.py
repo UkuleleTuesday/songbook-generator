@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, query_drive_files, build_property_filters
+from .gdrive import GoogleDriveClient, query_drive_files, _build_property_filters
 
 
 @pytest.fixture
@@ -206,19 +206,19 @@ def test_query_drive_files_logs_property_filters(mock_echo, mock_drive):
     )
 
 
-def test_build_property_filters():
-    """Test the build_property_filters function."""
+def test__build_property_filters():
+    """Test the _build_property_filters function."""
     # Test with no filters
-    assert build_property_filters(None) == ""
-    assert build_property_filters({}) == ""
+    assert _build_property_filters(None) == ""
+    assert _build_property_filters({}) == ""
 
     # Test with single filter
-    result = build_property_filters({"artist": "Beatles"})
+    result = _build_property_filters({"artist": "Beatles"})
     expected = " and properties has { key='artist' and value='Beatles' }"
     assert result == expected
 
     # Test with multiple filters
-    result = build_property_filters({"artist": "Beatles", "difficulty": "easy"})
+    result = _build_property_filters({"artist": "Beatles", "difficulty": "easy"})
     # Since dict order may vary, check both possible orders
     expected1 = (
         " and properties has { key='artist' and value='Beatles' } and "
@@ -231,6 +231,6 @@ def test_build_property_filters():
     assert result in [expected1, expected2]
 
     # Test escaping single quotes
-    result = build_property_filters({"song": "Don't Stop Me Now"})
+    result = _build_property_filters({"song": "Don't Stop Me Now"})
     expected = " and properties has { key='song' and value='Don\\'t Stop Me Now' }"
     assert result == expected
