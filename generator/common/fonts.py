@@ -17,10 +17,7 @@ logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 
 # Initialize fontra's font database on module load
-try:
-    fontra.init_fontdb()
-except (RuntimeError, OSError) as e:
-    logger.error("Failed to initialize fontra's font database: %s", e)
+fontra.init_fontdb()
 
 
 @lru_cache(maxsize=128)
