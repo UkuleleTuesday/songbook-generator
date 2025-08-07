@@ -5,24 +5,17 @@ on:
     # Run every 10 minutes
     - cron: '*/10 * * * *'
   workflow_dispatch:
-    # Allow manual triggering for testing
-    inputs:
-      songbook_edition:
-        description: 'Songbook edition'
-        required: false
-        type: choice
-        default: 'regular'
-        options:
-          - 'regular'
-          - 'complete'
 
 permissions:
   contents: read
 
 jobs:
   generate-songbook:
-    name: Generate Songbook
+    name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        edition: [regular, complete]
 
     steps:
     - name: Checkout repository
@@ -83,12 +76,9 @@ jobs:
     - name: Trigger songbook generation
       if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
       run: |
-        # Use inputs with their defaults, defaulting to 'regular' for scheduled runs
-        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || 'regular' }}"
-
-        # Prepare the payload for the API
+        # Prepare the payload for the API using the matrix edition
         PAYLOAD=$(jq -n \
-          --arg edition "$SONGBOOK_EDITION" \
+          --arg edition "${{ matrix.edition }}" \
           '{
             edition: $edition
           }')
