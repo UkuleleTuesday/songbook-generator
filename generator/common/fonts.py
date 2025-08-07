@@ -33,11 +33,15 @@ def _log_pdf_fonts(doc: fitz.Document, title: str):
             # We can inspect it to see how fonts are named (e.g., /F1, /F2).
             resources_xref = doc.page_xref(i)
             if resources_xref > 0:
-                resources_dict = doc.xref_get_keys(resources_xref)
+                keys = doc.xref_get_keys(resources_xref)
                 click.echo(f"  Page Resources XREF: {resources_xref}")
-                for key, value in resources_dict.items():
-                    if key == "Font":
-                        click.echo(f"    - Font Dictionary: {value}")
+
+                # keys is a tuple like ('Type', 'Contents', 'Resources', ...)
+                for k in keys:
+                    if k == "Font":
+                        _type, val = doc.xref_get_key(resources_xref, k)
+                        # val is either the PDF object text or another xref number
+                        click.echo(f"    - /Font entry ({_type}): {val}")
         except Exception as e:
             click.echo(f"  Could not get page resource info: {e}")
 
