@@ -114,7 +114,6 @@ def test_gather_font_replacements_font_not_found(mock_fontra):
 # --- Tests for normalize_pdf_fonts ---
 
 
-
 def test_normalize_pdf_fonts_no_subsets():
     """Test that the PDF is unchanged if no subset fonts are present."""
     input_doc = fitz.open()
