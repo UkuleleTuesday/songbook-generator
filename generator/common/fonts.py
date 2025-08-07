@@ -34,17 +34,6 @@ def find_font_path(font_name: str) -> Optional[str]:
     Returns:
         The path to the font file, or None if not found.
     """
-    # Check for exact filename match in local fallback dir first
-    # This is for fonts like "RobotoCondensed-Regular.ttf"
-    for ext in ("ttf", "otf"):
-        if font_name.endswith(f".{ext}"):
-            local_path = FONTS_DIR / font_name
-            if local_path.exists():
-                logger.debug(
-                    "Found font '%s' via local fallback at: %s", font_name, local_path
-                )
-                return str(local_path)
-
     try:
         # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
         parts = font_name.split("-")
@@ -63,7 +52,18 @@ def find_font_path(font_name: str) -> Optional[str]:
             e,
         )
 
-    # Fallback to checking local `fonts/` directory by font name
+    # Fallback to checking local `fonts/` directory
+    # First, check for exact filename match for names like "RobotoCondensed-Regular.ttf"
+    for ext in ("ttf", "otf"):
+        if font_name.endswith(f".{ext}"):
+            local_path = FONTS_DIR / font_name
+            if local_path.exists():
+                logger.debug(
+                    "Found font '%s' via local fallback at: %s", font_name, local_path
+                )
+                return str(local_path)
+
+    # Then, check for font names like "Verdana-Bold" -> "Verdana-Bold.ttf"
     # fontra names are usually PostScript names, but let's be flexible
     for ext in ("ttf", "otf"):
         # e.g. Verdana-Bold -> Verdana-Bold.ttf
