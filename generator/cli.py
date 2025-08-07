@@ -12,6 +12,7 @@ import json
 from .common.gdrive import (
     GoogleDriveClient,
 )
+from .common.caching import init_cache
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
@@ -247,10 +248,23 @@ def generate(
     default=False,
     help="Update tags on Drive files in addition to syncing to GCS cache.",
 )
+@click.option(
+    "--local",
+    is_flag=True,
+    default=False,
+    help="Sync to the local cache instead of GCS.",
+)
 def sync_cache_command(
-    ctx, source_folder, no_metadata, force, update_tags_only, update_tags, **kwargs
+    ctx,
+    source_folder,
+    no_metadata,
+    force,
+    update_tags_only,
+    update_tags,
+    local,
+    **kwargs,
 ):
-    """Syncs files and metadata from Google Drive to the GCS cache."""
+    """Syncs files and metadata from Google Drive to the cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
@@ -264,9 +278,16 @@ def sync_cache_command(
 
         last_merge_time = None
         if not force:
-            last_merge_time = merger_main._get_last_merge_time(services["cache_bucket"])
+            if not local:
+                last_merge_time = merger_main._get_last_merge_time(
+                    services["cache_bucket"]
+                )
         else:
             click.echo("Force flag set. Performing a full sync.")
+
+        if local:
+            click.echo("Using local cache.")
+            services["cache"] = init_cache(use_gcs=False)
 
         click.echo(f"Syncing folders: {source_folders}")
         sync_cache(
