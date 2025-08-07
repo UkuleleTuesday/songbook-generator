@@ -37,7 +37,10 @@ def test_resolve_font_fallback_to_filesystem(
     resolve_font("SomeFont.ttf")
 
     mock_importlib_files.assert_called_once_with("generator.fonts")
-    mock_open.assert_called_once_with("/fake/path/to/fonts/SomeFont.ttf", "rb")
+    # Normalize path for assertion to avoid issues with '..'
+    called_path = mock_open.call_args[0][0]
+    normalized_path = os.path.normpath(called_path)
+    assert normalized_path == "/fake/path/to/fonts/SomeFont.ttf"
     mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data_from_file")
 
 
