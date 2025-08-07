@@ -280,13 +280,13 @@ class GoogleDriveClient:
                     click.echo(f"Using cached version of {file_name} (ID: {file_id})")
                     return cached
             except FileNotFoundError:
-            # This is an expected cache miss for local storage, not an error.
-            pass
-        except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
-            span.set_attribute("cache.error", str(e))
-            click.echo(
-                f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
-            )
+                # This is an expected cache miss for local storage, not an error.
+                pass
+            except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
+                span.set_attribute("cache.error", str(e))
+                click.echo(
+                    f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+                )
 
         span.set_attribute("cache.hit", False)
         click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
