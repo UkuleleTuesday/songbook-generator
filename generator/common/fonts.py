@@ -40,11 +40,11 @@ def find_font_path(font_name: str) -> Optional[str]:
         try:
             font_ref = fontra.get_font(family, style)
         except KeyError as e:
-            raise KeyError(
-                f"Font lookup failed for font '{font_name}' (parsed as family='{family}', style='{style}'). "
-                f"This may be due to a missing font on the system or a font naming issue. "
-                f"Original error: {e}"
-            ) from e
+            click.echo(
+                f"Warning: Font lookup failed for font '{font_name}' (parsed as family='{family}', style='{style}'). "
+                f"The font will be skipped. Original error: {e}"
+            )
+            return None
 
         if font_ref and font_ref.path:
             font_path = str(font_ref.path)
