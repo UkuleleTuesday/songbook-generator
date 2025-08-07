@@ -59,12 +59,17 @@ def create_test_pdf_with_subset_font(
         doc.new_page()
     page = doc[0]
 
-    font_buffer = fitz.Font("helv").buffer
-    # Inserting the font and then using it in insert_text is the key to get it
-    # correctly listed in the page's fonts.
-    page.insert_font(fontname=font_name, fontbuffer=font_buffer, set_simple=True)
+    # Create a font with the desired subset name.
+    # We must save and reload the doc for the font to be properly embedded and listed.
+    font = fitz.Font("helv")
+    font_buffer = font.buffer
+    page.insert_font(fontname=font_name, fontbuffer=font_buffer)
     page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
-    return doc
+
+    # Save and reload to ensure font is correctly embedded and available in get_fonts()
+    pdf_bytes = doc.tobytes()
+    new_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    return new_doc
 
 
 # --- Tests for _gather_font_replacements ---
