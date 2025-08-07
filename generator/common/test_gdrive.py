@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, query_drive_files, _build_property_filters
+from .gdrive import GoogleDriveClient, _build_property_filters
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def test_search_files_by_name(mock_drive_client):
     )
 
 
-def test_query_drive_files_basic(mock_drive):
+def test_query_drive_files_basic(mock_drive_client):
     """Test basic functionality with a small result set."""
     # Mock the API response
     mock_response = {
@@ -52,9 +52,11 @@ def test_query_drive_files_basic(mock_drive):
         "nextPageToken": None,
     }
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
-    result = query_drive_files(mock_drive, "folder123")
+    result = mock_drive_client.query_drive_files("folder123")
 
     assert len(result) == 2
     assert result[0].id == "file1"
@@ -63,7 +65,7 @@ def test_query_drive_files_basic(mock_drive):
     assert result[1].name == "Song 2"
 
     # Verify the API was called correctly
-    mock_drive.files.return_value.list.assert_called_once_with(
+    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q="'folder123' in parents and trashed = false",
         pageSize=1000,
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
@@ -72,7 +74,7 @@ def test_query_drive_files_basic(mock_drive):
     )
 
 
-def test_query_drive_files_pagination(mock_drive):
+def test_query_drive_files_pagination(mock_drive_client):
     """Test pagination handling with multiple pages."""
     # First page response
     first_response = {
@@ -87,12 +89,12 @@ def test_query_drive_files_pagination(mock_drive):
     }
 
     # Configure mock to return different responses for each call
-    mock_drive.files.return_value.list.return_value.execute.side_effect = [
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = [
         first_response,
         second_response,
     ]
 
-    result = query_drive_files(mock_drive, "folder123")
+    result = mock_drive_client.query_drive_files("folder123")
 
     assert len(result) == 4
     assert result[0].id == "file1"
@@ -101,49 +103,55 @@ def test_query_drive_files_pagination(mock_drive):
     assert result[3].id == "file4"
 
     # Verify two API calls were made
-    assert mock_drive.files.return_value.list.call_count == 2
+    assert mock_drive_client.drive.files.return_value.list.call_count == 2
 
     # Check the calls were made with correct parameters
-    calls = mock_drive.files.return_value.list.call_args_list
+    calls = mock_drive_client.drive.files.return_value.list.call_args_list
     assert calls[0].kwargs["pageToken"] is None
     assert calls[1].kwargs["pageToken"] == "token123"
 
 
-def test_query_drive_files_empty_result(mock_drive):
+def test_query_drive_files_empty_result(mock_drive_client):
     """Test handling of empty results."""
     mock_response = {"files": [], "nextPageToken": None}
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
-    result = query_drive_files(mock_drive, "folder123")
+    result = mock_drive_client.query_drive_files("folder123")
 
     assert len(result) == 0
     assert result == []
 
 
-def test_query_drive_files_no_files_key(mock_drive):
+def test_query_drive_files_no_files_key(mock_drive_client):
     """Test handling when 'files' key is missing from response."""
     mock_response = {"nextPageToken": None}
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
-    result = query_drive_files(mock_drive, "folder123")
+    result = mock_drive_client.query_drive_files("folder123")
 
     assert len(result) == 0
     assert result == []
 
 
 @patch("generator.common.gdrive.click.echo")
-def test_query_drive_files_logs_query(mock_echo, mock_drive):
+def test_query_drive_files_logs_query(mock_echo, mock_drive_client):
     """Test that the function logs the query being executed."""
     mock_response = {
         "files": [{"id": "file1", "name": "Song 1"}],
         "nextPageToken": None,
     }
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
-    query_drive_files(mock_drive, "folder123")
+    mock_drive_client.query_drive_files("folder123")
 
     # Verify the query was logged
     mock_echo.assert_called_once_with(
@@ -151,7 +159,7 @@ def test_query_drive_files_logs_query(mock_echo, mock_drive):
     )
 
 
-def test_query_drive_files_with_property_filters(mock_drive):
+def test_query_drive_files_with_property_filters(mock_drive_client):
     """Test property filtering functionality."""
     mock_response = {
         "files": [
@@ -160,10 +168,12 @@ def test_query_drive_files_with_property_filters(mock_drive):
         "nextPageToken": None,
     }
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
     property_filters = {"artist": "Beatles", "difficulty": "easy"}
-    result = query_drive_files(mock_drive, "folder123", property_filters)
+    result = mock_drive_client.query_drive_files("folder123", property_filters)
 
     assert len(result) == 1
     assert result[0].id == "file1"
@@ -175,7 +185,7 @@ def test_query_drive_files_with_property_filters(mock_drive):
         "properties has { key='difficulty' and value='easy' }"
     )
 
-    mock_drive.files.return_value.list.assert_called_once_with(
+    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=1000,
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
@@ -185,17 +195,19 @@ def test_query_drive_files_with_property_filters(mock_drive):
 
 
 @patch("generator.common.gdrive.click.echo")
-def test_query_drive_files_logs_property_filters(mock_echo, mock_drive):
+def test_query_drive_files_logs_property_filters(mock_echo, mock_drive_client):
     """Test that property filters are logged."""
     mock_response = {
         "files": [{"id": "file1", "name": "Song 1"}],
         "nextPageToken": None,
     }
 
-    mock_drive.files.return_value.list.return_value.execute.return_value = mock_response
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
 
     property_filters = {"artist": "Beatles"}
-    query_drive_files(mock_drive, "folder123", property_filters)
+    mock_drive_client.query_drive_files("folder123", property_filters)
 
     # Verify both the query and filters were logged
     assert mock_echo.call_count == 2

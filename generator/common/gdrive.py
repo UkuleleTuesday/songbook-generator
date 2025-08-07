@@ -85,122 +85,123 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
     return " and " + " and ".join(filters) if filters else ""
 
 
-def query_drive_files(
-    drive,
-    source_folder,
-    property_filters: Optional[Dict[str, str]] = None,
-    modified_after: Optional[datetime] = None,
-) -> List[File]:
-    """
-    Query Google Drive files with optional property filtering.
+    def query_drive_files(
+        self,
+        source_folder,
+        property_filters: Optional[Dict[str, str]] = None,
+        modified_after: Optional[datetime] = None,
+    ) -> List[File]:
+        """
+        Query Google Drive files with optional property filtering.
 
-    Args:
-        drive: Authenticated Google Drive service
-        source_folder: Folder ID to search in
-        property_filters: Optional dict of property_name -> value pairs to filter by
+        Args:
+            source_folder: Folder ID to search in
+            property_filters: Optional dict of property_name -> value pairs to filter by
 
-    Returns:
-        List of files, or empty list if error occurs
-    """
-    base_query = f"'{source_folder}' in parents and trashed = false"
-    property_query = _build_property_filters(property_filters)
-    query = base_query + property_query
+        Returns:
+            List of files, or empty list if error occurs
+        """
+        base_query = f"'{source_folder}' in parents and trashed = false"
+        property_query = _build_property_filters(property_filters)
+        query = base_query + property_query
 
-    if modified_after:
-        # Format for Drive API query, e.g., '2023-08-01T12:00:00'
-        ts_str = modified_after.isoformat()
-        query += f" and modifiedTime > '{ts_str}'"
+        if modified_after:
+            # Format for Drive API query, e.g., '2023-08-01T12:00:00'
+            ts_str = modified_after.isoformat()
+            query += f" and modifiedTime > '{ts_str}'"
 
-    click.echo(f"Executing Drive API query: {query}")
-    if property_filters:
-        click.echo(f"Filtering by properties: {property_filters}")
+        click.echo(f"Executing Drive API query: {query}")
+        if property_filters:
+            click.echo(f"Filtering by properties: {property_filters}")
 
-    files = []
-    page_token = None
+        files = []
+        page_token = None
 
-    while True:
-        try:
-            resp = (
-                drive.files()
-                .list(
-                    q=query,
-                    pageSize=1000,
-                    fields="nextPageToken, files(id,name,parents,properties,mimeType)",
-                    orderBy="name_natural",
-                    pageToken=page_token,
-                )
-                .execute()
-            )
-
-            for f in resp.get("files", []):
-                files.append(
-                    File(
-                        id=f["id"],
-                        name=f["name"],
-                        properties=f.get("properties", {}),
-                        mimeType=f.get("mimeType"),
-                        parents=f.get("parents", []),
+        while True:
+            try:
+                resp = (
+                    self.drive.files()
+                    .list(
+                        q=query,
+                        pageSize=1000,
+                        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
+                        orderBy="name_natural",
+                        pageToken=page_token,
                     )
+                    .execute()
                 )
-            page_token = resp.get("nextPageToken")
 
-            if not page_token:
+                for f in resp.get("files", []):
+                    files.append(
+                        File(
+                            id=f["id"],
+                            name=f["name"],
+                            properties=f.get("properties", {}),
+                            mimeType=f.get("mimeType"),
+                            parents=f.get("parents", []),
+                        )
+                    )
+                page_token = resp.get("nextPageToken")
+
+                if not page_token:
+                    break
+
+            except HttpError as e:
+                error_code = e.resp.status if e.resp else "unknown"
+                error_msg = str(e)
+
+                if error_code == 403:
+                    click.echo(
+                        f"Permission denied accessing folder {source_folder}. Check your access rights."
+                    )
+                elif error_code == 404:
+                    click.echo(
+                        f"Folder {source_folder} not found. Check the folder ID."
+                    )
+                elif error_code == 429:
+                    click.echo("API quota exceeded. Please try again later.")
+                else:
+                    click.echo(
+                        f"Error querying Drive API (HTTP {error_code}): {error_msg}"
+                    )
+
+                # Return partial results if we have any, otherwise empty list
                 break
 
-        except HttpError as e:
-            error_code = e.resp.status if e.resp else "unknown"
-            error_msg = str(e)
+        return files
 
-            if error_code == 403:
-                click.echo(
-                    f"Permission denied accessing folder {source_folder}. Check your access rights."
-                )
-            elif error_code == 404:
-                click.echo(f"Folder {source_folder} not found. Check the folder ID.")
-            elif error_code == 429:
-                click.echo("API quota exceeded. Please try again later.")
-            else:
-                click.echo(f"Error querying Drive API (HTTP {error_code}): {error_msg}")
+    def query_drive_files_with_client_filter(
+        self,
+        source_folder,
+        client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    ) -> List[File]:
+        """
+        Query Google Drive files and apply client-side filtering.
 
-            # Return partial results if we have any, otherwise empty list
-            break
+        Args:
+            source_folder: Folder ID to search in
+            client_filter: Client-side filter to apply after fetching files
 
-    return files
+        Returns:
+            List of files matching the client-side filter
+        """
+        # First, get all files from Drive (no server-side property filtering)
+        click.echo("Fetching all files from Drive for client-side filtering...")
+        all_files = self.query_drive_files(source_folder, None)
 
+        if not client_filter:
+            return all_files
 
-def query_drive_files_with_client_filter(
-    drive,
-    source_folder,
-    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
-) -> List[File]:
-    """
-    Query Google Drive files and apply client-side filtering.
+        # Apply client-side filtering
+        filtered_files = []
+        for file in all_files:
+            if client_filter.matches(file.properties):
+                filtered_files.append(file)
 
-    Args:
-        drive: Authenticated Google Drive service
-        source_folder: Folder ID to search in
-        client_filter: Client-side filter to apply after fetching files
-
-    Returns:
-        List of files matching the client-side filter
-    """
-    # First, get all files from Drive (no server-side property filtering)
-    click.echo("Fetching all files from Drive for client-side filtering...")
-    all_files = query_drive_files(drive, source_folder, None)
-
-    if not client_filter:
-        return all_files
-
-    # Apply client-side filtering
-    filtered_files = []
-    for file in all_files:
-        if client_filter.matches(file.properties):
-            filtered_files.append(file)
-
-    click.echo(
-        f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
-    )
-    return filtered_files
+        click.echo(
+            f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
+        )
+        return filtered_files
 
 
 def get_files_metadata_by_ids(
