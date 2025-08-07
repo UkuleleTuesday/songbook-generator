@@ -15,7 +15,6 @@ FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 tracer = get_tracer(__name__)
 
 
-
 # Initialize fontra's font database on module load
 fontra.init_fontdb()
 
@@ -87,7 +86,6 @@ def find_font_path(font_name: str) -> Optional[str]:
     return None
 
 
-
 def resolve_font(font_name: str) -> fitz.Font:
     """
     Finds and loads a font by its name, returning a fitz.Font object.
@@ -122,5 +120,3 @@ def resolve_font(font_name: str) -> fitz.Font:
     except RuntimeError:
         click.echo(f"Fallback for font '{font_name}' failed. Using built-in helv.")
         return fitz.Font("helv")
-
-

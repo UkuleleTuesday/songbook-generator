@@ -48,8 +48,6 @@ def test_find_font_path_not_found(mock_fontra, tmp_path):
     mock_fontra.assert_called_once_with("NonExistentFont", "Whatever")
 
 
-
-
 # --- Tests for resolve_font ---
 
 

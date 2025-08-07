@@ -25,16 +25,16 @@ def test_search_files_by_name(mock_drive_client):
         "nextPageToken": None,
     }
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     result = mock_drive_client.search_files_by_name("Song 1", ["folder123"])
 
     assert len(result) == 1
     assert result[0].id == "file1"
 
-    expected_query = "name contains 'Song 1' and ('folder123' in parents) and trashed = false"
+    expected_query = (
+        "name contains 'Song 1' and ('folder123' in parents) and trashed = false"
+    )
     mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=10,
@@ -50,9 +50,7 @@ def test_query_drive_files_basic(mock_drive_client):
         "nextPageToken": None,
     }
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     result = mock_drive_client.query_drive_files("folder123")
 
@@ -113,9 +111,7 @@ def test_query_drive_files_empty_result(mock_drive_client):
     """Test handling of empty results."""
     mock_response = {"files": [], "nextPageToken": None}
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     result = mock_drive_client.query_drive_files("folder123")
 
@@ -127,9 +123,7 @@ def test_query_drive_files_no_files_key(mock_drive_client):
     """Test handling when 'files' key is missing from response."""
     mock_response = {"nextPageToken": None}
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     result = mock_drive_client.query_drive_files("folder123")
 
@@ -145,9 +139,7 @@ def test_query_drive_files_logs_query(mock_echo, mock_drive_client):
         "nextPageToken": None,
     }
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     mock_drive_client.query_drive_files("folder123")
 
@@ -166,9 +158,7 @@ def test_query_drive_files_with_property_filters(mock_drive_client):
         "nextPageToken": None,
     }
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     property_filters = {"artist": "Beatles", "difficulty": "easy"}
     result = mock_drive_client.query_drive_files("folder123", property_filters)
@@ -200,9 +190,7 @@ def test_query_drive_files_logs_property_filters(mock_echo, mock_drive_client):
         "nextPageToken": None,
     }
 
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
-        mock_response
-    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
 
     property_filters = {"artist": "Beatles"}
     mock_drive_client.query_drive_files("folder123", property_filters)

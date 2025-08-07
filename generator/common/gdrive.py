@@ -298,7 +298,6 @@ class GoogleDriveClient:
 
         data = buffer.getvalue()
 
-
         # GCSFS supports setting metadata on upload via `metadata` kwarg.
         # The local file system fsspec impl does not support this.
         try:
@@ -409,7 +408,3 @@ class GoogleDriveClient:
         except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)
             return False
-
-
-
-
