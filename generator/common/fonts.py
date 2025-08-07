@@ -7,10 +7,14 @@ from typing import Dict, Optional
 
 import fitz
 import fontra
+from opentelemetry import trace
+
+from .tracing import get_tracer
 
 # Local fallback fonts directory
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 logger = logging.getLogger(__name__)
+tracer = get_tracer(__name__)
 
 # Initialize fontra's font database on module load
 try:
@@ -136,11 +140,14 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     Returns:
         The processed PDF content as bytes, or the original bytes if no changes were made.
     """
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    if not doc.is_pdf or doc.page_count == 0:
-        return pdf_bytes
+    with tracer.start_as_current_span("normalize_pdf_fonts") as span:
+        span.set_attribute("original_pdf_size", len(pdf_bytes))
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if not doc.is_pdf or doc.page_count == 0:
+            return pdf_bytes
 
-    # A map of {old_xref: new_xref} for font replacement
+        span.set_attribute("page_count", doc.page_count)
+        # A map of {old_xref: new_xref} for font replacement
     font_xref_map: Dict[int, int] = {}
     # A map of {base_font_name: new_xref} to avoid re-embedding the same font
     embedded_fonts: Dict[str, int] = {}
@@ -190,6 +197,8 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
                 )
 
     if not font_xref_map:
+        span.set_attribute("fonts_normalized_count", 0)
+        span.set_attribute("final_pdf_size", len(pdf_bytes))
         doc.close()
         return pdf_bytes
 
@@ -200,5 +209,10 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     # Save the document with garbage collection to remove the orphaned subset font objects.
     new_pdf_bytes = doc.tobytes(garbage=3, deflate=True)
     doc.close()
+
+    span.set_attribute("final_pdf_size", len(new_pdf_bytes))
+    span.set_attribute("fonts_normalized_count", len(font_xref_map))
+    span.set_attribute("embedded_fonts_count", len(embedded_fonts))
+    span.set_attribute("embedded_fonts", list(embedded_fonts.keys()))
 
     return new_pdf_bytes
