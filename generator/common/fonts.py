@@ -187,6 +187,8 @@ def _gather_font_replacements(
                 new_xref = page.insert_font(
                     fontfile=font_path, fontname=postscript_font_name
                 )
+                click.echo(f"XXXXXX xref: {xref}")
+                click.echo(f"XXXXXX new xref: {new_xref}")
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
             except RuntimeError as e:
