@@ -29,14 +29,15 @@ def _log_pdf_fonts(doc: fitz.Document, title: str):
         fonts_on_page = page.get_fonts(full=True)
 
         try:
-            # page.get_xfont_names() is deprecated, use page.get_font_names()
-            page_font_names = page.get_font_names()
-            click.echo(f"  Page Font Names: {page_font_names}")
-            resources_xref = page.get_xobject_xref("/Resources")
-            if resources_xref:
-                click.echo(
-                    f"  Page Resources XREF: {resources_xref}, Object: {doc.xref_object(resources_xref)}"
-                )
+            # The /Resources object on a page contains font references.
+            # We can inspect it to see how fonts are named (e.g., /F1, /F2).
+            resources_xref = doc.page_xref(i)[1]
+            if resources_xref > 0:
+                resources_dict = doc.xref_get_keys(resources_xref)
+                click.echo(f"  Page Resources XREF: {resources_xref}")
+                for key, value in resources_dict.items():
+                    if key == "Font":
+                        click.echo(f"    - Font Dictionary: {value}")
         except Exception as e:
             click.echo(f"  Could not get page resource info: {e}")
 
@@ -84,7 +85,6 @@ def find_font_path(font_name: str) -> Optional[str]:
     """
     try:
         # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
-        print(f"XXX FONT NAME = {font_name}")
         parts = font_name.split("-")
         family = parts[0]
         style = parts[1] if len(parts) > 1 else "Regular"
