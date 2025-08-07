@@ -100,7 +100,10 @@ def worker_main(cloud_event):
 
         try:
             drive, cache = init_services()  # Uses ADC from env
-            source_folders = params["source_folders"]
+            settings = get_settings()
+            source_folders = (
+                params.get("source_folders") or settings.song_sheets.folder_ids
+            )
             cover_file_id = params.get("cover_file_id")
             limit = params.get("limit")
             preface_file_ids = params.get("preface_file_ids")
@@ -127,7 +130,6 @@ def worker_main(cloud_event):
                 edition_id = params.get("edition")
 
                 if edition_id:
-                    settings = get_settings()
                     selected_edition = next(
                         (e for e in settings.editions if e.id == edition_id), None
                     )
