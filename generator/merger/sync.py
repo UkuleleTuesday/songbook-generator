@@ -135,7 +135,7 @@ def sync_cache(
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
                     gdrive_client.download_file_stream(
                         file,
-                        normalize_pdf_fonts=True,
+                        subset_fonts=False,
                         use_cache=modified_after is not None,
                     )
 

@@ -92,7 +92,7 @@ class CoverGenerator:
                     cache_prefix="covers",
                     mime_type="application/pdf",
                     export=True,
-                    normalize_pdf_fonts=False,
+                    subset_fonts=True,
                 )
                 return fitz.open(stream=pdf_data, filetype="pdf")
             except fitz.EmptyFileError as e:
@@ -111,7 +111,7 @@ class CoverGenerator:
                 cache_prefix="covers",
                 mime_type="application/pdf",
                 export=False,
-                normalize_pdf_fonts=False,
+                subset_fonts=True,
             )
             return fitz.open(stream=pdf_data, filetype="pdf")
 

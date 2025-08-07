@@ -210,7 +210,7 @@ class GoogleDriveClient:
         return filtered_files
 
     def download_file_stream(
-        self, file: File, normalize_pdf_fonts: bool = False, use_cache: bool = True
+        self, file: File, subset_fonts: bool = True, use_cache: bool = True
     ) -> io.BytesIO:
         """
         Fetches the PDF export of a Google Doc, using a LocalStorageCache.
@@ -226,13 +226,13 @@ class GoogleDriveClient:
             cache_prefix="song-sheets",
             mime_type="application/pdf",
             export=should_export,
-            normalize_pdf_fonts=normalize_pdf_fonts,
+            subset_fonts=subset_fonts,
             use_cache=use_cache,
         )
         return io.BytesIO(pdf_data)
 
     def stream_file_bytes(
-        self, files: List[File], normalize_pdf_fonts: bool = False, use_cache: bool = True
+        self, files: List[File], subset_fonts: bool = True, use_cache: bool = True
     ) -> Generator[bytes, None, None]:
         """
         Generator that yields the bytes of each file.
@@ -240,7 +240,7 @@ class GoogleDriveClient:
         """
         for f in files:
             with self.download_file_stream(
-                f, normalize_pdf_fonts=normalize_pdf_fonts, use_cache=use_cache
+                f, subset_fonts=subset_fonts, use_cache=use_cache
             ) as stream:
                 yield stream.getvalue()
 
@@ -251,7 +251,7 @@ class GoogleDriveClient:
         cache_prefix: str,
         mime_type: str = "application/pdf",
         export: bool = True,
-        normalize_pdf_fonts: bool = False,
+        subset_fonts: bool = True,
         use_cache: bool = True,
     ) -> bytes:
         """
@@ -307,7 +307,7 @@ class GoogleDriveClient:
 
         # If we exported a Google Doc to PDF, normalize its fonts before caching.
         # This reduces final songbook size significantly.
-        if export and mime_type == "application/pdf" and normalize_pdf_fonts:
+        if export and mime_type == "application/pdf" and not subset_fonts:
             click.echo(f"Normalizing fonts for {file_name}...")
             try:
                 data = normalize_pdf_fonts(data)
@@ -372,14 +372,14 @@ class GoogleDriveClient:
         return files
 
     def download_file_bytes(
-        self, file: File, normalize_pdf_fonts: bool = False, use_cache: bool = True
+        self, file: File, subset_fonts: bool = True, use_cache: bool = True
     ) -> bytes:
         """
         Legacy function for backward compatibility.
         Fetches the PDF export and returns raw bytes.
         """
         with self.download_file_stream(
-            file, normalize_pdf_fonts=normalize_pdf_fonts, use_cache=use_cache
+            file, subset_fonts=subset_fonts, use_cache=use_cache
         ) as stream:
             return stream.getvalue()
 
