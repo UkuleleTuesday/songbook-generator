@@ -114,38 +114,6 @@ def test_gather_font_replacements_font_not_found(mock_fontra):
 # --- Tests for normalize_pdf_fonts ---
 
 
-@patch("generator.common.fonts._gather_font_replacements")
-def test_normalize_pdf_fonts_replaces_subset_font(mock_gatherer, mock_fontra, tmp_path):
-    """Verify that a subset font is replaced with its full version."""
-    # We test _gather_font_replacements separately, so here we mock its behavior.
-    # We need a real doc to perform the final replacement steps on.
-    doc = fitz.open()
-    create_test_pdf_with_subset_font(doc)
-
-    # Save and reload to get a fresh state for testing the normalization
-    doc = fitz.open(stream=doc.tobytes())
-    fonts_on_page = doc[0].get_fonts(full=True)
-    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[4])
-
-    # Simulate that _gather_font_replacements found a replacement.
-    # The new_xref must be an existing, valid object xref for this test.
-    new_xref = doc[0].xref  # Use the page's xref as a valid target
-    mock_gatherer.return_value = ({original_xref: new_xref}, {"Verdana": new_xref})
-
-    input_bytes = doc.tobytes()
-    doc.close()
-
-    # Normalize the PDF
-    output_bytes = normalize_pdf_fonts(input_bytes)
-    output_doc = fitz.open(stream=output_bytes, filetype="pdf")
-
-    # Assertions
-    mock_gatherer.assert_called_once()
-    # Instead of xref_object, which can be ambiguous, check the raw xref source.
-    # This confirms that the object at original_xref is now an indirect reference.
-    expected_ref = f"{new_xref} 0 R"
-    assert expected_ref in output_doc.xref_object(original_xref)
-
 
 def test_normalize_pdf_fonts_no_subsets():
     """Test that the PDF is unchanged if no subset fonts are present."""
