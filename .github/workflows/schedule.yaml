@@ -1,4 +1,4 @@
-name: Daily Songbook Generation
+name: Generate Songbook
 
 on:
   schedule:
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  generate-daily-songbook:
+  generate-songbook:
     name: Generate Daily Songbook
     runs-on: ubuntu-latest
 
