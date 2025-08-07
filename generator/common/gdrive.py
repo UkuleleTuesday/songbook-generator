@@ -210,7 +210,7 @@ class GoogleDriveClient:
         return filtered_files
 
     def download_file_stream(
-        self, file: File, normalize_pdf_fonts: bool = False
+        self, file: File, normalize_pdf_fonts: bool = False, use_cache: bool = True
     ) -> io.BytesIO:
         """
         Fetches the PDF export of a Google Doc, using a LocalStorageCache.
@@ -227,11 +227,12 @@ class GoogleDriveClient:
             mime_type="application/pdf",
             export=should_export,
             normalize_pdf_fonts=normalize_pdf_fonts,
+            use_cache=use_cache,
         )
         return io.BytesIO(pdf_data)
 
     def stream_file_bytes(
-        self, files: List[File], normalize_pdf_fonts: bool = False
+        self, files: List[File], normalize_pdf_fonts: bool = False, use_cache: bool = True
     ) -> Generator[bytes, None, None]:
         """
         Generator that yields the bytes of each file.
@@ -239,7 +240,7 @@ class GoogleDriveClient:
         """
         for f in files:
             with self.download_file_stream(
-                f, normalize_pdf_fonts=normalize_pdf_fonts
+                f, normalize_pdf_fonts=normalize_pdf_fonts, use_cache=use_cache
             ) as stream:
                 yield stream.getvalue()
 
@@ -251,6 +252,7 @@ class GoogleDriveClient:
         mime_type: str = "application/pdf",
         export: bool = True,
         normalize_pdf_fonts: bool = False,
+        use_cache: bool = True,
     ) -> bytes:
         """
         Generic file downloader with caching.
@@ -258,24 +260,26 @@ class GoogleDriveClient:
         Can either download a file directly or export a Google Doc to a specific format.
         """
         span = trace.get_current_span()
+        span.set_attribute("cache.enabled", use_cache)
         cache_key = f"{cache_prefix}/{file_id}.pdf"
         span.set_attribute("cache.key", cache_key)
 
-        details = (
-            self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-        )
-        remote_ts = datetime.fromisoformat(
-            details["modifiedTime"].replace("Z", "+00:00")
-        )
-        span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
+        if use_cache:
+            details = (
+                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+            )
+            remote_ts = datetime.fromisoformat(
+                details["modifiedTime"].replace("Z", "+00:00")
+            )
+            span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
 
-        try:
-            cached = self.cache.get(cache_key, newer_than=remote_ts)
-            if cached:
-                span.set_attribute("cache.hit", True)
-                click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-                return cached
-        except FileNotFoundError:
+            try:
+                cached = self.cache.get(cache_key, newer_than=remote_ts)
+                if cached:
+                    span.set_attribute("cache.hit", True)
+                    click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+                    return cached
+            except FileNotFoundError:
             # This is an expected cache miss for local storage, not an error.
             pass
         except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
@@ -367,13 +371,15 @@ class GoogleDriveClient:
 
         return files
 
-    def download_file_bytes(self, file: File, normalize_pdf_fonts: bool = False) -> bytes:
+    def download_file_bytes(
+        self, file: File, normalize_pdf_fonts: bool = False, use_cache: bool = True
+    ) -> bytes:
         """
         Legacy function for backward compatibility.
         Fetches the PDF export and returns raw bytes.
         """
         with self.download_file_stream(
-            file, normalize_pdf_fonts=normalize_pdf_fonts
+            file, normalize_pdf_fonts=normalize_pdf_fonts, use_cache=use_cache
         ) as stream:
             return stream.getvalue()
 

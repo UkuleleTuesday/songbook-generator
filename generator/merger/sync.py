@@ -133,7 +133,11 @@ def sync_cache(
             if not update_tags_only:
                 with services["tracer"].start_as_current_span("sync_file"):
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
-                    gdrive_client.download_file_stream(file, normalize_pdf_fonts=True)
+                    gdrive_client.download_file_stream(
+                        file,
+                        normalize_pdf_fonts=True,
+                        use_cache=modified_after is not None,
+                    )
 
         if with_metadata and not update_tags_only:
             _sync_gcs_metadata_from_drive(source_folders, services)
