@@ -44,30 +44,28 @@ jobs:
     - name: Check for recent changes in GCS
       id: check-changes
       run: |
-        # Get the timestamp for 10 minutes ago in UTC
         CUTOFF_TIME=$(date -u -d '10 minutes ago' +%s)
         GCS_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
 
         echo "Checking for files in $GCS_PATH modified after $(date -u -d @$CUTOFF_TIME +'%Y-%m-%dT%H:%M:%SZ')"
 
-        # List files and check their modification times
-        # Using a loop to handle potentially large number of files without running out of memory
-        while IFS= read -r line; do
-          # Skip lines that don't look like file listings
-          [[ -n "$line" && "$line" == *" Z "* ]] || continue
+        LAST_UPDATED_STR=$(gcloud storage ls "$GCS_PATH**" --json | jq -r '.[].updated' | sort -r | head -n 1)
 
-          MOD_TIME_STR=$(echo "$line" | awk '{print $2}')
-          MOD_TIME_TS=$(date -u -d "$MOD_TIME_STR" +%s)
+        if [[ -z "$LAST_UPDATED_STR" ]]; then
+          echo "No files found in GCS bucket. No changes detected."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
 
-          if [[ "$MOD_TIME_TS" -gt "$CUTOFF_TIME" ]]; then
-            echo "Found recent changes. Proceeding with songbook generation."
-            echo "changes_detected=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-        done < <(gsutil ls -l "$GCS_PATH**" 2>/dev/null | grep -E '^[[:space:]]+[0-9]')
+        LAST_UPDATED_TS=$(date -u -d "$LAST_UPDATED_STR" +%s)
 
-        echo "No recent changes detected in GCS bucket."
-        echo "changes_detected=false" >> $GITHUB_OUTPUT
+        if [[ "$LAST_UPDATED_TS" -gt "$CUTOFF_TIME" ]]; then
+          echo "Found recent changes. Last update at $LAST_UPDATED_STR. Proceeding with songbook generation."
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+        else
+          echo "No recent changes detected. Last update at $LAST_UPDATED_STR."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Trigger songbook generation
       if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
