@@ -8,6 +8,14 @@ from .pdf import (
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
+from ..common.gdrive import GoogleDriveClient
+
+
+@pytest.fixture
+def mock_gdrive_client(mocker):
+    """Fixture to mock GoogleDriveClient."""
+    mock_client = mocker.Mock(spec=GoogleDriveClient)
+    return mock_client
 
 
 @pytest.fixture
@@ -139,10 +147,8 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
         assert metadata["creator"] == "Ukulele Tuesday Songbook Generator"
 
 
-def test_collect_and_sort_files_single_folder(mocker):
+def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
     """Test that files from a single folder are returned sorted by name."""
-    mock_drive = mocker.Mock()
-
     # Mock files in non-alphabetical order
     mock_files = [
         File(name="zebra.pdf", id="3"),
@@ -150,13 +156,10 @@ def test_collect_and_sort_files_single_folder(mocker):
         File(name="banana.pdf", id="2"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
 
@@ -169,13 +172,13 @@ def test_collect_and_sort_files_single_folder(mocker):
     assert result == expected
 
     # Verify the query was called correctly
-    mock_query.assert_called_once_with(mock_drive, "folder1", None)
+    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
+        "folder1", None
+    )
 
 
-def test_collect_and_sort_files_multiple_folders(mocker):
+def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
     """Test that files from multiple folders are aggregated and sorted."""
-    mock_drive = mocker.Mock()
-
     # Mock files from different folders
     folder1_files = [
         File(name="zebra.pdf", id="1"),
@@ -186,20 +189,19 @@ def test_collect_and_sort_files_multiple_folders(mocker):
         File(name="cherry.pdf", id="4"),
     ]
 
-    def mock_query_side_effect(drive, folder, filter):
+    def mock_query_side_effect(folder, filter):
         if folder == "folder1":
             return folder1_files
         elif folder == "folder2":
             return folder2_files
         return []
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
+    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
+        mock_query_side_effect
     )
-    mock_query.side_effect = mock_query_side_effect
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1", "folder2"],
     )
 
@@ -213,72 +215,63 @@ def test_collect_and_sort_files_multiple_folders(mocker):
     assert result == expected
 
     # Verify queries were called for both folders
-    assert mock_query.call_count == 2
+    assert mock_gdrive_client.query_drive_files_with_client_filter.call_count == 2
 
 
-def test_collect_and_sort_files_with_client_filter(mocker):
+def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
     """Test that client filter is passed through correctly."""
-    mock_drive = mocker.Mock()
     mock_filter = PropertyFilter(
         key="artist", operator=FilterOperator.EQUALS, value="Test Artist"
     )
 
     mock_files = [File(name="test.pdf", id="1")]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
         client_filter=mock_filter,
     )
 
     assert result == mock_files
-    mock_query.assert_called_once_with(mock_drive, "folder1", mock_filter)
-
-
-def test_collect_and_sort_files_empty_folders(mocker):
-    """Test that empty folders return an empty list."""
-    mock_drive = mocker.Mock()
-
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
+    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
+        "folder1", mock_filter
     )
-    mock_query.return_value = []
+
+
+def test_collect_and_sort_files_empty_folders(mocker, mock_gdrive_client):
+    """Test that empty folders return an empty list."""
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = []
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["empty_folder"],
     )
 
     assert result == []
 
 
-def test_collect_and_sort_files_with_progress_step(mocker):
+def test_collect_and_sort_files_with_progress_step(mocker, mock_gdrive_client):
     """Test that progress is reported correctly when progress_step is provided."""
-    mock_drive = mocker.Mock()
     mock_progress_step = mocker.Mock()
 
     folder1_files = [File(name="file1.pdf", id="1")]
     folder2_files = [File(name="file2.pdf", id="2")]
 
-    def mock_query_side_effect(drive, folder, filter):
+    def mock_query_side_effect(folder, filter):
         if folder == "folder1":
             return folder1_files
         elif folder == "folder2":
             return folder2_files
         return []
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
+    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
+        mock_query_side_effect
     )
-    mock_query.side_effect = mock_query_side_effect
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1", "folder2"],
         progress_step=mock_progress_step,
     )
@@ -300,20 +293,15 @@ def test_collect_and_sort_files_with_progress_step(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_no_progress_step(mocker):
+def test_collect_and_sort_files_no_progress_step(mocker, mock_gdrive_client):
     """Test that no progress reporting occurs when progress_step is None."""
-    mock_drive = mocker.Mock()
-
     mock_files = [File(name="test.pdf", id="1")]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     # Should not raise any errors when progress_step is None
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
         progress_step=None,
     )
@@ -321,22 +309,17 @@ def test_collect_and_sort_files_no_progress_step(mocker):
     assert result == mock_files
 
 
-def test_collect_and_sort_files_strips_artist_name(mocker):
+def test_collect_and_sort_files_strips_artist_name(mocker, mock_gdrive_client):
     """Test that sorting handles different cases correctly."""
-    mock_drive = mocker.Mock()
-
     mock_files = [
         File(name="ab - a.pdf", id="1"),
         File(name="a - cd.pdf", id="2"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
 
@@ -347,23 +330,18 @@ def test_collect_and_sort_files_strips_artist_name(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_case_sensitive_sorting(mocker):
+def test_collect_and_sort_files_case_sensitive_sorting(mocker, mock_gdrive_client):
     """Test that sorting handles different cases correctly."""
-    mock_drive = mocker.Mock()
-
     mock_files = [
         File(name="Zebra.pdf", id="1"),
         File(name="apple.pdf", id="2"),
         File(name="Banana.pdf", id="3"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
 
@@ -375,22 +353,17 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_strips_punctuation(mocker):
-    mock_drive = mocker.Mock()
-
+def test_collect_and_sort_files_strips_punctuation(mocker, mock_gdrive_client):
     mock_files = [
         File(name="!!banana.pdf", id="1"),
         File(name="apple", id="2"),
         File(name="cucumber.pdf", id="3"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
 
@@ -402,22 +375,17 @@ def test_collect_and_sort_files_strips_punctuation(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
-    mock_drive = mocker.Mock()
-
+def test_collect_and_sort_files_accent_sensitive_sorting(mocker, mock_gdrive_client):
     mock_files = [
         File(name="çb.pdf", id="1"),
         File(name="ca", id="2"),
         File(name="cz.pdf", id="3"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
 
@@ -429,22 +397,17 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
-    mock_drive = mocker.Mock()
-
+def test_collect_and_sort_files_numeral_sensitive_sorting(mocker, mock_gdrive_client):
     mock_files = [
         File(name="01 things.pdf", id="1"),
         File(name="things 100 things", id="2"),
         File(name="things 001 things.pdf", id="3"),
     ]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = mock_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1"],
     )
     expected = [
@@ -455,21 +418,19 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker):
     assert result == expected
 
 
-def test_collect_and_sort_files_progress_increment_calculation(mocker):
+def test_collect_and_sort_files_progress_increment_calculation(
+    mocker, mock_gdrive_client
+):
     """Test that progress increments are calculated correctly for different folder counts."""
-    mock_drive = mocker.Mock()
     mock_progress_step = mocker.Mock()
 
     # Test with 3 folders
     folder_files = [File(name="file.pdf", id="1")]
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
-    )
-    mock_query.return_value = folder_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = folder_files
 
     collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1", "folder2", "folder3"],
         progress_step=mock_progress_step,
     )
@@ -483,11 +444,12 @@ def test_collect_and_sort_files_progress_increment_calculation(mocker):
         assert f"Found 1 files in folder {i + 1}: folder{i + 1}" in args[1]
 
 
-def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
+def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
+    mocker, mock_gdrive_client
+):
     """Test handling of mixed empty and non-empty folders."""
-    mock_drive = mocker.Mock()
 
-    def mock_query_side_effect(drive, folder, filter):
+    def mock_query_side_effect(folder, filter):
         if folder == "folder1":
             return [File(name="file1.pdf", id="1")]
         elif folder == "folder2":
@@ -496,13 +458,12 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
             return [File(name="file2.pdf", id="2")]
         return []
 
-    mock_query = mocker.patch(
-        "generator.worker.pdf.query_drive_files_with_client_filter"
+    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
+        mock_query_side_effect
     )
-    mock_query.side_effect = mock_query_side_effect
 
     result = collect_and_sort_files(
-        drive=mock_drive,
+        gdrive_client=mock_gdrive_client,
         source_folders=["folder1", "folder2", "folder3"],
     )
 
@@ -514,4 +475,4 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(mocker):
     assert result == expected
 
     # Should have queried all folders
-    assert mock_query.call_count == 3
+    assert mock_gdrive_client.query_drive_files_with_client_filter.call_count == 3
