@@ -18,6 +18,10 @@ def client(credentials: credentials.Credentials):
     return build("drive", "v3", credentials=credentials)
 
 
+class GoogleDriveClient:
+    pass
+
+
 def search_files_by_name(
     drive, file_name: str, source_folders: List[str]
 ) -> List[File]:
