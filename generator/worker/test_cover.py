@@ -16,7 +16,7 @@ def test_apply_template_replacements_permission_error(mock_echo):
     docs = build("docs", "v1", http=docs_http)
     mock_config = config.Cover(file_id="doc123")
     generator = cover.CoverGenerator(
-        gdrive_client=Mock(spec=GoogleDriveClient),
+        gdrive_client=Mock(spec=cover.GoogleDriveClient),
         docs_service=docs,
         cover_config=mock_config,
     )
@@ -117,7 +117,7 @@ def test_generate_cover_no_cover_configured(mock_echo):
     """Test when no cover file is configured."""
     mock_config = config.Cover(file_id=None)
     generator = cover.CoverGenerator(
-        gdrive_client=Mock(spec=GoogleDriveClient),
+        gdrive_client=Mock(spec=cover.GoogleDriveClient),
         docs_service=Mock(),
         cover_config=mock_config,
     )
