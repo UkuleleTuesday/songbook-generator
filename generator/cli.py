@@ -27,15 +27,23 @@ def make_cli_progress_callback():
     return _callback
 
 
+def global_options(f):
+    """Decorator to apply global options to a command."""
+    options = [
+        click.option(
+            "--log-level",
+            default="INFO",
+            type=click.Choice(
+                ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+            ),
+            help="Set the logging level.",
+        )
+    ]
+    return functools.reduce(lambda x, opt: opt(x), options, f)
+
+
 @click.group(context_settings=dict(allow_interspersed_args=False))
-@click.option(
-    "--log-level",
-    default="INFO",
-    type=click.Choice(
-        ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
-    ),
-    help="Set the logging level.",
-)
+@global_options
 @click.pass_context
 def cli(ctx, log_level: str):
     """Songbook Generator CLI tool."""
