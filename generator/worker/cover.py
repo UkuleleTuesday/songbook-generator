@@ -57,7 +57,8 @@ class CoverGenerator:
             )
             return
         total = 0
-        for reply in result.get("replies", []):
+        replies = result.get("replies", []) if isinstance(result, dict) else []
+        for reply in replies:
             if reply is None:
                 continue
             try:

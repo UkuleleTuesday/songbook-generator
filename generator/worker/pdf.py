@@ -414,9 +414,11 @@ def generate_songbook(
                         drive_write_service = build(
                             "drive", "v3", credentials=cover_creds
                         )
+                        gdrive_client_write = GoogleDriveClient(
+                            cover_creds, cache
+                        )
                         cover_generator = cover.CoverGenerator(
-                            cache,
-                            drive_write_service,
+                            gdrive_client_write,
                             docs_write_service,
                             cover_config=config.get_settings().cover,
                         )

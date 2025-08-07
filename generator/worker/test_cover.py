@@ -15,7 +15,9 @@ def test_apply_template_replacements_permission_error(mock_echo):
     docs_http = HttpMockSequence([({"status": "403"}, "Permission denied")])
     docs = build("docs", "v1", http=docs_http)
     mock_config = config.Cover(file_id="doc123")
-    generator = cover.CoverGenerator(Mock(), Mock(), docs, mock_config)
+    generator = cover.CoverGenerator(
+        gdrive_client=Mock(), docs_service=docs, cover_config=mock_config
+    )
 
     generator._apply_template_replacements("doc123", {"{{PLACEHOLDER}}": "value"})
 
@@ -63,6 +65,7 @@ def test_generate_cover_basic(
     """Test basic cover generation functionality."""
     mock_now.return_value.format.return_value = "1st January 2024"
     pdf_content = b"fake pdf content"
+    # Mock for gdrive_client.download_file
     drive_http = HttpMockSequence(
         [
             (
@@ -106,7 +109,9 @@ def test_generate_cover_basic(
 def test_generate_cover_no_cover_configured(mock_echo):
     """Test when no cover file is configured."""
     mock_config = config.Cover(file_id=None)
-    generator = cover.CoverGenerator(Mock(), Mock(), Mock(), mock_config)
+    generator = cover.CoverGenerator(
+        gdrive_client=Mock(), docs_service=Mock(), cover_config=mock_config
+    )
     result = generator.generate_cover()
 
     assert result is None
@@ -115,15 +120,14 @@ def test_generate_cover_no_cover_configured(mock_echo):
     )
 
 
-@patch("generator.common.gdrive.GoogleDriveClient.download_file")
 @patch("generator.worker.cover.fitz.open")
-def test_generate_cover_templating_disabled(mock_fitz, mock_download_file):
+def test_generate_cover_templating_disabled(mock_fitz):
     """Test cover generation with templating disabled."""
     mock_gdrive_client = Mock(spec=cover.GoogleDriveClient)
     mock_docs = Mock()
 
     mock_pdf_data = b"fake pdf data"
-    mock_download_file.return_value = mock_pdf_data
+    mock_gdrive_client.download_file.return_value = mock_pdf_data
     mock_pdf = Mock()
     mock_fitz.return_value = mock_pdf
     mock_config = config.Cover(file_id="cover123")
@@ -186,10 +190,11 @@ def test_generate_cover_corrupted_pdf(
         pytest.raises(
             cover.CoverGenerationException, match="Downloaded cover file is corrupted"
         ),
-        patch("generator.common.caching.LocalStorageCache") as mock_cache,
+        patch("generator.common.caching.LocalStorageCache") as mock_cache_class,
     ):
-        mock_cache.get.return_value = None
-        cover.generate_cover(mock_cache, "cover123")
+        mock_cache_instance = mock_cache_class.return_value
+        mock_cache_instance.get.return_value = None
+        cover.generate_cover(mock_cache_instance, "cover123")
 
 
 @patch("generator.common.gdrive.GoogleDriveClient.download_file")
