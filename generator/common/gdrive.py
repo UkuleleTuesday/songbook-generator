@@ -210,7 +210,7 @@ class GoogleDriveClient:
         return filtered_files
 
     def download_file_stream(
-        self, file: File, normalize_pdf_fonts: bool = True
+        self, file: File, normalize_pdf_fonts: bool = False
     ) -> io.BytesIO:
         """
         Fetches the PDF export of a Google Doc, using a LocalStorageCache.
@@ -231,7 +231,7 @@ class GoogleDriveClient:
         return io.BytesIO(pdf_data)
 
     def stream_file_bytes(
-        self, files: List[File], normalize_pdf_fonts: bool = True
+        self, files: List[File], normalize_pdf_fonts: bool = False
     ) -> Generator[bytes, None, None]:
         """
         Generator that yields the bytes of each file.
@@ -250,7 +250,7 @@ class GoogleDriveClient:
         cache_prefix: str,
         mime_type: str = "application/pdf",
         export: bool = True,
-        normalize_pdf_fonts: bool = True,
+        normalize_pdf_fonts: bool = False,
     ) -> bytes:
         """
         Generic file downloader with caching.
@@ -367,7 +367,7 @@ class GoogleDriveClient:
 
         return files
 
-    def download_file_bytes(self, file: File, normalize_pdf_fonts: bool = True) -> bytes:
+    def download_file_bytes(self, file: File, normalize_pdf_fonts: bool = False) -> bytes:
         """
         Legacy function for backward compatibility.
         Fetches the PDF export and returns raw bytes.
