@@ -191,13 +191,22 @@ def test_resolve_font_fallback_to_fitz_search(
 
 @patch("generator.common.fonts.find_font_path", return_value=None)
 @patch("importlib.resources.files", side_effect=FileNotFoundError)
-@patch("fitz.Font", side_effect=RuntimeError("Font not found"))
-def test_resolve_font_total_failure(
-    mock_fitz_font, mock_importlib_files, mock_find_font_path
-):
+def test_resolve_font_total_failure(mock_importlib_files, mock_find_font_path):
     """Test that it falls back to built-in 'helv' when all methods fail."""
-    font = resolve_font("NonExistentFont")
-    # After all attempts fail, it should return a fitz.Font object for "helv"
-    # We can't easily check the call, but we can verify the result.
-    assert isinstance(font, fitz.Font)
-    assert "helv" in font.name.lower()
+
+    def fitz_font_side_effect(font_name, *args, **kwargs):
+        if font_name == "NonExistentFont":
+            raise RuntimeError("Font not found")
+        # For the fallback 'helv', we need to return a real font to check its properties
+        return fitz.Font("helv")
+
+    with patch("fitz.Font", side_effect=fitz_font_side_effect) as mock_fitz_font:
+        font = resolve_font("NonExistentFont")
+
+        # After all attempts fail, it should return a fitz.Font object for "helv"
+        assert isinstance(font, fitz.Font)
+        assert "helv" in font.name.lower()
+        # Verify that fitz.Font was called first for the original font, then for the fallback.
+        assert mock_fitz_font.call_count == 2
+        mock_fitz_font.assert_any_call("NonExistentFont")
+        mock_fitz_font.assert_any_call("helv")

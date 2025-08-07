@@ -2,57 +2,12 @@ import pytest
 from unittest.mock import MagicMock
 import fitz
 from .toc import (
-    resolve_font,
     generate_toc_title,
     TocGenerator,
     difficulty_symbol,
 )
 from .models import File
 from . import toc
-
-
-def test_resolve_font_valid_font(mocker):
-    """Test that a valid font file is loaded correctly."""
-    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
-    mock_find_font.return_value = "/fake/path/to/font.ttf"
-
-    mock_fitz_font = mocker.patch("fitz.Font")
-
-    resolve_font("SomeFont.ttf")
-
-    mock_find_font.assert_called_once_with("SomeFont.ttf")
-    mock_fitz_font.assert_called_once_with(fontfile="/fake/path/to/font.ttf")
-
-
-def test_resolve_font_fallback_to_path(mocker):
-    """Test that font loading falls back to a different font."""
-    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
-    # First find fails, second for "Verdana" succeeds.
-    mock_find_font.side_effect = [None, "/system/fonts/Verdana.ttf"]
-
-    mock_fitz_font = mocker.patch("fitz.Font")
-
-    resolve_font("MissingFont.ttf")
-
-    assert mock_find_font.call_count == 2
-    mock_find_font.assert_any_call("MissingFont.ttf")
-    mock_find_font.assert_any_call("Verdana")
-    mock_fitz_font.assert_called_once_with(fontfile="/system/fonts/Verdana.ttf")
-
-
-def test_resolve_font_total_failure(mocker):
-    """Test that it falls back to built-in font when all methods fail."""
-    mock_find_font = mocker.patch("generator.worker.toc.find_font_path")
-    mock_find_font.return_value = None  # All lookups fail
-
-    mock_fitz_font = mocker.patch("fitz.Font")
-
-    resolve_font("non_existent_font.ttf")
-
-    # Should have tried original font, then fallback Verdana
-    assert mock_find_font.call_count == 2
-    # Should have created a built-in font
-    mock_fitz_font.assert_called_once_with("helv")
 
 
 @pytest.mark.parametrize(
