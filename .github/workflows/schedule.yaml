@@ -1,63 +1,27 @@
-name: Daily Songbook Generation
+name: Generate Songbook
 
 on:
   schedule:
-    # Run daily at 6:00 AM UTC (adjust timezone as needed)
-    - cron: '0 6 * * *'
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
   workflow_dispatch:
     # Allow manual triggering for testing
     inputs:
-      limit:
-        description: 'Limit number of files'
-        required: false
-        type: number
-        default: 100
-      cover_file_id:
-        description: 'Cover file ID'
-        required: false
-        type: string
-        default: '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740'
       songbook_edition:
-        description: 'Songbook edition filter'
+        description: 'Songbook edition'
         required: false
         type: choice
-        default: ''
+        default: 'regular'
         options:
-          - ''
-          - regular
-          - halloween
-          - usa
-          - womens
-          - pride
-          - valentines
-          - uk
-          - scotland
-          - ireland
-          - france
-          - germany
-          - australia
-          - xmas
-          - canada
-          - italy
-          - netherlands
-          - spain
-          - sweden
-          - norway
-          - russia
-          - brazil
-          - puerto rico
-          - hawaii
-          - peace
-          - can2025
-          - nocan2025
-          - wales
+          - 'regular'
+          - 'complete'
 
 permissions:
   contents: read
 
 jobs:
-  generate-daily-songbook:
-    name: Generate Daily Songbook
+  generate-songbook:
+    name: Generate Songbook
     runs-on: ubuntu-latest
 
     steps:
@@ -71,30 +35,65 @@ jobs:
         export-variables: true
         keys-case: bypass
 
-    - name: Trigger songbook generation
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Check for recent changes in GCS
+      id: check-changes
       run: |
-        # Use inputs with their defaults
-        COVER_FILE_ID="${{ github.event.inputs.cover_file_id || '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740' }}"
-        LIMIT="${{ github.event.inputs.limit || '100' }}"
-        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || '' }}"
+        CUTOFF_TIME=$(date -u -d '10 minutes ago' +%s)
+        GCS_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
+
+        echo "Checking for files in $GCS_PATH modified after $(date -u -d @$CUTOFF_TIME +'%Y-%m-%dT%H:%M:%SZ')"
+
+        # Capture the output of gcloud ls to check for errors and empty results
+        GCS_LIST_JSON=$(gcloud storage ls "$GCS_PATH**" --json)
+        if [[ $? -ne 0 ]]; then
+            echo "::error::'gcloud storage ls' command failed."
+            exit 1
+        fi
+
+        # Extract the most recent update timestamp
+        LAST_UPDATED_STR=$(echo "$GCS_LIST_JSON" | jq -r '.[].updated' | sort -r | head -n 1)
+
+        if [[ -z "$LAST_UPDATED_STR" || "$LAST_UPDATED_STR" == "null" ]]; then
+          echo "No files found in GCS bucket or no valid update times. No changes detected."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        # Convert timestamp to seconds since epoch for comparison
+        LAST_UPDATED_TS=$(date -u -d "$LAST_UPDATED_STR" +%s)
+        if [[ $? -ne 0 ]]; then
+          echo "::error::Failed to parse timestamp '$LAST_UPDATED_STR'."
+          exit 1
+        fi
+
+        if [[ "$LAST_UPDATED_TS" -gt "$CUTOFF_TIME" ]]; then
+          echo "Found recent changes. Last update at $LAST_UPDATED_STR. Proceeding with songbook generation."
+          echo "changes_detected=true" >> $GITHUB_OUTPUT
+        else
+          echo "No recent changes detected. Last update at $LAST_UPDATED_STR."
+          echo "changes_detected=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Trigger songbook generation
+      if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
+      run: |
+        # Use inputs with their defaults, defaulting to 'regular' for scheduled runs
+        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || 'regular' }}"
 
         # Prepare the payload for the API
         PAYLOAD=$(jq -n \
-          --arg cover_id "$COVER_FILE_ID" \
-          --argjson limit "$LIMIT" \
+          --arg edition "$SONGBOOK_EDITION" \
           '{
-            source_folders: ["1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95", "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"],
-            cover_file_id: $cover_id,
-            limit: $limit
+            edition: $edition
           }')
 
-        # Add filter for songbook edition if specified
-        if [[ -n "$SONGBOOK_EDITION" ]]; then
-          FILTER="specialbooks:contains:$SONGBOOK_EDITION"
-          PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"filters\": \"$FILTER\"}")
-        fi
-
-        echo "Triggering daily songbook generation with payload: $PAYLOAD"
+        echo "Triggering songbook generation with payload: $PAYLOAD"
 
         # Get the API endpoint URL
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
@@ -118,9 +117,9 @@ jobs:
         echo "Created job with ID: $JOB_ID"
 
         # Poll for completion (with timeout)
-        TIMEOUT=1800  # 30 minutes
+        TIMEOUT=120  # 2 minutes
         ELAPSED=0
-        POLL_INTERVAL=5  # seconds
+        POLL_INTERVAL=1  # seconds
 
         while [[ $ELAPSED -lt $TIMEOUT ]]; do
           sleep $POLL_INTERVAL
