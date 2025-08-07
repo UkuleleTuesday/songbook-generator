@@ -15,6 +15,25 @@ from .tracing import get_tracer
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 tracer = get_tracer(__name__)
 
+
+def _log_pdf_fonts(doc: fitz.Document, title: str):
+    """Logs detailed font information for each page of a document."""
+    click.echo(f"\n--- {title} ---")
+    if not doc.is_pdf or doc.page_count == 0:
+        click.echo("Not a valid PDF or empty document.")
+        return
+
+    for i, page in enumerate(doc):
+        fonts_on_page = page.get_fonts(full=True)
+        if not fonts_on_page:
+            continue
+        click.echo(f"  Page {i + 1}/{doc.page_count}:")
+        for font in fonts_on_page:
+            xref, _, _, base, name, _, _ = font
+            click.echo(f"    - XREF: {xref}, BaseFont: '{base}', Name: '{name}'")
+    click.echo("--- End of Font Log ---\n")
+
+
 # Initialize fontra's font database on module load
 fontra.init_fontdb()
 
@@ -187,8 +206,9 @@ def _gather_font_replacements(
                 new_xref = page.insert_font(
                     fontfile=font_path, fontname=postscript_font_name
                 )
-                click.echo(f"XXXXXX xref: {xref}")
-                click.echo(f"XXXXXX new xref: {new_xref}")
+                click.echo(
+                    f"Embedding full font for '{base_font_name}' (new xref: {new_xref})"
+                )
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
             except RuntimeError as e:
@@ -215,21 +235,29 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
         if not doc.is_pdf or doc.page_count == 0:
             return pdf_bytes
 
+        _log_pdf_fonts(doc, "Fonts Before Normalization")
+
         span.set_attribute("page_count", doc.page_count)
         font_xref_map, embedded_fonts = _gather_font_replacements(doc)
 
         if not font_xref_map:
+            click.echo("No subset fonts found to normalize.")
             span.set_attribute("fonts_normalized_count", 0)
             span.set_attribute("final_pdf_size", len(pdf_bytes))
             doc.close()
             return pdf_bytes
 
+        click.echo(f"Font XREF replacement map: {font_xref_map}")
         # Replace the old font objects (xrefs) with references to the new ones.
         for old_xref, new_xref in font_xref_map.items():
             doc.update_object(old_xref, f"{new_xref} 0 R")
+            click.echo(f"Updated XREF {old_xref} to point to new font XREF {new_xref}")
 
         # Save the document with garbage collection to remove the orphaned subset font objects.
         new_pdf_bytes = doc.tobytes(garbage=3, deflate=True)
+
+        with fitz.open(stream=new_pdf_bytes, filetype="pdf") as new_doc:
+            _log_pdf_fonts(new_doc, "Fonts After Normalization")
         doc.close()
 
         span.set_attribute("final_pdf_size", len(new_pdf_bytes))
