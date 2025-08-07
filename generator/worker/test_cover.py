@@ -16,7 +16,9 @@ def test_apply_template_replacements_permission_error(mock_echo):
     docs = build("docs", "v1", http=docs_http)
     mock_config = config.Cover(file_id="doc123")
     generator = cover.CoverGenerator(
-        gdrive_client=Mock(), docs_service=docs, cover_config=mock_config
+        gdrive_client=Mock(spec=GoogleDriveClient),
+        docs_service=docs,
+        cover_config=mock_config,
     )
 
     generator._apply_template_replacements("doc123", {"{{PLACEHOLDER}}": "value"})
@@ -64,6 +66,11 @@ def test_generate_cover_basic(
 ):
     """Test basic cover generation functionality."""
     mock_now.return_value.format.return_value = "1st January 2024"
+
+    mock_creds = Mock()
+    mock_creds.universe_domain = "googleapis.com"
+    mock_get_credentials.return_value = mock_creds
+
     pdf_content = b"fake pdf content"
     # Mock for gdrive_client.download_file
     drive_http = HttpMockSequence(
@@ -110,7 +117,9 @@ def test_generate_cover_no_cover_configured(mock_echo):
     """Test when no cover file is configured."""
     mock_config = config.Cover(file_id=None)
     generator = cover.CoverGenerator(
-        gdrive_client=Mock(), docs_service=Mock(), cover_config=mock_config
+        gdrive_client=Mock(spec=GoogleDriveClient),
+        docs_service=Mock(),
+        cover_config=mock_config,
     )
     result = generator.generate_cover()
 
@@ -156,6 +165,10 @@ def test_generate_cover_corrupted_pdf(
     mock_build, mock_fitz, mock_get_credentials, tmp_path
 ):
     """Test handling of corrupted PDF file."""
+    mock_creds = Mock()
+    mock_creds.universe_domain = "googleapis.com"
+    mock_get_credentials.return_value = mock_creds
+
     pdf_content = b"corrupted"
     drive_http = HttpMockSequence(
         [
