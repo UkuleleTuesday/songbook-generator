@@ -114,7 +114,10 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
         "generator.worker.pdf.collect_and_sort_files",
         return_value=[File(name="Test Song.pdf", id="123")],
     )
-    mocker.patch("generator.worker.pdf.get_files_metadata_by_ids", return_value=[])
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.get_files_metadata_by_ids",
+        return_value=[],
+    )
     mocker.patch("generator.worker.pdf.get_credentials")
     mocker.patch(
         "generator.worker.cover.CoverGenerator.generate_cover", return_value=fitz.open()
