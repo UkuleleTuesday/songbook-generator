@@ -17,45 +17,7 @@ def client(credentials: credentials.Credentials):
     return build("drive", "v3", credentials=credentials)
 
 
-def search_files_by_name(
-    drive, file_name: str, source_folders: List[str]
-) -> List[File]:
-    """Search for files by name across multiple folders."""
-    parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
-    # Format for Drive API query, e.g., "name contains 'My Song'"
-    escaped_file_name = file_name.replace("'", "\\'")
-    query = f"name contains '{escaped_file_name}' and ({' or '.join(parent_queries)}) and trashed = false"
-
-    click.echo(f"Searching for file matching '{file_name}'...")
-    click.echo(f"Executing Drive API query: {query}")
-
-    try:
-        resp = (
-            drive.files()
-            .list(
-                q=query,
-                pageSize=10,  # Limit to a reasonable number for this use case
-                fields="files(id,name,parents,properties,mimeType)",
-            )
-            .execute()
-        )
-        files = [
-            File(
-                id=f["id"],
-                name=f["name"],
-                properties=f.get("properties", {}),
-                mimeType=f.get("mimeType"),
-                parents=f.get("parents", []),
-            )
-            for f in resp.get("files", [])
-        ]
-        return files
-    except HttpError as e:
-        click.echo(f"Error querying Drive API: {e}", err=True)
-        return []
-
-
-def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
+def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
     """
     Build Google Drive API query filters for custom properties.
 
@@ -79,316 +41,370 @@ def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
     return " and " + " and ".join(filters) if filters else ""
 
 
-def query_drive_files(
-    drive,
-    source_folder,
-    property_filters: Optional[Dict[str, str]] = None,
-    modified_after: Optional[datetime] = None,
-) -> List[File]:
-    """
-    Query Google Drive files with optional property filtering.
+class GoogleDriveClient:
+    def __init__(
+        self, cache, credentials: Optional[credentials.Credentials] = None, drive=None
+    ):
+        if drive:
+            self.drive = drive
+        elif credentials:
+            self.drive = client(credentials)
+        else:
+            raise ValueError("Either 'credentials' or 'drive' must be provided.")
+        self.cache = cache
 
-    Args:
-        drive: Authenticated Google Drive service
-        source_folder: Folder ID to search in
-        property_filters: Optional dict of property_name -> value pairs to filter by
+    def search_files_by_name(
+        self, file_name: str, source_folders: List[str]
+    ) -> List[File]:
+        """Search for files by name across multiple folders."""
+        parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
+        # Format for Drive API query, e.g., "name contains 'My Song'"
+        escaped_file_name = file_name.replace("'", "\\'")
+        query = f"name contains '{escaped_file_name}' and ({' or '.join(parent_queries)}) and trashed = false"
 
-    Returns:
-        List of files, or empty list if error occurs
-    """
-    base_query = f"'{source_folder}' in parents and trashed = false"
-    property_query = build_property_filters(property_filters)
-    query = base_query + property_query
+        click.echo(f"Searching for file matching '{file_name}'...")
+        click.echo(f"Executing Drive API query: {query}")
 
-    if modified_after:
-        # Format for Drive API query, e.g., '2023-08-01T12:00:00'
-        ts_str = modified_after.isoformat()
-        query += f" and modifiedTime > '{ts_str}'"
-
-    click.echo(f"Executing Drive API query: {query}")
-    if property_filters:
-        click.echo(f"Filtering by properties: {property_filters}")
-
-    files = []
-    page_token = None
-
-    while True:
         try:
             resp = (
-                drive.files()
+                self.drive.files()
                 .list(
                     q=query,
-                    pageSize=1000,
-                    fields="nextPageToken, files(id,name,parents,properties,mimeType)",
-                    orderBy="name_natural",
-                    pageToken=page_token,
+                    pageSize=10,  # Limit to a reasonable number for this use case
+                    fields="files(id,name,parents,properties,mimeType)",
                 )
                 .execute()
             )
-
-            for f in resp.get("files", []):
-                files.append(
-                    File(
-                        id=f["id"],
-                        name=f["name"],
-                        properties=f.get("properties", {}),
-                        mimeType=f.get("mimeType"),
-                        parents=f.get("parents", []),
-                    )
+            files = [
+                File(
+                    id=f["id"],
+                    name=f["name"],
+                    properties=f.get("properties", {}),
+                    mimeType=f.get("mimeType"),
+                    parents=f.get("parents", []),
                 )
-            page_token = resp.get("nextPageToken")
+                for f in resp.get("files", [])
+            ]
+            return files
+        except HttpError as e:
+            click.echo(f"Error querying Drive API: {e}", err=True)
+            return []
 
-            if not page_token:
+    def query_drive_files(
+        self,
+        source_folder,
+        property_filters: Optional[Dict[str, str]] = None,
+        modified_after: Optional[datetime] = None,
+    ) -> List[File]:
+        """
+        Query Google Drive files with optional property filtering.
+
+        Args:
+            source_folder: Folder ID to search in
+            property_filters: Optional dict of property_name -> value pairs to filter by
+
+        Returns:
+            List of files, or empty list if error occurs
+        """
+        base_query = f"'{source_folder}' in parents and trashed = false"
+        property_query = _build_property_filters(property_filters)
+        query = base_query + property_query
+
+        if modified_after:
+            # Format for Drive API query, e.g., '2023-08-01T12:00:00'
+            ts_str = modified_after.isoformat()
+            query += f" and modifiedTime > '{ts_str}'"
+
+        click.echo(f"Executing Drive API query: {query}")
+        if property_filters:
+            click.echo(f"Filtering by properties: {property_filters}")
+
+        files = []
+        page_token = None
+
+        while True:
+            try:
+                resp = (
+                    self.drive.files()
+                    .list(
+                        q=query,
+                        pageSize=1000,
+                        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
+                        orderBy="name_natural",
+                        pageToken=page_token,
+                    )
+                    .execute()
+                )
+
+                for f in resp.get("files", []):
+                    files.append(
+                        File(
+                            id=f["id"],
+                            name=f["name"],
+                            properties=f.get("properties", {}),
+                            mimeType=f.get("mimeType"),
+                            parents=f.get("parents", []),
+                        )
+                    )
+                page_token = resp.get("nextPageToken")
+
+                if not page_token:
+                    break
+
+            except HttpError as e:
+                error_code = e.resp.status if e.resp else "unknown"
+                error_msg = str(e)
+
+                if error_code == 403:
+                    click.echo(
+                        f"Permission denied accessing folder {source_folder}. Check your access rights."
+                    )
+                elif error_code == 404:
+                    click.echo(
+                        f"Folder {source_folder} not found. Check the folder ID."
+                    )
+                elif error_code == 429:
+                    click.echo("API quota exceeded. Please try again later.")
+                else:
+                    click.echo(
+                        f"Error querying Drive API (HTTP {error_code}): {error_msg}"
+                    )
+
+                # Return partial results if we have any, otherwise empty list
                 break
 
-        except HttpError as e:
-            error_code = e.resp.status if e.resp else "unknown"
-            error_msg = str(e)
+        return files
 
-            if error_code == 403:
-                click.echo(
-                    f"Permission denied accessing folder {source_folder}. Check your access rights."
-                )
-            elif error_code == 404:
-                click.echo(f"Folder {source_folder} not found. Check the folder ID.")
-            elif error_code == 429:
-                click.echo("API quota exceeded. Please try again later.")
-            else:
-                click.echo(f"Error querying Drive API (HTTP {error_code}): {error_msg}")
+    def query_drive_files_with_client_filter(
+        self,
+        source_folder,
+        client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    ) -> List[File]:
+        """
+        Query Google Drive files and apply client-side filtering.
 
-            # Return partial results if we have any, otherwise empty list
-            break
+        Args:
+            source_folder: Folder ID to search in
+            client_filter: Client-side filter to apply after fetching files
 
-    return files
+        Returns:
+            List of files matching the client-side filter
+        """
+        # First, get all files from Drive (no server-side property filtering)
+        click.echo("Fetching all files from Drive for client-side filtering...")
+        all_files = self.query_drive_files(source_folder, None)
 
+        if not client_filter:
+            return all_files
 
-def query_drive_files_with_client_filter(
-    drive,
-    source_folder,
-    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
-) -> List[File]:
-    """
-    Query Google Drive files and apply client-side filtering.
+        # Apply client-side filtering
+        filtered_files = []
+        for file in all_files:
+            if client_filter.matches(file.properties):
+                filtered_files.append(file)
 
-    Args:
-        drive: Authenticated Google Drive service
-        source_folder: Folder ID to search in
-        client_filter: Client-side filter to apply after fetching files
-
-    Returns:
-        List of files matching the client-side filter
-    """
-    # First, get all files from Drive (no server-side property filtering)
-    click.echo("Fetching all files from Drive for client-side filtering...")
-    all_files = query_drive_files(drive, source_folder, None)
-
-    if not client_filter:
-        return all_files
-
-    # Apply client-side filtering
-    filtered_files = []
-    for file in all_files:
-        if client_filter.matches(file.properties):
-            filtered_files.append(file)
-
-    click.echo(
-        f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
-    )
-    return filtered_files
-
-
-def get_files_metadata_by_ids(
-    drive, file_ids: List[str], progress_step=None
-) -> List[File]:
-    """
-    Get file metadata by their Google Drive IDs.
-
-    Args:
-        drive: Authenticated Google Drive service
-        file_ids: List of Google Drive file IDs
-        progress_step: Optional progress step for reporting
-
-    Returns:
-        List of file objects with metadata
-    """
-    files = []
-    for file_id in file_ids:
-        try:
-            # Get file metadata from Drive
-            file_metadata = (
-                drive.files()
-                .get(fileId=file_id, fields="id,name,properties,mimeType")
-                .execute()
-            )
-            file_obj = File(
-                id=file_id,
-                name=file_metadata.get("name", f"file_{file_id}"),
-                properties=file_metadata.get("properties", {}),
-                mimeType=file_metadata.get("mimeType"),
-            )
-            files.append(file_obj)
-
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Retrieved metadata for {file_obj.name}",
-                )
-        except HttpError as e:
-            click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Failed to retrieve file {file_id}",
-                )
-
-    return files
-
-
-def stream_file_bytes(drive, files: List[File], cache) -> Generator[bytes, None, None]:
-    """
-    Generator that yields the bytes of each file.
-    Files are fetched from cache if available, otherwise downloaded from Drive.
-    """
-    for f in files:
-        with download_file_stream(drive, f, cache) as stream:
-            yield stream.getvalue()
-
-
-def download_file(
-    drive,
-    file_id: str,
-    file_name: str,
-    cache,
-    cache_prefix: str,
-    mime_type: str = "application/pdf",
-    export: bool = True,
-) -> bytes:
-    """
-    Generic file downloader with caching.
-
-    Can either download a file directly or export a Google Doc to a specific format.
-    """
-    span = trace.get_current_span()
-    cache_key = f"{cache_prefix}/{file_id}.pdf"
-    span.set_attribute("cache.key", cache_key)
-
-    details = drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-    remote_ts = datetime.fromisoformat(details["modifiedTime"].replace("Z", "+00:00"))
-    span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
-
-    try:
-        cached = cache.get(cache_key, newer_than=remote_ts)
-        if cached:
-            span.set_attribute("cache.hit", True)
-            click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-            return cached
-    except FileNotFoundError:
-        # This is an expected cache miss for local storage, not an error.
-        pass
-    except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
-        span.set_attribute("cache.error", str(e))
         click.echo(
-            f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+            f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
         )
+        return filtered_files
 
-    span.set_attribute("cache.hit", False)
-    click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
-    if export:
-        request = drive.files().export_media(fileId=file_id, mimeType=mime_type)
-    else:
-        request = drive.files().get_media(fileId=file_id)
+    def download_file_stream(self, file: File, use_cache: bool = True) -> io.BytesIO:
+        """
+        Fetches the PDF export of a Google Doc, using a LocalStorageCache.
+        Only re-downloads if remote modifiedTime is newer than the cached file.
+        Returns a BytesIO stream of the file.
+        """
+        # Google Docs need to be exported, while regular PDFs can be downloaded directly.
+        should_export = file.mimeType == "application/vnd.google-apps.document"
 
-    buffer = io.BytesIO()
-    downloader = MediaIoBaseDownload(buffer, request)
-    done = False
-    while not done:
-        _, done = downloader.next_chunk()
+        pdf_data = self.download_file(
+            file_id=file.id,
+            file_name=file.name,
+            cache_prefix="song-sheets",
+            mime_type="application/pdf",
+            export=should_export,
+            use_cache=use_cache,
+        )
+        return io.BytesIO(pdf_data)
 
-    data = buffer.getvalue()
-    # GCSFS supports setting metadata on upload via `metadata` kwarg.
-    # The local file system fsspec impl does not support this.
-    try:
-        cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
-    except TypeError:
-        # Fallback for filesystems that don't support metadata
-        cache.put(cache_key, data)
-    return data
+    def stream_file_bytes(
+        self, files: List[File], use_cache: bool = True
+    ) -> Generator[bytes, None, None]:
+        """
+        Generator that yields the bytes of each file.
+        Files are fetched from cache if available, otherwise downloaded from Drive.
+        """
+        for f in files:
+            with self.download_file_stream(f, use_cache=use_cache) as stream:
+                yield stream.getvalue()
 
+    def download_file(
+        self,
+        file_id: str,
+        file_name: str,
+        cache_prefix: str,
+        mime_type: str = "application/pdf",
+        export: bool = True,
+        use_cache: bool = True,
+    ) -> bytes:
+        """
+        Generic file downloader with caching.
 
-def download_file_stream(drive, file: File, cache) -> io.BytesIO:
-    """
-    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
-    Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns a BytesIO stream of the file.
-    """
-    # Google Docs need to be exported, while regular PDFs can be downloaded directly.
-    should_export = file.mimeType == "application/vnd.google-apps.document"
+        Can either download a file directly or export a Google Doc to a specific format.
+        """
+        span = trace.get_current_span()
+        span.set_attribute("cache.enabled", use_cache)
+        cache_key = f"{cache_prefix}/{file_id}.pdf"
+        span.set_attribute("cache.key", cache_key)
 
-    pdf_data = download_file(
-        drive,
-        file.id,
-        file.name,
-        cache,
-        "song-sheets",
-        "application/pdf",
-        export=should_export,
-    )
-    return io.BytesIO(pdf_data)
+        if use_cache:
+            details = (
+                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+            )
+            remote_ts = datetime.fromisoformat(
+                details["modifiedTime"].replace("Z", "+00:00")
+            )
+            span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
 
+            try:
+                cached = self.cache.get(cache_key, newer_than=remote_ts)
+                if cached:
+                    span.set_attribute("cache.hit", True)
+                    click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+                    return cached
+            except FileNotFoundError:
+                # This is an expected cache miss for local storage, not an error.
+                pass
+            except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
+                span.set_attribute("cache.error", str(e))
+                click.echo(
+                    f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+                )
 
-def download_file_bytes(drive, file: File, cache) -> bytes:
-    """
-    Legacy function for backward compatibility.
-    Fetches the PDF export and returns raw bytes.
-    """
-    with download_file_stream(drive, file, cache) as stream:
-        return stream.getvalue()
+        span.set_attribute("cache.hit", False)
+        click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
+        if export:
+            request = self.drive.files().export_media(
+                fileId=file_id, mimeType=mime_type
+            )
+        else:
+            request = self.drive.files().get_media(fileId=file_id)
 
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
 
-def get_file_properties(drive, file_id: str) -> Optional[Dict[str, str]]:
-    """
-    Get custom properties for a given Google Drive file.
+        data = buffer.getvalue()
 
-    Args:
-        drive: Authenticated Google Drive service
-        file_id: The ID of the file.
+        # GCSFS supports setting metadata on upload via `metadata` kwarg.
+        # The local file system fsspec impl does not support this.
+        try:
+            self.cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
+        except TypeError:
+            # Fallback for filesystems that don't support metadata
+            self.cache.put(cache_key, data)
+        return data
 
-    Returns:
-        A dictionary of properties, or None if the file is not found.
-    """
-    try:
-        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
-        return file_metadata.get("properties", {})
-    except HttpError as e:
-        if e.resp.status == 404:
-            click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
+    def get_files_metadata_by_ids(
+        self, file_ids: List[str], progress_step=None
+    ) -> List[File]:
+        """
+        Get file metadata by their Google Drive IDs.
+
+        Args:
+            file_ids: List of Google Drive file IDs
+            progress_step: Optional progress step for reporting
+
+        Returns:
+            List of file objects with metadata
+        """
+        files = []
+        for file_id in file_ids:
+            try:
+                # Get file metadata from Drive
+                file_metadata = (
+                    self.drive.files()
+                    .get(fileId=file_id, fields="id,name,properties,mimeType")
+                    .execute()
+                )
+                file_obj = File(
+                    id=file_id,
+                    name=file_metadata.get("name", f"file_{file_id}"),
+                    properties=file_metadata.get("properties", {}),
+                    mimeType=file_metadata.get("mimeType"),
+                )
+                files.append(file_obj)
+
+                if progress_step:
+                    progress_step.increment(
+                        1 / len(file_ids),
+                        f"Retrieved metadata for {file_obj.name}",
+                    )
+            except HttpError as e:
+                click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
+                if progress_step:
+                    progress_step.increment(
+                        1 / len(file_ids),
+                        f"Failed to retrieve file {file_id}",
+                    )
+
+        return files
+
+    def download_file_bytes(self, file: File, use_cache: bool = True) -> bytes:
+        """
+        Legacy function for backward compatibility.
+        Fetches the PDF export and returns raw bytes.
+        """
+        with self.download_file_stream(file, use_cache=use_cache) as stream:
+            return stream.getvalue()
+
+    def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
+        """
+        Get custom properties for a given Google Drive file.
+
+        Args:
+            file_id: The ID of the file.
+
+        Returns:
+            A dictionary of properties, or None if the file is not found.
+        """
+        try:
+            file_metadata = (
+                self.drive.files().get(fileId=file_id, fields="properties").execute()
+            )
+            return file_metadata.get("properties", {})
+        except HttpError as e:
+            if e.resp.status == 404:
+                click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
+                return None
+            click.echo(f"An API error occurred: {e}", err=True)
             return None
-        click.echo(f"An API error occurred: {e}", err=True)
-        return None
 
+    def set_file_property(self, file_id: str, key: str, value: str) -> bool:
+        """
+        Sets a custom property on a Google Drive file.
 
-def set_file_property(drive, file_id: str, key: str, value: str) -> bool:
-    """
-    Sets a custom property on a Google Drive file.
+        Args:
+            file_id: The ID of the file to update.
+            key: The property key to set.
+            value: The property value to set.
 
-    Args:
-        drive: Authenticated Google Drive service
-        file_id: The ID of the file to update.
-        key: The property key to set.
-        value: The property value to set.
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            # First, get the current properties to not overwrite them
+            file_metadata = (
+                self.drive.files().get(fileId=file_id, fields="properties").execute()
+            )
+            properties = file_metadata.get("properties", {})
+            properties[key] = value
 
-    Returns:
-        True if successful, False otherwise.
-    """
-    try:
-        # First, get the current properties to not overwrite them
-        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
-        properties = file_metadata.get("properties", {})
-        properties[key] = value
-
-        body = {"properties": properties}
-        drive.files().update(fileId=file_id, body=body).execute()
-        return True
-    except HttpError as e:
-        click.echo(f"An error occurred: {e}", err=True)
-        return False
+            body = {"properties": properties}
+            self.drive.files().update(fileId=file_id, body=body).execute()
+            return True
+        except HttpError as e:
+            click.echo(f"An error occurred: {e}", err=True)
+            return False

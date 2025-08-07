@@ -3,7 +3,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from ..common import config, gdrive
+from ..common import config
+from ..common.gdrive import GoogleDriveClient
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
@@ -13,14 +14,12 @@ DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 class CoverGenerator:
     def __init__(
         self,
-        cache,
-        drive_service,
+        gdrive_client: GoogleDriveClient,
         docs_service,
         cover_config: config.Cover,
         enable_templating=True,
     ):
-        self.cache = cache
-        self.drive = drive_service
+        self.gdrive_client = gdrive_client
         self.docs = docs_service
         self.config = cover_config
         self.enable_templating = enable_templating
@@ -58,7 +57,8 @@ class CoverGenerator:
             )
             return
         total = 0
-        for reply in result.get("replies", []):
+        replies = result.get("replies", []) if isinstance(result, dict) else []
+        for reply in replies:
             if reply is None:
                 continue
             try:
@@ -86,13 +86,11 @@ class CoverGenerator:
             self._apply_template_replacements(cover_file_id, replacement_map)
 
             try:
-                pdf_data = gdrive.download_file(
-                    self.drive,
-                    cover_file_id,
-                    f"Cover-{cover_file_id}",
-                    self.cache,
-                    "covers",
-                    "application/pdf",
+                pdf_data = self.gdrive_client.download_file(
+                    file_id=cover_file_id,
+                    file_name=f"Cover-{cover_file_id}",
+                    cache_prefix="covers",
+                    mime_type="application/pdf",
                     export=True,
                 )
                 return fitz.open(stream=pdf_data, filetype="pdf")
@@ -106,13 +104,11 @@ class CoverGenerator:
                 self._apply_template_replacements(cover_file_id, revert_map)
         else:
             # No templating, just download the file
-            pdf_data = gdrive.download_file(
-                self.drive,
-                cover_file_id,
-                f"Cover-{cover_file_id}",
-                self.cache,
-                "covers",
-                "application/pdf",
+            pdf_data = self.gdrive_client.download_file(
+                file_id=cover_file_id,
+                file_name=f"Cover-{cover_file_id}",
+                cache_prefix="covers",
+                mime_type="application/pdf",
                 export=False,
             )
             return fitz.open(stream=pdf_data, filetype="pdf")
@@ -126,7 +122,7 @@ def generate_cover(cache, cover_file_id=None):
         ]
     )
     docs_write = build("docs", "v1", credentials=creds)
-    drive_write = build("drive", "v3", credentials=creds)
+    gdrive_client = GoogleDriveClient(cache=cache, credentials=creds)
     cover_config = config.get_settings().cover
-    generator = CoverGenerator(cache, drive_write, docs_write, cover_config)
+    generator = CoverGenerator(gdrive_client, docs_write, cover_config)
     return generator.generate_cover(cover_file_id)

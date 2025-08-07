@@ -14,10 +14,8 @@ from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from ..common.filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
+    GoogleDriveClient,
     client,
-    download_file_stream,
-    get_files_metadata_by_ids,
-    query_drive_files_with_client_filter,
 )
 from .models import File
 from ..common.tracing import get_tracer
@@ -79,7 +77,7 @@ def _sort_titles(files: List[File]) -> List[File]:
 
 
 def collect_and_sort_files(
-    drive,
+    gdrive_client: GoogleDriveClient,
     source_folders: List[str],
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
@@ -88,7 +86,7 @@ def collect_and_sort_files(
     Collect files from multiple Google Drive folders and sort them alphabetically by name.
 
     Args:
-        drive: Authenticated Google Drive service
+        gdrive_client: Authenticated Google Drive client
         source_folders: List of Google Drive folder IDs
         client_filter: Optional filter to apply to files
         progress_step: Optional progress step for reporting
@@ -107,8 +105,8 @@ def collect_and_sort_files(
             with tracer.start_as_current_span("query_gdrive_folder") as folder_span:
                 folder_span.set_attribute("folder_id", folder)
                 folder_span.set_attribute("filter", client_filter)
-                folder_files = query_drive_files_with_client_filter(
-                    drive, folder, client_filter
+                folder_files = gdrive_client.query_drive_files_with_client_filter(
+                    folder, client_filter
                 )
                 files.extend(folder_files)
                 folder_span.set_attribute("files_found", len(folder_files))
@@ -330,7 +328,10 @@ def generate_songbook(
         reporter = progress.ProgressReporter(on_progress)
 
         with reporter.step(1, "Querying files...") as step:
-            files = collect_and_sort_files(drive, source_folders, client_filter, step)
+            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+            files = collect_and_sort_files(
+                gdrive_client, source_folders, client_filter, step
+            )
 
             # Apply limit after collecting files from all folders
             if limit and len(files) > limit:
@@ -363,8 +364,8 @@ def generate_songbook(
         if preface_file_ids:
             with reporter.step(1, "Retrieving preface files...") as step:
                 with tracer.start_as_current_span("get_preface_files") as preface_span:
-                    preface_files = get_files_metadata_by_ids(
-                        drive, preface_file_ids, step
+                    preface_files = gdrive_client.get_files_metadata_by_ids(
+                        preface_file_ids, step
                     )
                     preface_span.set_attribute(
                         "preface_files_retrieved", len(preface_files)
@@ -376,8 +377,8 @@ def generate_songbook(
                 with tracer.start_as_current_span(
                     "get_postface_files"
                 ) as postface_span:
-                    postface_files = get_files_metadata_by_ids(
-                        drive, postface_file_ids, step
+                    postface_files = gdrive_client.get_files_metadata_by_ids(
+                        postface_file_ids, step
                     )
                     postface_span.set_attribute(
                         "postface_files_retrieved", len(postface_files)
@@ -411,9 +412,11 @@ def generate_songbook(
                         drive_write_service = build(
                             "drive", "v3", credentials=cover_creds
                         )
+                        gdrive_client_write = GoogleDriveClient(
+                            cache=cache, drive=drive_write_service
+                        )
                         cover_generator = cover.CoverGenerator(
-                            cache,
-                            drive_write_service,
+                            gdrive_client_write,
                             docs_write_service,
                             cover_config=config.get_settings().cover,
                         )
@@ -446,8 +449,8 @@ def generate_songbook(
                         ) as preface_span:
                             for file in preface_files:
                                 with (
-                                    download_file_stream(
-                                        drive, file, cache
+                                    gdrive_client.download_file_stream(
+                                        file
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
@@ -500,8 +503,8 @@ def generate_songbook(
                         ) as postface_span:
                             for i, file in enumerate(postface_files):
                                 with (
-                                    download_file_stream(
-                                        drive, file, cache
+                                    gdrive_client.download_file_stream(
+                                        file
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):

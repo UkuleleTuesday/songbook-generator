@@ -2,45 +2,20 @@ import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
 from typing import List, Tuple
-import importlib.resources
-import os
+import logging
 
+from ..common.fonts import resolve_font
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
-from .exceptions import TocGenerationException
 from .models import File
 from ..common.config import get_settings, Toc
 
+logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
-
-
-def resolve_font(font_name: str) -> fitz.Font:
-    """
-    Load a font from package resources.
-    If it fails, log a warning and fall back to a built-in font.
-    """
-    try:
-        # Standard way to load package resources, works when installed
-        font_buffer = (
-            importlib.resources.files("generator.fonts")
-            .joinpath(font_name)
-            .read_bytes()
-        )
-        return fitz.Font(fontbuffer=font_buffer)
-    except (ModuleNotFoundError, FileNotFoundError):
-        # Fallback for environments where the package is not installed (e.g., GCF Gen2)
-        try:
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            font_path = os.path.join(current_dir, "..", "fonts", font_name)
-            with open(font_path, "rb") as f:
-                font_buffer = f.read()
-            return fitz.Font(fontbuffer=font_buffer)
-        except FileNotFoundError as e:
-            raise TocGenerationException(f"TOC font file not found: {font_name}") from e
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:

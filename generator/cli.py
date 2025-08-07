@@ -1,6 +1,7 @@
 import traceback
 import os
 import functools
+import logging
 import click
 from pathlib import Path
 
@@ -8,7 +9,10 @@ from pathlib import Path
 from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 import json
-from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
+from .common.gdrive import (
+    GoogleDriveClient,
+)
+from .common.caching import init_cache
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
@@ -24,14 +28,35 @@ def make_cli_progress_callback():
     return _callback
 
 
-@click.group()
+def global_options(f):
+    """Decorator to apply global options to a command."""
+    options = [
+        click.option(
+            "--log-level",
+            default="INFO",
+            type=click.Choice(
+                ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+            ),
+            help="Set the logging level.",
+        )
+    ]
+    return functools.reduce(lambda x, opt: opt(x), options, f)
+
+
+@click.group(context_settings=dict(allow_interspersed_args=False))
+@global_options
 @click.pass_context
-def cli(ctx):
+def cli(ctx, log_level: str):
     """Songbook Generator CLI tool."""
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     ctx.ensure_object(dict)
 
 
 @cli.command()
+@global_options
 @click.pass_context
 @click.option(
     "--edition",
@@ -96,6 +121,7 @@ def generate(
     filter,
     preface_file_id,
     postface_file_id,
+    **kwargs,
 ):
     """Generates a songbook PDF from Google Drive files."""
 
@@ -189,6 +215,7 @@ def generate(
 
 
 @cli.command(name="sync-cache")
+@global_options
 @click.pass_context
 @click.option(
     "--source-folder",
@@ -221,10 +248,23 @@ def generate(
     default=False,
     help="Update tags on Drive files in addition to syncing to GCS cache.",
 )
+@click.option(
+    "--local",
+    is_flag=True,
+    default=False,
+    help="Sync to the local cache instead of GCS.",
+)
 def sync_cache_command(
-    source_folder, no_metadata, force, update_tags_only, update_tags
+    ctx,
+    source_folder,
+    no_metadata,
+    force,
+    update_tags_only,
+    update_tags,
+    local,
+    **kwargs,
 ):
-    """Syncs files and metadata from Google Drive to the GCS cache."""
+    """Syncs files and metadata from Google Drive to the cache."""
     try:
         click.echo("Starting cache synchronization (CLI mode)")
         from .merger import main as merger_main
@@ -238,9 +278,16 @@ def sync_cache_command(
 
         last_merge_time = None
         if not force:
-            last_merge_time = merger_main._get_last_merge_time(services["cache_bucket"])
+            if not local:
+                last_merge_time = merger_main._get_last_merge_time(
+                    services["cache_bucket"]
+                )
         else:
             click.echo("Force flag set. Performing a full sync.")
+
+        if local:
+            click.echo("Using local cache.")
+            services["cache"] = init_cache(use_gcs=False)
 
         click.echo(f"Syncing folders: {source_folders}")
         sync_cache(
@@ -264,13 +311,14 @@ def sync_cache_command(
 
 
 @cli.command(name="download-cache")
+@global_options
 @click.option(
     "--with-metadata",
     is_flag=True,
     default=False,
     help="Also download GCS object metadata and save it to a .metadata.json file.",
 )
-def download_cache_command(with_metadata):
+def download_cache_command(with_metadata, **kwargs):
     """Downloads the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
@@ -297,13 +345,14 @@ def download_cache_command(with_metadata):
 
 
 @cli.command(name="merge-pdfs")
+@global_options
 @click.option(
     "--output",
     "-o",
     default="merged-songbook.pdf",
     help="Output file path for merged PDF (default: merged-songbook.pdf)",
 )
-def merge_pdfs(output: str):
+def merge_pdfs(output: str, **kwargs):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
@@ -361,13 +410,14 @@ def edition_management_command(func):
             )
             raise click.Abort()
 
-        drive, _ = init_services(
+        drive, cache = init_services(
             scopes=credential_config.scopes,
             target_principal=credential_config.principal,
         )
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
-        file_id = _resolve_file_id(drive, file_identifier)
-        properties = get_file_properties(drive, file_id)
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        properties = gdrive_client.get_file_properties(file_id)
         if properties is None:
             raise click.Abort()
 
@@ -385,7 +435,7 @@ def edition_management_command(func):
 
         # Persist the changes
         new_value = ",".join(sorted(list(new_editions)))
-        if set_file_property(drive, file_id, "specialbooks", new_value):
+        if gdrive_client.set_file_property(file_id, "specialbooks", new_value):
             click.echo(
                 f"Successfully updated editions. New 'specialbooks' value: '{new_value}'"
             )
@@ -445,12 +495,13 @@ def list_song_editions(file_identifier):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    file_id = _resolve_file_id(drive, file_identifier)
-    properties = get_file_properties(drive, file_id)
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+    properties = gdrive_client.get_file_properties(file_id)
     if properties is None:
         raise click.Abort()
 
@@ -470,7 +521,7 @@ def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
 
-def _resolve_file_id(drive, file_identifier: str) -> str:
+def _resolve_file_id(gdrive_client: GoogleDriveClient, file_identifier: str) -> str:
     """
     Resolve a file identifier to a Google Drive file ID.
     If it's not a valid ID, search by name.
@@ -482,7 +533,7 @@ def _resolve_file_id(drive, file_identifier: str) -> str:
     # Otherwise, search by name
     settings = get_settings()
     source_folders = settings.song_sheets.folder_ids
-    found_files = search_files_by_name(drive, file_identifier, source_folders)
+    found_files = gdrive_client.search_files_by_name(file_identifier, source_folders)
 
     if not found_files:
         click.echo(f"Error: No file found matching '{file_identifier}'.", err=True)
@@ -517,12 +568,13 @@ def get_tag(file_identifier, key):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    file_id = _resolve_file_id(drive, file_identifier)
-    properties = get_file_properties(drive, file_id)
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+    properties = gdrive_client.get_file_properties(file_id)
 
     if properties is None:
         raise click.Abort()
@@ -553,11 +605,12 @@ def set_tag(file_identifier, key, value):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    file_id = _resolve_file_id(drive, file_identifier)
-    if set_file_property(drive, file_id, key, value):
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+    if gdrive_client.set_file_property(file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
         click.echo("Failed to set tag.", err=True)

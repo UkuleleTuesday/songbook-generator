@@ -4,8 +4,8 @@ from datetime import datetime
 import click
 from google.api_core import exceptions as gcp_exceptions
 
-from ..common import gdrive
 from ..common.caching import init_cache
+from ..common.gdrive import GoogleDriveClient
 from ..worker.models import File
 from .tags import Tagger
 
@@ -16,9 +16,12 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         "_sync_gcs_metadata_from_drive"
     ) as span:
         click.echo("Starting metadata sync from Drive to GCS cache...")
+        gdrive_client = GoogleDriveClient(
+            cache=services["cache"], drive=services["drive"]
+        )
         all_drive_files = []
         for folder_id in source_folders:
-            files = gdrive.query_drive_files(services["drive"], folder_id)
+            files = gdrive_client.query_drive_files(folder_id)
             all_drive_files.extend(files)
         drive_file_map = {file.id: file for file in all_drive_files}
         span.set_attribute("drive_files_found", len(all_drive_files))
@@ -71,10 +74,11 @@ def _get_files_to_update(
     """
     Query Google Drive for files in given folders modified after a certain time.
     """
+    gdrive_client = GoogleDriveClient(cache=init_cache(), drive=drive_service)
     all_files: List[File] = []
     for folder_id in source_folders:
-        files = gdrive.query_drive_files(
-            drive_service, folder_id, modified_after=modified_after
+        files = gdrive_client.query_drive_files(
+            folder_id, modified_after=modified_after
         )
         all_files.extend(files)
     return all_files
@@ -118,6 +122,7 @@ def sync_cache(
             click.echo("No new or modified files to sync.")
             return 0
 
+        gdrive_client = GoogleDriveClient(cache=cache, drive=services["drive"])
         for file in files_to_update:
             if update_tags or update_tags_only:
                 with services["tracer"].start_as_current_span("update_file_tags"):
@@ -127,7 +132,11 @@ def sync_cache(
             if not update_tags_only:
                 with services["tracer"].start_as_current_span("sync_file"):
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
-                    gdrive.download_file_stream(services["drive"], file, cache)
+                    gdrive_client.download_file_stream(
+                        file,
+                        subset_fonts=False,
+                        use_cache=modified_after is not None,
+                    )
 
         if with_metadata and not update_tags_only:
             _sync_gcs_metadata_from_drive(source_folders, services)
