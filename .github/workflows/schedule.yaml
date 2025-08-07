@@ -34,6 +34,9 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+    - name: Set up Cloud SDK
+      run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
+
     - name: Check for recent changes in GCS
       id: check-changes
       run: |
