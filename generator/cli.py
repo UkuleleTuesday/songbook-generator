@@ -1,6 +1,7 @@
 import traceback
 import os
 import functools
+import logging
 import click
 from pathlib import Path
 
@@ -27,9 +28,21 @@ def make_cli_progress_callback():
 
 
 @click.group()
+@click.option(
+    "--log-level",
+    default="INFO",
+    type=click.Choice(
+        ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], case_sensitive=False
+    ),
+    help="Set the logging level.",
+)
 @click.pass_context
-def cli(ctx):
+def cli(ctx, log_level: str):
     """Songbook Generator CLI tool."""
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     ctx.ensure_object(dict)
 
 
