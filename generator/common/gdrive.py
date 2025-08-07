@@ -19,7 +19,9 @@ def client(credentials: credentials.Credentials):
 
 
 class GoogleDriveClient:
-    pass
+    def __init__(self, credentials: credentials.Credentials, cache):
+        self.drive = client(credentials)
+        self.cache = cache
 
 
 def search_files_by_name(
