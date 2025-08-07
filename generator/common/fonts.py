@@ -31,11 +31,15 @@ def find_font_path(font_name: str) -> Optional[str]:
     Returns:
         The path to the font file, or None if not found.
     """
+    print(f"\n[find_font_path] Called with font_name: '{font_name}'")
     try:
         # First, try to find the font by its name as the family.
+        print(f"[find_font_path] Trying fontra.get_font('{font_name}')")
         font_ref = fontra.get_font(font_name)
+        print(f"[find_font_path]   -> font_ref: {font_ref}")
         if font_ref and font_ref.path:
             font_path = str(font_ref.path)
+            print(f"[find_font_path]   -> Found path: {font_path}")
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
 
@@ -43,10 +47,12 @@ def find_font_path(font_name: str) -> Optional[str]:
         parts = font_name.split("-")
         family = parts[0]
         style = parts[1] if len(parts) > 1 else "Regular"
-
+        print(f"[find_font_path] Trying fontra.get_font('{family}', '{style}')")
         font_ref = fontra.get_font(family, style)
+        print(f"[find_font_path]   -> font_ref: {font_ref}")
         if font_ref and font_ref.path:
             font_path = str(font_ref.path)
+            print(f"[find_font_path]   -> Found path: {font_path}")
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
     except (RuntimeError, OSError) as e:
@@ -173,6 +179,9 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
                     continue
 
                 base_font_name = match.group(1)
+                print(
+                    f"\n[normalize_pdf_fonts] Found subset font: '{name_str}', base_font_name: '{base_font_name}'"
+                )
                 logger.debug(
                     "Found subset font: %s (base: %s)", name_str, base_font_name
                 )
