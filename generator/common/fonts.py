@@ -57,6 +57,22 @@ def _log_pdf_fonts(doc: fitz.Document, title: str):
                 try:
                     font_obj_source = doc.xref_object(xref)
                     click.echo(f"      Raw object: {font_obj_source}")
+
+                    # If there's a descendant font, let's log its object too
+                    match = re.search(
+                        r"/DescendantFonts\s*\[\s*(\d+)\s+0\s+R\s*\]", font_obj_source
+                    )
+                    if match:
+                        desc_xref = int(match.group(1))
+                        try:
+                            desc_obj_source = doc.xref_object(desc_xref)
+                            click.echo(
+                                f"      Descendant Font XREF {desc_xref} Raw object: {desc_obj_source}"
+                            )
+                        except Exception as e_desc:
+                            click.echo(
+                                f"      Could not get raw object for descendant xref {desc_xref}: {e_desc}"
+                            )
                 except Exception as e:
                     click.echo(f"      Could not get raw object for xref {xref}: {e}")
 
