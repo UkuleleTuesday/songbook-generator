@@ -367,7 +367,7 @@ def edition_management_command(func):
             scopes=credential_config.scopes,
             target_principal=credential_config.principal,
         )
-        gdrive_client = GoogleDriveClient(drive._credentials, cache)
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         properties = gdrive_client.get_file_properties(file_id)

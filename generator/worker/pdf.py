@@ -328,7 +328,7 @@ def generate_songbook(
         reporter = progress.ProgressReporter(on_progress)
 
         with reporter.step(1, "Querying files...") as step:
-            gdrive_client = GoogleDriveClient(drive._credentials, cache)
+            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
             files = collect_and_sort_files(
                 gdrive_client, source_folders, client_filter, step
             )
@@ -413,7 +413,7 @@ def generate_songbook(
                             "drive", "v3", credentials=cover_creds
                         )
                         gdrive_client_write = GoogleDriveClient(
-                            cover_creds, cache
+                            cache=cache, credentials=cover_creds
                         )
                         cover_generator = cover.CoverGenerator(
                             gdrive_client_write,

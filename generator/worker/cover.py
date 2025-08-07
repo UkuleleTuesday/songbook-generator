@@ -122,7 +122,7 @@ def generate_cover(cache, cover_file_id=None):
         ]
     )
     docs_write = build("docs", "v1", credentials=creds)
-    gdrive_client = GoogleDriveClient(creds, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, credentials=creds)
     cover_config = config.get_settings().cover
     generator = CoverGenerator(gdrive_client, docs_write, cover_config)
     return generator.generate_cover(cover_file_id)

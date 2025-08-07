@@ -43,8 +43,15 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 
 class GoogleDriveClient:
-    def __init__(self, credentials: credentials.Credentials, cache):
-        self.drive = client(credentials)
+    def __init__(
+        self, cache, credentials: Optional[credentials.Credentials] = None, drive=None
+    ):
+        if drive:
+            self.drive = drive
+        elif credentials:
+            self.drive = client(credentials)
+        else:
+            raise ValueError("Either 'credentials' or 'drive' must be provided.")
         self.cache = cache
 
     def search_files_by_name(
