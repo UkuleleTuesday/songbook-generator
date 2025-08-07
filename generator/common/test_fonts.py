@@ -1,4 +1,3 @@
-import importlib.resources
 
 import fitz
 import pytest

@@ -2,11 +2,10 @@ import importlib.resources
 import click
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import fitz
 import fontra
-from opentelemetry import trace
 
 from .tracing import get_tracer
 
