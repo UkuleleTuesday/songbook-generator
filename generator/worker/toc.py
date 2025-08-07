@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Tuple
 import logging
 
-from ..common.fonts import find_font_path
+from ..common.fonts import resolve_font
 from ..common.tracing import get_tracer
 from .difficulty import assign_difficulty_bins
 from .models import File
@@ -16,35 +16,6 @@ tracer = get_tracer(__name__)
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
-
-
-def resolve_font(font_name: str) -> fitz.Font:
-    """Finds and loads a font by its name, returning a fitz.Font object."""
-    font_path = find_font_path(font_name)
-    if not font_path:
-        # Fallback to a very common system font if the requested one is not found
-        fallback_font_name = (
-            "Verdana-Bold" if "bold" in font_name.lower() else "Verdana"
-        )
-        logger.warning(
-            "Font '%s' not found. Falling back to '%s'",
-            font_name,
-            fallback_font_name,
-        )
-        font_path = find_font_path(fallback_font_name)
-        if not font_path:
-            # If even Verdana is missing, something is very wrong. Use a built-in.
-            logger.error(
-                "Fallback font '%s' not found. Using built-in helv.", fallback_font_name
-            )
-            return fitz.Font("helv")
-    try:
-        return fitz.Font(fontfile=font_path)
-    except RuntimeError as e:
-        logger.error(
-            "Failed to load font from path '%s': %s. Using built-in.", font_path, e
-        )
-        return fitz.Font("helv")
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:

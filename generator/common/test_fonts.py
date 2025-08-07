@@ -1,8 +1,10 @@
+import importlib.resources
+
 import fitz
 import pytest
 from unittest.mock import patch, MagicMock
 
-from .fonts import find_font_path, normalize_pdf_fonts, SUBSET_FONT_RE
+from .fonts import find_font_path, normalize_pdf_fonts, resolve_font, SUBSET_FONT_RE
 
 # A minimal valid PDF with one page.
 MINIMAL_PDF_BYTES = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000059 00000 n \n0000000112 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF"
@@ -135,3 +137,67 @@ def test_normalize_pdf_fonts_empty_pdf():
     with pytest.raises(fitz.EmptyFileError):
         normalize_pdf_fonts(b"")
     assert normalize_pdf_fonts(MINIMAL_PDF_BYTES) == MINIMAL_PDF_BYTES
+
+
+# --- Tests for resolve_font ---
+
+
+@patch("generator.common.fonts.find_font_path")
+@patch("importlib.resources.files")
+@patch("fitz.Font")
+def test_resolve_font_from_package_resources(
+    mock_fitz_font, mock_importlib_files, mock_find_font_path
+):
+    """Test that a font is loaded from package resources if available."""
+    # Setup mock for importlib.resources
+    mock_font_file = MagicMock()
+    mock_font_file.read_bytes.return_value = b"font_data"
+    mock_importlib_files.return_value.joinpath.return_value = mock_font_file
+
+    resolve_font("SomeFont.ttf")
+
+    mock_importlib_files.assert_called_once_with("generator.fonts")
+    mock_importlib_files.return_value.joinpath.assert_called_once_with("SomeFont.ttf")
+    mock_fitz_font.assert_called_once_with(fontbuffer=b"font_data")
+    mock_find_font_path.assert_not_called()
+
+
+@patch("generator.common.fonts.find_font_path")
+@patch("importlib.resources.files", side_effect=FileNotFoundError)
+@patch("fitz.Font")
+def test_resolve_font_from_system_path(
+    mock_fitz_font, mock_importlib_files, mock_find_font_path
+):
+    """Test that a font is loaded from a system path when not in resources."""
+    mock_find_font_path.return_value = "/fake/path/to/font.ttf"
+
+    resolve_font("SomeFont.ttf")
+
+    mock_find_font_path.assert_called_once_with("SomeFont.ttf")
+    mock_fitz_font.assert_called_once_with(fontfile="/fake/path/to/font.ttf")
+
+
+@patch("generator.common.fonts.find_font_path", return_value=None)
+@patch("importlib.resources.files", side_effect=FileNotFoundError)
+@patch("fitz.Font")
+def test_resolve_font_fallback_to_fitz_search(
+    mock_fitz_font, mock_importlib_files, mock_find_font_path
+):
+    """Test that it falls back to fitz's built-in search."""
+    resolve_font("SomeFont-Bold")
+
+    mock_fitz_font.assert_called_once_with("SomeFont-Bold")
+
+
+@patch("generator.common.fonts.find_font_path", return_value=None)
+@patch("importlib.resources.files", side_effect=FileNotFoundError)
+@patch("fitz.Font", side_effect=RuntimeError("Font not found"))
+def test_resolve_font_total_failure(
+    mock_fitz_font, mock_importlib_files, mock_find_font_path
+):
+    """Test that it falls back to built-in 'helv' when all methods fail."""
+    font = resolve_font("NonExistentFont")
+    # After all attempts fail, it should return a fitz.Font object for "helv"
+    # We can't easily check the call, but we can verify the result.
+    assert isinstance(font, fitz.Font)
+    assert "helv" in font.name.lower()
