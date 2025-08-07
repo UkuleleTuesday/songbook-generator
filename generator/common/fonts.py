@@ -1,3 +1,4 @@
+import importlib.resources
 import logging
 import re
 from functools import lru_cache
@@ -29,6 +30,17 @@ def find_font_path(font_name: str) -> Optional[str]:
     Returns:
         The path to the font file, or None if not found.
     """
+    # Check for exact filename match in local fallback dir first
+    # This is for fonts like "RobotoCondensed-Regular.ttf"
+    for ext in ("ttf", "otf"):
+        if font_name.endswith(f".{ext}"):
+            local_path = FONTS_DIR / font_name
+            if local_path.exists():
+                logger.debug(
+                    "Found font '%s' via local fallback at: %s", font_name, local_path
+                )
+                return str(local_path)
+
     try:
         # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
         parts = font_name.split("-")
@@ -47,7 +59,7 @@ def find_font_path(font_name: str) -> Optional[str]:
             e,
         )
 
-    # Fallback to checking local `fonts/` directory
+    # Fallback to checking local `fonts/` directory by font name
     # fontra names are usually PostScript names, but let's be flexible
     for ext in ("ttf", "otf"):
         # e.g. Verdana-Bold -> Verdana-Bold.ttf
@@ -74,6 +86,44 @@ def find_font_path(font_name: str) -> Optional[str]:
 
 # Regex to find the base name of a subset font, e.g., "ABCDEF+Verdana-Bold" -> "Verdana-Bold"
 SUBSET_FONT_RE = re.compile(r"^[A-Z]{6}\+(.*)")
+
+
+def resolve_font(font_name: str) -> fitz.Font:
+    """
+    Finds and loads a font by its name, returning a fitz.Font object.
+    It tries to load from package resources first, then system fonts.
+    """
+    # 1. Try to load from package resources (for bundled fonts like Roboto)
+    try:
+        font_buffer = (
+            importlib.resources.files("generator.fonts")
+            .joinpath(font_name)
+            .read_bytes()
+        )
+        return fitz.Font(fontbuffer=font_buffer)
+    except (ModuleNotFoundError, FileNotFoundError):
+        logger.debug("Font '%s' not found in package resources.", font_name)
+
+    # 2. Try to find font on the system using fontra or local path
+    font_path = find_font_path(font_name)
+    if font_path:
+        try:
+            return fitz.Font(fontfile=font_path)
+        except RuntimeError as e:
+            logger.error(
+                "Failed to load font from path '%s': %s. Using built-in.", font_path, e
+            )
+            return fitz.Font("helv")
+
+    # 3. Fallback for system fonts if fontra fails but font might exist
+    logger.warning("Font '%s' not found. Falling back to search system.", font_name)
+    try:
+        return fitz.Font(font_name)
+    except RuntimeError:
+        logger.error(
+            "Fallback for font '%s' failed. Using built-in helv.", font_name
+        )
+        return fitz.Font("helv")
 
 
 def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
