@@ -95,6 +95,8 @@ def test_generate_cover_basic(
     }[service]
 
     mock_pdf = Mock()
+    # Set page_count to 0 to prevent iteration in normalize_pdf_fonts
+    mock_pdf.page_count = 0
     mock_fitz.return_value = mock_pdf
     with patch("generator.common.caching.LocalStorageCache") as mock_cache:
         mock_cache.get.return_value = None
