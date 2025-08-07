@@ -202,6 +202,24 @@ class GoogleDriveClient:
         )
         return filtered_files
 
+    def download_file_stream(self, file: File) -> io.BytesIO:
+        """
+        Fetches the PDF export of a Google Doc, using a LocalStorageCache.
+        Only re-downloads if remote modifiedTime is newer than the cached file.
+        Returns a BytesIO stream of the file.
+        """
+        # Google Docs need to be exported, while regular PDFs can be downloaded directly.
+        should_export = file.mimeType == "application/vnd.google-apps.document"
+
+        pdf_data = self.download_file(
+            file.id,
+            file.name,
+            "song-sheets",
+            "application/pdf",
+            export=should_export,
+        )
+        return io.BytesIO(pdf_data)
+
     def stream_file_bytes(
         self, files: List[File]
     ) -> Generator[bytes, None, None]:
@@ -210,7 +228,7 @@ class GoogleDriveClient:
         Files are fetched from cache if available, otherwise downloaded from Drive.
         """
         for f in files:
-            with download_file_stream(self, f) as stream:
+            with self.download_file_stream(f) as stream:
                 yield stream.getvalue()
 
     def download_file(
@@ -341,7 +359,7 @@ class GoogleDriveClient:
         Legacy function for backward compatibility.
         Fetches the PDF export and returns raw bytes.
         """
-        with download_file_stream(self, file) as stream:
+        with self.download_file_stream(file) as stream:
             return stream.getvalue()
 
     def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
@@ -394,22 +412,5 @@ class GoogleDriveClient:
             return False
 
 
-def download_file_stream(gdrive_client: GoogleDriveClient, file: File) -> io.BytesIO:
-    """
-    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
-    Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns a BytesIO stream of the file.
-    """
-    # Google Docs need to be exported, while regular PDFs can be downloaded directly.
-    should_export = file.mimeType == "application/vnd.google-apps.document"
-
-    pdf_data = gdrive_client.download_file(
-        file.id,
-        file.name,
-        "song-sheets",
-        "application/pdf",
-        export=should_export,
-    )
-    return io.BytesIO(pdf_data)
 
 

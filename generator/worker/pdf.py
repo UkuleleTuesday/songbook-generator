@@ -16,7 +16,6 @@ from ..common.filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
     GoogleDriveClient,
     client,
-    download_file_stream,
 )
 from .models import File
 from ..common.tracing import get_tracer
@@ -450,8 +449,8 @@ def generate_songbook(
                         ) as preface_span:
                             for file in preface_files:
                                 with (
-                                    download_file_stream(
-                                        drive, file, cache
+                                    gdrive_client.download_file_stream(
+                                        file
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
@@ -504,8 +503,8 @@ def generate_songbook(
                         ) as postface_span:
                             for i, file in enumerate(postface_files):
                                 with (
-                                    download_file_stream(
-                                        drive, file, cache
+                                    gdrive_client.download_file_stream(
+                                        file
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
