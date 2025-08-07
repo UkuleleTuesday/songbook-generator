@@ -53,6 +53,9 @@ jobs:
         # List files and check their modification times
         # Using a loop to handle potentially large number of files without running out of memory
         while IFS= read -r line; do
+          # Skip lines that don't look like file listings
+          [[ -n "$line" && "$line" == *" Z "* ]] || continue
+
           MOD_TIME_STR=$(echo "$line" | awk '{print $2}')
           MOD_TIME_TS=$(date -u -d "$MOD_TIME_STR" +%s)
 
@@ -61,7 +64,7 @@ jobs:
             echo "changes_detected=true" >> $GITHUB_OUTPUT
             exit 0
           fi
-        done < <(gsutil ls -l "$GCS_PATH**")
+        done < <(gsutil ls -l "$GCS_PATH**" 2>/dev/null | grep -E '^[[:space:]]+[0-9]')
 
         echo "No recent changes detected in GCS bucket."
         echo "changes_detected=false" >> $GITHUB_OUTPUT
