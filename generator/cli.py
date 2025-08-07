@@ -9,8 +9,6 @@ from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import (
-    get_file_properties,
-    set_file_property,
     GoogleDriveClient,
 )
 from .merger.sync import download_gcs_cache_to_local, sync_cache
@@ -372,7 +370,7 @@ def edition_management_command(func):
         gdrive_client = GoogleDriveClient(drive._credentials, cache)
 
         file_id = _resolve_file_id(gdrive_client, file_identifier)
-        properties = get_file_properties(drive, file_id)
+        properties = gdrive_client.get_file_properties(file_id)
         if properties is None:
             raise click.Abort()
 
@@ -390,7 +388,7 @@ def edition_management_command(func):
 
         # Persist the changes
         new_value = ",".join(sorted(list(new_editions)))
-        if set_file_property(drive, file_id, "specialbooks", new_value):
+        if gdrive_client.set_file_property(file_id, "specialbooks", new_value):
             click.echo(
                 f"Successfully updated editions. New 'specialbooks' value: '{new_value}'"
             )
@@ -456,7 +454,7 @@ def list_song_editions(file_identifier):
     )
     gdrive_client = GoogleDriveClient(drive._credentials, cache)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    properties = get_file_properties(drive, file_id)
+    properties = gdrive_client.get_file_properties(file_id)
     if properties is None:
         raise click.Abort()
 
@@ -529,7 +527,7 @@ def get_tag(file_identifier, key):
     )
     gdrive_client = GoogleDriveClient(drive._credentials, cache)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    properties = get_file_properties(drive, file_id)
+    properties = gdrive_client.get_file_properties(file_id)
 
     if properties is None:
         raise click.Abort()
@@ -565,7 +563,7 @@ def set_tag(file_identifier, key, value):
     )
     gdrive_client = GoogleDriveClient(drive._credentials, cache)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    if set_file_property(drive, file_id, key, value):
+    if gdrive_client.set_file_property(file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
         click.echo("Failed to set tag.", err=True)

@@ -17,7 +17,6 @@ from ..common.gdrive import (
     GoogleDriveClient,
     client,
     download_file_stream,
-    get_files_metadata_by_ids,
 )
 from .models import File
 from ..common.tracing import get_tracer
@@ -366,8 +365,8 @@ def generate_songbook(
         if preface_file_ids:
             with reporter.step(1, "Retrieving preface files...") as step:
                 with tracer.start_as_current_span("get_preface_files") as preface_span:
-                    preface_files = get_files_metadata_by_ids(
-                        drive, preface_file_ids, step
+                    preface_files = gdrive_client.get_files_metadata_by_ids(
+                        preface_file_ids, step
                     )
                     preface_span.set_attribute(
                         "preface_files_retrieved", len(preface_files)
@@ -379,8 +378,8 @@ def generate_songbook(
                 with tracer.start_as_current_span(
                     "get_postface_files"
                 ) as postface_span:
-                    postface_files = get_files_metadata_by_ids(
-                        drive, postface_file_ids, step
+                    postface_files = gdrive_client.get_files_metadata_by_ids(
+                        postface_file_ids, step
                     )
                     postface_span.set_attribute(
                         "postface_files_retrieved", len(postface_files)
