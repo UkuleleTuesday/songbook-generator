@@ -313,7 +313,7 @@ def download_file(
         click.echo(f"Normalizing fonts for {file_name}...")
         try:
             data = normalize_pdf_fonts(data)
-        except Exception as e:
+        except RuntimeError as e:
             click.echo(
                 f"Font normalization failed for {file_name} ({file_id}), caching original file. Error: {e}",
                 err=True,
