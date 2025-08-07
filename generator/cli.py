@@ -27,7 +27,7 @@ def make_cli_progress_callback():
     return _callback
 
 
-@click.group()
+@click.group(context_settings=dict(allow_interspersed_args=False))
 @click.option(
     "--log-level",
     default="INFO",
