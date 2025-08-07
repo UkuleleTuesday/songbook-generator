@@ -8,7 +8,6 @@ from opentelemetry import trace
 from googleapiclient.discovery import build
 
 from .filters import FilterGroup, PropertyFilter
-from .fonts import normalize_pdf_fonts
 from ..worker.models import File
 from google.auth import credentials
 
@@ -43,8 +42,15 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 
 class GoogleDriveClient:
-    def __init__(self, credentials: credentials.Credentials, cache):
-        self.drive = client(credentials)
+    def __init__(
+        self, cache, credentials: Optional[credentials.Credentials] = None, drive=None
+    ):
+        if drive:
+            self.drive = drive
+        elif credentials:
+            self.drive = client(credentials)
+        else:
+            raise ValueError("Either 'credentials' or 'drive' must be provided.")
         self.cache = cache
 
     def search_files_by_name(
@@ -202,15 +208,34 @@ class GoogleDriveClient:
         )
         return filtered_files
 
+    def download_file_stream(self, file: File, use_cache: bool = True) -> io.BytesIO:
+        """
+        Fetches the PDF export of a Google Doc, using a LocalStorageCache.
+        Only re-downloads if remote modifiedTime is newer than the cached file.
+        Returns a BytesIO stream of the file.
+        """
+        # Google Docs need to be exported, while regular PDFs can be downloaded directly.
+        should_export = file.mimeType == "application/vnd.google-apps.document"
+
+        pdf_data = self.download_file(
+            file_id=file.id,
+            file_name=file.name,
+            cache_prefix="song-sheets",
+            mime_type="application/pdf",
+            export=should_export,
+            use_cache=use_cache,
+        )
+        return io.BytesIO(pdf_data)
+
     def stream_file_bytes(
-        self, files: List[File]
+        self, files: List[File], use_cache: bool = True
     ) -> Generator[bytes, None, None]:
         """
         Generator that yields the bytes of each file.
         Files are fetched from cache if available, otherwise downloaded from Drive.
         """
         for f in files:
-            with download_file_stream(self, f) as stream:
+            with self.download_file_stream(f, use_cache=use_cache) as stream:
                 yield stream.getvalue()
 
     def download_file(
@@ -220,6 +245,7 @@ class GoogleDriveClient:
         cache_prefix: str,
         mime_type: str = "application/pdf",
         export: bool = True,
+        use_cache: bool = True,
     ) -> bytes:
         """
         Generic file downloader with caching.
@@ -227,31 +253,33 @@ class GoogleDriveClient:
         Can either download a file directly or export a Google Doc to a specific format.
         """
         span = trace.get_current_span()
+        span.set_attribute("cache.enabled", use_cache)
         cache_key = f"{cache_prefix}/{file_id}.pdf"
         span.set_attribute("cache.key", cache_key)
 
-        details = (
-            self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-        )
-        remote_ts = datetime.fromisoformat(
-            details["modifiedTime"].replace("Z", "+00:00")
-        )
-        span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
-
-        try:
-            cached = self.cache.get(cache_key, newer_than=remote_ts)
-            if cached:
-                span.set_attribute("cache.hit", True)
-                click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-                return cached
-        except FileNotFoundError:
-            # This is an expected cache miss for local storage, not an error.
-            pass
-        except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
-            span.set_attribute("cache.error", str(e))
-            click.echo(
-                f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+        if use_cache:
+            details = (
+                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
             )
+            remote_ts = datetime.fromisoformat(
+                details["modifiedTime"].replace("Z", "+00:00")
+            )
+            span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
+
+            try:
+                cached = self.cache.get(cache_key, newer_than=remote_ts)
+                if cached:
+                    span.set_attribute("cache.hit", True)
+                    click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+                    return cached
+            except FileNotFoundError:
+                # This is an expected cache miss for local storage, not an error.
+                pass
+            except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
+                span.set_attribute("cache.error", str(e))
+                click.echo(
+                    f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+                )
 
         span.set_attribute("cache.hit", False)
         click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
@@ -270,17 +298,6 @@ class GoogleDriveClient:
 
         data = buffer.getvalue()
 
-        # If we exported a Google Doc to PDF, normalize its fonts before caching.
-        # This reduces final songbook size significantly.
-        if export and mime_type == "application/pdf":
-            click.echo(f"Normalizing fonts for {file_name}...")
-            try:
-                data = normalize_pdf_fonts(data)
-            except RuntimeError as e:
-                click.echo(
-                    f"Font normalization failed for {file_name} ({file_id}), caching original file. Error: {e}",
-                    err=True,
-                )
 
         # GCSFS supports setting metadata on upload via `metadata` kwarg.
         # The local file system fsspec impl does not support this.
@@ -291,127 +308,108 @@ class GoogleDriveClient:
             self.cache.put(cache_key, data)
         return data
 
+    def get_files_metadata_by_ids(
+        self, file_ids: List[str], progress_step=None
+    ) -> List[File]:
+        """
+        Get file metadata by their Google Drive IDs.
 
-def get_files_metadata_by_ids(
-    drive, file_ids: List[str], progress_step=None
-) -> List[File]:
-    """
-    Get file metadata by their Google Drive IDs.
+        Args:
+            file_ids: List of Google Drive file IDs
+            progress_step: Optional progress step for reporting
 
-    Args:
-        drive: Authenticated Google Drive service
-        file_ids: List of Google Drive file IDs
-        progress_step: Optional progress step for reporting
+        Returns:
+            List of file objects with metadata
+        """
+        files = []
+        for file_id in file_ids:
+            try:
+                # Get file metadata from Drive
+                file_metadata = (
+                    self.drive.files()
+                    .get(fileId=file_id, fields="id,name,properties,mimeType")
+                    .execute()
+                )
+                file_obj = File(
+                    id=file_id,
+                    name=file_metadata.get("name", f"file_{file_id}"),
+                    properties=file_metadata.get("properties", {}),
+                    mimeType=file_metadata.get("mimeType"),
+                )
+                files.append(file_obj)
 
-    Returns:
-        List of file objects with metadata
-    """
-    files = []
-    for file_id in file_ids:
+                if progress_step:
+                    progress_step.increment(
+                        1 / len(file_ids),
+                        f"Retrieved metadata for {file_obj.name}",
+                    )
+            except HttpError as e:
+                click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
+                if progress_step:
+                    progress_step.increment(
+                        1 / len(file_ids),
+                        f"Failed to retrieve file {file_id}",
+                    )
+
+        return files
+
+    def download_file_bytes(self, file: File, use_cache: bool = True) -> bytes:
+        """
+        Legacy function for backward compatibility.
+        Fetches the PDF export and returns raw bytes.
+        """
+        with self.download_file_stream(file, use_cache=use_cache) as stream:
+            return stream.getvalue()
+
+    def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
+        """
+        Get custom properties for a given Google Drive file.
+
+        Args:
+            file_id: The ID of the file.
+
+        Returns:
+            A dictionary of properties, or None if the file is not found.
+        """
         try:
-            # Get file metadata from Drive
             file_metadata = (
-                drive.files()
-                .get(fileId=file_id, fields="id,name,properties,mimeType")
-                .execute()
+                self.drive.files().get(fileId=file_id, fields="properties").execute()
             )
-            file_obj = File(
-                id=file_id,
-                name=file_metadata.get("name", f"file_{file_id}"),
-                properties=file_metadata.get("properties", {}),
-                mimeType=file_metadata.get("mimeType"),
-            )
-            files.append(file_obj)
-
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Retrieved metadata for {file_obj.name}",
-                )
+            return file_metadata.get("properties", {})
         except HttpError as e:
-            click.echo(f"Warning: Could not retrieve file {file_id}: {e}")
-            if progress_step:
-                progress_step.increment(
-                    1 / len(file_ids),
-                    f"Failed to retrieve file {file_id}",
-                )
-
-    return files
-
-
-def download_file_stream(gdrive_client: GoogleDriveClient, file: File) -> io.BytesIO:
-    """
-    Fetches the PDF export of a Google Doc, using a LocalStorageCache.
-    Only re-downloads if remote modifiedTime is newer than the cached file.
-    Returns a BytesIO stream of the file.
-    """
-    # Google Docs need to be exported, while regular PDFs can be downloaded directly.
-    should_export = file.mimeType == "application/vnd.google-apps.document"
-
-    pdf_data = gdrive_client.download_file(
-        file.id,
-        file.name,
-        "song-sheets",
-        "application/pdf",
-        export=should_export,
-    )
-    return io.BytesIO(pdf_data)
-
-
-def download_file_bytes(drive, file: File, cache) -> bytes:
-    """
-    Legacy function for backward compatibility.
-    Fetches the PDF export and returns raw bytes.
-    """
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
-    with download_file_stream(gdrive_client, file) as stream:
-        return stream.getvalue()
-
-
-def get_file_properties(drive, file_id: str) -> Optional[Dict[str, str]]:
-    """
-    Get custom properties for a given Google Drive file.
-
-    Args:
-        drive: Authenticated Google Drive service
-        file_id: The ID of the file.
-
-    Returns:
-        A dictionary of properties, or None if the file is not found.
-    """
-    try:
-        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
-        return file_metadata.get("properties", {})
-    except HttpError as e:
-        if e.resp.status == 404:
-            click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
+            if e.resp.status == 404:
+                click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
+                return None
+            click.echo(f"An API error occurred: {e}", err=True)
             return None
-        click.echo(f"An API error occurred: {e}", err=True)
-        return None
+
+    def set_file_property(self, file_id: str, key: str, value: str) -> bool:
+        """
+        Sets a custom property on a Google Drive file.
+
+        Args:
+            file_id: The ID of the file to update.
+            key: The property key to set.
+            value: The property value to set.
+
+        Returns:
+            True if successful, False otherwise.
+        """
+        try:
+            # First, get the current properties to not overwrite them
+            file_metadata = (
+                self.drive.files().get(fileId=file_id, fields="properties").execute()
+            )
+            properties = file_metadata.get("properties", {})
+            properties[key] = value
+
+            body = {"properties": properties}
+            self.drive.files().update(fileId=file_id, body=body).execute()
+            return True
+        except HttpError as e:
+            click.echo(f"An error occurred: {e}", err=True)
+            return False
 
 
-def set_file_property(drive, file_id: str, key: str, value: str) -> bool:
-    """
-    Sets a custom property on a Google Drive file.
 
-    Args:
-        drive: Authenticated Google Drive service
-        file_id: The ID of the file to update.
-        key: The property key to set.
-        value: The property value to set.
 
-    Returns:
-        True if successful, False otherwise.
-    """
-    try:
-        # First, get the current properties to not overwrite them
-        file_metadata = drive.files().get(fileId=file_id, fields="properties").execute()
-        properties = file_metadata.get("properties", {})
-        properties[key] = value
-
-        body = {"properties": properties}
-        drive.files().update(fileId=file_id, body=body).execute()
-        return True
-    except HttpError as e:
-        click.echo(f"An error occurred: {e}", err=True)
-        return False

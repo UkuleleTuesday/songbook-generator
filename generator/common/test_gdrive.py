@@ -6,10 +6,8 @@ from .gdrive import GoogleDriveClient, _build_property_filters
 @pytest.fixture
 def mock_drive_client():
     """Create a mock GoogleDriveClient."""
-    creds = Mock()
     cache = Mock()
-    client = GoogleDriveClient(credentials=creds, cache=cache)
-    client.drive = Mock()
+    client = GoogleDriveClient(cache=cache, drive=Mock())
     return client
 
 
