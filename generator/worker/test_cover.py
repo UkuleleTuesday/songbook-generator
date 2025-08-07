@@ -49,7 +49,6 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
         cache_prefix="covers",
         mime_type="application/pdf",
         export=True,
-        subset_fonts=True,
     )
 
 
@@ -123,7 +122,6 @@ def test_generate_cover_templating_disabled(mock_fitz):
         cache_prefix="covers",
         mime_type="application/pdf",
         export=False,
-        subset_fonts=True,
     )
     mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
