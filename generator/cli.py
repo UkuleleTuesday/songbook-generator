@@ -55,6 +55,7 @@ def cli(ctx, log_level: str):
 
 
 @cli.command()
+@global_options
 @click.pass_context
 @click.option(
     "--edition",
@@ -119,6 +120,7 @@ def generate(
     filter,
     preface_file_id,
     postface_file_id,
+    **kwargs,
 ):
     """Generates a songbook PDF from Google Drive files."""
 
@@ -212,6 +214,7 @@ def generate(
 
 
 @cli.command(name="sync-cache")
+@global_options
 @click.pass_context
 @click.option(
     "--source-folder",
@@ -245,7 +248,7 @@ def generate(
     help="Update tags on Drive files in addition to syncing to GCS cache.",
 )
 def sync_cache_command(
-    ctx, source_folder, no_metadata, force, update_tags_only, update_tags
+    ctx, source_folder, no_metadata, force, update_tags_only, update_tags, **kwargs
 ):
     """Syncs files and metadata from Google Drive to the GCS cache."""
     try:
@@ -287,13 +290,14 @@ def sync_cache_command(
 
 
 @cli.command(name="download-cache")
+@global_options
 @click.option(
     "--with-metadata",
     is_flag=True,
     default=False,
     help="Also download GCS object metadata and save it to a .metadata.json file.",
 )
-def download_cache_command(with_metadata):
+def download_cache_command(with_metadata, **kwargs):
     """Downloads the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
@@ -320,13 +324,14 @@ def download_cache_command(with_metadata):
 
 
 @cli.command(name="merge-pdfs")
+@global_options
 @click.option(
     "--output",
     "-o",
     default="merged-songbook.pdf",
     help="Output file path for merged PDF (default: merged-songbook.pdf)",
 )
-def merge_pdfs(output: str):
+def merge_pdfs(output: str, **kwargs):
     """CLI interface for merging PDFs from GCS cache."""
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
