@@ -53,7 +53,7 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
     )
 
 
-@patch("generator.worker.cover.cover.CoverGenerator")
+@patch("generator.worker.cover.CoverGenerator")
 @patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
     mock_cover_generator_class,
@@ -121,7 +121,7 @@ def test_generate_cover_templating_disabled(mock_fitz):
     mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
 
-@patch("generator.worker.cover.cover.CoverGenerator")
+@patch("generator.worker.cover.CoverGenerator")
 def test_generate_cover_corrupted_pdf(mock_cover_generator_class, tmp_path):
     """Test handling of corrupted PDF file."""
     mock_generator_instance = mock_cover_generator_class.return_value
