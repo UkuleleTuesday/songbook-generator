@@ -56,8 +56,8 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
 @patch("generator.worker.cover.CoverGenerator")
 @patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
-    mock_cover_generator_class,
     mock_now,
+    mock_cover_generator_class,
     tmp_path,
 ):
     """Test basic cover generation functionality."""
