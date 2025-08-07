@@ -1,5 +1,6 @@
 import importlib.resources
 import click
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -99,7 +100,9 @@ def resolve_font(font_name: str) -> fitz.Font:
         )
         return fitz.Font(fontbuffer=font_buffer)
     except (ModuleNotFoundError, FileNotFoundError):
-        click.echo(f"Font '{font_name}' not found in package resources.")
+        click.echo(
+            f"Font '{font_name}' not found in package resources. Trying system fonts..."
+        )
 
     # 2. Try to find font on the system using fontra or local path
     font_path = find_font_path(font_name)
@@ -108,14 +111,15 @@ def resolve_font(font_name: str) -> fitz.Font:
             return fitz.Font(fontfile=font_path)
         except RuntimeError as e:
             click.echo(
-                f"Failed to load font from path '{font_path}': {e}. Using built-in."
+                f"Failed to load font from path '{font_path}': {e}. Trying final fallback."
             )
-            return fitz.Font("helv")
 
-    # 3. Fallback for system fonts if fontra fails but font might exist
-    click.echo(f"Font '{font_name}' not found. Falling back to search system.")
+    # 3. Fallback for environments where the package is not installed (e.g., GCF Gen2)
+    #    or for fonts not found by fontra.
     try:
         return fitz.Font(font_name)
-    except RuntimeError:
-        click.echo(f"Fallback for font '{font_name}' failed. Using built-in helv.")
-        return fitz.Font("helv")
+    except RuntimeError as e:
+        click.echo(
+            f"Font '{font_name}' not found via fontra or as a built-in font. Error: {e}"
+        )
+        raise FileNotFoundError(f"Font file not found for: {font_name}") from e
