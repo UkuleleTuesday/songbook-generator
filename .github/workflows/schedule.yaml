@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   generate-songbook:
-    name: Generate Daily Songbook
+    name: Generate Songbook
     runs-on: ubuntu-latest
 
     steps:
