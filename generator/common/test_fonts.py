@@ -205,7 +205,7 @@ def test_resolve_font_total_failure(mock_importlib_files, mock_find_font_path):
         font = resolve_font("NonExistentFont")
 
         # After all attempts fail, it should return a fitz.Font object for "helv"
-        assert isinstance(font, fitz.Font)
+        assert isinstance(font, original_fitz_font)
         assert "helv" in font.name.lower()
         # Verify that fitz.Font was called first for the original font, then for the fallback.
         assert mock_fitz_font.call_count == 2
