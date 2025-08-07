@@ -1,18 +1,15 @@
 import importlib.resources
-import click
 import os
-from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 import fitz
-import fontra
 
 from .tracing import get_tracer
 
 # Local fallback fonts directory
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
 tracer = get_tracer(__name__)
+
 
 def resolve_font(font_name: str) -> fitz.Font:
     """
@@ -37,4 +34,3 @@ def resolve_font(font_name: str) -> fitz.Font:
             return fitz.Font(fontbuffer=font_buffer)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Font file not found for: {font_name}") from e
-

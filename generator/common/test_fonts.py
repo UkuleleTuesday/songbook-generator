@@ -1,6 +1,6 @@
-import fitz
 import pytest
 from unittest.mock import patch, MagicMock
+import os
 
 from .fonts import resolve_font
 
