@@ -87,11 +87,12 @@ class CoverGenerator:
 
             try:
                 pdf_data = self.gdrive_client.download_file(
-                    cover_file_id,
-                    f"Cover-{cover_file_id}",
-                    "covers",
-                    "application/pdf",
+                    file_id=cover_file_id,
+                    file_name=f"Cover-{cover_file_id}",
+                    cache_prefix="covers",
+                    mime_type="application/pdf",
                     export=True,
+                    normalize_pdf_fonts=False,
                 )
                 return fitz.open(stream=pdf_data, filetype="pdf")
             except fitz.EmptyFileError as e:
@@ -105,11 +106,12 @@ class CoverGenerator:
         else:
             # No templating, just download the file
             pdf_data = self.gdrive_client.download_file(
-                cover_file_id,
-                f"Cover-{cover_file_id}",
-                "covers",
-                "application/pdf",
+                file_id=cover_file_id,
+                file_name=f"Cover-{cover_file_id}",
+                cache_prefix="covers",
+                mime_type="application/pdf",
                 export=False,
+                normalize_pdf_fonts=False,
             )
             return fitz.open(stream=pdf_data, filetype="pdf")
 

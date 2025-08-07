@@ -450,7 +450,7 @@ def generate_songbook(
                             for file in preface_files:
                                 with (
                                     gdrive_client.download_file_stream(
-                                        file
+                                        file, normalize_pdf_fonts=False
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
@@ -504,7 +504,7 @@ def generate_songbook(
                             for i, file in enumerate(postface_files):
                                 with (
                                     gdrive_client.download_file_stream(
-                                        file
+                                        file, normalize_pdf_fonts=False
                                     ) as pdf_stream,
                                     fitz.open(stream=pdf_stream) as pdf_document,
                                 ):
