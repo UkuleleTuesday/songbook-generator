@@ -40,7 +40,7 @@ def resolve_font(font_name: str) -> fitz.Font:
             return fitz.Font("helv")
     try:
         return fitz.Font(fontfile=font_path)
-    except Exception as e:
+    except RuntimeError as e:
         logger.error(
             "Failed to load font from path '%s': %s. Using built-in.", font_path, e
         )

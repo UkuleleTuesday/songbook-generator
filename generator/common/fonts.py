@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # Initialize fontra's font database on module load
 try:
     fontra.init_fontdb()
-except Exception as e:
+except (RuntimeError, OSError) as e:
     logger.error("Failed to initialize fontra's font database: %s", e)
 
 
@@ -40,7 +40,7 @@ def find_font_path(font_name: str) -> Optional[str]:
             font_path = str(font_ref.path)
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
             return font_path
-    except Exception as e:
+    except (RuntimeError, OSError) as e:
         logger.warning(
             "fontra failed to find font '%s'. Will try local fallback. Error: %s",
             font_name,
@@ -131,7 +131,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
                 new_xref = page.insert_font(fontfile=font_path, fontname=base_font_name)
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
-            except Exception as e:
+            except RuntimeError as e:
                 logger.error(
                     "Failed to embed font '%s' from path '%s': %s",
                     base_font_name,
