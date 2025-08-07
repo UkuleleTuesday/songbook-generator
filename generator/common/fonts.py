@@ -248,7 +248,6 @@ def _gather_font_replacements(
                 )
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
-                font.close()  # Close the font object when done.
             except RuntimeError as e:
                 click.echo(
                     f"Failed to embed font '{base_font_name}' from path '{font_path}': {e}"
