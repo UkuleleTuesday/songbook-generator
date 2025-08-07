@@ -31,7 +31,7 @@ def _log_pdf_fonts(doc: fitz.Document, title: str):
         try:
             # The /Resources object on a page contains font references.
             # We can inspect it to see how fonts are named (e.g., /F1, /F2).
-            resources_xref = doc.page_xref(i)[1]
+            resources_xref = doc.page_xref(i)
             if resources_xref > 0:
                 resources_dict = doc.xref_get_keys(resources_xref)
                 click.echo(f"  Page Resources XREF: {resources_xref}")
