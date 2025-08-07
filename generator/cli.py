@@ -8,7 +8,11 @@ from pathlib import Path
 from .common.config import get_settings
 from .merger.main import fetch_and_merge_pdfs
 import json
-from .common.gdrive import get_file_properties, set_file_property, search_files_by_name
+from .common.gdrive import (
+    get_file_properties,
+    set_file_property,
+    GoogleDriveClient,
+)
 from .merger.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
@@ -361,12 +365,13 @@ def edition_management_command(func):
             )
             raise click.Abort()
 
-        drive, _ = init_services(
+        drive, cache = init_services(
             scopes=credential_config.scopes,
             target_principal=credential_config.principal,
         )
+        gdrive_client = GoogleDriveClient(drive._credentials, cache)
 
-        file_id = _resolve_file_id(drive, file_identifier)
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
         properties = get_file_properties(drive, file_id)
         if properties is None:
             raise click.Abort()
@@ -445,11 +450,12 @@ def list_song_editions(file_identifier):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    file_id = _resolve_file_id(drive, file_identifier)
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = get_file_properties(drive, file_id)
     if properties is None:
         raise click.Abort()
@@ -470,7 +476,7 @@ def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 
 
-def _resolve_file_id(drive, file_identifier: str) -> str:
+def _resolve_file_id(gdrive_client: GoogleDriveClient, file_identifier: str) -> str:
     """
     Resolve a file identifier to a Google Drive file ID.
     If it's not a valid ID, search by name.
@@ -482,7 +488,7 @@ def _resolve_file_id(drive, file_identifier: str) -> str:
     # Otherwise, search by name
     settings = get_settings()
     source_folders = settings.song_sheets.folder_ids
-    found_files = search_files_by_name(drive, file_identifier, source_folders)
+    found_files = gdrive_client.search_files_by_name(file_identifier, source_folders)
 
     if not found_files:
         click.echo(f"Error: No file found matching '{file_identifier}'.", err=True)
@@ -517,11 +523,12 @@ def get_tag(file_identifier, key):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    file_id = _resolve_file_id(drive, file_identifier)
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = get_file_properties(drive, file_id)
 
     if properties is None:
@@ -553,10 +560,11 @@ def set_tag(file_identifier, key, value):
         )
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    file_id = _resolve_file_id(drive, file_identifier)
+    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
     if set_file_property(drive, file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
