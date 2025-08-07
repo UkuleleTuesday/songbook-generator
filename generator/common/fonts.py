@@ -37,7 +37,15 @@ def find_font_path(font_name: str) -> Optional[str]:
         family = parts[0]
         style = parts[1] if len(parts) > 1 else "Regular"
 
-        font_ref = fontra.get_font(family, style)
+        try:
+            font_ref = fontra.get_font(family, style)
+        except KeyError as e:
+            raise KeyError(
+                f"Font lookup failed for font '{font_name}' (parsed as family='{family}', style='{style}'). "
+                f"This may be due to a missing font on the system or a font naming issue. "
+                f"Original error: {e}"
+            ) from e
+
         if font_ref and font_ref.path:
             font_path = str(font_ref.path)
             logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
