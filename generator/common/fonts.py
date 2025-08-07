@@ -1,5 +1,5 @@
 import importlib.resources
-import logging
+import click
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -13,7 +13,6 @@ from .tracing import get_tracer
 
 # Local fallback fonts directory
 FONTS_DIR = Path(__file__).parent.parent.parent / "fonts"
-logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
 
 # Initialize fontra's font database on module load
@@ -49,13 +48,11 @@ def find_font_path(font_name: str) -> Optional[str]:
 
         if font_ref and font_ref.path:
             font_path = str(font_ref.path)
-            logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
+            click.echo(f"Found font '{font_name}' via fontra at: {font_path}")
             return font_path
     except (RuntimeError, OSError) as e:
-        logger.warning(
-            "fontra failed to find font '%s'. Will try local fallback. Error: %s",
-            font_name,
-            e,
+        click.echo(
+            f"fontra failed to find font '{font_name}'. Will try local fallback. Error: {e}"
         )
 
     # Fallback to checking local `fonts/` directory
@@ -64,8 +61,8 @@ def find_font_path(font_name: str) -> Optional[str]:
         if font_name.endswith(f".{ext}"):
             local_path = FONTS_DIR / font_name
             if local_path.exists():
-                logger.debug(
-                    "Found font '%s' via local fallback at: %s", font_name, local_path
+                click.echo(
+                    f"Found font '{font_name}' via local fallback at: {local_path}"
                 )
                 return str(local_path)
 
@@ -75,22 +72,18 @@ def find_font_path(font_name: str) -> Optional[str]:
         # e.g. Verdana-Bold -> Verdana-Bold.ttf
         local_path = FONTS_DIR / f"{font_name}.{ext}"
         if local_path.exists():
-            logger.debug(
-                "Found font '%s' via local fallback at: %s", font_name, local_path
-            )
+            click.echo(f"Found font '{font_name}' via local fallback at: {local_path}")
             return str(local_path)
         # e.g. Verdana-Bold -> Verdana.ttf (if bold is a style)
         base_family = font_name.split("-")[0]
         local_path = FONTS_DIR / f"{base_family}.{ext}"
         if local_path.exists():
-            logger.debug(
-                "Found font '%s' as base family via local fallback at: %s",
-                font_name,
-                local_path,
+            click.echo(
+                f"Found font '{font_name}' as base family via local fallback at: {local_path}"
             )
             return str(local_path)
 
-    logger.warning("Could not find a font file for '%s'", font_name)
+    click.echo(f"Could not find a font file for '{font_name}'")
     return None
 
 
@@ -112,7 +105,7 @@ def resolve_font(font_name: str) -> fitz.Font:
         )
         return fitz.Font(fontbuffer=font_buffer)
     except (ModuleNotFoundError, FileNotFoundError):
-        logger.debug("Font '%s' not found in package resources.", font_name)
+        click.echo(f"Font '{font_name}' not found in package resources.")
 
     # 2. Try to find font on the system using fontra or local path
     font_path = find_font_path(font_name)
@@ -120,19 +113,17 @@ def resolve_font(font_name: str) -> fitz.Font:
         try:
             return fitz.Font(fontfile=font_path)
         except RuntimeError as e:
-            logger.error(
-                "Failed to load font from path '%s': %s. Using built-in.", font_path, e
+            click.echo(
+                f"Failed to load font from path '{font_path}': {e}. Using built-in."
             )
             return fitz.Font("helv")
 
     # 3. Fallback for system fonts if fontra fails but font might exist
-    logger.warning("Font '%s' not found. Falling back to search system.", font_name)
+    click.echo(f"Font '{font_name}' not found. Falling back to search system.")
     try:
         return fitz.Font(font_name)
     except RuntimeError:
-        logger.error(
-            "Fallback for font '%s' failed. Using built-in helv.", font_name
-        )
+        click.echo(f"Fallback for font '{font_name}' failed. Using built-in helv.")
         return fitz.Font("helv")
 
 
@@ -179,9 +170,7 @@ def _gather_font_replacements(
 
             match = SUBSET_FONT_RE.match(name_to_check)
             base_font_name = match.group(1)
-            logger.debug(
-                "Found subset font: %s (base: %s)", name_to_check, base_font_name
-            )
+            click.echo(f"Found subset font: {name_to_check} (base: {base_font_name})")
 
             if base_font_name in embedded_fonts:
                 font_xref_map[xref] = embedded_fonts[base_font_name]
@@ -189,9 +178,7 @@ def _gather_font_replacements(
 
             font_path = find_font_path(base_font_name)
             if not font_path:
-                logger.warning(
-                    "No full font file found for '%s'. Skipping.", base_font_name
-                )
+                click.echo(f"No full font file found for '{base_font_name}'. Skipping.")
                 continue
 
             try:
@@ -201,11 +188,8 @@ def _gather_font_replacements(
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
             except RuntimeError as e:
-                logger.error(
-                    "Failed to embed font '%s' from path '%s': %s",
-                    base_font_name,
-                    font_path,
-                    e,
+                click.echo(
+                    f"Failed to embed font '{base_font_name}' from path '{font_path}': {e}"
                 )
 
     return font_xref_map, embedded_fonts
