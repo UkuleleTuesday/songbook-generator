@@ -32,12 +32,17 @@ def find_font_path(font_name: str) -> Optional[str]:
         The path to the font file, or None if not found.
     """
     try:
-        # Parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
-        print(f"find_font_path called with: {font_name}")
+        # First, try to find the font by its name as the family.
+        font_ref = fontra.get_font(font_name)
+        if font_ref and font_ref.path:
+            font_path = str(font_ref.path)
+            logger.debug("Found font '%s' via fontra at: %s", font_name, font_path)
+            return font_path
+
+        # If that fails, parse font_name into family and style, e.g., "Arial-Bold" -> ("Arial", "Bold")
         parts = font_name.split("-")
         family = parts[0]
         style = parts[1] if len(parts) > 1 else "Regular"
-        print(f"  -> Parsed family: '{family}', style: '{style}'")
 
         font_ref = fontra.get_font(family, style)
         if font_ref and font_ref.path:
