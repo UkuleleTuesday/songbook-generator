@@ -53,6 +53,11 @@ gsutil mb \
   -p "${GCP_PROJECT_ID}" \
   -l "${GCP_REGION}" \
   "gs://${GCS_WORKER_CACHE_BUCKET}" || echo "Worker cache bucket may already exist, continuing…"
+# Public songbook buckets
+gsutil mb \
+  -p "${GCP_PROJECT_ID}" \
+  -l "${GCP_REGION}" \
+  "gs://${GCS_SONGBOOKS_BUCKET}" || echo "CDN bucket may already exist, continuing…"
 
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
