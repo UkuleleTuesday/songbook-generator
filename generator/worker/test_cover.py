@@ -54,11 +54,17 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
     )
 
 
+@patch("generator.worker.cover.get_credentials", return_value=(Mock(), None))
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.GoogleDriveClient")
 @patch("generator.worker.cover.CoverGenerator")
 @patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
     mock_now,
     mock_cover_generator_class,
+    mock_gdrive_client_class,
+    mock_build,
+    mock_get_credentials,
     tmp_path,
 ):
     """Test basic cover generation functionality."""
@@ -123,8 +129,17 @@ def test_generate_cover_templating_disabled(mock_fitz):
     mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
 
+@patch("generator.worker.cover.get_credentials", return_value=(Mock(), None))
+@patch("generator.worker.cover.build")
+@patch("generator.worker.cover.GoogleDriveClient")
 @patch("generator.worker.cover.CoverGenerator")
-def test_generate_cover_corrupted_pdf(mock_cover_generator_class, tmp_path):
+def test_generate_cover_corrupted_pdf(
+    mock_cover_generator_class,
+    mock_gdrive_client_class,
+    mock_build,
+    mock_get_credentials,
+    tmp_path,
+):
     """Test handling of corrupted PDF file."""
     mock_generator_instance = mock_cover_generator_class.return_value
     mock_generator_instance.generate_cover.side_effect = cover.CoverGenerationException(
