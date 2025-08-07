@@ -53,63 +53,26 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
     )
 
 
-@patch("generator.worker.cover.fitz.open")
-@patch("generator.worker.cover.build")
-@patch("generator.worker.cover.get_credentials")
+@patch("generator.worker.cover.cover.CoverGenerator")
 @patch("generator.worker.cover.arrow.now")
 def test_generate_cover_basic(
+    mock_cover_generator_class,
     mock_now,
-    mock_get_credentials,
-    mock_build,
-    mock_fitz,
     tmp_path,
 ):
     """Test basic cover generation functionality."""
     mock_now.return_value.format.return_value = "1st January 2024"
+    mock_generator_instance = mock_cover_generator_class.return_value
+    mock_pdf = Mock(spec=fitz.Document)
+    mock_generator_instance.generate_cover.return_value = mock_pdf
 
-    mock_creds = Mock()
-    mock_creds.universe_domain = "googleapis.com"
-    mock_get_credentials.return_value = mock_creds
-
-    pdf_content = b"fake pdf content"
-    # Mock for gdrive_client.download_file
-    drive_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
-            ),
-            ({"status": "200"}, pdf_content),
-        ]
-    )
-    docs_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-        ]
-    )
-    mock_drive = build("drive", "v3", http=drive_http)
-    mock_docs = build("docs", "v1", http=docs_http)
-    mock_build.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
-
-    mock_pdf = Mock()
-    # Set page_count to 0 to prevent iteration in normalize_pdf_fonts
-    mock_pdf.page_count = 0
-    mock_fitz.return_value = mock_pdf
-    with patch("generator.common.caching.LocalStorageCache") as mock_cache:
-        mock_cache.get.return_value = None
-        result = cover.generate_cover(mock_cache, "cover123")
+    with patch("generator.common.caching.LocalStorageCache") as mock_cache_class:
+        mock_cache_instance = mock_cache_class.return_value
+        result = cover.generate_cover(mock_cache_instance, "cover123")
 
     assert result == mock_pdf
+    mock_cover_generator_class.assert_called_once()
+    mock_generator_instance.generate_cover.assert_called_once_with("cover123")
 
 
 @patch("generator.worker.cover.click.echo")
@@ -158,46 +121,13 @@ def test_generate_cover_templating_disabled(mock_fitz):
     mock_fitz.assert_called_once_with(stream=mock_pdf_data, filetype="pdf")
 
 
-@patch("generator.worker.cover.get_credentials")
-@patch("generator.worker.cover.fitz.open")
-@patch("generator.worker.cover.build")
-def test_generate_cover_corrupted_pdf(
-    mock_build, mock_fitz, mock_get_credentials, tmp_path
-):
+@patch("generator.worker.cover.cover.CoverGenerator")
+def test_generate_cover_corrupted_pdf(mock_cover_generator_class, tmp_path):
     """Test handling of corrupted PDF file."""
-    mock_creds = Mock()
-    mock_creds.universe_domain = "googleapis.com"
-    mock_get_credentials.return_value = mock_creds
-
-    pdf_content = b"corrupted"
-    drive_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"modifiedTime": "2024-01-01T00:00:00Z"}),
-            ),
-            ({"status": "200"}, pdf_content),
-        ]
+    mock_generator_instance = mock_cover_generator_class.return_value
+    mock_generator_instance.generate_cover.side_effect = cover.CoverGenerationException(
+        "Downloaded cover file is corrupted."
     )
-    docs_http = HttpMockSequence(
-        [
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-            (
-                {"status": "200"},
-                json.dumps({"replies": []}),
-            ),
-        ]
-    )
-    mock_drive = build("drive", "v3", http=drive_http)
-    mock_docs = build("docs", "v1", http=docs_http)
-    mock_build.side_effect = lambda service, *args, **kwargs: {
-        "drive": mock_drive,
-        "docs": mock_docs,
-    }[service]
-    mock_fitz.side_effect = fitz.EmptyFileError("Empty file")
 
     with (
         pytest.raises(
@@ -206,7 +136,6 @@ def test_generate_cover_corrupted_pdf(
         patch("generator.common.caching.LocalStorageCache") as mock_cache_class,
     ):
         mock_cache_instance = mock_cache_class.return_value
-        mock_cache_instance.get.return_value = None
         cover.generate_cover(mock_cache_instance, "cover123")
 
 
