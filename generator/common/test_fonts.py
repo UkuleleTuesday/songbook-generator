@@ -60,11 +60,9 @@ def create_test_pdf_with_subset_font(
     page = doc[0]
 
     font_buffer = fitz.Font("helv").buffer
-    page.insert_font(fontname=font_name, fontbuffer=font_buffer)
-
-    # We must use `insert_text` with `fontname` for this to work in a test context.
-    # The TextWriter approach requires a valid `fitz.Font` object, which we can't create
-    # for a font that is only defined within the page's resources.
+    # Inserting the font and then using it in insert_text is the key to get it
+    # correctly listed in the page's fonts.
+    page.insert_font(fontname=font_name, fontbuffer=font_buffer, set_simple=True)
     page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
     return doc
 
@@ -79,7 +77,7 @@ def test_gather_font_replacements_identifies_subsets(mock_fontra, tmp_path):
 
     doc = fitz.open()
     doc = create_test_pdf_with_subset_font(doc)
-    fonts_on_page = doc[0].get_fonts()
+    fonts_on_page = doc[0].get_fonts(full=True)
     original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
 
     font_xref_map, embedded_fonts = _gather_font_replacements(doc)
@@ -124,7 +122,7 @@ def test_normalize_pdf_fonts_replaces_subset_font(mock_gatherer, mock_fontra, tm
     # We need a real doc to perform the final replacement steps on.
     doc = fitz.open()
     doc = create_test_pdf_with_subset_font(doc)
-    fonts_on_page = doc[0].get_fonts()
+    fonts_on_page = doc[0].get_fonts(full=True)
     original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
 
     # Simulate that _gather_font_replacements found a replacement and embedded a new font.
