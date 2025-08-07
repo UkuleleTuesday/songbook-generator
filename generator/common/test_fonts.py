@@ -193,12 +193,13 @@ def test_resolve_font_fallback_to_fitz_search(
 @patch("importlib.resources.files", side_effect=FileNotFoundError)
 def test_resolve_font_total_failure(mock_importlib_files, mock_find_font_path):
     """Test that it falls back to built-in 'helv' when all methods fail."""
+    original_fitz_font = fitz.Font
 
     def fitz_font_side_effect(font_name, *args, **kwargs):
         if font_name == "NonExistentFont":
             raise RuntimeError("Font not found")
         # For the fallback 'helv', we need to return a real font to check its properties
-        return fitz.Font("helv")
+        return original_fitz_font(font_name, *args, **kwargs)
 
     with patch("fitz.Font", side_effect=fitz_font_side_effect) as mock_fitz_font:
         font = resolve_font("NonExistentFont")
