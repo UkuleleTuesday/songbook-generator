@@ -7,50 +7,14 @@ on:
   workflow_dispatch:
     # Allow manual triggering for testing
     inputs:
-      limit:
-        description: 'Limit number of files'
-        required: false
-        type: number
-        default: 100
-      cover_file_id:
-        description: 'Cover file ID'
-        required: false
-        type: string
-        default: '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740'
       songbook_edition:
-        description: 'Songbook edition filter'
+        description: 'Songbook edition'
         required: false
         type: choice
-        default: ''
+        default: 'regular'
         options:
-          - ''
-          - regular
-          - halloween
-          - usa
-          - womens
-          - pride
-          - valentines
-          - uk
-          - scotland
-          - ireland
-          - france
-          - germany
-          - australia
-          - xmas
-          - canada
-          - italy
-          - netherlands
-          - spain
-          - sweden
-          - norway
-          - russia
-          - brazil
-          - puerto rico
-          - hawaii
-          - peace
-          - can2025
-          - nocan2025
-          - wales
+          - 'regular'
+          - 'complete'
 
 permissions:
   contents: read
@@ -106,28 +70,17 @@ jobs:
     - name: Trigger songbook generation
       if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
       run: |
-        # Use inputs with their defaults
-        COVER_FILE_ID="${{ github.event.inputs.cover_file_id || '1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740' }}"
-        LIMIT="${{ github.event.inputs.limit || '100' }}"
-        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || '' }}"
+        # Use inputs with their defaults, defaulting to 'regular' for scheduled runs
+        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || 'regular' }}"
 
         # Prepare the payload for the API
         PAYLOAD=$(jq -n \
-          --arg cover_id "$COVER_FILE_ID" \
-          --argjson limit "$LIMIT" \
+          --arg edition "$SONGBOOK_EDITION" \
           '{
-            source_folders: ["1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95", "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"],
-            cover_file_id: $cover_id,
-            limit: $limit
+            edition: $edition
           }')
 
-        # Add filter for songbook edition if specified
-        if [[ -n "$SONGBOOK_EDITION" ]]; then
-          FILTER="specialbooks:contains:$SONGBOOK_EDITION"
-          PAYLOAD=$(echo "$PAYLOAD" | jq ". + {\"filters\": \"$FILTER\"}")
-        fi
-
-        echo "Triggering daily songbook generation with payload: $PAYLOAD"
+        echo "Triggering songbook generation with payload: $PAYLOAD"
 
         # Get the API endpoint URL
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
