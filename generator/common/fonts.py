@@ -234,16 +234,21 @@ def _gather_font_replacements(
                 continue
 
             try:
+                # Create a fitz.Font object from the file to get its buffer.
+                # This seems to be more reliable than inserting via fontfile directly.
+                font = fitz.Font(fontfile=font_path)
+
                 # PDF font names should not contain spaces. Replace with a hyphen.
                 postscript_font_name = base_font_name.replace(" ", "-")
                 new_xref = page.insert_font(
-                    fontfile=font_path, fontname=postscript_font_name
+                    fontname=postscript_font_name, fontbuffer=font.buffer
                 )
                 click.echo(
                     f"Embedding full font for '{base_font_name}' (new xref: {new_xref})"
                 )
                 font_xref_map[xref] = new_xref
                 embedded_fonts[base_font_name] = new_xref
+                font.close()  # Close the font object when done.
             except RuntimeError as e:
                 click.echo(
                     f"Failed to embed font '{base_font_name}' from path '{font_path}': {e}"
