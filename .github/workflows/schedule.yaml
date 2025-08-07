@@ -117,9 +117,9 @@ jobs:
         echo "Created job with ID: $JOB_ID"
 
         # Poll for completion (with timeout)
-        TIMEOUT=1800  # 30 minutes
+        TIMEOUT=120  # 2 minutes
         ELAPSED=0
-        POLL_INTERVAL=5  # seconds
+        POLL_INTERVAL=1  # seconds
 
         while [[ $ELAPSED -lt $TIMEOUT ]]; do
           sleep $POLL_INTERVAL
