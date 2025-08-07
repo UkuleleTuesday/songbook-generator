@@ -4,7 +4,13 @@ import fitz
 import pytest
 from unittest.mock import patch, MagicMock
 
-from .fonts import find_font_path, normalize_pdf_fonts, resolve_font, SUBSET_FONT_RE
+from .fonts import (
+    _gather_font_replacements,
+    find_font_path,
+    normalize_pdf_fonts,
+    resolve_font,
+    SUBSET_FONT_RE,
+)
 
 # A minimal valid PDF with one page.
 MINIMAL_PDF_BYTES = b"%PDF-1.0\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 1/Kids[3 0 R]>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000059 00000 n \n0000000112 00000 n \ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n178\n%%EOF"
@@ -63,26 +69,81 @@ def create_test_pdf_with_subset_font(
     return doc
 
 
-def test_normalize_pdf_fonts_replaces_subset_font(mock_fontra, tmp_path):
-    """Verify that a subset font is replaced with its full version."""
+# --- Tests for _gather_font_replacements ---
+
+
+def test_gather_font_replacements_identifies_subsets(mock_fontra, tmp_path):
+    """Test that subset fonts are correctly identified and prepared for replacement."""
     mock_fontra.return_value = MagicMock(path=str(tmp_path / "Verdana.ttf"))
     (tmp_path / "Verdana.ttf").write_bytes(fitz.Font("helv").buffer)
 
-    # Create a PDF with a subset font
-    input_doc = fitz.open()
-    input_doc = create_test_pdf_with_subset_font(input_doc)
-    input_bytes = input_doc.tobytes()
-    input_doc.close()
+    doc = fitz.open()
+    doc = create_test_pdf_with_subset_font(doc)
+    fonts_on_page = doc[0].get_fonts()
+    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
+
+    font_xref_map, embedded_fonts = _gather_font_replacements(doc)
+
+    assert original_xref in font_xref_map
+    assert "Verdana" in embedded_fonts
+    assert len(font_xref_map) == 1
+    assert len(embedded_fonts) == 1
+    mock_fontra.assert_called_once_with("Verdana", "Regular")
+
+
+def test_gather_font_replacements_no_subsets():
+    """Test that no replacements are gathered when there are no subset fonts."""
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((50, 72), "Hello", fontname="helv")
+
+    font_xref_map, embedded_fonts = _gather_font_replacements(doc)
+    assert not font_xref_map
+    assert not embedded_fonts
+
+
+def test_gather_font_replacements_font_not_found(mock_fontra):
+    """Test that a subset font is skipped if its full font file is not found."""
+    mock_fontra.return_value = None
+    doc = fitz.open()
+    doc = create_test_pdf_with_subset_font(doc, font_name="GHIJKL+NonExistentFont")
+
+    font_xref_map, embedded_fonts = _gather_font_replacements(doc)
+    assert not font_xref_map
+    assert not embedded_fonts
+    mock_fontra.assert_called_once_with("NonExistentFont", "Regular")
+
+
+# --- Tests for normalize_pdf_fonts ---
+
+
+@patch("generator.common.fonts._gather_font_replacements")
+def test_normalize_pdf_fonts_replaces_subset_font(mock_gatherer, mock_fontra, tmp_path):
+    """Verify that a subset font is replaced with its full version."""
+    # We test _gather_font_replacements separately, so here we mock its behavior.
+    # We need a real doc to perform the final replacement steps on.
+    doc = fitz.open()
+    doc = create_test_pdf_with_subset_font(doc)
+    fonts_on_page = doc[0].get_fonts()
+    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
+
+    # Simulate that _gather_font_replacements found a replacement and embedded a new font.
+    # The new_xref would be created by `page.insert_font` inside the real function.
+    # For the test, we can just grab an existing object's xref.
+    new_xref = 1  # A valid xref in a minimal PDF
+    mock_gatherer.return_value = ({original_xref: new_xref}, {"Verdana": new_xref})
+
+    input_bytes = doc.tobytes()
+    doc.close()
 
     # Normalize the PDF
     output_bytes = normalize_pdf_fonts(input_bytes)
     output_doc = fitz.open(stream=output_bytes, filetype="pdf")
 
     # Assertions
-    mock_fontra.assert_called_once_with("Verdana", "Regular")
-    found_fonts = {font[4] for page in output_doc for font in page.get_fonts()}
-    assert "Verdana" in found_fonts
-    assert "ABCDEF+Verdana" not in found_fonts
+    mock_gatherer.assert_called_once()
+    # Check that the object at original_xref now points to new_xref
+    assert output_doc.xref_object(original_xref) == f"{new_xref} 0 R"
 
 
 def test_normalize_pdf_fonts_no_subsets():
@@ -96,23 +157,21 @@ def test_normalize_pdf_fonts_no_subsets():
     assert output_bytes == input_bytes
 
 
-def test_normalize_pdf_fonts_font_not_found(mock_fontra):
+@patch("generator.common.fonts._gather_font_replacements", return_value=({}, {}))
+def test_normalize_pdf_fonts_font_not_found(mock_gatherer, mock_fontra):
     """Test that normalization is skipped for a font that cannot be found."""
-    mock_fontra.return_value = None  # Mock fontra failing
+    input_doc = fitz.open()
+    input_doc = create_test_pdf_with_subset_font(
+        input_doc, font_name="GHIJKL+NonExistentFont"
+    )
+    input_bytes = input_doc.tobytes()
+    output_bytes = normalize_pdf_fonts(input_bytes)
 
-    with patch(
-        "pathlib.Path.exists", return_value=False
-    ):  # Mock local fallback failing
-        input_doc = fitz.open()
-        input_doc = create_test_pdf_with_subset_font(
-            input_doc, font_name="GHIJKL+NonExistentFont"
-        )
-        input_bytes = input_doc.tobytes()
-        output_bytes = normalize_pdf_fonts(input_bytes)
+    # The font should not have been replaced, original bytes returned
+    assert input_bytes == output_bytes
+    mock_gatherer.assert_called_once()
 
-        # The font should not have been replaced, original bytes returned
-        assert input_bytes == output_bytes
-        mock_fontra.assert_called_once_with("NonExistentFont", "Regular")
+
 
 
 @pytest.mark.parametrize(

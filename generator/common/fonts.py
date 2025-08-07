@@ -127,6 +127,73 @@ def resolve_font(font_name: str) -> fitz.Font:
         return fitz.Font("helv")
 
 
+def _gather_font_replacements(
+    doc: fitz.Document,
+) -> tuple[Dict[int, int], Dict[str, int]]:
+    """
+    Scans a PDF document for subset fonts and prepares replacements.
+
+    This function iterates through each page of the document, identifies subset fonts,
+    finds their corresponding full font files, and embeds them into the PDF.
+    It returns maps detailing the necessary replacements.
+
+    Args:
+        doc: The fitz.Document object to process.
+
+    Returns:
+        A tuple containing:
+        - font_xref_map: A dictionary mapping old font cross-reference numbers (xrefs)
+          to the new xrefs of their embedded full-font counterparts.
+        - embedded_fonts: A dictionary mapping base font names to the new xrefs of the
+          embedded full fonts, used to avoid re-embedding the same font.
+    """
+    font_xref_map: Dict[int, int] = {}
+    embedded_fonts: Dict[str, int] = {}
+
+    # Check fonts on all pages as they can differ
+    for i, page in enumerate(doc):
+        fonts_on_page = page.get_fonts(full=True)
+        for font_info in fonts_on_page:
+            xref = font_info[0]
+            name_str = font_info[3]  # basefont name (e.g., "AAAAAA+Verdana-Bold")
+            if xref in font_xref_map:
+                continue
+
+            match = SUBSET_FONT_RE.match(name_str)
+            if not match:
+                continue
+
+            base_font_name = match.group(1)
+            logger.debug("Found subset font: %s (base: %s)", name_str, base_font_name)
+
+            if base_font_name in embedded_fonts:
+                font_xref_map[xref] = embedded_fonts[base_font_name]
+                continue
+
+            font_path = find_font_path(base_font_name)
+            if not font_path:
+                logger.warning(
+                    "No full font file found for '%s'. Skipping.", base_font_name
+                )
+                continue
+
+            try:
+                new_xref = page.insert_font(
+                    fontfile=font_path, fontname=base_font_name
+                )
+                font_xref_map[xref] = new_xref
+                embedded_fonts[base_font_name] = new_xref
+            except RuntimeError as e:
+                logger.error(
+                    "Failed to embed font '%s' from path '%s': %s",
+                    base_font_name,
+                    font_path,
+                    e,
+                )
+
+    return font_xref_map, embedded_fonts
+
+
 def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     """
     Replaces subset fonts in a PDF with their full font files.
@@ -144,60 +211,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
             return pdf_bytes
 
         span.set_attribute("page_count", doc.page_count)
-        # A map of {old_xref: new_xref} for font replacement
-        font_xref_map: Dict[int, int] = {}
-        # A map of {base_font_name: new_xref} to avoid re-embedding the same font
-        embedded_fonts: Dict[str, int] = {}
-
-        # Check fonts on all pages as they can differ
-        for i, page in enumerate(doc):
-            fonts_on_page = page.get_fonts(full=True)
-            for font_info in fonts_on_page:
-                xref = font_info[0]
-                # font_info[3] is the basefont name (e.g., "AAAAAA+Verdana-Bold")
-                # font_info[4] is the symbolic name used on the page (e.g., "F4")
-                name_str = font_info[3]
-                # Already processed this font xref
-                if xref in font_xref_map:
-                    continue
-
-                match = SUBSET_FONT_RE.match(name_str)
-                if not match:
-                    continue
-
-                base_font_name = match.group(1)
-                logger.debug(
-                    "Found subset font: %s (base: %s)", name_str, base_font_name
-                )
-
-                if base_font_name in embedded_fonts:
-                    # Already embedded this full font, just map the old xref to the new one
-                    font_xref_map[xref] = embedded_fonts[base_font_name]
-                    continue
-
-                font_path = find_font_path(base_font_name)
-                if not font_path:
-                    logger.warning(
-                        "No full font file found for '%s'. Skipping normalization for this font.",
-                        base_font_name,
-                    )
-                    continue
-
-                try:
-                    # Embed the full font into the current page's resources.
-                    # This makes it available throughout the document.
-                    new_xref = page.insert_font(
-                        fontfile=font_path, fontname=base_font_name
-                    )
-                    font_xref_map[xref] = new_xref
-                    embedded_fonts[base_font_name] = new_xref
-                except RuntimeError as e:
-                    logger.error(
-                        "Failed to embed font '%s' from path '%s': %s",
-                        base_font_name,
-                        font_path,
-                        e,
-                    )
+        font_xref_map, embedded_fonts = _gather_font_replacements(doc)
 
         if not font_xref_map:
             span.set_attribute("fonts_normalized_count", 0)
