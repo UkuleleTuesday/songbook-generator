@@ -23,43 +23,42 @@ class GoogleDriveClient:
         self.drive = client(credentials)
         self.cache = cache
 
+    def search_files_by_name(
+        self, file_name: str, source_folders: List[str]
+    ) -> List[File]:
+        """Search for files by name across multiple folders."""
+        parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
+        # Format for Drive API query, e.g., "name contains 'My Song'"
+        escaped_file_name = file_name.replace("'", "\\'")
+        query = f"name contains '{escaped_file_name}' and ({' or '.join(parent_queries)}) and trashed = false"
 
-def search_files_by_name(
-    drive, file_name: str, source_folders: List[str]
-) -> List[File]:
-    """Search for files by name across multiple folders."""
-    parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
-    # Format for Drive API query, e.g., "name contains 'My Song'"
-    escaped_file_name = file_name.replace("'", "\\'")
-    query = f"name contains '{escaped_file_name}' and ({' or '.join(parent_queries)}) and trashed = false"
+        click.echo(f"Searching for file matching '{file_name}'...")
+        click.echo(f"Executing Drive API query: {query}")
 
-    click.echo(f"Searching for file matching '{file_name}'...")
-    click.echo(f"Executing Drive API query: {query}")
-
-    try:
-        resp = (
-            drive.files()
-            .list(
-                q=query,
-                pageSize=10,  # Limit to a reasonable number for this use case
-                fields="files(id,name,parents,properties,mimeType)",
+        try:
+            resp = (
+                self.drive.files()
+                .list(
+                    q=query,
+                    pageSize=10,  # Limit to a reasonable number for this use case
+                    fields="files(id,name,parents,properties,mimeType)",
+                )
+                .execute()
             )
-            .execute()
-        )
-        files = [
-            File(
-                id=f["id"],
-                name=f["name"],
-                properties=f.get("properties", {}),
-                mimeType=f.get("mimeType"),
-                parents=f.get("parents", []),
-            )
-            for f in resp.get("files", [])
-        ]
-        return files
-    except HttpError as e:
-        click.echo(f"Error querying Drive API: {e}", err=True)
-        return []
+            files = [
+                File(
+                    id=f["id"],
+                    name=f["name"],
+                    properties=f.get("properties", {}),
+                    mimeType=f.get("mimeType"),
+                    parents=f.get("parents", []),
+                )
+                for f in resp.get("files", [])
+            ]
+            return files
+        except HttpError as e:
+            click.echo(f"Error querying Drive API: {e}", err=True)
+            return []
 
 
 def build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:

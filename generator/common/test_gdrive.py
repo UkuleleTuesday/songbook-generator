@@ -1,6 +1,16 @@
 import pytest
 from unittest.mock import Mock, patch
-from .gdrive import query_drive_files, build_property_filters
+from .gdrive import GoogleDriveClient, query_drive_files, build_property_filters
+
+
+@pytest.fixture
+def mock_drive_client():
+    """Create a mock GoogleDriveClient."""
+    creds = Mock()
+    cache = Mock()
+    client = GoogleDriveClient(credentials=creds, cache=cache)
+    client.drive = Mock()
+    return client
 
 
 @pytest.fixture
@@ -8,6 +18,30 @@ def mock_drive():
     """Create a mock Google Drive service object."""
     drive = Mock()
     return drive
+
+
+def test_search_files_by_name(mock_drive_client):
+    """Test searching for a file by name."""
+    mock_response = {
+        "files": [{"id": "file1", "name": "Song 1"}],
+        "nextPageToken": None,
+    }
+
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = (
+        mock_response
+    )
+
+    result = mock_drive_client.search_files_by_name("Song 1", ["folder123"])
+
+    assert len(result) == 1
+    assert result[0].id == "file1"
+
+    expected_query = "name contains 'Song 1' and ('folder123' in parents) and trashed = false"
+    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
+        q=expected_query,
+        pageSize=10,
+        fields="files(id,name,parents,properties,mimeType)",
+    )
 
 
 def test_query_drive_files_basic(mock_drive):
