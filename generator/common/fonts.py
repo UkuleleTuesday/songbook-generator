@@ -23,15 +23,48 @@ def _log_pdf_fonts(doc: fitz.Document, title: str):
         click.echo("Not a valid PDF or empty document.")
         return
 
+    click.echo(f"XREF table length: {doc.xref_length()}")
     for i, page in enumerate(doc):
+        click.echo(f"\n  ======== Page {i + 1}/{doc.page_count} (xref: {page.xref}) ========")
         fonts_on_page = page.get_fonts(full=True)
+
+        try:
+            # page.get_xfont_names() is deprecated, use page.get_font_names()
+            page_font_names = page.get_font_names()
+            click.echo(f"  Page Font Names: {page_font_names}")
+            resources_xref = page.get_xobject_xref("/Resources")
+            if resources_xref:
+                click.echo(
+                    f"  Page Resources XREF: {resources_xref}, Object: {doc.xref_object(resources_xref)}"
+                )
+        except Exception as e:
+            click.echo(f"  Could not get page resource info: {e}")
+
         if not fonts_on_page:
-            continue
-        click.echo(f"  Page {i + 1}/{doc.page_count}:")
-        for font in fonts_on_page:
-            xref, _, _, base, name, _, _ = font
-            click.echo(f"    - XREF: {xref}, BaseFont: '{base}', Name: '{name}'")
-    click.echo("--- End of Font Log ---\n")
+            click.echo("  No fonts listed by page.get_fonts().")
+        else:
+            click.echo("  Fonts from page.get_fonts(full=True):")
+            for font in fonts_on_page:
+                xref, ext, ftype, base, name, _, _ = font
+                click.echo(
+                    f"    - XREF: {xref}, BaseFont: '{base}', Name: '{name}', Type: {ftype}, Ext: {ext}"
+                )
+                try:
+                    font_obj_source = doc.xref_object(xref)
+                    click.echo(f"      Raw object: {font_obj_source}")
+                except Exception as e:
+                    click.echo(f"      Could not get raw object for xref {xref}: {e}")
+
+    click.echo("\n--- End of Font Log ---\n")
+    # For very small test PDFs, printing the whole thing can be useful
+    try:
+        pdf_bytes = doc.tobytes()
+        if len(pdf_bytes) < 8192:  # Only print for small PDFs
+            click.echo("--- Raw PDF Content ---")
+            click.echo(pdf_bytes.decode("latin-1", errors="replace"))
+            click.echo("--- End of Raw PDF Content ---\n")
+    except Exception as e:
+        click.echo(f"Could not get raw PDF bytes: {e}")
 
 
 # Initialize fontra's font database on module load
