@@ -51,8 +51,8 @@ jobs:
 
         LAST_UPDATED_STR=$(gcloud storage ls "$GCS_PATH**" --json | jq -r '.[].updated' | sort -r | head -n 1)
 
-        if [[ -z "$LAST_UPDATED_STR" ]]; then
-          echo "No files found in GCS bucket. No changes detected."
+        if [[ -z "$LAST_UPDATED_STR" || "$LAST_UPDATED_STR" == "null" ]]; then
+          echo "No files found in GCS bucket or no valid update times. No changes detected."
           echo "changes_detected=false" >> $GITHUB_OUTPUT
           exit 0
         fi
