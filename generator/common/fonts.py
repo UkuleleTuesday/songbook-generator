@@ -140,6 +140,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
     Returns:
         The processed PDF content as bytes, or the original bytes if no changes were made.
     """
+    import pdb;pdb.set_trace()
     with tracer.start_as_current_span("normalize_pdf_fonts") as span:
         span.set_attribute("original_pdf_size", len(pdf_bytes))
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
@@ -159,6 +160,7 @@ def normalize_pdf_fonts(pdf_bytes: bytes) -> bytes:
                 xref = font_info[0]
                 name_str = font_info[4]  # The font name is at index 4, and is a string
                 # Already processed this font xref
+
                 if xref in font_xref_map:
                     continue
 
