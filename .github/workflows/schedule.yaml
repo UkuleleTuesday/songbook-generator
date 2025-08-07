@@ -134,7 +134,7 @@ jobs:
             DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${{ matrix.edition }}.pdf"
 
             echo "Uploading to public bucket: ${DEST_GCS_PATH}"
-            gsutil cp "${SOURCE_GCS_PATH}" "${DEST_GCS_PATH}"
+            gcloud storage cp "${SOURCE_GCS_PATH}" "${DEST_GCS_PATH}"
             echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
             exit 0
           elif [[ "$STATUS" == "failed" ]]; then
