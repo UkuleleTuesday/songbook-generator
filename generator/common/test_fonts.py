@@ -55,7 +55,6 @@ def create_test_pdf_with_subset_font(
     doc, font_name="ABCDEF+Verdana", text="Hello"
 ) -> fitz.Document:
     """Helper to create a PDF with a subset-like font name."""
-    print(f"\n[create_test_pdf] Creating PDF with font: '{font_name}'")
     if doc.page_count == 0:
         doc.new_page()
     page = doc[0]
@@ -68,12 +67,8 @@ def create_test_pdf_with_subset_font(
     page.insert_text((50, 72), text, fontname=font_name, fontsize=11)
 
     # Save and reload to ensure font is correctly embedded and available in get_fonts()
-    print("[create_test_pdf] Saving and reloading PDF to finalize font embedding...")
     pdf_bytes = doc.tobytes()
     new_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    print(
-        f"[create_test_pdf] Fonts in reloaded doc: {new_doc[0].get_fonts(full=True)}"
-    )
     return new_doc
 
 
@@ -88,8 +83,8 @@ def test_gather_font_replacements_identifies_subsets(mock_fontra, tmp_path):
     doc = fitz.open()
     doc = create_test_pdf_with_subset_font(doc)
     fonts_on_page = doc[0].get_fonts(full=True)
-    print(f"\n[test_gather_font_replacements_identifies_subsets] Fonts on page: {fonts_on_page}")
-    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
+    # In test-created PDFs, subset name is in symbolic name (idx 4)
+    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[4])
 
     font_xref_map, embedded_fonts = _gather_font_replacements(doc)
 
@@ -116,7 +111,6 @@ def test_gather_font_replacements_font_not_found(mock_fontra):
     mock_fontra.return_value = None
     doc = fitz.open()
     doc = create_test_pdf_with_subset_font(doc, font_name="GHIJKL+NonExistentFont")
-    print(f"\n[test_gather_font_replacements_font_not_found] Fonts on page: {doc[0].get_fonts(full=True)}")
 
     font_xref_map, embedded_fonts = _gather_font_replacements(doc)
     assert not font_xref_map
@@ -135,8 +129,8 @@ def test_normalize_pdf_fonts_replaces_subset_font(mock_gatherer, mock_fontra, tm
     doc = fitz.open()
     doc = create_test_pdf_with_subset_font(doc)
     fonts_on_page = doc[0].get_fonts(full=True)
-    print(f"\n[test_normalize_pdf_fonts_replaces_subset_font] Fonts on page: {fonts_on_page}")
-    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[3])
+    # In test-created PDFs, subset name is in symbolic name (idx 4)
+    original_xref = next(f[0] for f in fonts_on_page if "ABCDEF+" in f[4])
 
     # Simulate that _gather_font_replacements found a replacement and embedded a new font.
     # The new_xref would be created by `page.insert_font` inside the real function.

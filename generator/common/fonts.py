@@ -152,32 +152,32 @@ def _gather_font_replacements(
 
     # Check fonts on all pages as they can differ
     for i, page in enumerate(doc):
-        print(f"\n[_gather_font_replacements] Processing page {i}")
         fonts_on_page = page.get_fonts(full=True)
-        print(f"[_gather_font_replacements] Fonts on page {i}: {fonts_on_page}")
         for font_info in fonts_on_page:
-            print(f"[_gather_font_replacements]   - Checking font_info: {font_info}")
             xref = font_info[0]
-            name_str = font_info[3]  # basefont name (e.g., "AAAAAA+Verdana-Bold")
             if xref in font_xref_map:
-                print(f"[_gather_font_replacements]     -> Skipping xref {xref}, already mapped.")
                 continue
 
-            match = SUBSET_FONT_RE.match(name_str)
-            if not match:
-                print(f"[_gather_font_replacements]     -> '{name_str}' is not a subset font. Skipping.")
+            # A subset font prefix can appear in the base font name (idx 3) or symbolic name (idx 4)
+            name_to_check = None
+            if SUBSET_FONT_RE.match(font_info[3]):
+                name_to_check = font_info[3]
+            elif SUBSET_FONT_RE.match(font_info[4]):
+                name_to_check = font_info[4]
+
+            if not name_to_check:
                 continue
 
+            match = SUBSET_FONT_RE.match(name_to_check)
             base_font_name = match.group(1)
-            print(f"[_gather_font_replacements]     -> Found subset font. Base name: '{base_font_name}'")
-            logger.debug("Found subset font: %s (base: %s)", name_str, base_font_name)
+            logger.debug(
+                "Found subset font: %s (base: %s)", name_to_check, base_font_name
+            )
 
             if base_font_name in embedded_fonts:
-                print(f"[_gather_font_replacements]     -> Font '{base_font_name}' already embedded. Reusing xref.")
                 font_xref_map[xref] = embedded_fonts[base_font_name]
                 continue
 
-            print(f"[_gather_font_replacements]     -> Finding path for '{base_font_name}'")
             font_path = find_font_path(base_font_name)
             if not font_path:
                 logger.warning(
