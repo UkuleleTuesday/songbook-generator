@@ -209,7 +209,6 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
-@functions_framework.cloud_event
 def merger_main(cloud_event: CloudEvent):
     """
     Cloud Function triggered by a CloudEvent to sync and merge PDFs.
