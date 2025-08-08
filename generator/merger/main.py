@@ -17,6 +17,9 @@ from google.auth import default
 from googleapiclient.discovery import build
 
 from google.cloud import storage
+import functions_framework
+from cloudevents.http import CloudEvent
+
 
 from . import sync
 from ..common.config import get_settings
@@ -206,18 +209,21 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
-def merger_main(event, context=None):
+@functions_framework.cloud_event
+def merger_main(cloud_event: CloudEvent):
     """
-    Cloud Function triggered by Pub/Sub to sync and merge PDFs from GCS cache.
+    Cloud Function triggered by a CloudEvent to sync and merge PDFs.
+
+    This function is designed to be triggered by a Pub/Sub message.
 
     Args:
-        event (dict): Event payload.
-        context (google.cloud.functions.Context): Metadata for the event.
+        cloud_event (CloudEvent): The CloudEvent representing the trigger.
+          The `data` payload is ignored, but `attributes` are used.
     """
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            attributes = event.get("attributes", {})
+            attributes = cloud_event.get_attributes()
             # The 'force' attribute will be a string 'true' or 'false'.
             force_sync = attributes.get("force", "false").lower() == "true"
 
