@@ -221,7 +221,9 @@ def merger_main(event, context=None):
             if "data" in event:
                 try:
                     # Decode the Pub/Sub message data
-                    payload = json.loads(base64.b64decode(event["data"]).decode("utf-8"))
+                    payload = json.loads(
+                        base64.b64decode(event["data"]).decode("utf-8")
+                    )
                 except (json.JSONDecodeError, UnicodeDecodeError) as e:
                     click.echo(f"Error decoding Pub/Sub message: {e}", err=True)
 
