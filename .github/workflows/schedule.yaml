@@ -42,59 +42,56 @@ jobs:
       - name: Check GCS modification times
         id: check
         run: |
+          EDITIONS_TO_BUILD_STR=""
           # If 'force' is used, build all editions
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
             echo "Force mode enabled. Building all editions."
-            editions_json=$(echo "${{ env.EDITIONS }}" | jq -R 'split(" ")' | jq -c '.')
-            echo "editions_to_build=${editions_json}" >> $GITHUB_OUTPUT
-            exit 0
-          fi
+            EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
+          else
+            SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
 
-          EDITIONS_TO_BUILD_STR=""
-          SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
-
-          GCS_LIST_JSON=$(gcloud storage ls "$SOURCE_PATH**" --json)
-          if [[ $? -ne 0 ]]; then
-              echo "::error::'gcloud storage ls' command failed for source path."
-              echo "Output was: $GCS_LIST_JSON"
-              exit 1
-          fi
-
-          SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
-          if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
-            echo "No source files found in cache. Nothing to build."
-            echo "editions_to_build=[]" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
-          echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
-
-          for edition in ${{ env.EDITIONS }}; do
-            DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${edition}.pdf"
-            GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
+            GCS_LIST_JSON=$(gcloud storage ls "$SOURCE_PATH**" --json)
             if [[ $? -ne 0 ]]; then
-                echo "::warning::'gcloud storage ls' command failed for destination path ${DEST_PATH}. Assuming it doesn't exist."
-                echo "Output was: $GCS_DEST_LIST_JSON"
-                GCS_DEST_LIST_JSON="" # Treat as empty
+                echo "::error::'gcloud storage ls' command failed for source path."
+                echo "Output was: $GCS_LIST_JSON"
+                exit 1
             fi
-            DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' || echo "")
-            
-            if [[ -z "$DEST_UPDATE_JSON" ]]; then
-              echo "Published songbook for '$edition' not found. Adding to build queue."
-              EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
-              continue
-            fi
-            
-            DEST_UPDATE_TS=$(date -d "$DEST_UPDATE_JSON" +%s)
-            echo "Latest '$edition' songbook published at: $(date -d @$DEST_UPDATE_TS)"
 
-            if (( SOURCE_LATEST_UPDATE_TS > DEST_UPDATE_TS )); then
-              echo "Source files are newer than '$edition' songbook. Adding to build queue."
-              EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
+            SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
+            if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
+              echo "No source files found in cache. Nothing to build."
             else
-              echo "Songbook '$edition' is up to date."
+              SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
+              echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
+
+              for edition in ${{ env.EDITIONS }}; do
+                DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${edition}.pdf"
+                GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
+                if [[ $? -ne 0 ]]; then
+                    echo "::warning::'gcloud storage ls' command failed for destination path ${DEST_PATH}. Assuming it doesn't exist."
+                    echo "Output was: $GCS_DEST_LIST_JSON"
+                    GCS_DEST_LIST_JSON="" # Treat as empty
+                fi
+                DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' || echo "")
+
+                if [[ -z "$DEST_UPDATE_JSON" ]]; then
+                  echo "Published songbook for '$edition' not found. Adding to build queue."
+                  EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
+                  continue
+                fi
+
+                DEST_UPDATE_TS=$(date -d "$DEST_UPDATE_JSON" +%s)
+                echo "Latest '$edition' songbook published at: $(date -d @$DEST_UPDATE_TS)"
+
+                if (( SOURCE_LATEST_UPDATE_TS > DEST_UPDATE_TS )); then
+                  echo "Source files are newer than '$edition' songbook. Adding to build queue."
+                  EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
+                else
+                  echo "Songbook '$edition' is up to date."
+                fi
+              done
             fi
-          done
+          fi
 
           # Convert the space-separated string to a JSON array for the output
           FINAL_EDITIONS_JSON=$(echo "${EDITIONS_TO_BUILD_STR}" | jq -R 'split(" ") | map(select(length > 0))' | jq -c '.')
