@@ -13,6 +13,7 @@ def mock_services():
         "tracer": MagicMock(),
         "drive": MagicMock(),
         "cache_bucket": MagicMock(),
+        "tagger": MagicMock(),
     }
     services[
         "tracer"
