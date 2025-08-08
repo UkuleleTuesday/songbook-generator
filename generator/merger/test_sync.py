@@ -14,9 +14,9 @@ def mock_services():
         "drive": MagicMock(),
         "cache_bucket": MagicMock(),
     }
-    services["tracer"].start_as_current_span.return_value.__enter__.return_value = (
-        MagicMock()
-    )
+    services[
+        "tracer"
+    ].start_as_current_span.return_value.__enter__.return_value = MagicMock()
     return services
 
 
