@@ -285,26 +285,20 @@ jobs:
         EOF
         gcloud functions deploy "$MERGER_FN_NAME" --flags-file="$FLAGS_FILE"
 
-        # Output the function URL for PR comments
-        FUNCTION_URL=$(gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
-        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
-
     - name: Update PR preview status
       if: github.event_name == 'pull_request'
       uses: ./.github/actions/update-pr-comment
       with:
         component: 'Merger'
-        url: ${{ steps.deploy.outputs.function_url }}
+        function_name: ${{ steps.fn-name.outputs.name }}
 
-    - name: Publish test message
+    - name: Publish test message to trigger a sync
       run: |
         CACHE_REFRESH_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        # Create a JSON array of folder IDs from the comma-separated env var.
-        # e.g., "id1,id2" becomes '["id1","id2"]'
-        FOLDER_IDS_JSON='["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]'
-        # Construct the full message payload
-        MESSAGE_JSON="{\"source_folders\":${FOLDER_IDS_JSON}}"
-        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" --message "${MESSAGE_JSON}"
+        echo "Publishing test message to ${CACHE_REFRESH_PUBSUB_TOPIC} to trigger sync..."
+        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
+          --message="Initial sync after deploy" \
+          --attribute="force=false"
 
   deploy-ui:
     name: Deploy UI

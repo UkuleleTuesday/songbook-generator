@@ -20,7 +20,7 @@ def worker(cloud_event):
     return worker_main(cloud_event)
 
 
-@functions_framework.http
-def merger(request):
-    """HTTP Cloud Function for the PDF merging service."""
-    return merger_main(request)
+@functions_framework.cloud_event
+def merger(cloud_event):
+    """CloudEvent Function for the PDF merging service."""
+    return merger_main(cloud_event)

@@ -15,6 +15,8 @@ from google.auth import default
 from googleapiclient.discovery import build
 
 from google.cloud import storage
+from cloudevents.http import CloudEvent
+
 
 from . import sync
 from ..common.config import get_settings
@@ -204,24 +206,33 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
-def merger_main(request):
-    """HTTP Cloud Function for syncing and merging PDFs from GCS cache."""
+def merger_main(cloud_event: CloudEvent):
+    """
+    Cloud Function triggered by a CloudEvent to sync and merge PDFs.
+
+    This function is designed to be triggered by a Pub/Sub message.
+
+    Args:
+        cloud_event (CloudEvent): The CloudEvent representing the trigger.
+          The `data` payload is ignored, but `attributes` are used.
+    """
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            # Get source folders from request payload, or fall back to config
-            request_json = request.get_json(silent=True)
-            force_sync = request_json.get("force", False) if request_json else False
-            source_folders = (
-                request_json.get("source_folders")
-                or get_settings().song_sheets.folder_ids
-            )
+            attributes = cloud_event.get_attributes() or {}
+            # The 'force' attribute will be a string 'true' or 'false'.
+            force_sync = attributes.get("force", "false").lower() == "true"
+
+            source_folders = get_settings().song_sheets.folder_ids
+
             if not source_folders:
-                source_folders = get_settings().song_sheets.folder_ids
+                click.echo("Error: No source folders specified.", err=True)
+                main_span.set_attribute("status", "failed_no_source_folders")
+                raise ValueError("No source folders specified in configuration.")
 
             # Add source_folders to span attributes for tracing
-            if source_folders:
-                main_span.set_attribute("source_folders", ",".join(source_folders))
+            main_span.set_attribute("source_folders", ",".join(source_folders))
+            main_span.set_attribute("force_sync", str(force_sync))
 
             # Get the modification time of the last merged PDF to use as a cutoff
             last_merge_time = None
@@ -239,7 +250,10 @@ def merger_main(request):
                 click.echo(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
                 synced_files_count = sync.sync_cache(
-                    source_folders, services, modified_after=last_merge_time
+                    source_folders,
+                    services,
+                    modified_after=last_merge_time,
+                    update_tags=True,  # Always update tags
                 )
                 sync_span.set_attribute("synced_files_count", synced_files_count)
                 click.echo("Sync complete.")
@@ -247,7 +261,7 @@ def merger_main(request):
             if not force_sync and synced_files_count == 0:
                 click.echo("No files were updated since the last merge. Nothing to do.")
                 main_span.set_attribute("status", "skipped_no_changes")
-                return {"message": "No new file changes to merge."}, 200
+                return
 
             click.echo("Starting PDF merge operation")
 
@@ -264,28 +278,11 @@ def merger_main(request):
 
                     if not result_path:
                         main_span.set_attribute("status", "no_files")
-                        return {"error": "No PDF files found to merge"}, 404
+                        click.echo("No PDF files found to merge.")
+                        return
 
                     merge_span.set_attribute("merged_pdf_path", result_path)
-
-                # Read the merged PDF data
-                with services["tracer"].start_as_current_span(
-                    "return_pdf"
-                ) as return_span:
-                    with open(result_path, "rb") as pdf_file:
-                        pdf_data = pdf_file.read()
-
-                    return_span.set_attribute("pdf_size_bytes", len(pdf_data))
                     main_span.set_attribute("status", "success")
-
-                    return (
-                        pdf_data,
-                        200,
-                        {
-                            "Content-Type": "application/pdf",
-                            "Content-Disposition": 'attachment; filename="merged-songbook.pdf"',
-                        },
-                    )
 
             finally:
                 # Clean up the temporary file
