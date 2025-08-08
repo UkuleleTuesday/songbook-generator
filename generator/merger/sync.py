@@ -101,7 +101,7 @@ def sync_cache(
             span.set_attribute("modified_after", str(modified_after))
 
         cache = init_cache()
-        tagger = Tagger(services["drive"])
+        tagger = services["tagger"]
 
         files_to_update = _get_files_to_update(
             services["drive"], source_folders, modified_after
