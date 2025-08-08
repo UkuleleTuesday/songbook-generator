@@ -14,6 +14,9 @@ on:
 permissions:
   contents: read
 
+env:
+  EDITIONS: '["regular", "complete"]'
+
 jobs:
   check-for-updates:
     name: Check for updates
@@ -48,7 +51,7 @@ jobs:
           SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
           echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
-          for edition in regular complete; do
+          for edition in $(echo '${{ env.EDITIONS }}' | jq -r '.[]'); do
             DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${edition}.pdf"
             DEST_UPDATE_JSON=$(gcloud storage ls "$DEST_PATH" --json | jq -r '.[].updated' || echo "")
             
@@ -82,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        edition: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.force) && fromJson('["regular", "complete"]') || fromJson(needs.check-for-updates.outputs.editions_to_build) }}
+        edition: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.force) && fromJson(env.EDITIONS) || fromJson(needs.check-for-updates.outputs.editions_to_build) }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
