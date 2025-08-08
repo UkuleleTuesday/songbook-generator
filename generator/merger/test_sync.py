@@ -25,6 +25,41 @@ def mock_services():
 @patch("generator.merger.sync._get_files_to_update")
 @patch("generator.merger.sync.init_cache")
 @patch("generator.merger.sync._sync_gcs_metadata_from_drive")
+def test_sync_cache_calls_sync_metadata_correctly(
+    mock_sync_metadata,
+    mock_init_cache,
+    mock_get_files,
+    mock_gdrive_client,
+    mock_tagger,
+    mock_services,
+):
+    """
+    Verify that sync_cache calls _sync_gcs_metadata_from_drive with the correct arguments.
+    """
+    # Arrange
+    mock_file = File(id="test_id", name="test_name")
+    mock_get_files.return_value = [mock_file]
+    mock_cache_instance = mock_init_cache.return_value
+
+    # Act
+    sync_cache(
+        source_folders=["folder1"],
+        services=mock_services,
+        with_metadata=True,
+        update_tags_only=False,
+    )
+
+    # Assert
+    mock_sync_metadata.assert_called_once_with(
+        ["folder1"],
+        mock_cache_instance,
+        mock_services["drive"],
+        mock_services["cache_bucket"],
+        mock_services["tracer"],
+    )
+
+
+@patch("generator.merger.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_download_file_stream_args(
     mock_sync_metadata,
     mock_init_cache,

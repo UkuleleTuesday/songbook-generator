@@ -10,15 +10,13 @@ from ..worker.models import File
 from .tags import Tagger
 
 
-def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
+def _sync_gcs_metadata_from_drive(
+    source_folders: List[str], cache, drive_service, cache_bucket, tracer
+):
     """Sync GCS cache metadata with Google Drive file information."""
-    with services["tracer"].start_as_current_span(
-        "_sync_gcs_metadata_from_drive"
-    ) as span:
+    with tracer.start_as_current_span("_sync_gcs_metadata_from_drive") as span:
         click.echo("Starting metadata sync from Drive to GCS cache...")
-        gdrive_client = GoogleDriveClient(
-            cache=services["cache"], drive=services["drive"]
-        )
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
         all_drive_files = []
         for folder_id in source_folders:
             files = gdrive_client.query_drive_files(folder_id)
@@ -27,7 +25,7 @@ def _sync_gcs_metadata_from_drive(source_folders: List[str], services):
         span.set_attribute("drive_files_found", len(all_drive_files))
 
         prefix = "song-sheets/"
-        cached_blobs = list(services["cache_bucket"].list_blobs(prefix=prefix))
+        cached_blobs = list(cache_bucket.list_blobs(prefix=prefix))
         span.set_attribute("cached_blobs_found", len(cached_blobs))
 
         updated_count, skipped_count, error_count = 0, 0, 0
@@ -138,7 +136,13 @@ def sync_cache(
                     )
 
         if with_metadata and not update_tags_only:
-            _sync_gcs_metadata_from_drive(source_folders, services)
+            _sync_gcs_metadata_from_drive(
+                source_folders,
+                cache,
+                services["drive"],
+                services["cache_bucket"],
+                services["tracer"],
+            )
 
         return len(files_to_update)
 
