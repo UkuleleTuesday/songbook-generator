@@ -233,7 +233,7 @@ def merger_main(event, context=None):
             if not source_folders:
                 click.echo("Error: No source folders specified.", err=True)
                 main_span.set_attribute("status", "failed_no_source_folders")
-                return {"error": "No source folders specified"}, 400
+                raise ValueError("No source folders specified in configuration.")
 
             # Add source_folders to span attributes for tracing
             main_span.set_attribute("source_folders", ",".join(source_folders))
@@ -266,7 +266,7 @@ def merger_main(event, context=None):
             if not force_sync and synced_files_count == 0:
                 click.echo("No files were updated since the last merge. Nothing to do.")
                 main_span.set_attribute("status", "skipped_no_changes")
-                return {"message": "No new file changes to merge."}, 200
+                return
 
             click.echo("Starting PDF merge operation")
 
@@ -283,28 +283,11 @@ def merger_main(event, context=None):
 
                     if not result_path:
                         main_span.set_attribute("status", "no_files")
-                        return {"error": "No PDF files found to merge"}, 404
+                        click.echo("No PDF files found to merge.")
+                        return
 
                     merge_span.set_attribute("merged_pdf_path", result_path)
-
-                # Read the merged PDF data
-                with services["tracer"].start_as_current_span(
-                    "return_pdf"
-                ) as return_span:
-                    with open(result_path, "rb") as pdf_file:
-                        pdf_data = pdf_file.read()
-
-                    return_span.set_attribute("pdf_size_bytes", len(pdf_data))
                     main_span.set_attribute("status", "success")
-
-                    return (
-                        pdf_data,
-                        200,
-                        {
-                            "Content-Type": "application/pdf",
-                            "Content-Disposition": 'attachment; filename="merged-songbook.pdf"',
-                        },
-                    )
 
             finally:
                 # Clean up the temporary file
