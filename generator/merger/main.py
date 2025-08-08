@@ -1,5 +1,3 @@
-import base64
-import json
 import os
 import tempfile
 from functools import lru_cache
@@ -17,7 +15,6 @@ from google.auth import default
 from googleapiclient.discovery import build
 
 from google.cloud import storage
-import functions_framework
 from cloudevents.http import CloudEvent
 
 
