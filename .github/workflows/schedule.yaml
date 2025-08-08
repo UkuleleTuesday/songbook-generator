@@ -81,7 +81,7 @@ jobs:
             
             if [[ -z "$DEST_UPDATE_JSON" ]]; then
               echo "Published songbook for '$edition' not found. Adding to build queue."
-              EDITIONS_TO_BUILD=$(echo "$EDITIONS_TO_BUILD" | jq ". + [\"$edition\"]")
+              EDITIONS_TO_BUILD=$(echo "$EDITIONS_TO_BUILD" | jq -c ". + [\"$edition\"]")
               continue
             fi
             
@@ -90,7 +90,7 @@ jobs:
 
             if (( SOURCE_LATEST_UPDATE_TS > DEST_UPDATE_TS )); then
               echo "Source files are newer than '$edition' songbook. Adding to build queue."
-              EDITIONS_TO_BUILD=$(echo "$EDITIONS_TO_BUILD" | jq ". + [\"$edition\"]")
+              EDITIONS_TO_BUILD=$(echo "$EDITIONS_TO_BUILD" | jq -c ". + [\"$edition\"]")
             else
               echo "Songbook '$edition' is up to date."
             fi
