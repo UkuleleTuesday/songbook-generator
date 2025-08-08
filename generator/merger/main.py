@@ -206,6 +206,34 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
+def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
+    """
+    Parses a CloudEvent to extract attributes from the Pub/Sub message.
+
+    Args:
+        cloud_event: The incoming CloudEvent object.
+
+    Returns:
+        A dictionary containing the parsed attributes.
+    """
+    click.echo("--- Received CloudEvent ---")
+    click.echo(f"CloudEvent object: {cloud_event}")
+    click.echo(f"Attributes: {cloud_event.get_attributes()}")
+    click.echo(f"Data: {cloud_event.get_data()}")
+    click.echo("--------------------------")
+
+    data = cloud_event.get_data() or {}
+    message = data.get("message", {})
+    attributes = message.get("attributes", {})
+
+    # The 'force' attribute will be a string 'true' or 'false'.
+    force_sync = attributes.get("force", "false").lower() == "true"
+
+    return {
+        "force_sync": force_sync,
+    }
+
+
 def merger_main(cloud_event: CloudEvent):
     """
     Cloud Function triggered by a CloudEvent to sync and merge PDFs.
@@ -219,18 +247,8 @@ def merger_main(cloud_event: CloudEvent):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            click.echo("--- Received CloudEvent ---")
-            click.echo(f"CloudEvent object: {cloud_event}")
-            click.echo(f"Attributes: {cloud_event.get_attributes()}")
-            click.echo(f"Data: {cloud_event.get_data()}")
-            click.echo("--------------------------")
-
-            data = cloud_event.get_data() or {}
-            message = data.get("message", {})
-            attributes = message.get("attributes", {})
-
-            # The 'force' attribute will be a string 'true' or 'false'.
-            force_sync = attributes.get("force", "false").lower() == "true"
+            event_params = _parse_cloud_event(cloud_event)
+            force_sync = event_params["force_sync"]
 
             source_folders = get_settings().song_sheets.folder_ids
 
