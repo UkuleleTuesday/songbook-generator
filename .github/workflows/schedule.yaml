@@ -98,7 +98,7 @@ jobs:
 
           echo "Editions to build: $FINAL_EDITIONS_JSON"
           echo "editions_to_build=$FINAL_EDITIONS_JSON" >> $GITHUB_OUTPUT
-  
+
   generate-songbook:
     name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
@@ -130,13 +130,13 @@ jobs:
 
     - name: Set up Cloud SDK
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
-      
+
     - name: Trigger songbook generation
       run: |
         PAYLOAD=$(jq -n --arg edition "${{ matrix.edition }}" '{ edition: $edition }')
         echo "Triggering songbook generation with payload: $PAYLOAD"
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
-        
+
         RESPONSE=$(curl -s -f -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API_URL")
         echo "API Response: $RESPONSE"
         JOB_ID=$(echo "$RESPONSE" | jq -r '.job_id')
