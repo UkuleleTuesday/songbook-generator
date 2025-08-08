@@ -225,7 +225,10 @@ def merger_main(cloud_event: CloudEvent):
             click.echo(f"Data: {cloud_event.get_data()}")
             click.echo("--------------------------")
 
-            attributes = cloud_event.get_attributes() or {}
+            data = cloud_event.get_data() or {}
+            message = data.get("message", {})
+            attributes = message.get("attributes", {})
+
             # The 'force' attribute will be a string 'true' or 'false'.
             force_sync = attributes.get("force", "false").lower() == "true"
 
