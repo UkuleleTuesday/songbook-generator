@@ -42,7 +42,6 @@ jobs:
       - name: Check GCS modification times
         id: check
         run: |
-          set -x
           # If 'force' is used, build all editions
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
             echo "Force mode enabled. Building all editions."
