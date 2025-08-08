@@ -132,7 +132,7 @@ def sync_cache(
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
                     gdrive_client.download_file_stream(
                         file,
-                        use_cache=False,
+                        use_cache=True,
                     )
 
         if with_metadata and not update_tags_only:
