@@ -59,6 +59,10 @@ def test_sync_cache_calls_sync_metadata_correctly(
     )
 
 
+@patch("generator.merger.sync.Tagger")
+@patch("generator.merger.sync.GoogleDriveClient")
+@patch("generator.merger.sync._get_files_to_update")
+@patch("generator.merger.sync.init_cache")
 @patch("generator.merger.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_download_file_stream_args(
     mock_sync_metadata,
