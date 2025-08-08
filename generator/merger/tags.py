@@ -52,9 +52,14 @@ class Tagger:
                 current_properties = file.properties.copy()
                 click.echo(f"  Current properties: {json.dumps(current_properties)}")
                 span.set_attribute("current_properties", json.dumps(current_properties))
-                updated_properties = current_properties
+                updated_properties = current_properties.copy()
                 updated_properties.update(new_properties)
                 click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
+
+                if updated_properties == current_properties:
+                    click.echo("  Tags are identical, no update needed.")
+                    span.set_attribute("update_skipped", "true")
+                    return
 
                 self.drive_service.files().update(
                     fileId=file.id,

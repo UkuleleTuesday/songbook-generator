@@ -60,6 +60,21 @@ def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
+def test_update_tags_no_update_if_tags_are_identical(mock_drive_service):
+    """Test that no update is made if the generated tags match existing ones."""
+    tagger = Tagger(mock_drive_service)
+    file_to_tag = File(
+        id="file123",
+        name="test.pdf",
+        parents=[FOLDER_ID_APPROVED],
+        properties={"status": "APPROVED"},
+    )
+
+    tagger.update_tags(file_to_tag)
+
+    mock_drive_service.files.return_value.update.assert_not_called()
+
+
 def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_service):
     """Test that multiple tags are applied and existing properties preserved."""
 
