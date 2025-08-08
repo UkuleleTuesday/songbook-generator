@@ -219,7 +219,7 @@ def merger_main(cloud_event: CloudEvent):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            attributes = cloud_event.get_attributes()
+            attributes = cloud_event.get_attributes() or {}
             # The 'force' attribute will be a string 'true' or 'false'.
             force_sync = attributes.get("force", "false").lower() == "true"
 
