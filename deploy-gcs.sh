@@ -119,6 +119,9 @@ gsutil iam ch \
 gsutil iam ch \
   "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
   "gs://${GCS_SONGBOOKS_BUCKET}"
+gsutil iam ch \
+  "serviceAccount:cloud-run-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com:objectAdmin" \
+  "gs://${GCS_SONGBOOKS_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"
 gcloud iam service-accounts add-iam-policy-binding "${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
