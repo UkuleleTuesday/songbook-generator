@@ -60,7 +60,7 @@ jobs:
               exit 1
           fi
 
-          SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].updated' | sort -r | head -n 1)
+          SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
           if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
             echo "No source files found in cache. Nothing to build."
             echo "editions_to_build=[]" >> $GITHUB_OUTPUT
@@ -77,7 +77,7 @@ jobs:
                 echo "Output was: $GCS_DEST_LIST_JSON"
                 GCS_DEST_LIST_JSON="" # Treat as empty
             fi
-            DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].updated' || echo "")
+            DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' || echo "")
             
             if [[ -z "$DEST_UPDATE_JSON" ]]; then
               echo "Published songbook for '$edition' not found. Adding to build queue."
