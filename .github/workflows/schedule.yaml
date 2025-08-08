@@ -21,7 +21,6 @@ jobs:
   check-for-updates:
     name: Check for updates
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !github.event.inputs.force)
     outputs:
       editions_to_build: ${{ steps.check.outputs.editions_to_build }}
     steps:
@@ -39,6 +38,13 @@ jobs:
       - name: Check GCS modification times
         id: check
         run: |
+          # If 'force' is used, build all editions
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
+            echo "Force mode enabled. Building all editions."
+            echo "editions_to_build=${{ env.EDITIONS }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           EDITIONS_TO_BUILD='[]'
           SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
 
@@ -79,13 +85,11 @@ jobs:
     name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: check-for-updates
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.force) ||
-      (needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != '')
+    if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
     strategy:
       fail-fast: false
       matrix:
-        edition: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.force) && fromJson(env.EDITIONS) || fromJson(needs.check-for-updates.outputs.editions_to_build) }}
+        edition: ${{ fromJson(needs.check-for-updates.outputs.editions_to_build) }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
