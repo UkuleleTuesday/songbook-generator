@@ -53,12 +53,19 @@ gsutil mb \
   -p "${GCP_PROJECT_ID}" \
   -l "${GCP_REGION}" \
   "gs://${GCS_WORKER_CACHE_BUCKET}" || echo "Worker cache bucket may already exist, continuing…"
+# Public songbook buckets
+gsutil mb \
+  -p "${GCP_PROJECT_ID}" \
+  -l "${GCP_REGION}" \
+  "gs://${GCS_SONGBOOKS_BUCKET}" || echo "CDN bucket may already exist, continuing…"
 
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_CDN_BUCKET
 gsutil uniformbucketlevelaccess set on gs://$GCS_WORKER_CACHE_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_WORKER_CACHE_BUCKET
+gsutil uniformbucketlevelaccess set on gs://$GCS_SONGBOOKS_BUCKET
+gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_SONGBOOKS_BUCKET
 
 
 echo "5. Setting lifecycle policies (90-day TTL) on buckets…"
@@ -107,6 +114,11 @@ gsutil iam ch \
 gsutil iam ch \
   "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
   "gs://${GCS_WORKER_CACHE_BUCKET}"
+
+# Storage: allow uploading objects to songbooks bucket
+gsutil iam ch \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
+  "gs://${GCS_SONGBOOKS_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"
 gcloud iam service-accounts add-iam-policy-binding "${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \

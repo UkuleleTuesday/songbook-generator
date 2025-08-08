@@ -5,24 +5,17 @@ on:
     # Run every 10 minutes
     - cron: '*/10 * * * *'
   workflow_dispatch:
-    # Allow manual triggering for testing
-    inputs:
-      songbook_edition:
-        description: 'Songbook edition'
-        required: false
-        type: choice
-        default: 'regular'
-        options:
-          - 'regular'
-          - 'complete'
 
 permissions:
   contents: read
 
 jobs:
   generate-songbook:
-    name: Generate Songbook
+    name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        edition: [regular, complete]
 
     steps:
     - name: Checkout repository
@@ -40,6 +33,9 @@ jobs:
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
     - name: Check for recent changes in GCS
       id: check-changes
@@ -83,12 +79,9 @@ jobs:
     - name: Trigger songbook generation
       if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
       run: |
-        # Use inputs with their defaults, defaulting to 'regular' for scheduled runs
-        SONGBOOK_EDITION="${{ github.event.inputs.songbook_edition || 'regular' }}"
-
-        # Prepare the payload for the API
+        # Prepare the payload for the API using the matrix edition
         PAYLOAD=$(jq -n \
-          --arg edition "$SONGBOOK_EDITION" \
+          --arg edition "${{ matrix.edition }}" \
           '{
             edition: $edition
           }')
@@ -136,9 +129,13 @@ jobs:
           echo "[$ELAPSED/${TIMEOUT}s] Status: $STATUS, Progress: ${PROGRESS_PERCENT}%, Message: $MESSAGE"
 
           if [[ "$STATUS" == "completed" ]]; then
-            RESULT_URL=$(echo "$STATUS_RESPONSE" | jq -r '.result_url')
             echo "✅ Songbook generation completed successfully!"
-            echo "Download URL: $RESULT_URL"
+            SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
+            DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${{ matrix.edition }}.pdf"
+
+            echo "Uploading to public bucket: ${DEST_GCS_PATH}"
+            gcloud storage cp "${SOURCE_GCS_PATH}" "${DEST_GCS_PATH}"
+            echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
             exit 0
           elif [[ "$STATUS" == "failed" ]]; then
             echo "❌ Songbook generation failed"
