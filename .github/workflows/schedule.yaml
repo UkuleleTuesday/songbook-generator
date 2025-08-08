@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  EDITIONS: '["regular", "complete"]'
+  EDITIONS: "regular complete"
 
 jobs:
   check-for-updates:
@@ -45,9 +45,8 @@ jobs:
           # If 'force' is used, build all editions
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
             echo "Force mode enabled. Building all editions."
-            cat <<EOF >> $GITHUB_OUTPUT
-            editions_to_build=${{ env.EDITIONS }}
-            EOF
+            editions_json=$(echo "${{ env.EDITIONS }}" | jq -R 'split(" ")' | jq -c '.')
+            echo "editions_to_build=${editions_json}" >> $GITHUB_OUTPUT
             exit 0
           fi
 
@@ -70,7 +69,7 @@ jobs:
           SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
           echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
-          for edition in $(echo '${{ env.EDITIONS }}' | jq -r '.[]'); do
+          for edition in ${{ env.EDITIONS }}; do
             DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${edition}.pdf"
             GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
             if [[ $? -ne 0 ]]; then
