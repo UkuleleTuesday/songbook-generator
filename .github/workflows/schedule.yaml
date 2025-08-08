@@ -39,6 +39,7 @@ jobs:
 
     - name: Check for recent changes in GCS
       id: check-changes
+      if: github.event_name == 'schedule'
       run: |
         CUTOFF_TIME=$(date -u -d '10 minutes ago' +%s)
         GCS_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
@@ -77,7 +78,7 @@ jobs:
         fi
 
     - name: Trigger songbook generation
-      if: steps.check-changes.outputs.changes_detected == 'true' || github.event_name == 'workflow_dispatch'
+      if: github.event_name == 'workflow_dispatch' || steps.check-changes.outputs.changes_detected == 'true'
       run: |
         # Prepare the payload for the API using the matrix edition
         PAYLOAD=$(jq -n \
