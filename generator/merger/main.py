@@ -217,17 +217,10 @@ def merger_main(event, context=None):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            payload = {}
-            if "data" in event:
-                try:
-                    # Decode the Pub/Sub message data
-                    payload = json.loads(
-                        base64.b64decode(event["data"]).decode("utf-8")
-                    )
-                except (json.JSONDecodeError, UnicodeDecodeError) as e:
-                    click.echo(f"Error decoding Pub/Sub message: {e}", err=True)
+            attributes = event.get("attributes", {})
+            # The 'force' attribute will be a string 'true' or 'false'.
+            force_sync = attributes.get("force", "false").lower() == "true"
 
-            force_sync = payload.get("force", False)
             source_folders = get_settings().song_sheets.folder_ids
 
             if not source_folders:
