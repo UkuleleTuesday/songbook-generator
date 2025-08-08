@@ -1,3 +1,5 @@
+import base64
+import json
 import os
 import tempfile
 from functools import lru_cache
@@ -204,24 +206,38 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
-def merger_main(request):
-    """HTTP Cloud Function for syncing and merging PDFs from GCS cache."""
+def merger_main(event, context=None):
+    """
+    Cloud Function triggered by Pub/Sub to sync and merge PDFs from GCS cache.
+
+    Args:
+        event (dict): Event payload.
+        context (google.cloud.functions.Context): Metadata for the event.
+    """
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            # Get source folders from request payload, or fall back to config
-            request_json = request.get_json(silent=True)
-            force_sync = request_json.get("force", False) if request_json else False
+            payload = {}
+            if "data" in event:
+                try:
+                    # Decode the Pub/Sub message data
+                    payload = json.loads(base64.b64decode(event["data"]).decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                    click.echo(f"Error decoding Pub/Sub message: {e}", err=True)
+
+            force_sync = payload.get("force", False)
             source_folders = (
-                request_json.get("source_folders")
-                or get_settings().song_sheets.folder_ids
+                payload.get("source_folders") or get_settings().song_sheets.folder_ids
             )
+
             if not source_folders:
-                source_folders = get_settings().song_sheets.folder_ids
+                click.echo("Error: No source folders specified.", err=True)
+                main_span.set_attribute("status", "failed_no_source_folders")
+                return {"error": "No source folders specified"}, 400
 
             # Add source_folders to span attributes for tracing
-            if source_folders:
-                main_span.set_attribute("source_folders", ",".join(source_folders))
+            main_span.set_attribute("source_folders", ",".join(source_folders))
+            main_span.set_attribute("force_sync", str(force_sync))
 
             # Get the modification time of the last merged PDF to use as a cutoff
             last_merge_time = None
@@ -239,7 +255,10 @@ def merger_main(request):
                 click.echo(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
                 synced_files_count = sync.sync_cache(
-                    source_folders, services, modified_after=last_merge_time
+                    source_folders,
+                    services,
+                    modified_after=last_merge_time,
+                    update_tags=True,  # Always update tags
                 )
                 sync_span.set_attribute("synced_files_count", synced_files_count)
                 click.echo("Sync complete.")
