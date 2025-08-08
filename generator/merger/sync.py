@@ -7,6 +7,7 @@ from google.api_core import exceptions as gcp_exceptions
 from ..common.caching import init_cache
 from ..common.gdrive import GoogleDriveClient
 from ..worker.models import File
+from .tags import Tagger  # noqa: F401
 
 
 def _sync_gcs_metadata_from_drive(
