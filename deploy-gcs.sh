@@ -107,7 +107,7 @@ gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
 
 # Storage: allow uploading objects to CDN bucket
 gsutil iam ch \
-  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
   "gs://${GCS_CDN_BUCKET}"
 
 # Storage: allow uploading objects to worker cache bucket
@@ -117,7 +117,10 @@ gsutil iam ch \
 
 # Storage: allow uploading objects to songbooks bucket
 gsutil iam ch \
-  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectCreator" \
+  "serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}:objectAdmin" \
+  "gs://${GCS_SONGBOOKS_BUCKET}"
+gsutil iam ch \
+  "serviceAccount:cloud-run-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com:objectAdmin" \
   "gs://${GCS_SONGBOOKS_BUCKET}"
 
 echo "7. (Optional) Grant Service Account Token Creator for push subscriptions…"

@@ -351,3 +351,22 @@ This script will:
 ### Application Deployment
 
 The application is deployed via GitHub Actions on pushes to main and pull requests. Manual deployment can be done using gcloud commands (see the GitHub Actions workflow for details).
+
+### Automated Songbook Generation
+
+The public songbooks (e.g., `regular.pdf`, `complete.pdf`) are kept up-to-date by an automated GitHub Actions workflow defined in `.github/workflows/schedule.yaml`. This workflow ensures that the songbooks are regenerated whenever the source song sheets are modified.
+
+**Workflow Triggers**
+
+The workflow can be triggered in two ways:
+
+1.  **Scheduled**: It runs automatically every 10 minutes. On a scheduled run, it checks for any updates to the source song files in the GCS cache and compares their modification times against the last publication time of the final songbook PDFs. If the source files are newer, the corresponding songbook editions are queued for regeneration.
+
+2.  **Manual (`workflow_dispatch`)**: You can trigger the workflow manually from the "Actions" tab in the GitHub repository. When triggered manually, you have two options:
+    -   **Default (force=false)**: The workflow behaves like a scheduled run, checking for changes and only rebuilding outdated songbooks.
+    -   **Forced (force=true)**: The workflow bypasses the change detection logic and queues all songbook editions for a complete rebuild.
+
+**Workflow Logic**
+
+1.  **Check for Updates**: A `check-for-updates` job runs first. It determines which songbook editions (e.g., "regular", "complete") need to be rebuilt based on the trigger type (scheduled or manual) and the `force` input. It outputs a list of editions to build.
+2.  **Generate Songbook**: A `generate-songbook` job runs for each edition in the list from the previous step. The jobs are run sequentially to avoid resource contention. This job calls the API service to start the asynchronous generation process, polls for completion, and finally copies the newly generated PDF to the public GCS bucket (`GCS_SONGBOOKS_BUCKET`).
