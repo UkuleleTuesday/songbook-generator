@@ -228,9 +228,7 @@ def merger_main(event, context=None):
                     click.echo(f"Error decoding Pub/Sub message: {e}", err=True)
 
             force_sync = payload.get("force", False)
-            source_folders = (
-                payload.get("source_folders") or get_settings().song_sheets.folder_ids
-            )
+            source_folders = get_settings().song_sheets.folder_ids
 
             if not source_folders:
                 click.echo("Error: No source folders specified.", err=True)
