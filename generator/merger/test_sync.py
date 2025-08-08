@@ -81,7 +81,11 @@ def test_sync_cache_download_file_stream_args(
     mock_gdrive_instance = mock_gdrive_client.return_value
 
     # Act
-    sync_cache(source_folders=["folder1"], services=mock_services, modified_after=None)
+    sync_cache(
+        source_folders=["folder1"],
+        services=mock_services,
+        modified_after=None,
+    )
 
     # Assert
     mock_gdrive_instance.download_file_stream.assert_called_once_with(
