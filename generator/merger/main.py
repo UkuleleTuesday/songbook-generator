@@ -220,6 +220,7 @@ def merger_main(cloud_event: CloudEvent):
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
             click.echo("--- Received CloudEvent ---")
+            click.echo(f"CloudEvent object: {cloud_event}")
             click.echo(f"Attributes: {cloud_event.get_attributes()}")
             click.echo(f"Data: {cloud_event.get_data()}")
             click.echo("--------------------------")
