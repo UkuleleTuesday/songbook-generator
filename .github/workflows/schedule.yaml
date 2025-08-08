@@ -45,7 +45,9 @@ jobs:
           # If 'force' is used, build all editions
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
             echo "Force mode enabled. Building all editions."
-            echo "editions_to_build=${{ env.EDITIONS }}" >> $GITHUB_OUTPUT
+            cat <<EOF >> $GITHUB_OUTPUT
+            editions_to_build=${{ env.EDITIONS }}
+            EOF
             exit 0
           fi
 
