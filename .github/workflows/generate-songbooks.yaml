@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  EDITIONS: "regular complete"
+  EDITIONS: "current complete"
 
 jobs:
   check-for-updates:

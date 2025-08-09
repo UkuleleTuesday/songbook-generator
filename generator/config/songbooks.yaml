@@ -1,13 +1,13 @@
-- id: "regular"
-  title: "Ukulele Tuesday - Regular Songbook"
-  description: "The current edition of the Ukulele Tuesday regular songbook, containing the current songs used during our Tuesday sessions."
+- id: "current"
+  title: "Ukulele Tuesday - Current Songbook"
+  description: "The current edition of the Ukulele Tuesday songbook, containing the current songs used during our Tuesday sessions."
   cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface_file_ids:
     - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   filters:
     - key: "specialbooks"
       operator: "contains"
-      value: "regular"
+      value: "current"
 
 - id: "complete"
   title: "Ukulele Tuesday - Complete Collection Songbook"
