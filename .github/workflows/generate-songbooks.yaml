@@ -144,10 +144,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ghostscript
 
-    - name: Trigger, process, and upload songbook
-      id: trigger-process-upload
+    - name: Trigger and poll for completion
+      id: trigger-and-poll
       run: |
-        # Trigger generation and poll for completion
         PAYLOAD=$(jq -n --arg edition "${{ matrix.edition }}" '{ edition: $edition }')
         echo "Triggering songbook generation with payload: $PAYLOAD"
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
@@ -182,6 +181,7 @@ jobs:
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
+            echo "source_gcs_path=${SOURCE_GCS_PATH}" >> $GITHUB_OUTPUT
             break
           elif [[ "$STATUS" == "failed" ]]; then
             echo "❌ Songbook generation failed"
@@ -195,7 +195,10 @@ jobs:
           exit 1
         fi
 
-        # Post-process and upload
+    - name: Post-process and upload PDF
+      id: post-process-and-upload
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
         EDITION="${{ matrix.edition }}"
         FILENAME="ukulele-tuesday-songbook-${EDITION}"
         DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
