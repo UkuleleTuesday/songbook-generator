@@ -100,8 +100,8 @@ jobs:
           echo "Editions to build: $FINAL_EDITIONS_JSON"
           echo "editions_to_build=$FINAL_EDITIONS_JSON" >> $GITHUB_OUTPUT
 
-  trigger-generation:
-    name: Trigger Generation (${{ matrix.edition }})
+  generate-songbook:
+    name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: check-for-updates
     if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
