@@ -25,8 +25,10 @@ jobs:
       editions_to_build: ${{ steps.check.outputs.editions_to_build }}
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v4
       - name: Load environment variables
+        id: load-env
         uses: falti/dotenv-action@v1.1.4
         with:
           path: .env
@@ -38,6 +40,7 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
       - name: Set up Cloud SDK
+        id: setup-sdk
         run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
       - name: Check GCS modification times
         id: check
@@ -114,9 +117,11 @@ jobs:
         edition: ${{ fromJson(needs.check-for-updates.outputs.editions_to_build) }}
     steps:
     - name: Checkout repository
+      id: checkout
       uses: actions/checkout@v4
 
     - name: Load environment variables
+      id: load-env
       uses: falti/dotenv-action@v1.1.4
       with:
         path: .env
@@ -130,14 +135,17 @@ jobs:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Cloud SDK
+      id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
     - name: Install Ghostscript
+      id: install-ghostscript
       run: |
         sudo apt-get update
         sudo apt-get install -y ghostscript
 
     - name: Trigger, process, and upload songbook
+      id: trigger-process-upload
       run: |
         # Trigger generation and poll for completion
         PAYLOAD=$(jq -n --arg edition "${{ matrix.edition }}" '{ edition: $edition }')
