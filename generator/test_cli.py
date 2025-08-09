@@ -15,10 +15,10 @@ def test_generate_command_with_edition(runner, mocker):
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
 
-    result = runner.invoke(cli, ["generate", "--edition", "regular"])
+    result = runner.invoke(cli, ["generate", "--edition", "current"])
 
     assert result.exit_code == 0
-    assert "Generating songbook for edition: regular" in result.output
+    assert "Generating songbook for edition: current" in result.output
     mock_generate.assert_called_once()
 
 
@@ -31,7 +31,7 @@ def test_generate_command_with_invalid_edition(runner, mocker):
 
     assert result.exit_code != 0
     assert "Error: Edition 'nonexistent' not found." in result.output
-    assert "Available editions: regular, complete" in result.output
+    assert "Available editions: current, complete" in result.output
 
 
 def test_generate_command_with_conflicting_flags(runner, mocker):
@@ -40,7 +40,7 @@ def test_generate_command_with_conflicting_flags(runner, mocker):
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
     result = runner.invoke(
-        cli, ["generate", "--edition", "regular", "--filter", "artist:Test"]
+        cli, ["generate", "--edition", "current", "--filter", "artist:Test"]
     )
 
     assert result.exit_code != 0

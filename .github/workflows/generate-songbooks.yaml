@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 env:
-  EDITIONS: "regular complete"
+  EDITIONS: "current complete"
 
 jobs:
   check-for-updates:
@@ -65,7 +65,8 @@ jobs:
               echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
               for edition in ${{ env.EDITIONS }}; do
-                DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${edition}.pdf"
+                FILENAME="ukulele-tuesday-songbook-${edition}"
+                DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
                 GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
                 if [[ $? -ne 0 ]]; then
                     echo "::warning::'gcloud storage ls' command failed for destination path ${DEST_PATH}. Assuming it doesn't exist."
@@ -165,10 +166,29 @@ jobs:
 
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
+
+            FILENAME="ukulele-tuesday-songbook-${{ matrix.edition }}"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
-            DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${{ matrix.edition }}.pdf"
-            echo "Uploading to public bucket: ${DEST_GCS_PATH}"
-            gcloud storage cp "${SOURCE_GCS_PATH}" "${DEST_GCS_PATH}"
+            DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+            INPUT_PDF="uncompressed.pdf"
+            OUTPUT_PDF="${FILENAME}.pdf"
+
+            echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
+            gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
+
+            echo "Compressing PDF with Ghostscript..."
+            gs -sDEVICE=pdfwrite \
+              -dCompatibilityLevel=1.4 \
+              -dPDFSETTINGS=/printer \
+              -dSubsetFonts=false \
+              -dEmbedAllFonts=true \
+              -dDetectDuplicateImages=true \
+              -dNOPAUSE -dBATCH \
+              -sOutputFile="${OUTPUT_PDF}" \
+              "${INPUT_PDF}"
+
+            echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+            gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
             echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
             exit 0
           elif [[ "$STATUS" == "failed" ]]; then
