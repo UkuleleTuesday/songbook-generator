@@ -12,7 +12,7 @@
   filters:
     - key: "specialbooks"
       operator: "contains"
-      value: "current"
+      value: "regular"
 
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
