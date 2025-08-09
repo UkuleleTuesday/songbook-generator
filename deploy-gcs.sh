@@ -57,7 +57,12 @@ gsutil mb \
 gsutil mb \
   -p "${GCP_PROJECT_ID}" \
   -l "${GCP_REGION}" \
-  "gs://${GCS_SONGBOOKS_BUCKET}" || echo "CDN bucket may already exist, continuing…"
+  "gs://${GCS_SONGBOOKS_BUCKET}" || echo "Songbooks bucket may already exist, continuing…"
+# Songbook logs bucket
+gsutil mb \
+  -p "${GCP_PROJECT_ID}" \
+  -l "${GCP_REGION}" \
+  "gs://${GCS_SONGBOOKS_LOGS_BUCKET}" || echo "Songbook logs bucket may already exist, continuing…"
 
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET
@@ -66,6 +71,11 @@ gsutil uniformbucketlevelaccess set on gs://$GCS_WORKER_CACHE_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_WORKER_CACHE_BUCKET
 gsutil uniformbucketlevelaccess set on gs://$GCS_SONGBOOKS_BUCKET
 gsutil iam ch allUsers:roles/storage.objectViewer gs://$GCS_SONGBOOKS_BUCKET
+
+
+echo "4c. Setting up access logs for ${GCS_SONGBOOKS_BUCKET} bucket"
+gcloud storage buckets add-iam-policy-binding "gs://${GCS_SONGBOOKS_LOGS_BUCKET}" --member=group:cloud-storage-analytics@google.com --role=roles/storage.objectCreator
+gcloud storage buckets update "gs://${GCS_SONGBOOKS_BUCKET}" --log-bucket="gs://${GCS_SONGBOOKS_LOGS_BUCKET}"
 
 
 echo "5. Setting lifecycle policies (90-day TTL) on buckets…"
