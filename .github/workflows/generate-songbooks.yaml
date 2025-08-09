@@ -170,8 +170,8 @@ jobs:
           echo "⏰ Timeout reached after ${TIMEOUT} seconds"
           exit 1
 
-  process-songbook:
-    name: Process Songbook (${{ matrix.edition }})
+  upload-songbook:
+    name: Upload Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: trigger-generation
     strategy:
