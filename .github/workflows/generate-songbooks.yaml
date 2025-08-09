@@ -16,7 +16,6 @@ permissions:
 
 env:
   EDITIONS: "regular complete"
-  SONGBOOK_FILENAME_PATTERN: "ukulele-tuesday-songbook-{edition}"
 
 jobs:
   check-for-updates:
@@ -66,7 +65,7 @@ jobs:
               echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
               for edition in ${{ env.EDITIONS }}; do
-                FILENAME=${SONGBOOK_FILENAME_PATTERN/\{edition\}/${edition}}
+                FILENAME="ukulele-tuesday-songbook-${edition}"
                 DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
                 GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
                 if [[ $? -ne 0 ]]; then
@@ -168,7 +167,7 @@ jobs:
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
 
-            FILENAME=${SONGBOOK_FILENAME_PATTERN/\{edition\}/${{ matrix.edition }}}
+            FILENAME="ukulele-tuesday-songbook-${{ matrix.edition }}"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
             DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
             INPUT_PDF="uncompressed.pdf"
