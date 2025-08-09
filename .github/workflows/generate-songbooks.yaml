@@ -107,9 +107,6 @@ jobs:
     name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: check-for-updates
-    if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
-    concurrency:
-      group: ${{ github.workflow }}-generate
     concurrency:
       group: ${{ github.workflow }}-generate
       cancel-in-progress: false
