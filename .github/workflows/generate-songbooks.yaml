@@ -110,7 +110,10 @@ jobs:
     if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
     concurrency:
       group: ${{ github.workflow }}-generate
+    concurrency:
+      group: ${{ github.workflow }}-generate
       cancel-in-progress: false
+    if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
     strategy:
       fail-fast: false
       matrix:
