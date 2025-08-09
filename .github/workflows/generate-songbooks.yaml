@@ -138,12 +138,6 @@ jobs:
       id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
-    - name: Install Ghostscript
-      id: install-ghostscript
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ghostscript
-
     - name: Trigger and poll for completion
       id: trigger-and-poll
       run: |
@@ -194,6 +188,12 @@ jobs:
           echo "⏰ Timeout reached after ${TIMEOUT} seconds"
           exit 1
         fi
+
+    - name: Install Ghostscript
+      id: install-ghostscript
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ghostscript
 
     - name: Post-process and upload PDF
       id: post-process-and-upload
