@@ -165,10 +165,28 @@ jobs:
 
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
+
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
             DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${{ matrix.edition }}.pdf"
-            echo "Uploading to public bucket: ${DEST_GCS_PATH}"
-            gcloud storage cp "${SOURCE_GCS_PATH}" "${DEST_GCS_PATH}"
+            INPUT_PDF="uncompressed.pdf"
+            OUTPUT_PDF="${{ matrix.edition }}.pdf"
+
+            echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
+            gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
+
+            echo "Compressing PDF with Ghostscript..."
+            gs -sDEVICE=pdfwrite \
+              -dCompatibilityLevel=1.4 \
+              -dPDFSETTINGS=/printer \
+              -dSubsetFonts=false \
+              -dEmbedAllFonts=true \
+              -dDetectDuplicateImages=true \
+              -dNOPAUSE -dBATCH \
+              -sOutputFile="${OUTPUT_PDF}" \
+              "${INPUT_PDF}"
+
+            echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+            gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
             echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
             exit 0
           elif [[ "$STATUS" == "failed" ]]; then
