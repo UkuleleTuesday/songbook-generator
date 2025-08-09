@@ -25,8 +25,10 @@ jobs:
       editions_to_build: ${{ steps.check.outputs.editions_to_build }}
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v4
       - name: Load environment variables
+        id: load-env
         uses: falti/dotenv-action@v1.1.4
         with:
           path: .env
@@ -38,6 +40,7 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
       - name: Set up Cloud SDK
+        id: setup-sdk
         run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
       - name: Check GCS modification times
         id: check
@@ -52,15 +55,14 @@ jobs:
 
             GCS_LIST_JSON=$(gcloud storage ls "$SOURCE_PATH**" --json)
             if [[ $? -ne 0 ]]; then
-                echo "::error::'gcloud storage ls' command failed for source path."
+                echo "::warning::'gcloud storage ls' command failed for source path. Assuming cache is empty and building all editions."
                 echo "Output was: $GCS_LIST_JSON"
-                exit 1
-            fi
-
-            SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
-            if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
-              echo "No source files found in cache. Nothing to build."
+                EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
             else
+                SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
+                if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
+                  echo "No source files found in cache. Nothing to build."
+                else
               SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
               echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
@@ -93,6 +95,7 @@ jobs:
               done
             fi
           fi
+          fi
 
           # Convert the space-separated string to a JSON array for the output
           FINAL_EDITIONS_JSON=$(echo "${EDITIONS_TO_BUILD_STR}" | jq -R 'split(" ") | map(select(length > 0))' | jq -c '.')
@@ -114,9 +117,11 @@ jobs:
         edition: ${{ fromJson(needs.check-for-updates.outputs.editions_to_build) }}
     steps:
     - name: Checkout repository
+      id: checkout
       uses: actions/checkout@v4
 
     - name: Load environment variables
+      id: load-env
       uses: falti/dotenv-action@v1.1.4
       with:
         path: .env
@@ -130,9 +135,11 @@ jobs:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
     - name: Set up Cloud SDK
+      id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
-    - name: Trigger songbook generation
+    - name: Trigger and poll for completion
+      id: trigger-and-poll
       run: |
         PAYLOAD=$(jq -n --arg edition "${{ matrix.edition }}" '{ edition: $edition }')
         echo "Triggering songbook generation with payload: $PAYLOAD"
@@ -151,6 +158,7 @@ jobs:
         TIMEOUT=120
         ELAPSED=0
         POLL_INTERVAL=1
+        SOURCE_GCS_PATH=""
 
         while [[ $ELAPSED -lt $TIMEOUT ]]; do
           sleep $POLL_INTERVAL
@@ -166,31 +174,9 @@ jobs:
 
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
-
-            FILENAME="ukulele-tuesday-songbook-${{ matrix.edition }}"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
-            DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
-            INPUT_PDF="uncompressed.pdf"
-            OUTPUT_PDF="${FILENAME}.pdf"
-
-            echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
-            gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
-
-            echo "Compressing PDF with Ghostscript..."
-            gs -sDEVICE=pdfwrite \
-              -dCompatibilityLevel=1.4 \
-              -dPDFSETTINGS=/printer \
-              -dSubsetFonts=false \
-              -dEmbedAllFonts=true \
-              -dDetectDuplicateImages=true \
-              -dNOPAUSE -dBATCH \
-              -sOutputFile="${OUTPUT_PDF}" \
-              "${INPUT_PDF}"
-
-            echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
-            gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
-            echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
-            exit 0
+            echo "source_gcs_path=${SOURCE_GCS_PATH}" >> $GITHUB_OUTPUT
+            break
           elif [[ "$STATUS" == "failed" ]]; then
             echo "❌ Songbook generation failed"
             echo "Full response: $STATUS_RESPONSE"
@@ -198,5 +184,41 @@ jobs:
           fi
         done
 
-        echo "⏰ Timeout reached after ${TIMEOUT} seconds"
-        exit 1
+        if [[ -z "$SOURCE_GCS_PATH" ]]; then
+          echo "⏰ Timeout reached after ${TIMEOUT} seconds"
+          exit 1
+        fi
+
+    - name: Install Ghostscript
+      id: install-ghostscript
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ghostscript
+
+    - name: Post-process and upload PDF
+      id: post-process-and-upload
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
+        EDITION="${{ matrix.edition }}"
+        FILENAME="ukulele-tuesday-songbook-${EDITION}"
+        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+        INPUT_PDF="uncompressed.pdf"
+        OUTPUT_PDF="${FILENAME}.pdf"
+
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
+
+        echo "Compressing PDF with Ghostscript..."
+        gs -sDEVICE=pdfwrite \
+          -dCompatibilityLevel=1.4 \
+          -dPDFSETTINGS=/printer \
+          -dSubsetFonts=false \
+          -dEmbedAllFonts=true \
+          -dDetectDuplicateImages=true \
+          -dNOPAUSE -dBATCH \
+          -sOutputFile="${OUTPUT_PDF}" \
+          "${INPUT_PDF}"
+
+        echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+        gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
+        echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
