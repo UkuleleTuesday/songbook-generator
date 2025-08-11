@@ -291,9 +291,7 @@ def merger_main(cloud_event: CloudEvent):
                 click.echo(f"Syncing folders: {source_folders}")
                 # Sync files and their metadata before merging.
                 synced_files_count = sync.sync_cache(
-                    source_folders,
-                    services,
-                    modified_after=last_merge_time
+                    source_folders, services, modified_after=last_merge_time
                 )
                 sync_span.set_attribute("synced_files_count", synced_files_count)
                 click.echo("Sync complete.")
