@@ -1,4 +1,4 @@
-name: Force Cache Sync
+name: Trigger Sync
 
 on:
   workflow_dispatch:
@@ -10,10 +10,15 @@ on:
         type: choice
         options:
         - main
+      force:
+        description: 'Force a full cache sync, ignoring timestamps'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
-  force-sync:
-    name: Force GCS Cache Sync
+  trigger-sync:
+    name: Trigger GCS Cache Sync
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -25,10 +30,10 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Publish force sync message
+    - name: Publish sync message
       run: |
         CACHE_REFRESH_PUBSUB_TOPIC="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        echo "Publishing force sync message to ${CACHE_REFRESH_PUBSUB_TOPIC}"
+        echo "Publishing sync message to ${CACHE_REFRESH_PUBSUB_TOPIC} with force=${{ github.event.inputs.force }}"
         gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
-          --message="Forcing cache sync and merge" \
-          --attribute="force=true"
+          --message="Triggering cache sync and merge" \
+          --attribute="force=${{ github.event.inputs.force }}"
