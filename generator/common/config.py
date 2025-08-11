@@ -106,7 +106,7 @@ class GoogleCloud(BaseModel):
         ),
         "songbook-merger": GoogleCloudCredentials(
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
-            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+            scopes=["https://www.googleapis.com/auth/drive"],
         ),
     }
 
