@@ -22,6 +22,7 @@ permissions:
 
 env:
   EDITIONS: "current complete"
+  USE_GHOSTSCRIPT_COMPRESSION: false
 
 jobs:
   check-for-updates:
@@ -196,12 +197,22 @@ jobs:
         fi
 
     - name: Install Ghostscript
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       id: install-ghostscript
       run: |
         sudo apt-get update
         sudo apt-get install -y ghostscript
 
+    - name: Download uncompressed PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
+
     - name: Post-process PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       id: post-process
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
