@@ -1,9 +1,12 @@
 name: Generate Songbook
 
 on:
-  schedule:
-    # Run every 10 minutes
-    - cron: "*/10 * * * *"
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       force:
@@ -219,9 +222,13 @@ jobs:
           -sOutputFile="${OUTPUT_PDF}" \
           "${INPUT_PDF}"
 
-        echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
-        gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
-        echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+          gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
+          echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
+        else
+          echo "Skipping upload to public bucket on non-main branch."
+        fi
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
