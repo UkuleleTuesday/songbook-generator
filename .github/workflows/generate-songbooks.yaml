@@ -52,9 +52,9 @@ jobs:
         id: check
         run: |
           EDITIONS_TO_BUILD_STR=""
-          # If 'force' is used, build all editions
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
-            echo "Force mode enabled. Building all editions."
+          # If 'force' is used, or if this is a PR/push, build all editions
+          if [[ ("${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true") || "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Force mode enabled (triggered by: ${{ github.event_name }}). Building all editions."
             EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
           else
             SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
