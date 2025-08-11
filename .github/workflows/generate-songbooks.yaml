@@ -214,7 +214,7 @@ jobs:
         echo "Compressing PDF with Ghostscript..."
         gs -sDEVICE=pdfwrite \
           -dCompatibilityLevel=1.4 \
-          -dPDFSETTINGS=/printer \
+          -dPDFSETTINGS=/default \
           -dSubsetFonts=false \
           -dEmbedAllFonts=true \
           -dDetectDuplicateImages=true \
