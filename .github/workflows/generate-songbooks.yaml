@@ -201,15 +201,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y ghostscript
 
-    - name: Post-process and upload PDF
-      id: post-process-and-upload
+    - name: Post-process PDF
+      id: post-process
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
-        EDITION="${{ matrix.edition }}"
-        FILENAME="ukulele-tuesday-songbook-${EDITION}"
-        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
         INPUT_PDF="uncompressed.pdf"
-        OUTPUT_PDF="${FILENAME}.pdf"
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
 
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
@@ -225,13 +222,17 @@ jobs:
           -sOutputFile="${OUTPUT_PDF}" \
           "${INPUT_PDF}"
 
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
-          gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
-          echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
-        else
-          echo "Skipping upload to public bucket on non-main branch."
-        fi
+    - name: Upload to GCS
+      if: github.ref == 'refs/heads/main'
+      run: |
+        EDITION="${{ matrix.edition }}"
+        FILENAME="ukulele-tuesday-songbook-${EDITION}"
+        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+        OUTPUT_PDF="${FILENAME}.pdf"
+
+        echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+        gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
+        echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
