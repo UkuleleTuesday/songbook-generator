@@ -21,6 +21,7 @@ from cloudevents.http import CloudEvent
 from . import sync
 from ..common.config import get_settings
 from ..worker.gcp import get_credentials
+from .tags import Tagger
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -38,13 +39,24 @@ def _get_services():
         if "GOOGLE_CLOUD_PROJECT" not in os.environ:
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
-    credential_config = settings.google_cloud.credentials.get("songbook-merger")
-    if not credential_config:
+    merger_credential_config = settings.google_cloud.credentials.get("songbook-merger")
+    if not merger_credential_config:
         raise click.Abort("Credential config 'songbook-merger' not found.")
 
-    creds = get_credentials(
-        scopes=credential_config.scopes,
-        target_principal=credential_config.principal,
+    merger_creds = get_credentials(
+        scopes=merger_credential_config.scopes,
+        target_principal=merger_credential_config.principal,
+    )
+
+    tagging_credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not tagging_credential_config:
+        raise click.Abort("Credential config 'songbook-metadata-writer' not found.")
+
+    tagging_creds = get_credentials(
+        scopes=tagging_credential_config.scopes,
+        target_principal=tagging_credential_config.principal,
     )
 
     service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
@@ -56,12 +68,14 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
-    drive_service = build("drive", "v3", credentials=creds)
+    drive_service = build("drive", "v3", credentials=merger_creds)
+    tagging_drive_service = build("drive", "v3", credentials=tagging_creds)
 
     return {
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
+        "tagger": Tagger(tagging_drive_service),
     }
 
 
@@ -206,6 +220,34 @@ def fetch_and_merge_pdfs(output_path, services):
             return output_path
 
 
+def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
+    """
+    Parses a CloudEvent to extract attributes from the Pub/Sub message.
+
+    Args:
+        cloud_event: The incoming CloudEvent object.
+
+    Returns:
+        A dictionary containing the parsed attributes.
+    """
+    click.echo("--- Received CloudEvent ---")
+    click.echo(f"CloudEvent object: {cloud_event}")
+    click.echo(f"Attributes: {cloud_event.get_attributes()}")
+    click.echo(f"Data: {cloud_event.get_data()}")
+    click.echo("--------------------------")
+
+    data = cloud_event.get_data() or {}
+    message = data.get("message", {})
+    attributes = message.get("attributes", {})
+
+    # The 'force' attribute will be a string 'true' or 'false'.
+    force_sync = attributes.get("force", "false").lower() == "true"
+
+    return {
+        "force_sync": force_sync,
+    }
+
+
 def merger_main(cloud_event: CloudEvent):
     """
     Cloud Function triggered by a CloudEvent to sync and merge PDFs.
@@ -219,9 +261,8 @@ def merger_main(cloud_event: CloudEvent):
     services = _get_services()
     with services["tracer"].start_as_current_span("merger_main") as main_span:
         try:
-            attributes = cloud_event.get_attributes() or {}
-            # The 'force' attribute will be a string 'true' or 'false'.
-            force_sync = attributes.get("force", "false").lower() == "true"
+            event_params = _parse_cloud_event(cloud_event)
+            force_sync = event_params["force_sync"]
 
             source_folders = get_settings().song_sheets.folder_ids
 

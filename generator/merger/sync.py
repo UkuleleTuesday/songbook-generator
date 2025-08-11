@@ -7,7 +7,7 @@ from google.api_core import exceptions as gcp_exceptions
 from ..common.caching import init_cache
 from ..common.gdrive import GoogleDriveClient
 from ..worker.models import File
-from .tags import Tagger
+from .tags import Tagger  # noqa: F401
 
 
 def _sync_gcs_metadata_from_drive(
@@ -101,7 +101,7 @@ def sync_cache(
             span.set_attribute("modified_after", str(modified_after))
 
         cache = init_cache()
-        tagger = Tagger(services["drive"])
+        tagger = services["tagger"]
 
         files_to_update = _get_files_to_update(
             services["drive"], source_folders, modified_after
@@ -132,7 +132,7 @@ def sync_cache(
                     click.echo(f"Syncing {file.name} (ID: {file.id})")
                     gdrive_client.download_file_stream(
                         file,
-                        use_cache=False,
+                        use_cache=True,
                     )
 
         if with_metadata and not update_tags_only:

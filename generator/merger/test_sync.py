@@ -13,6 +13,7 @@ def mock_services():
         "tracer": MagicMock(),
         "drive": MagicMock(),
         "cache_bucket": MagicMock(),
+        "tagger": MagicMock(),
     }
     services[
         "tracer"
@@ -89,5 +90,5 @@ def test_sync_cache_download_file_stream_args(
 
     # Assert
     mock_gdrive_instance.download_file_stream.assert_called_once_with(
-        mock_file, use_cache=False
+        mock_file, use_cache=True
     )
