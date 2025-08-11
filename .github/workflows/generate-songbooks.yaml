@@ -4,6 +4,12 @@ on:
   schedule:
     # Run every 10 minutes
     - cron: "*/10 * * * *"
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       force:
@@ -16,6 +22,7 @@ permissions:
 
 env:
   EDITIONS: "current complete"
+  USE_GHOSTSCRIPT_COMPRESSION: false
 
 jobs:
   check-for-updates:
@@ -46,9 +53,9 @@ jobs:
         id: check
         run: |
           EDITIONS_TO_BUILD_STR=""
-          # If 'force' is used, build all editions
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true" ]]; then
-            echo "Force mode enabled. Building all editions."
+          # If 'force' is used, or if this is a PR/push, build all editions
+          if [[ ("${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true") || "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Force mode enabled (triggered by: ${{ github.event_name }}). Building all editions."
             EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
           else
             SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
@@ -190,20 +197,27 @@ jobs:
         fi
 
     - name: Install Ghostscript
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       id: install-ghostscript
       run: |
         sudo apt-get update
         sudo apt-get install -y ghostscript
 
-    - name: Post-process and upload PDF
-      id: post-process-and-upload
+    - name: Download uncompressed PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
-        EDITION="${{ matrix.edition }}"
-        FILENAME="ukulele-tuesday-songbook-${EDITION}"
-        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
+
+    - name: Post-process PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
+      id: post-process
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
         INPUT_PDF="uncompressed.pdf"
-        OUTPUT_PDF="${FILENAME}.pdf"
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
 
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
@@ -211,7 +225,7 @@ jobs:
         echo "Compressing PDF with Ghostscript..."
         gs -sDEVICE=pdfwrite \
           -dCompatibilityLevel=1.4 \
-          -dPDFSETTINGS=/printer \
+          -dPDFSETTINGS=/default \
           -dSubsetFonts=false \
           -dEmbedAllFonts=true \
           -dDetectDuplicateImages=true \
@@ -219,6 +233,20 @@ jobs:
           -sOutputFile="${OUTPUT_PDF}" \
           "${INPUT_PDF}"
 
+    - name: Upload to GCS
+      if: github.ref == 'refs/heads/main'
+      run: |
+        EDITION="${{ matrix.edition }}"
+        FILENAME="ukulele-tuesday-songbook-${EDITION}"
+        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+        OUTPUT_PDF="${FILENAME}.pdf"
+
         echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
         gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
         echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
+
+    - name: Upload Songbook Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: songbook-${{ matrix.edition }}
+        path: ukulele-tuesday-songbook-${{ matrix.edition }}.pdf
