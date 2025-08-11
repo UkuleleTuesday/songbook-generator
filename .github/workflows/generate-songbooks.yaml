@@ -1,6 +1,9 @@
 name: Generate Songbook
 
 on:
+  schedule:
+    # Run every 10 minutes
+    - cron: "*/10 * * * *"
   push:
     branches:
       - main
