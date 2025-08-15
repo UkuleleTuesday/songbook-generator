@@ -36,4 +36,4 @@
   filters:
     - key: "specialbooks"
       operator: "contains"
-      value: "hooley-202"
+      value: "hooley-2025"
