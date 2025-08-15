@@ -16,10 +16,15 @@ body {
   width: 100%;
   max-width: 500px;
   margin: 1rem;
+  overflow: visible;
 }
 
 .mdl-card__supporting-text {
   width: auto;
+  padding: 1rem;
+}
+
+.mdl-card__actions {
   padding: 1rem;
 }
 
