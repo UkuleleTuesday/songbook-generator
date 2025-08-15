@@ -10,14 +10,12 @@ body {
   justify-content: center;
   align-items: center;
   width: 100%;
-  overflow: visible;
 }
 
 .mdl-card {
   width: 100%;
   max-width: 500px;
   margin: 1rem;
-  overflow: visible;
 }
 
 .mdl-card__supporting-text {
@@ -31,6 +29,10 @@ body {
 
 .mdl-textfield {
   width: 100%;
+}
+
+.mdl-tabs__panel {
+  overflow: visible;
 }
 
 #historyList {
