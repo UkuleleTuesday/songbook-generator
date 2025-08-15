@@ -30,16 +30,6 @@ class Cover(BaseModel):
     file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
-class Edition(BaseModel):
-    id: str
-    title: str
-    description: str
-    cover_file_id: Optional[str] = None
-    preface_file_ids: Optional[List[str]] = None
-    postface_file_ids: Optional[List[str]] = None
-    filters: List[Union[FilterGroup, PropertyFilter]]
-
-
 class Toc(BaseModel):
     columns_per_page: int = 2
     column_width: int = 250
@@ -56,6 +46,7 @@ class Toc(BaseModel):
     title_font: str = "RobotoCondensed-Bold.ttf"
     title_fontsize: int = 16
     max_toc_entry_length: int = 60
+    include_difficulty: bool = True
 
     @field_validator(
         "*",
@@ -65,6 +56,17 @@ class Toc(BaseModel):
         if v == "":
             return None
         return v
+
+
+class Edition(BaseModel):
+    id: str
+    title: str
+    description: str
+    cover_file_id: Optional[str] = None
+    preface_file_ids: Optional[List[str]] = None
+    postface_file_ids: Optional[List[str]] = None
+    filters: List[Union[FilterGroup, PropertyFilter]]
+    table_of_contents: Optional[Toc] = None
 
 
 class CachingGcs(BaseModel):

@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 import re
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 import logging
 
 from ..common.fonts import resolve_font
@@ -132,15 +132,16 @@ class TocGenerator:
 
         # Get difficulty symbol
         symbol = ""
-        difficulty_bin_str = file.properties.get("difficulty_bin")
-        if difficulty_bin_str:
-            try:
-                difficulty_bin = int(difficulty_bin_str)
-                symbol_char = difficulty_symbol(difficulty_bin)
-                if symbol_char:
-                    symbol = symbol_char + " "
-            except (ValueError, TypeError):
-                pass  # Ignore if not a valid integer
+        if self.config.include_difficulty:
+            difficulty_bin_str = file.properties.get("difficulty_bin")
+            if difficulty_bin_str:
+                try:
+                    difficulty_bin = int(difficulty_bin_str)
+                    symbol_char = difficulty_symbol(difficulty_bin)
+                    if symbol_char:
+                        symbol = symbol_char + " "
+                except (ValueError, TypeError):
+                    pass  # Ignore if not a valid integer
 
         shortened_title = generate_toc_title(
             file.name,
@@ -293,7 +294,9 @@ class TocGenerator:
 
 
 def build_table_of_contents(
-    files: List[File], page_offset: int = 0
+    files: List[File],
+    page_offset: int = 0,
+    edition_toc_config: Optional[Toc] = None,
 ) -> Tuple[fitz.Document, List[TocEntry]]:
     """Build a table of contents PDF from a list of files.
 
@@ -303,7 +306,17 @@ def build_table_of_contents(
     with tracer.start_as_current_span("build_table_of_contents") as span:
         assign_difficulty_bins(files)
 
+        # Start with global config
         config = get_settings().toc
+
+        # If edition-specific config is provided, merge it
+        if edition_toc_config:
+            # Create a new Toc object with updated fields
+            config_dict = config.model_dump()
+            edition_config_dict = edition_toc_config.model_dump(exclude_unset=True)
+            config_dict.update(edition_config_dict)
+            config = Toc(**config_dict)
+
         span.set_attributes(
             {
                 f"toc.{key}": value
