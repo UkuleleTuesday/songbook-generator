@@ -35,6 +35,10 @@
   cover_file_id: "1s3SqDeRSJvKSuFBD5z3pwFmxgWcO0czK_MJ33VfDOAE"
   table_of_contents:
     include_difficulty: false
+    columns_per_page: 1
+    column_width: 520
+    text_fontsize: 12
+    line_spacing: 15
   filters:
     - key: "specialbooks"
       operator: "contains"
