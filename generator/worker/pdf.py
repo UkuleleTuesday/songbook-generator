@@ -292,6 +292,7 @@ def generate_songbook_from_edition(
             on_progress=on_progress,
             title=edition.title,
             subject=edition.description,
+            edition_toc_config=edition.table_of_contents,
         )
 
 
@@ -308,6 +309,7 @@ def generate_songbook(
     on_progress=None,
     title: Optional[str] = None,
     subject: Optional[str] = None,
+    edition_toc_config: Optional[config.Toc] = None,
 ):
     with tracer.start_as_current_span("generate_songbook") as span:
         span.set_attribute("source_folders_count", len(source_folders))
@@ -426,7 +428,7 @@ def generate_songbook(
                 with reporter.step(1, "Pre-calculating table of contents..."):
                     with tracer.start_as_current_span("precalculate_toc"):
                         toc_pdf, toc_entries = toc.build_table_of_contents(
-                            files, 0
+                            files, 0, edition_toc_config
                         )  # Temporary offset
                         toc_page_count = len(toc_pdf)
                         toc_pdf.close()  # Close temporary TOC
@@ -472,7 +474,7 @@ def generate_songbook(
                 with reporter.step(1, "Generating table of contents..."):
                     with tracer.start_as_current_span("generate_toc"):
                         toc_pdf, toc_entries = toc.build_table_of_contents(
-                            files, page_offset
+                            files, page_offset, edition_toc_config
                         )
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)

@@ -76,6 +76,7 @@ def test_generate_songbook_from_edition_composite_filter(
         ],
         cover_file_id="cover123",
         preface_file_ids=["preface123"],
+        table_of_contents={"include_difficulty": False},
     )
 
     generate_songbook_from_edition(
@@ -101,6 +102,8 @@ def test_generate_songbook_from_edition_composite_filter(
     assert call_args["preface_file_ids"] == ["preface123"]
     assert call_args["title"] == "Composite Edition"
     assert call_args["subject"] == "A test edition"
+    assert call_args["edition_toc_config"] is not None
+    assert call_args["edition_toc_config"].include_difficulty is False
 
 
 def test_generate_songbook_sets_metadata(mocker, tmp_path):
@@ -124,7 +127,10 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
     )
     mocker.patch(
         "generator.worker.toc.build_table_of_contents",
-        side_effect=lambda files, page_offset: (fitz.open().new_page().parent, []),
+        side_effect=lambda files, page_offset, edition_toc_config=None: (
+            fitz.open().new_page().parent,
+            [],
+        ),
     )
     mocker.patch("generator.worker.pdf.copy_pdfs")
     mocker.patch("generator.worker.toc.add_toc_links_to_merged_pdf")
