@@ -23,16 +23,16 @@ body {
   padding: 1rem;
 }
 
+.mdl-card__actions {
+  padding: 1rem;
+}
+
 .mdl-card__title {
   display: block;
 }
 
 .mdl-textfield {
   width: 100%;
-}
-
-.mdl-tabs__panel {
-  overflow: visible;
 }
 
 #historyList {
