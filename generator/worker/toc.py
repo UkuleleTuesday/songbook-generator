@@ -113,7 +113,7 @@ class TocGenerator:
             else:
                 title = title[:max_length]
 
-        if is_ready_to_play:
+        if self.config.include_wip_marker and is_ready_to_play:
             title += "*"
 
         return title

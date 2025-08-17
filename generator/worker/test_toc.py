@@ -232,7 +232,9 @@ def test_generate_toc_title_truncation_with_ready_to_play(
 ):
     """Test that a long title is truncated and still gets a '*'."""
     long_title = "This is a very long song title that will definitely need to be truncated to see the effect"
-    result = toc_generator_for_title_tests._generate_toc_title(
+    generator = toc_generator_for_title_tests
+    generator.config.include_wip_marker = True  # Explicitly set for test clarity
+    result = generator._generate_toc_title(
         long_title, max_length=50, is_ready_to_play=True
     )
     assert result.endswith("...*")
@@ -242,6 +244,7 @@ def test_generate_toc_title_truncation_with_ready_to_play(
 def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     """Test that a '*' is added for READY_TO_PLAY status."""
     generator = mock_toc_generator
+    generator.config.include_wip_marker = True
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
@@ -259,6 +262,29 @@ def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args_list[0].args[1]
     assert "Ready Song*" in appended_title
+
+
+def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
+    """Test that a '*' is NOT added for READY_TO_PLAY if setting is false."""
+    generator = mock_toc_generator
+    generator.config.include_wip_marker = False
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that title is appended without the '*'
+    appended_title = mock_tw.append.call_args_list[0].args[1]
+    assert appended_title == "Ready Song"
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
