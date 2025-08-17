@@ -36,7 +36,9 @@
   table_of_contents:
     include_difficulty: false
     columns_per_page: 1
-    column_width: 520
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
     text_fontsize: 12
     line_spacing: 15
   filters:
