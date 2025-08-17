@@ -26,75 +26,6 @@ def difficulty_symbol(difficulty_bin: int) -> str:
     return ""  # Default to no symbol if bin is out of range
 
 
-def generate_toc_title(
-    original_title: str, max_length: int, is_ready_to_play: bool = False
-) -> str:
-    """
-    Generate a shortened title for TOC entries using simple heuristics.
-
-    Args:
-        original_title: The original song title
-        max_length: Maximum allowed length for the title
-        is_ready_to_play: If True, appends a '*' to the title.
-
-    Returns:
-        Shortened title that fits within max_length
-    """
-    title = original_title.strip()
-
-    # If already short enough, return as-is
-    if len(title) <= max_length:
-        # Still apply cleaning for consistency
-        pass
-
-    # Remove featuring information in both parentheses and brackets
-    # This regex matches parentheses or brackets containing feat./featuring
-    title = re.sub(
-        r"\s*[\(\[][^\)\]]*(?:feat\.|featuring)[^\)\]]*[\)\]]",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-
-    # Remove bracketed information (after featuring removal to avoid conflicts)
-    title = re.sub(r"\s*\[[^\]]*\]", "", title)
-
-    # Remove version/edit information in parentheses
-    # This regex matches specific keywords that indicate versions/edits
-    title = re.sub(
-        r"\s*\([^)]*(?:Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-
-    # Clean up any extra whitespace
-    title = re.sub(r"\s+", " ", title).strip()
-
-    # If still too long, truncate with ellipsis
-    if len(title) > max_length:
-        # Try to cut at a word boundary if possible
-        if max_length > 3:
-            truncate_length = max_length - 3  # Reserve space for "..."
-            if " " in title[:truncate_length]:
-                # Find the last space before the truncation point
-                last_space = title[:truncate_length].rfind(" ")
-                if (
-                    last_space > max_length // 2
-                ):  # Only use word boundary if it's not too short
-                    title = title[:last_space] + "..."
-                else:
-                    title = title[:truncate_length] + "..."
-            else:
-                title = title[:truncate_length] + "..."
-        else:
-            title = title[:max_length]
-
-    if is_ready_to_play:
-        title += "*"
-
-    return title
-
 
 @dataclass
 class TocEntry:
@@ -117,6 +48,75 @@ class TocGenerator:
         self.title_font = resolve_font(self.config.title_font)
         self.pdf = fitz.open()
         self.toc_entries = []  # Store entries for later link creation
+
+    def _generate_toc_title(
+        self, original_title: str, max_length: int, is_ready_to_play: bool = False
+    ) -> str:
+        """
+        Generate a shortened title for TOC entries using simple heuristics.
+
+        Args:
+            original_title: The original song title
+            max_length: Maximum allowed length for the title
+            is_ready_to_play: If True, appends a '*' to the title.
+
+        Returns:
+            Shortened title that fits within max_length
+        """
+        title = original_title.strip()
+
+        # If already short enough, return as-is
+        if len(title) <= max_length:
+            # Still apply cleaning for consistency
+            pass
+
+        # Remove featuring information in both parentheses and brackets
+        # This regex matches parentheses or brackets containing feat./featuring
+        title = re.sub(
+            r"\s*[\(\[][^\)\]]*(?:feat\.|featuring)[^\)\]]*[\)\]]",
+            "",
+            title,
+            flags=re.IGNORECASE,
+        )
+
+        # Remove bracketed information (after featuring removal to avoid conflicts)
+        title = re.sub(r"\s*\[[^\]]*\]", "", title)
+
+        # Remove version/edit information in parentheses
+        # This regex matches specific keywords that indicate versions/edits
+        title = re.sub(
+            r"\s*\([^)]*(?:Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
+            "",
+            title,
+            flags=re.IGNORECASE,
+        )
+
+        # Clean up any extra whitespace
+        title = re.sub(r"\s+", " ", title).strip()
+
+        # If still too long, truncate with ellipsis
+        if len(title) > max_length:
+            # Try to cut at a word boundary if possible
+            if max_length > 3:
+                truncate_length = max_length - 3  # Reserve space for "..."
+                if " " in title[:truncate_length]:
+                    # Find the last space before the truncation point
+                    last_space = title[:truncate_length].rfind(" ")
+                    if (
+                        last_space > max_length // 2
+                    ):  # Only use word boundary if it's not too short
+                        title = title[:last_space] + "..."
+                    else:
+                        title = title[:truncate_length] + "..."
+                else:
+                    title = title[:truncate_length] + "..."
+            else:
+                title = title[:max_length]
+
+        if is_ready_to_play:
+            title += "*"
+
+        return title
 
     def _add_toc_entry(
         self,
@@ -143,7 +143,7 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        shortened_title = generate_toc_title(
+        shortened_title = self._generate_toc_title(
             file.name,
             max_length=self.config.max_toc_entry_length,
             is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
