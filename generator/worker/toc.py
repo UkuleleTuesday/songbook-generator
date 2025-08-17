@@ -26,7 +26,6 @@ def difficulty_symbol(difficulty_bin: int) -> str:
     return ""  # Default to no symbol if bin is out of range
 
 
-
 @dataclass
 class TocEntry:
     """Information about a TOC entry for later link creation."""
