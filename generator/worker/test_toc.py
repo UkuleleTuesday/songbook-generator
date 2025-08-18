@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import MagicMock
 import fitz
 from .toc import (
-    generate_toc_title,
     TocGenerator,
     difficulty_symbol,
 )
@@ -28,24 +27,34 @@ def test_difficulty_symbol(difficulty_bin, expected_symbol):
     assert difficulty_symbol(difficulty_bin) == expected_symbol
 
 
-def test_generate_toc_title_empty_string():
+@pytest.fixture
+def toc_generator_for_title_tests(mocker):
+    """Provides a basic TocGenerator for testing the title generation method."""
+    mock_config = toc.Toc(max_toc_entry_length=50)
+    mocker.patch("generator.worker.toc.resolve_font")
+    return TocGenerator(config=mock_config)
+
+
+def test_generate_toc_title_empty_string(toc_generator_for_title_tests):
     """Test with empty string."""
     title = ""
-    result = generate_toc_title(title, max_length=60)
+    result = toc_generator_for_title_tests._generate_toc_title(title, max_length=60)
     assert result == ""
 
 
-def test_generate_toc_title_empty_string_ready_to_play():
+def test_generate_toc_title_empty_string_ready_to_play(toc_generator_for_title_tests):
     """Test with empty string that is ready to play."""
     title = ""
-    result = generate_toc_title(title, max_length=60, is_ready_to_play=True)
+    result = toc_generator_for_title_tests._generate_toc_title(
+        title, max_length=60, is_ready_to_play=True
+    )
     assert result == "*"
 
 
-def test_generate_toc_title_very_short_max_length():
+def test_generate_toc_title_very_short_max_length(toc_generator_for_title_tests):
     """Test with very short max length."""
     title = "Long Title"
-    result = generate_toc_title(title, max_length=3)
+    result = toc_generator_for_title_tests._generate_toc_title(title, max_length=3)
     assert len(result) == 3
 
 
@@ -105,10 +114,14 @@ def test_generate_toc_title_very_short_max_length():
         ),
     ],
 )
-def test_generate_toc_title_real_world_samples(original_title, expected_title):
+def test_generate_toc_title_real_world_samples(
+    toc_generator_for_title_tests, original_title, expected_title
+):
     """Test generate_toc_title with real titles from the TOC."""
     # Test with default max_length
-    result = generate_toc_title(original_title, max_length=50)
+    result = toc_generator_for_title_tests._generate_toc_title(
+        original_title, max_length=50
+    )
     assert result == expected_title
 
 
@@ -214,10 +227,16 @@ def test_add_toc_entry_with_difficulty(mock_toc_generator):
     assert "Medium Song" in appended_title
 
 
-def test_generate_toc_title_truncation_with_ready_to_play():
+def test_generate_toc_title_truncation_with_ready_to_play(
+    toc_generator_for_title_tests,
+):
     """Test that a long title is truncated and still gets a '*'."""
     long_title = "This is a very long song title that will definitely need to be truncated to see the effect"
-    result = generate_toc_title(long_title, max_length=50, is_ready_to_play=True)
+    generator = toc_generator_for_title_tests
+    generator.config.include_wip_marker = True  # Explicitly set for test clarity
+    result = generator._generate_toc_title(
+        long_title, max_length=50, is_ready_to_play=True
+    )
     assert result.endswith("...*")
     assert len(result) < len(long_title)
 
@@ -225,6 +244,7 @@ def test_generate_toc_title_truncation_with_ready_to_play():
 def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     """Test that a '*' is added for READY_TO_PLAY status."""
     generator = mock_toc_generator
+    generator.config.include_wip_marker = True
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
@@ -242,6 +262,29 @@ def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args_list[0].args[1]
     assert "Ready Song*" in appended_title
+
+
+def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
+    """Test that a '*' is NOT added for READY_TO_PLAY if setting is false."""
+    generator = mock_toc_generator
+    generator.config.include_wip_marker = False
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # Check that title is appended without the '*'
+    appended_title = mock_tw.append.call_args_list[0].args[1]
+    assert appended_title == "Ready Song"
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
