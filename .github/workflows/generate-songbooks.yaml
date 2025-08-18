@@ -236,15 +236,27 @@ jobs:
     - name: Upload to GCS
       if: github.ref == 'refs/heads/main'
       run: |
+        set -e
         EDITION="${{ matrix.edition }}"
         DATE=$(date -u +%Y-%m-%d)
-        FILENAME="ukulele-tuesday-songbook-${EDITION}-${DATE}"
-        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
+        NEW_FILENAME="ukulele-tuesday-songbook-${EDITION}-${DATE}.pdf"
+        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${NEW_FILENAME}"
         OUTPUT_PDF="ukulele-tuesday-songbook-${EDITION}.pdf"
 
-        echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
+        echo "Uploading PDF to public bucket: ${DEST_GCS_PATH}"
         gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
         echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
+
+        # Clean up old versions for this edition
+        FILENAME_PREFIX="ukulele-tuesday-songbook-${EDITION}"
+        EXISTING_FILES=$(gcloud storage ls "gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME_PREFIX}*.pdf")
+
+        for old_file in $EXISTING_FILES; do
+          if [[ "$old_file" != "$DEST_GCS_PATH" ]]; then
+            echo "Deleting old songbook: $old_file"
+            gcloud storage rm "$old_file"
+          fi
+        done
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
