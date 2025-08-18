@@ -74,23 +74,23 @@ jobs:
               echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
               for edition in ${{ env.EDITIONS }}; do
-                FILENAME="ukulele-tuesday-songbook-${edition}"
-                DEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
-                GCS_DEST_LIST_JSON=$(gcloud storage ls "$DEST_PATH" --json)
+                FILENAME_PREFIX="ukulele-tuesday-songbook-${edition}"
+                DEST_PATH_PREFIX="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME_PREFIX}"
+                GCS_DEST_LIST_JSON=$(gcloud storage ls "${DEST_PATH_PREFIX}*.pdf" --json)
                 if [[ $? -ne 0 ]]; then
-                    echo "::warning::'gcloud storage ls' command failed for destination path ${DEST_PATH}. Assuming it doesn't exist."
+                    echo "::warning::'gcloud storage ls' command failed for destination path prefix ${DEST_PATH_PREFIX}. Assuming no files exist."
                     echo "Output was: $GCS_DEST_LIST_JSON"
-                    GCS_DEST_LIST_JSON="" # Treat as empty
+                    GCS_DEST_LIST_JSON="[]" # Treat as empty
                 fi
-                DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' || echo "")
+                LATEST_DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
 
-                if [[ -z "$DEST_UPDATE_JSON" ]]; then
+                if [[ -z "$LATEST_DEST_UPDATE_JSON" || "$LATEST_DEST_UPDATE_JSON" == "null" ]]; then
                   echo "Published songbook for '$edition' not found. Adding to build queue."
                   EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
                   continue
                 fi
 
-                DEST_UPDATE_TS=$(date -d "$DEST_UPDATE_JSON" +%s)
+                DEST_UPDATE_TS=$(date -d "$LATEST_DEST_UPDATE_JSON" +%s)
                 echo "Latest '$edition' songbook published at: $(date -d @$DEST_UPDATE_TS)"
 
                 if (( SOURCE_LATEST_UPDATE_TS > DEST_UPDATE_TS )); then
@@ -237,9 +237,10 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: |
         EDITION="${{ matrix.edition }}"
-        FILENAME="ukulele-tuesday-songbook-${EDITION}"
+        DATE=$(date -u +%Y-%m-%d)
+        FILENAME="ukulele-tuesday-songbook-${EDITION}-${DATE}"
         DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME}.pdf"
-        OUTPUT_PDF="${FILENAME}.pdf"
+        OUTPUT_PDF="ukulele-tuesday-songbook-${EDITION}.pdf"
 
         echo "Uploading compressed PDF to public bucket: ${DEST_GCS_PATH}"
         gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
