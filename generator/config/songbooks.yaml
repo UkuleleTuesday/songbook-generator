@@ -34,7 +34,7 @@
   description: "The official songbook for the 2025 Ukulele Hooley Friday jam."
   cover_file_id: "1jpZvqrpNF7HjX5_gpjH8FG8DLHKP63JjRU1gWbVpSg8"
   preface_file_ids:
-    - "11yE4or5ldeoj2ppmK2auNFyPnkHslmpzDA5-lDJSdUM"
+    - "11yE4or5ldeoj2ppmK2auNFyPnkHslmpzDA5-lDJSdUM" # blank page after cover
     - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"
   table_of_contents:
     include_difficulty: false
