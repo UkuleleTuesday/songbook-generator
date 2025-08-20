@@ -296,11 +296,13 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
+
     - name: Generate Manifest
       id: generate-manifest
       run: |
         set -e
-        MANIFEST_JSON=$(uv run scripts/generate_manifest.py)
+        chmod +x scripts/generate_manifest.py
+        MANIFEST_JSON=$(./scripts/generate_manifest.py)
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
         echo "$MANIFEST_JSON" > manifest.json
