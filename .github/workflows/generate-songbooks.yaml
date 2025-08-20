@@ -273,6 +273,9 @@ jobs:
     needs: generate-songbook
     if: github.ref == 'refs/heads/main'
     steps:
+    - name: Checkout repository
+      id: checkout
+      uses: actions/checkout@v4
     - name: Load environment variables
       id: load-env
       uses: falti/dotenv-action@v1.1.4
