@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: check-for-updates
     concurrency:
-      group: ${{ github.workflow }}-generate
+      group: generate-songbook-${{ matrix.edition }}
       cancel-in-progress: false
     if: needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
     strategy:
