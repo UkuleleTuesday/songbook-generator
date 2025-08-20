@@ -271,7 +271,7 @@ jobs:
     name: Publish Manifest
     runs-on: ubuntu-latest
     needs: generate-songbook
-    if: github.ref == 'refs/heads/main'
+    if: success() || failure() # Always run this job
     steps:
     - name: Checkout repository
       id: checkout
@@ -298,19 +298,29 @@ jobs:
       id: generate-manifest
       run: |
         set -e
-        GCS_LIST_JSON=$(gcloud storage ls "gs://${GCS_SONGBOOKS_BUCKET}/**.pdf" --json)
-        MANIFEST_JSON=$(echo "$GCS_LIST_JSON" | jq -n --argjson files "$GCS_LIST_JSON" --arg bucket "$GCS_SONGBOOKS_BUCKET" '
+        GCS_LIST_JSON=$(gcloud storage ls "gs://${GCS_SONGBOOKS_BUCKET}/**.pdf" --json 2>/dev/null || echo "[]")
+        REGEX="ukulele-tuesday-songbook-(?<edition>.*)-(?<date>[0-9]{4}-[0-9]{2}-[0-9]{2})\\.pdf"
+        MANIFEST_JSON=$(echo "$GCS_LIST_JSON" | jq -n --argjson files "$GCS_LIST_JSON" --arg bucket "$GCS_SONGBOOKS_BUCKET" --arg regex "$REGEX" '
         {
           last_updated_utc: (now | todateiso8601),
-          editions: ($files | map(
-            .name | ltrimstr("gs://\($bucket)/") | capture("ukulele-tuesday-songbook-(?<edition>.*)-(?<date>\\d{4}-\\d{2}-\\d{2})\\.pdf") | .edition as $edition | {
-              key: $edition,
-              value: {
-                url: "https://storage.googleapis.com/\($bucket)/\(.name | ltrimstr("gs://\($bucket)/"))",
-                updated_utc: .updated
-              }
-            }
-          ) | from_entries)
+          editions: (
+            $files |
+            map(
+              . as $file |
+              ($file.name | ltrimstr("gs://\($bucket)/") | capture($regex)) as $captures |
+              if $captures then
+                {
+                  key: $captures.edition,
+                  value: {
+                    url: "https://storage.googleapis.com/\($bucket)/\($file.name | ltrimstr("gs://\($bucket)/"))",
+                    updated_utc: $file.updated
+                  }
+                }
+              else
+                empty
+              end
+            ) | from_entries
+          )
         }
         ')
 
@@ -318,5 +328,15 @@ jobs:
         echo "$MANIFEST_JSON" | jq .
 
         echo "$MANIFEST_JSON" > manifest.json
+
+    - name: Upload Manifest Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: manifest
+        path: manifest.json
+
+    - name: Upload to GCS
+      if: github.ref == 'refs/heads/main'
+      run: |
         gcloud storage cp manifest.json "gs://${GCS_SONGBOOKS_BUCKET}/manifest.json" --cache-control="public, max-age=60"
         echo "✅ Successfully uploaded manifest.json"
