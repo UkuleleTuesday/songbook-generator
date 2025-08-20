@@ -53,7 +53,7 @@ jobs:
         id: check
         run: |
           EDITIONS_TO_BUILD_STR=""
-          
+
           # Always run change detection logic
           SOURCE_PATH="gs://${GCS_WORKER_CACHE_BUCKET}/song-sheets/"
 
