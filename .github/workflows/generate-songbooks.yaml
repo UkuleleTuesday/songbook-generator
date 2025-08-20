@@ -301,7 +301,6 @@ jobs:
       id: generate-manifest
       run: |
         set -e
-        chmod +x scripts/generate_manifest.py
         MANIFEST_JSON=$(./scripts/generate_manifest.py)
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
