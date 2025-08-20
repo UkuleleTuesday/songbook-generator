@@ -25,7 +25,13 @@ from google.cloud import storage
     required=True,
     help="GCS bucket name for songbooks.",
 )
-def generate_manifest(bucket_name: str):
+@click.option(
+    "--editions-order",
+    envvar="EDITIONS",
+    help="Space-separated string of editions in the desired order.",
+    default="",
+)
+def generate_manifest(bucket_name: str, editions_order: str):
     """
     Generates a manifest.json file for songbook editions in a GCS bucket.
 
