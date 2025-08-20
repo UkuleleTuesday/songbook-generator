@@ -39,9 +39,11 @@ def generate_manifest(bucket_name: str):
         print(f"Error: Failed to connect to GCS bucket '{bucket_name}'. {e}", file=sys.stderr)
         sys.exit(1)
 
-    editions = {}
+    found_editions = {}
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
-    filename_re = re.compile(r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$")
+    filename_re = re.compile(
+        r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$"
+    )
 
     for blob in blobs:
         if not blob.name.endswith(".pdf"):
@@ -50,14 +52,28 @@ def generate_manifest(bucket_name: str):
         match = filename_re.match(os.path.basename(blob.name))
         if match:
             edition_name = match.group("edition")
-            editions[edition_name] = {
+            found_editions[edition_name] = {
                 "url": f"https://storage.googleapis.com/{bucket_name}/{blob.name}",
                 "updated_utc": blob.updated.isoformat(),
             }
 
+    # Order editions based on the provided order, appending any found but not specified editions at the end.
+    ordered_editions = {}
+    ordered_edition_keys = editions_order.split()
+    found_keys = set(found_editions.keys())
+
+    # Add editions in the specified order
+    for key in ordered_edition_keys:
+        if key in found_editions:
+            ordered_editions[key] = found_editions[key]
+
+    # Add any remaining found editions that were not in the order list
+    for key in sorted(list(found_keys - set(ordered_edition_keys))):
+        ordered_editions[key] = found_editions[key]
+
     manifest = {
         "last_updated_utc": datetime.now(timezone.utc).isoformat(),
-        "editions": editions,
+        "editions": ordered_editions,
     }
 
     print(json.dumps(manifest, indent=2))
