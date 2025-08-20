@@ -295,12 +295,11 @@ jobs:
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
     - name: Install uv
-      run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      uses: astral-sh/setup-uv@v5
     - name: Generate Manifest
       id: generate-manifest
       run: |
         set -e
-        export PATH=$HOME/.cargo/bin:$PATH
         MANIFEST_JSON=$(uv run scripts/generate_manifest.py)
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
