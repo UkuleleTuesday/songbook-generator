@@ -40,9 +40,14 @@ def generate_manifest(bucket_name: str, editions_order: str):
     """
     try:
         storage_client = storage.Client()
-        blobs = storage_client.list_blobs(bucket_name, prefix="ukulele-tuesday-songbook-")
+        blobs = storage_client.list_blobs(
+            bucket_name, prefix="ukulele-tuesday-songbook-"
+        )
     except Exception as e:
-        print(f"Error: Failed to connect to GCS bucket '{bucket_name}'. {e}", file=sys.stderr)
+        print(
+            f"Error: Failed to connect to GCS bucket '{bucket_name}'. {e}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     found_editions = {}
