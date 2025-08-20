@@ -294,19 +294,14 @@ jobs:
       id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: pip install click google-cloud-storage
-
+    - name: Install uv
+      run: curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Generate Manifest
       id: generate-manifest
       run: |
-        chmod +x scripts/generate_manifest.py
-        MANIFEST_JSON=$(scripts/generate_manifest.py)
+        set -e
+        export PATH=$HOME/.cargo/bin:$PATH
+        MANIFEST_JSON=$(uv run scripts/generate_manifest.py)
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
         echo "$MANIFEST_JSON" > manifest.json
