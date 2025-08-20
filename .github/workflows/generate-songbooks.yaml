@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  EDITIONS: "current complete"
+  EDITIONS: "ukulele-hooley-2025 current complete"
   USE_GHOSTSCRIPT_COMPRESSION: false
 
 jobs:
