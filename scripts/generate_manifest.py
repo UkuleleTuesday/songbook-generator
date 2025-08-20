@@ -5,6 +5,8 @@
 # dependencies = [
 #   "click",
 #   "google-cloud-storage",
+#   "google-api-core",
+#   "google-auth",
 # ]
 # ///
 
@@ -15,6 +17,8 @@ import sys
 from datetime import datetime, timezone
 
 import click
+from google.api_core import exceptions as api_exceptions
+from google.auth import exceptions as auth_exceptions
 from google.cloud import storage
 
 
@@ -43,7 +47,7 @@ def generate_manifest(bucket_name: str, editions_order: str):
         blobs = storage_client.list_blobs(
             bucket_name, prefix="ukulele-tuesday-songbook-"
         )
-    except Exception as e:
+    except (api_exceptions.GoogleAPICallError, auth_exceptions.GoogleAuthError) as e:
         print(
             f"Error: Failed to connect to GCS bucket '{bucket_name}'. {e}",
             file=sys.stderr,
