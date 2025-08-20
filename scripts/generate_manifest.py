@@ -11,7 +11,6 @@
 import json
 import os
 import re
-import sys
 from datetime import datetime, timezone
 
 import click
@@ -39,9 +38,7 @@ def generate_manifest(bucket_name: str, editions_order: str):
     the expected pattern, and outputs a JSON manifest to stdout.
     """
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(
-        bucket_name, prefix="ukulele-tuesday-songbook-"
-    )
+    blobs = storage_client.list_blobs(bucket_name, prefix="ukulele-tuesday-songbook-")
 
     found_editions = {}
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
