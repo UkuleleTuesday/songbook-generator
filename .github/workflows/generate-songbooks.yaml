@@ -76,11 +76,12 @@ jobs:
               for edition in ${{ env.EDITIONS }}; do
                 FILENAME_PREFIX="ukulele-tuesday-songbook-${edition}"
                 DEST_PATH_PREFIX="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME_PREFIX}"
-                GCS_DEST_LIST_JSON=$(gcloud storage ls "${DEST_PATH_PREFIX}*.pdf" --json)
+                GCS_DEST_LIST_JSON=$(gcloud storage ls "${DEST_PATH_PREFIX}*.pdf" --json 2>/dev/null)
                 if [[ $? -ne 0 ]]; then
-                    echo "::warning::'gcloud storage ls' command failed for destination path prefix ${DEST_PATH_PREFIX}. Assuming no files exist."
-                    echo "Output was: $GCS_DEST_LIST_JSON"
-                    GCS_DEST_LIST_JSON="[]" # Treat as empty
+                    echo "No existing songbooks found for edition '${edition}'. Adding to build queue."
+                    GCS_DEST_LIST_JSON="[]"
+                    EDITIONS_TO_BUILD_STR="${EDITIONS_TO_BUILD_STR} ${edition}"
+                    continue
                 fi
                 LATEST_DEST_UPDATE_JSON=$(echo "$GCS_DEST_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
 
