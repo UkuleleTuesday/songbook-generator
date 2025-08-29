@@ -57,10 +57,12 @@ jobs:
         # Override environment variables for PR environment
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "DRIVE_CHANGES_PUBSUB_TOPIC=${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
 
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        echo "- DRIVE_CHANGES_PUBSUB_TOPIC: ${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
     - name: Create Pub/Sub topic
       run: |
@@ -70,6 +72,10 @@ jobs:
 
         echo "Creating Pub/Sub topic ${CACHE_REFRESH_PUBSUB_TOPIC}…"
         gcloud pubsub topics create "${CACHE_REFRESH_PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+        echo "Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
   deploy-api:
@@ -300,6 +306,84 @@ jobs:
           --message="Initial sync after deploy" \
           --attribute="force=false"
 
+  deploy-drivewatcher:
+    name: Deploy Drive Watcher
+    needs: [test, deploy-infrastructure]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Compute function name
+      id: fn-name
+      run: |
+        BASE_FN=${{ env.DRIVEWATCHER_FUNCTION_NAME }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
+
+    - name: Create Pub/Sub topic for drive changes
+      run: |
+        DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        echo "Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      run: |
+        DRIVEWATCHER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        FLAGS_FILE=$(mktemp)
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --source: "generator"
+        --entry-point: "drivewatcher"
+        --memory: "512Mi"
+        --cpu: "0.5"
+        --concurrency: 1
+        --max-instances: 1
+        --allow-unauthenticated: true
+        --set-env-vars:
+          SERVICE_NAME: "songbook-drivewatcher"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          DRIVE_WATCHED_FOLDERS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
+          DRIVE_CHANGES_PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+          OTEL_SERVICE_NAME: "songbook-drivewatcher"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-drivewatcher"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
+          LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
+        EOF
+        gcloud functions deploy "$DRIVEWATCHER_FN_NAME" --flags-file="$FLAGS_FILE"
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: 'Drive Watcher'
+        function_name: ${{ steps.fn-name.outputs.name }}
+
   deploy-ui:
     name: Deploy UI
     runs-on: ubuntu-latest
@@ -347,6 +431,7 @@ jobs:
         API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
         MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        DRIVEWATCHER_FN_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
         echo "Cleaning up PR #${PR_NUM} resources..."
 
@@ -374,6 +459,14 @@ jobs:
           echo "Merger function $MERGER_FN_NAME not found, skipping"
         fi
 
+        # Delete Drive Watcher function
+        if gcloud functions describe "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Drive Watcher function: $DRIVEWATCHER_FN_NAME"
+          gcloud functions delete "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Drive Watcher function $DRIVEWATCHER_FN_NAME not found, skipping"
+        fi
+
     - name: Delete PR Pub/Sub topics
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
@@ -392,4 +485,12 @@ jobs:
           gcloud pubsub topics delete "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
         else
           echo "Pub/Sub topic $CACHE_REFRESH_TOPIC_NAME not found, skipping"
+        fi
+
+        DRIVE_CHANGES_TOPIC_NAME="${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$DRIVE_CHANGES_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $DRIVE_CHANGES_TOPIC_NAME"
+          gcloud pubsub topics delete "$DRIVE_CHANGES_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $DRIVE_CHANGES_TOPIC_NAME not found, skipping"
         fi
