@@ -15,23 +15,26 @@ ENVIRONMENT_SUFFIX="${ENVIRONMENT_SUFFIX:-}"
 if [ -n "$ENVIRONMENT_SUFFIX" ]; then
   echo "Setting up preview environment with suffix: ${ENVIRONMENT_SUFFIX}"
 
-  # Append suffix to resource names
+  # For preview environments, use shared -staging buckets to avoid massive data copying
+  # Keep individual naming for lightweight resources (Pub/Sub, Firestore)
   PUBSUB_TOPIC="${PUBSUB_TOPIC}${ENVIRONMENT_SUFFIX}"
   CACHE_REFRESH_PUBSUB_TOPIC="${CACHE_REFRESH_PUBSUB_TOPIC}${ENVIRONMENT_SUFFIX}"
   FIRESTORE_COLLECTION="${FIRESTORE_COLLECTION}${ENVIRONMENT_SUFFIX}"
-  GCS_CDN_BUCKET="${GCS_CDN_BUCKET}${ENVIRONMENT_SUFFIX}"
-  GCS_WORKER_CACHE_BUCKET="${GCS_WORKER_CACHE_BUCKET}${ENVIRONMENT_SUFFIX}"
-  GCS_SONGBOOKS_BUCKET="${GCS_SONGBOOKS_BUCKET}${ENVIRONMENT_SUFFIX}"
-  GCS_SONGBOOKS_LOGS_BUCKET="${GCS_SONGBOOKS_LOGS_BUCKET}${ENVIRONMENT_SUFFIX}"
+
+  # Use shared staging buckets for all preview environments to avoid data duplication
+  GCS_CDN_BUCKET="${GCS_CDN_BUCKET}-staging"
+  GCS_WORKER_CACHE_BUCKET="${GCS_WORKER_CACHE_BUCKET}-staging"
+  GCS_SONGBOOKS_BUCKET="${GCS_SONGBOOKS_BUCKET}-staging"
+  GCS_SONGBOOKS_LOGS_BUCKET="${GCS_SONGBOOKS_LOGS_BUCKET}-staging"
 
   echo "Preview environment resources:"
   echo "  PUBSUB_TOPIC: ${PUBSUB_TOPIC}"
   echo "  CACHE_REFRESH_PUBSUB_TOPIC: ${CACHE_REFRESH_PUBSUB_TOPIC}"
   echo "  FIRESTORE_COLLECTION: ${FIRESTORE_COLLECTION}"
-  echo "  GCS_CDN_BUCKET: ${GCS_CDN_BUCKET}"
-  echo "  GCS_WORKER_CACHE_BUCKET: ${GCS_WORKER_CACHE_BUCKET}"
-  echo "  GCS_SONGBOOKS_BUCKET: ${GCS_SONGBOOKS_BUCKET}"
-  echo "  GCS_SONGBOOKS_LOGS_BUCKET: ${GCS_SONGBOOKS_LOGS_BUCKET}"
+  echo "  GCS_CDN_BUCKET: ${GCS_CDN_BUCKET} (shared staging)"
+  echo "  GCS_WORKER_CACHE_BUCKET: ${GCS_WORKER_CACHE_BUCKET} (shared staging)"
+  echo "  GCS_SONGBOOKS_BUCKET: ${GCS_SONGBOOKS_BUCKET} (shared staging)"
+  echo "  GCS_SONGBOOKS_LOGS_BUCKET: ${GCS_SONGBOOKS_LOGS_BUCKET} (shared staging)"
 fi
 
 echo "1. Enabling required APIs…"
@@ -94,39 +97,9 @@ gsutil mb \
   -l "${GCP_REGION}" \
   "gs://${GCS_SONGBOOKS_LOGS_BUCKET}" || echo "Songbook logs bucket may already exist, continuing…"
 
-# For preview environments, bootstrap by copying data from live buckets
-if [ -n "$ENVIRONMENT_SUFFIX" ]; then
-  # Define source buckets (live environment)
-  LIVE_CDN_BUCKET="${GCS_CDN_BUCKET%$ENVIRONMENT_SUFFIX}"
-  LIVE_WORKER_CACHE_BUCKET="${GCS_WORKER_CACHE_BUCKET%$ENVIRONMENT_SUFFIX}"
-  LIVE_SONGBOOKS_BUCKET="${GCS_SONGBOOKS_BUCKET%$ENVIRONMENT_SUFFIX}"
-
-  echo "4a. Bootstrapping preview environment from live buckets…"
-
-  # Copy CDN bucket contents if source exists
-  if gsutil ls -b "gs://${LIVE_CDN_BUCKET}" >/dev/null 2>&1; then
-    echo "Copying CDN bucket contents from gs://${LIVE_CDN_BUCKET} to gs://${GCS_CDN_BUCKET}"
-    gsutil -m cp -r "gs://${LIVE_CDN_BUCKET}/**" "gs://${GCS_CDN_BUCKET}/" || echo "CDN bucket copy failed or no content to copy"
-  else
-    echo "Live CDN bucket gs://${LIVE_CDN_BUCKET} not found, skipping copy"
-  fi
-
-  # Copy worker cache bucket contents if source exists
-  if gsutil ls -b "gs://${LIVE_WORKER_CACHE_BUCKET}" >/dev/null 2>&1; then
-    echo "Copying worker cache bucket contents from gs://${LIVE_WORKER_CACHE_BUCKET} to gs://${GCS_WORKER_CACHE_BUCKET}"
-    gsutil -m cp -r "gs://${LIVE_WORKER_CACHE_BUCKET}/**" "gs://${GCS_WORKER_CACHE_BUCKET}/" || echo "Worker cache bucket copy failed or no content to copy"
-  else
-    echo "Live worker cache bucket gs://${LIVE_WORKER_CACHE_BUCKET} not found, skipping copy"
-  fi
-
-  # Copy songbooks bucket contents if source exists
-  if gsutil ls -b "gs://${LIVE_SONGBOOKS_BUCKET}" >/dev/null 2>&1; then
-    echo "Copying songbooks bucket contents from gs://${LIVE_SONGBOOKS_BUCKET} to gs://${GCS_SONGBOOKS_BUCKET}"
-    gsutil -m cp -r "gs://${LIVE_SONGBOOKS_BUCKET}/**" "gs://${GCS_SONGBOOKS_BUCKET}/" || echo "Songbooks bucket copy failed or no content to copy"
-  else
-    echo "Live songbooks bucket gs://${LIVE_SONGBOOKS_BUCKET} not found, skipping copy"
-  fi
-fi
+# Note: For preview environments using staging buckets, no data copying is needed
+# since staging buckets are shared across all preview environments and
+# persist between deployments to avoid massive data transfers
 
 echo "4b. Setting bucket permissions"
 gsutil uniformbucketlevelaccess set on gs://$GCS_CDN_BUCKET

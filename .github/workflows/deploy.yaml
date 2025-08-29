@@ -76,20 +76,23 @@ jobs:
         echo "Setting up PR-specific service environment variables for PR #${PR_NUM}"
 
         # These are used by the Cloud Functions deployment steps
+        # Use individual naming for lightweight resources (Pub/Sub, Firestore)
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        echo "GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        echo "GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
-        echo "GCS_SONGBOOKS_BUCKET=${{ env.GCS_SONGBOOKS_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
+
+        # Use shared staging buckets for all preview environments to avoid data duplication
+        echo "GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }}-staging" >> $GITHUB_ENV
+        echo "GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }}-staging" >> $GITHUB_ENV
+        echo "GCS_SONGBOOKS_BUCKET=${{ env.GCS_SONGBOOKS_BUCKET }}-staging" >> $GITHUB_ENV
 
         echo "PR service environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- FIRESTORE_COLLECTION: ${{ env.FIRESTORE_COLLECTION }}-pr-${PR_NUM}"
-        echo "- GCS_CDN_BUCKET: ${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}"
-        echo "- GCS_WORKER_CACHE_BUCKET: ${{ env.GCS_WORKER_CACHE_BUCKET }}-pr-${PR_NUM}"
-        echo "- GCS_SONGBOOKS_BUCKET: ${{ env.GCS_SONGBOOKS_BUCKET }}-pr-${PR_NUM}"
+        echo "- GCS_CDN_BUCKET: ${{ env.GCS_CDN_BUCKET }}-staging (shared)"
+        echo "- GCS_WORKER_CACHE_BUCKET: ${{ env.GCS_WORKER_CACHE_BUCKET }}-staging (shared)"
+        echo "- GCS_SONGBOOKS_BUCKET: ${{ env.GCS_SONGBOOKS_BUCKET }}-staging (shared)"
 
   deploy-api:
     name: Deploy API

@@ -27,19 +27,22 @@ echo "Cleaning up preview environment resources with suffix: ${ENVIRONMENT_SUFFI
 PREVIEW_PUBSUB_TOPIC="${PUBSUB_TOPIC}${ENVIRONMENT_SUFFIX}"
 PREVIEW_CACHE_REFRESH_PUBSUB_TOPIC="${CACHE_REFRESH_PUBSUB_TOPIC}${ENVIRONMENT_SUFFIX}"
 PREVIEW_FIRESTORE_COLLECTION="${FIRESTORE_COLLECTION}${ENVIRONMENT_SUFFIX}"
-PREVIEW_GCS_CDN_BUCKET="${GCS_CDN_BUCKET}${ENVIRONMENT_SUFFIX}"
-PREVIEW_GCS_WORKER_CACHE_BUCKET="${GCS_WORKER_CACHE_BUCKET}${ENVIRONMENT_SUFFIX}"
-PREVIEW_GCS_SONGBOOKS_BUCKET="${GCS_SONGBOOKS_BUCKET}${ENVIRONMENT_SUFFIX}"
-PREVIEW_GCS_SONGBOOKS_LOGS_BUCKET="${GCS_SONGBOOKS_LOGS_BUCKET}${ENVIRONMENT_SUFFIX}"
+
+# For preview environments, buckets use shared -staging naming
+STAGING_GCS_CDN_BUCKET="${GCS_CDN_BUCKET}-staging"
+STAGING_GCS_WORKER_CACHE_BUCKET="${GCS_WORKER_CACHE_BUCKET}-staging"
+STAGING_GCS_SONGBOOKS_BUCKET="${GCS_SONGBOOKS_BUCKET}-staging"
+STAGING_GCS_SONGBOOKS_LOGS_BUCKET="${GCS_SONGBOOKS_LOGS_BUCKET}-staging"
 
 echo "Cleanup targets:"
 echo "  PUBSUB_TOPIC: ${PREVIEW_PUBSUB_TOPIC}"
 echo "  CACHE_REFRESH_PUBSUB_TOPIC: ${PREVIEW_CACHE_REFRESH_PUBSUB_TOPIC}"
 echo "  FIRESTORE_COLLECTION: ${PREVIEW_FIRESTORE_COLLECTION}"
-echo "  GCS_CDN_BUCKET: ${PREVIEW_GCS_CDN_BUCKET}"
-echo "  GCS_WORKER_CACHE_BUCKET: ${PREVIEW_GCS_WORKER_CACHE_BUCKET}"
-echo "  GCS_SONGBOOKS_BUCKET: ${PREVIEW_GCS_SONGBOOKS_BUCKET}"
-echo "  GCS_SONGBOOKS_LOGS_BUCKET: ${PREVIEW_GCS_SONGBOOKS_LOGS_BUCKET}"
+echo "  Note: Staging buckets are shared and preserved:"
+echo "  - ${STAGING_GCS_CDN_BUCKET}"
+echo "  - ${STAGING_GCS_WORKER_CACHE_BUCKET}"
+echo "  - ${STAGING_GCS_SONGBOOKS_BUCKET}"
+echo "  - ${STAGING_GCS_SONGBOOKS_LOGS_BUCKET}"
 
 # Delete Pub/Sub topics
 echo "1. Deleting Pub/Sub topics…"
@@ -57,19 +60,13 @@ else
   echo "Pub/Sub topic ${PREVIEW_CACHE_REFRESH_PUBSUB_TOPIC} not found, skipping"
 fi
 
-# Delete GCS buckets
-echo "2. Deleting GCS buckets…"
-for BUCKET in "${PREVIEW_GCS_CDN_BUCKET}" "${PREVIEW_GCS_WORKER_CACHE_BUCKET}" "${PREVIEW_GCS_SONGBOOKS_BUCKET}" "${PREVIEW_GCS_SONGBOOKS_LOGS_BUCKET}"; do
-  if gsutil ls -b "gs://${BUCKET}" >/dev/null 2>&1; then
-    echo "Deleting GCS bucket: gs://${BUCKET}"
-    # Remove all objects first
-    gsutil -m rm -r "gs://${BUCKET}/**" || echo "No objects to delete in gs://${BUCKET}"
-    # Remove the bucket
-    gsutil rb "gs://${BUCKET}"
-  else
-    echo "GCS bucket gs://${BUCKET} not found, skipping"
-  fi
-done
+# Delete GCS buckets - Skip staging buckets as they are shared
+echo "2. Note: Skipping GCS bucket deletion (staging buckets are shared across preview environments)"
+echo "   Staging buckets that remain active:"
+echo "   - gs://${STAGING_GCS_CDN_BUCKET}"
+echo "   - gs://${STAGING_GCS_WORKER_CACHE_BUCKET}"
+echo "   - gs://${STAGING_GCS_SONGBOOKS_BUCKET}"
+echo "   - gs://${STAGING_GCS_SONGBOOKS_LOGS_BUCKET}"
 
 # Delete Firestore collection documents
 echo "3. Deleting Firestore collection documents…"
