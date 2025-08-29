@@ -22,6 +22,9 @@ jobs:
   cleanup-old-preview-environments:
     name: Cleanup Old Preview Environments
     runs-on: ubuntu-latest
+    outputs:
+      pr_numbers: ${{ steps.find-old-envs.outputs.pr_numbers }}
+      pr_matrix: ${{ steps.find-old-envs.outputs.pr_matrix }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -46,10 +49,18 @@ jobs:
           --format="value(name)" \
           --filter="name~'-pr-[0-9]+$' AND updateTime<'${CUTOFF_TIMESTAMP}'" || echo "")
 
-        # Find GCS buckets with pr- suffix older than cutoff
-        OLD_BUCKETS=$(gsutil ls -L -b gs://* | \
-          awk '/^gs:\/\/.*-pr-[0-9]+\/$/{bucket=$1} /Time created:/{if(match($0, /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z/)) {created=substr($0, RSTART, RLENGTH); if(created < "'${CUTOFF_TIMESTAMP}'") print bucket}}' | \
-          sed 's|gs://||g' | sed 's|/$||g' || echo "")
+        # Find GCS buckets with pr- suffix (we'll check age later since gsutil ls doesn't support time filters easily)
+        ALL_PR_BUCKETS=$(gsutil ls -p "${{ env.GCP_PROJECT_ID }}" | grep -E '.*-pr-[0-9]+/$' | sed 's|gs://||g' | sed 's|/$||g' || echo "")
+
+        # For each PR bucket, check if it's old enough
+        OLD_BUCKETS=""
+        for bucket in $ALL_PR_BUCKETS; do
+          if bucket_time=$(gsutil stat "gs://${bucket}" 2>/dev/null | grep "Time created:" | awk '{print $3}'); then
+            if [[ "$bucket_time" < "$CUTOFF_TIMESTAMP" ]]; then
+              OLD_BUCKETS="$OLD_BUCKETS $bucket"
+            fi
+          fi
+        done
 
         # Extract PR numbers from old resources
         PR_NUMBERS=""
@@ -88,7 +99,7 @@ jobs:
   cleanup-specific-pr:
     name: Cleanup PR Environment
     needs: cleanup-old-preview-environments
-    if: needs.cleanup-old-preview-environments.outputs.pr_matrix != '[]'
+    if: needs.cleanup-old-preview-environments.outputs.pr_matrix != '[]' && needs.cleanup-old-preview-environments.outputs.pr_matrix != ''
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -178,7 +189,9 @@ jobs:
             body: comment
           });
 
-outputs:
-  cleaned_pr_count:
-    description: "Number of PR environments cleaned up"
-    value: ${{ fromJson(needs.cleanup-old-preview-environments.outputs.pr_matrix) && fromJson(needs.cleanup-old-preview-environments.outputs.pr_matrix).length || 0 }}
+          github.rest.issues.createComment({
+            issue_number: prNumber,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

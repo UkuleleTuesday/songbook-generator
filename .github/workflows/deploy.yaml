@@ -293,6 +293,7 @@ jobs:
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
+          FIRESTORE_COLLECTION: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.FIRESTORE_COLLECTION, github.event.pull_request.number) || env.FIRESTORE_COLLECTION }}"
           GCS_WORKER_CACHE_BUCKET: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.GCS_WORKER_CACHE_BUCKET, github.event.pull_request.number) || env.GCS_WORKER_CACHE_BUCKET }}"
           GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
           OTEL_SERVICE_NAME: "songbook-merger"
