@@ -40,10 +40,13 @@ pip install uv
 # Install project dependencies
 uv sync --locked --all-extras --dev
 
+# Install pre-commit hooks (MANDATORY)
+uvx --from 'pre-commit<5' pre-commit install
+
 # Run tests
 uv run pytest
 
-# Run linting
+# Run pre-commit checks (MANDATORY before any commit)
 uvx --from 'pre-commit<5' pre-commit run --all-files
 ```
 
@@ -72,13 +75,24 @@ ui/               # Frontend components (if applicable)
 
 ## Code Conventions & Patterns
 
-### Style Guidelines
+### Style Guidelines (from CONVENTIONS.md)
 
-- **Line Length**: Maximum 80 characters per line
+- **Line Length**: Maximum 80 characters per line (strictly enforced)
 - **Formatting**: Follow `ruff` formatter defaults
 - **Linting**: Use `ruff` linter with extended rules (see `pyproject.toml`)
-- **Exception Handling**: NEVER use broad `except:` clauses - only catch specific expected exceptions
-- **Testing**: Follow Test-Driven Development (TDD) when possible
+- **Exception Handling**: NEVER use broad `except:` or `except Exception:` clauses - only catch specific expected exceptions. This will cause exceptions to be swallowed without understanding their root cause.
+- **Testing**: Follow Test-Driven Development (TDD) approach - write unit tests first whenever possible to verify your assumptions
+- **Code Quality**: Keep changes small, clean and testable
+- **Whitespace**: Be careful not to introduce any trailing spaces
+
+### Pre-commit Requirements (MANDATORY)
+
+**All commits MUST pass pre-commit hooks before being committed.** This is non-negotiable.
+
+- **Installation**: Pre-commit hooks must be installed in the development environment: `uvx --from 'pre-commit<5' pre-commit install`
+- **Validation**: Run `uvx --from 'pre-commit<5' pre-commit run --all-files` before any commit
+- **Automated Checks**: Pre-commit hooks automatically run ruff formatting, linting, pytest, and other quality checks
+- **No Bypassing**: Do not use `--no-verify` or similar flags to bypass pre-commit checks
 
 ### Configuration Management
 
