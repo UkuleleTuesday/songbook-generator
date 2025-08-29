@@ -126,13 +126,17 @@ def test_get_last_check_time_no_blob():
             abs((result - expected).total_seconds()) < 60
         )  # Within 1 minute tolerance
 
+        # Verify it looked for the correct file
+        mock_bucket.get_blob.assert_called_once_with("drivewatcher/metadata.json")
+
 
 def test_get_last_check_time_with_existing_blob():
     """Test getting last check time when a previous check time exists."""
     test_time = datetime(2023, 1, 1, 12, 0, 0)
 
     mock_blob = Mock()
-    mock_blob.download_as_text.return_value = test_time.isoformat()
+    metadata = {"last_check_time": test_time.isoformat()}
+    mock_blob.download_as_text.return_value = json.dumps(metadata)
 
     mock_bucket = Mock()
     mock_bucket.get_blob.return_value = mock_blob
@@ -149,6 +153,34 @@ def test_get_last_check_time_with_existing_blob():
         result = _get_last_check_time(services)
 
         assert result == test_time
+        mock_bucket.get_blob.assert_called_once_with("drivewatcher/metadata.json")
+
+
+def test_get_last_check_time_malformed_json():
+    """Test getting last check time when JSON metadata is malformed."""
+    mock_blob = Mock()
+    mock_blob.download_as_text.return_value = "invalid json"
+
+    mock_bucket = Mock()
+    mock_bucket.get_blob.return_value = mock_blob
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        result = _get_last_check_time(services)
+
+        # Should fallback to 1 hour ago when JSON is malformed
+        now = datetime.utcnow()
+        expected = now - timedelta(hours=1)
+        assert (
+            abs((result - expected).total_seconds()) < 60
+        )  # Within 1 minute tolerance
 
 
 def test_save_check_time():
@@ -171,10 +203,15 @@ def test_save_check_time():
         _save_check_time(services, test_time)
 
         # Verify the blob was created and uploaded correctly
-        mock_bucket.blob.assert_called_once_with("drivewatcher/last-check-time.txt")
-        mock_blob.upload_from_string.assert_called_once_with(
-            test_time.isoformat(), content_type="text/plain"
-        )
+        mock_bucket.blob.assert_called_once_with("drivewatcher/metadata.json")
+
+        # Check that JSON was uploaded with correct structure
+        call_args = mock_blob.upload_from_string.call_args
+        uploaded_data = call_args[0][0]
+        uploaded_metadata = json.loads(uploaded_data)
+
+        assert uploaded_metadata["last_check_time"] == test_time.isoformat()
+        assert call_args[1]["content_type"] == "application/json"
 
 
 def test_publish_changes():

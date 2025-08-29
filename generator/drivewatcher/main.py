@@ -78,27 +78,30 @@ def _get_last_check_time(services) -> Optional[datetime]:
     """
     Get the last time we checked for drive changes.
 
-    This is stored as metadata in a special blob in GCS to persist
+    This is stored as metadata in a JSON blob in GCS to persist
     between function invocations.
     """
+    import json
+
     try:
         settings = get_settings()
         bucket_name = settings.caching.gcs.worker_cache_bucket
         bucket = services["storage_client"].bucket(bucket_name)
 
-        # Use a special blob to track last check time
-        blob = bucket.get_blob("drivewatcher/last-check-time.txt")
+        # Use a JSON metadata file to track last check time
+        blob = bucket.get_blob("drivewatcher/metadata.json")
         if not blob:
             click.echo("No previous check time found. Checking last hour.")
             return datetime.utcnow() - timedelta(hours=1)
 
-        # Read the timestamp from the blob
-        timestamp_str = blob.download_as_text().strip()
-        last_check_time = datetime.fromisoformat(timestamp_str)
+        # Read and parse the JSON metadata
+        metadata_str = blob.download_as_text().strip()
+        metadata = json.loads(metadata_str)
+        last_check_time = datetime.fromisoformat(metadata["last_check_time"])
         click.echo(f"Last check was at {last_check_time}")
         return last_check_time
 
-    except (FileNotFoundError, ValueError) as e:
+    except (FileNotFoundError, ValueError, KeyError, json.JSONDecodeError) as e:
         click.echo(f"Error reading last check time: {e}")
         # Default to checking last hour if we can't read the timestamp
         return datetime.utcnow() - timedelta(hours=1)
@@ -106,13 +109,19 @@ def _get_last_check_time(services) -> Optional[datetime]:
 
 def _save_check_time(services, check_time: datetime):
     """Save the current check time for the next run."""
+    import json
+
     try:
         settings = get_settings()
         bucket_name = settings.caching.gcs.worker_cache_bucket
         bucket = services["storage_client"].bucket(bucket_name)
 
-        blob = bucket.blob("drivewatcher/last-check-time.txt")
-        blob.upload_from_string(check_time.isoformat(), content_type="text/plain")
+        # Save as JSON metadata
+        metadata = {"last_check_time": check_time.isoformat()}
+        blob = bucket.blob("drivewatcher/metadata.json")
+        blob.upload_from_string(
+            json.dumps(metadata, indent=2), content_type="application/json"
+        )
         click.echo(f"Saved check time: {check_time}")
 
     except (OSError, ValueError) as e:
