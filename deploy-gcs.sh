@@ -35,16 +35,21 @@ if [ -n "$ENVIRONMENT_SUFFIX" ]; then
 fi
 
 echo "1. Enabling required APIs…"
-gcloud services enable \
-  pubsub.googleapis.com \
-  cloudscheduler.googleapis.com \
-  firestore.googleapis.com \
-  storage.googleapis.com \
-  eventarc.googleapis.com \
-  telemetry.googleapis.com \
-  monitoring.googleapis.com \
-  logging.googleapis.com \
-  --project="${GCP_PROJECT_ID}"
+# Skip API enablement in CI or for preview environments since services are already enabled
+if [ -z "${CI}" ] && [ -z "$ENVIRONMENT_SUFFIX" ]; then
+  gcloud services enable \
+    pubsub.googleapis.com \
+    cloudscheduler.googleapis.com \
+    firestore.googleapis.com \
+    storage.googleapis.com \
+    eventarc.googleapis.com \
+    telemetry.googleapis.com \
+    monitoring.googleapis.com \
+    logging.googleapis.com \
+    --project="${GCP_PROJECT_ID}"
+else
+  echo "Skipping API enablement (running in CI or preview environment - APIs should already be enabled)"
+fi
 
 echo "2. Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
 gcloud pubsub topics create "${PUBSUB_TOPIC}" \
