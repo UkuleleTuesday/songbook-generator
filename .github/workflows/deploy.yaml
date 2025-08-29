@@ -355,6 +355,7 @@ jobs:
         --runtime: "python312"
         --source: "generator"
         --entry-point: "drivewatcher"
+        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
         --memory: "512Mi"
         --cpu: "0.5"
         --concurrency: 1
