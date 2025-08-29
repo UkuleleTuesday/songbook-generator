@@ -378,6 +378,35 @@ jobs:
         EOF
         gcloud functions deploy "$DRIVEWATCHER_FN_NAME" --flags-file="$FLAGS_FILE"
 
+    - name: Create Cloud Scheduler job
+      run: |
+        DRIVEWATCHER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler-pr-${{ github.event.pull_request.number }}"
+        else
+          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler"
+        fi
+
+        echo "Creating Cloud Scheduler job: ${SCHEDULER_JOB_NAME}"
+
+        # Delete existing job if it exists (for updates)
+        gcloud scheduler jobs delete "${SCHEDULER_JOB_NAME}" \
+          --location="${{ env.GCP_REGION }}" \
+          --project="${{ env.GCP_PROJECT_ID }}" \
+          --quiet || echo "Job may not exist, continuing..."
+
+        # Create the scheduler job to trigger every minute
+        gcloud scheduler jobs create pubsub "${SCHEDULER_JOB_NAME}" \
+          --location="${{ env.GCP_REGION }}" \
+          --project="${{ env.GCP_PROJECT_ID }}" \
+          --schedule="* * * * *" \
+          --topic="${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+          --message-body='{"trigger": "scheduled", "source": "cloud-scheduler"}' \
+          --attributes="source=cloud-scheduler" \
+          --description="Trigger drive watcher function every minute"
+
     - name: Update PR preview status
       if: github.event_name == 'pull_request'
       uses: ./.github/actions/update-pr-comment
@@ -466,6 +495,19 @@ jobs:
           gcloud functions delete "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
           echo "Drive Watcher function $DRIVEWATCHER_FN_NAME not found, skipping"
+        fi
+
+    - name: Delete PR Cloud Scheduler jobs
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        DRIVEWATCHER_SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler-pr-${PR_NUM}"
+
+        # Delete Drive Watcher scheduler job
+        if gcloud scheduler jobs describe "$DRIVEWATCHER_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Cloud Scheduler job: $DRIVEWATCHER_SCHEDULER_JOB_NAME"
+          gcloud scheduler jobs delete "$DRIVEWATCHER_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Scheduler job $DRIVEWATCHER_SCHEDULER_JOB_NAME not found, skipping"
         fi
 
     - name: Delete PR Pub/Sub topics
