@@ -48,29 +48,48 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Override environment variables for PR environment
+    - name: Set environment suffix for PR
+      id: env-suffix
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          SUFFIX="-pr-${{ github.event.pull_request.number }}"
+          echo "suffix=${SUFFIX}" >> "$GITHUB_OUTPUT"
+          echo "ENVIRONMENT_SUFFIX=${SUFFIX}" >> $GITHUB_ENV
+          echo "Setting up PR environment with suffix: ${SUFFIX}"
+        else
+          echo "suffix=" >> "$GITHUB_OUTPUT"
+          echo "Setting up production environment"
+        fi
+
+    - name: Deploy GCS infrastructure
+      run: |
+        # Make deploy-gcs.sh executable
+        chmod +x ./deploy-gcs.sh
+
+        # Run the infrastructure deployment
+        ./deploy-gcs.sh
+
+    - name: Override environment variables for PR services (legacy compatibility)
       if: github.event_name == 'pull_request'
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
-        echo "Setting up PR-specific environment variables for PR #${PR_NUM}"
+        echo "Setting up PR-specific service environment variables for PR #${PR_NUM}"
 
-        # Override environment variables for PR environment
+        # These are used by the Cloud Functions deployment steps
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "FIRESTORE_COLLECTION=${{ env.FIRESTORE_COLLECTION }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "GCS_CDN_BUCKET=${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "GCS_WORKER_CACHE_BUCKET=${{ env.GCS_WORKER_CACHE_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "GCS_SONGBOOKS_BUCKET=${{ env.GCS_SONGBOOKS_BUCKET }}-pr-${PR_NUM}" >> $GITHUB_ENV
 
-        echo "PR environment variables set:"
+        echo "PR service environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
-
-    - name: Create Pub/Sub topic
-      run: |
-        echo "Creating Pub/Sub topic ${PUBSUB_TOPIC}…"
-        gcloud pubsub topics create "${PUBSUB_TOPIC}" \
-          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
-
-        echo "Creating Pub/Sub topic ${CACHE_REFRESH_PUBSUB_TOPIC}…"
-        gcloud pubsub topics create "${CACHE_REFRESH_PUBSUB_TOPIC}" \
-          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+        echo "- FIRESTORE_COLLECTION: ${{ env.FIRESTORE_COLLECTION }}-pr-${PR_NUM}"
+        echo "- GCS_CDN_BUCKET: ${{ env.GCS_CDN_BUCKET }}-pr-${PR_NUM}"
+        echo "- GCS_WORKER_CACHE_BUCKET: ${{ env.GCS_WORKER_CACHE_BUCKET }}-pr-${PR_NUM}"
+        echo "- GCS_SONGBOOKS_BUCKET: ${{ env.GCS_SONGBOOKS_BUCKET }}-pr-${PR_NUM}"
 
   deploy-api:
     name: Deploy API
@@ -123,8 +142,8 @@ jobs:
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
           PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
-          FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
-          GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
+          FIRESTORE_COLLECTION: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.FIRESTORE_COLLECTION, github.event.pull_request.number) || env.FIRESTORE_COLLECTION }}"
+          GCS_CDN_BUCKET: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.GCS_CDN_BUCKET, github.event.pull_request.number) || env.GCS_CDN_BUCKET }}"
           JOB_TTL_DAYS: "3"
           OTEL_SERVICE_NAME: "songbook-api"
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-api"
@@ -199,9 +218,9 @@ jobs:
           SERVICE_NAME: "songbook-generator"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
-          FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
-          GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
-          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          FIRESTORE_COLLECTION: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.FIRESTORE_COLLECTION, github.event.pull_request.number) || env.FIRESTORE_COLLECTION }}"
+          GCS_CDN_BUCKET: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.GCS_CDN_BUCKET, github.event.pull_request.number) || env.GCS_CDN_BUCKET }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.GCS_WORKER_CACHE_BUCKET, github.event.pull_request.number) || env.GCS_WORKER_CACHE_BUCKET }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
           GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
           GENERATOR_ADD_PAGE_NUMBERS: "${{ env.GENERATOR_ADD_PAGE_NUMBERS }}"
@@ -274,7 +293,7 @@ jobs:
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
-          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.GCS_WORKER_CACHE_BUCKET, github.event.pull_request.number) || env.GCS_WORKER_CACHE_BUCKET }}"
           GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
           OTEL_SERVICE_NAME: "songbook-merger"
           OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger"
@@ -348,7 +367,7 @@ jobs:
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
         MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
-        echo "Cleaning up PR #${PR_NUM} resources..."
+        echo "Cleaning up PR #${PR_NUM} Cloud Functions..."
 
         # Delete API function
         if gcloud functions describe "$API_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
@@ -374,22 +393,36 @@ jobs:
           echo "Merger function $MERGER_FN_NAME not found, skipping"
         fi
 
-    - name: Delete PR Pub/Sub topics
+    - name: Delete all PR infrastructure resources
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
+        ENVIRONMENT_SUFFIX="-pr-${PR_NUM}"
 
-        SONGBOOK_GEN_TOPIC_NAME="${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
-        if gcloud pubsub topics describe "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Pub/Sub topic: $SONGBOOK_GEN_TOPIC_NAME"
-          gcloud pubsub topics delete "$SONGBOOK_GEN_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
-        else
-          echo "Pub/Sub topic $SONGBOOK_GEN_TOPIC_NAME not found, skipping"
-        fi
+        echo "Cleaning up all PR infrastructure resources..."
 
-        CACHE_REFRESH_TOPIC_NAME="${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
-        if gcloud pubsub topics describe "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Pub/Sub topic: $CACHE_REFRESH_TOPIC_NAME"
-          gcloud pubsub topics delete "$CACHE_REFRESH_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
-        else
-          echo "Pub/Sub topic $CACHE_REFRESH_TOPIC_NAME not found, skipping"
-        fi
+        # Make cleanup script executable and run it
+        chmod +x ./cleanup-preview-resources.sh
+        ./cleanup-preview-resources.sh "${ENVIRONMENT_SUFFIX}"
+
+    - name: Comment on PR about resource cleanup
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = context.payload.pull_request.number;
+          const comment = `🧹 **Preview Environment Cleanup**
+
+          All preview environment resources for PR #${prNumber} have been cleaned up:
+          - ✅ Cloud Functions deleted
+          - ✅ Pub/Sub topics deleted
+          - ✅ GCS buckets deleted
+          - ✅ Firestore collection documents deleted
+
+          Resources cleaned up had the suffix \`-pr-${prNumber}\`.`;
+
+          github.rest.issues.createComment({
+            issue_number: prNumber,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
