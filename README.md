@@ -271,6 +271,12 @@ For testing the complete web application including the asynchronous job processi
 
 1. **Pull Request Preview Environments**: Every PR automatically deploys a complete preview environment with all components (frontend, API, and worker services). This is the recommended way to test the full application flow.
 
+   **Preview Environment Features:**
+   - **Isolated Resources**: Each PR gets its own GCS buckets, Pub/Sub topics, and Firestore collection with `-pr-{number}` suffix
+   - **Bootstrap from Production**: Preview environments are automatically populated with data from production buckets
+   - **Automatic Cleanup**: Resources are cleaned up when PRs are closed or after 24 hours, whichever comes first
+   - **UI Access**: Preview UIs are available at `https://{owner}.github.io/{repo}/pr-preview/pr-{number}/`
+
 2. **Cloud Functions Development**: While you can run individual Cloud Functions locally using `functions-framework`, we typically test by pushing changes and using the preview environments rather than running the full stack locally.
 
 ### Configuration
@@ -325,6 +331,33 @@ uv run pytest
 
 ## Deployment
 
+### Preview Environments
+
+Preview environments are automatically created for each pull request and provide complete isolation from production:
+
+```bash
+# Preview environments use resource suffixes for isolation
+# For PR #123, resources are created as:
+#   GCS buckets: {bucket-name}-pr-123
+#   Pub/Sub topics: {topic-name}-pr-123
+#   Firestore collections: {collection-name}-pr-123
+#   Cloud Functions: {function-name}-pr-123
+
+# To manually set up a preview environment:
+ENVIRONMENT_SUFFIX="-pr-123" ./deploy-gcs.sh
+
+# To clean up a preview environment:
+./cleanup-preview-resources.sh -pr-123
+```
+
+**Preview Environment Lifecycle:**
+- **Created**: When PR is opened/synchronized
+- **Bootstrapped**: Data copied from production buckets
+- **Accessed**: Via preview URL in PR comments
+- **Cleaned**: Automatically when PR is closed or after 24 hours
+
+### Production Deployment
+
 ### Google Cloud Setup
 
 The application requires several GCP services. Use the provided script to set up all necessary resources:
@@ -335,7 +368,7 @@ export GCP_PROJECT_ID="your-project-id"
 export GCP_REGION="us-central1"
 # ... other variables
 
-# Run the setup script
+# Run the setup script for production (no ENVIRONMENT_SUFFIX)
 ./deploy-gcs.sh
 ```
 
@@ -347,6 +380,7 @@ This script will:
 - Initialize Firestore database
 - Create GCS buckets with appropriate permissions
 - Set up IAM roles and lifecycle policies
+- For preview environments: Bootstrap data from production buckets
 
 ### Application Deployment
 
