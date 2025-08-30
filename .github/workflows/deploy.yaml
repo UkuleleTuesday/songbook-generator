@@ -94,37 +94,16 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Compute function name
-      id: fn-name
-      run: |
-        BASE_FN=${{ env.API_FUNCTION_NAME }}
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
-        else
-          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
-        fi
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
-        cat generator/requirements.txt
-
-    - name: Deploy to Cloud Functions
-      id: deploy
-      run: |
-        API_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        FLAGS_FILE=$(mktemp)
-        cat > "$FLAGS_FILE" <<EOF
-        --gen2: true
-        --region: "${{ env.GCP_REGION }}"
-        --runtime: "python312"
-        --memory: "512MiB"
-        --cpu: "0.5"
-        --trigger-http: true
-        --source: "generator"
-        --entry-point: "api"
-        --allow-unauthenticated: true
-        --set-env-vars:
+    - name: Deploy API Cloud Function
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.API_FUNCTION_NAME }}
+        entry_point: 'api'
+        component_name: 'API'
+        memory: '512MiB'
+        cpu: '0.5'
+        trigger_type: 'http'
+        env_vars: |
           SERVICE_NAME: "songbook-api"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
@@ -138,20 +117,6 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
-        EOF
-
-        gcloud functions deploy "$API_FN_NAME" --flags-file="$FLAGS_FILE"
-
-        # Output the function URL for PR comments
-        FUNCTION_URL=$(gcloud functions describe "${{ steps.fn-name.outputs.name }}" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
-        echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
-
-    - name: Update PR preview status
-      if: github.event_name == 'pull_request'
-      uses: ./.github/actions/update-pr-comment
-      with:
-        component: 'API'
-        url: ${{ steps.deploy.outputs.function_url }}
 
   deploy-generator:
     name: Deploy Worker
@@ -169,39 +134,19 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Compute function name
-      id: fn-name
-      run: |
-        BASE_FN=${{ env.WORKER_FUNCTION_NAME }}
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
-        else
-          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
-        fi
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
-        cat generator/requirements.txt
-
-    - name: Deploy to Cloud Functions
-      id: deploy
-      run: |
-        WORKER_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        FLAGS_FILE=$(mktemp)
-        cat > "$FLAGS_FILE" <<EOF
-        --gen2: true
-        --region: "${{ env.GCP_REGION }}"
-        --runtime: "python312"
-        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
-        --source: "generator"
-        --entry-point: "worker"
-        --memory: "1Gi"
-        --cpu: "1"
-        --concurrency: 1
-        --max-instances: 1
-        --allow-unauthenticated: true
-        --set-env-vars:
+    - name: Deploy Worker Cloud Function
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.WORKER_FUNCTION_NAME }}
+        entry_point: 'worker'
+        component_name: 'Generator Worker'
+        memory: '1Gi'
+        cpu: '1'
+        concurrency: 1
+        max_instances: 1
+        trigger_type: 'topic'
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
+        env_vars: |
           SERVICE_NAME: "songbook-generator"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
@@ -217,15 +162,6 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
-        EOF
-        gcloud functions deploy "$WORKER_FN_NAME" --flags-file="$FLAGS_FILE"
-
-    - name: Update PR preview status
-      if: github.event_name == 'pull_request'
-      uses: ./.github/actions/update-pr-comment
-      with:
-        component: 'Generator Worker'
-        function_name: ${{ steps.fn-name.outputs.name }}
 
   deploy-merger:
     name: Deploy Merger
@@ -243,39 +179,19 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Compute function name
-      id: fn-name
-      run: |
-        BASE_FN=${{ env.MERGER_FUNCTION_NAME }}
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
-        else
-          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
-        fi
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
-        cat generator/requirements.txt
-
-    - name: Deploy to Cloud Functions
-      id: deploy
-      run: |
-        MERGER_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        FLAGS_FILE=$(mktemp)
-        cat > "$FLAGS_FILE" <<EOF
-        --gen2: true
-        --region: "${{ env.GCP_REGION }}"
-        --runtime: "python312"
-        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        --source: "generator"
-        --entry-point: "merger"
-        --memory: "1Gi"
-        --cpu: "1"
-        --concurrency: 1
-        --max-instances: 1
-        --allow-unauthenticated: true
-        --set-env-vars:
+    - name: Deploy Merger Cloud Function
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.MERGER_FUNCTION_NAME }}
+        entry_point: 'merger'
+        component_name: 'Merger'
+        memory: '1Gi'
+        cpu: '1'
+        concurrency: 1
+        max_instances: 1
+        trigger_type: 'topic'
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
+        env_vars: |
           SERVICE_NAME: "songbook-merger"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
@@ -288,15 +204,6 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
-        EOF
-        gcloud functions deploy "$MERGER_FN_NAME" --flags-file="$FLAGS_FILE"
-
-    - name: Update PR preview status
-      if: github.event_name == 'pull_request'
-      uses: ./.github/actions/update-pr-comment
-      with:
-        component: 'Merger'
-        function_name: ${{ steps.fn-name.outputs.name }}
 
     - name: Publish test message to trigger a sync
       run: |
@@ -305,6 +212,47 @@ jobs:
         gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
           --message="Initial sync after deploy" \
           --attribute="force=false"
+
+  deploy-tagupdater:
+    name: Deploy Tag Updater
+    needs: [test, deploy-infrastructure]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Deploy Tag Updater Cloud Function
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.TAGUPDATER_FUNCTION_NAME }}
+        entry_point: 'tagupdater'
+        component_name: 'Tag Updater'
+        memory: '512Mi'
+        cpu: '0.5'
+        concurrency: 1
+        max_instances: 5
+        trigger_type: 'topic'
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        env_vars: |
+          SERVICE_NAME: "songbook-tagupdater"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          OTEL_SERVICE_NAME: "songbook-tagupdater"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-tagupdater"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
+          LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
 
   deploy-drivewatcher:
     name: Deploy Drive Watcher
@@ -322,21 +270,6 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Compute function name
-      id: fn-name
-      run: |
-        BASE_FN=${{ env.DRIVEWATCHER_FUNCTION_NAME }}
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
-        else
-          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
-        fi
-
-    - name: Generate requirements.txt
-      run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
-        cat generator/requirements.txt
-
     - name: Create Pub/Sub topic for drive changes
       run: |
         DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
@@ -344,24 +277,20 @@ jobs:
         gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
-    - name: Deploy to Cloud Functions
+    - name: Deploy Drive Watcher Cloud Function
       id: deploy
-      run: |
-        DRIVEWATCHER_FN_NAME="${{ steps.fn-name.outputs.name }}"
-        FLAGS_FILE=$(mktemp)
-        cat > "$FLAGS_FILE" <<EOF
-        --gen2: true
-        --region: "${{ env.GCP_REGION }}"
-        --runtime: "python312"
-        --source: "generator"
-        --entry-point: "drivewatcher"
-        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
-        --memory: "512Mi"
-        --cpu: "0.5"
-        --concurrency: 1
-        --max-instances: 1
-        --allow-unauthenticated: true
-        --set-env-vars:
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.DRIVEWATCHER_FUNCTION_NAME }}
+        entry_point: 'drivewatcher'
+        component_name: 'Drive Watcher'
+        memory: '512Mi'
+        cpu: '0.5'
+        concurrency: 1
+        max_instances: 1
+        trigger_type: 'topic'
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        env_vars: |
           SERVICE_NAME: "songbook-drivewatcher"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
@@ -375,12 +304,10 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
-        EOF
-        gcloud functions deploy "$DRIVEWATCHER_FN_NAME" --flags-file="$FLAGS_FILE"
 
     - name: Create Cloud Scheduler job
       run: |
-        DRIVEWATCHER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        DRIVEWATCHER_FN_NAME="${{ steps.deploy.outputs.function_name }}"
         DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
 
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -406,13 +333,6 @@ jobs:
           --message-body='{"trigger": "scheduled", "source": "cloud-scheduler"}' \
           --attributes="source=cloud-scheduler" \
           --description="Trigger drive watcher function every minute"
-
-    - name: Update PR preview status
-      if: github.event_name == 'pull_request'
-      uses: ./.github/actions/update-pr-comment
-      with:
-        component: 'Drive Watcher'
-        function_name: ${{ steps.fn-name.outputs.name }}
 
   deploy-ui:
     name: Deploy UI
@@ -462,6 +382,7 @@ jobs:
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
         MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
         DRIVEWATCHER_FN_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        TAGUPDATER_FN_NAME="${{ env.TAGUPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
         echo "Cleaning up PR #${PR_NUM} resources..."
 
@@ -495,6 +416,14 @@ jobs:
           gcloud functions delete "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
           echo "Drive Watcher function $DRIVEWATCHER_FN_NAME not found, skipping"
+        fi
+
+        # Delete Tag Updater function
+        if gcloud functions describe "$TAGUPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Tag Updater function: $TAGUPDATER_FN_NAME"
+          gcloud functions delete "$TAGUPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Tag Updater function $TAGUPDATER_FN_NAME not found, skipping"
         fi
 
     - name: Delete PR Cloud Scheduler jobs

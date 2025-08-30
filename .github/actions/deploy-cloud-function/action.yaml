@@ -1,0 +1,120 @@
+name: 'Deploy Cloud Function'
+description: 'Deploy a Cloud Function with common configuration'
+
+inputs:
+  function_name:
+    description: 'Base name of the Cloud Function'
+    required: true
+  entry_point:
+    description: 'Entry point for the Cloud Function'
+    required: true
+  component_name:
+    description: 'Component name for PR comments (API, Generator Worker, Merger, etc.)'
+    required: true
+  memory:
+    description: 'Memory allocation for the function'
+    default: '512Mi'
+  cpu:
+    description: 'CPU allocation for the function'
+    default: '0.5'
+  concurrency:
+    description: 'Maximum concurrent executions per instance'
+    default: '1'
+  max_instances:
+    description: 'Maximum number of instances'
+    default: '1'
+  trigger_type:
+    description: 'Trigger type: http, topic, or none'
+    default: 'topic'
+  trigger_topic:
+    description: 'Pub/Sub topic for triggering (when trigger_type=topic)'
+    required: false
+  allow_unauthenticated:
+    description: 'Allow unauthenticated access'
+    default: 'true'
+  env_vars:
+    description: 'Environment variables in YAML format'
+    required: false
+    default: ''
+
+outputs:
+  function_url:
+    description: 'URL of the deployed function (for HTTP triggers)'
+    value: ${{ steps.deploy.outputs.function_url }}
+  function_name:
+    description: 'Full name of the deployed function'
+    value: ${{ steps.fn-name.outputs.name }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Compute function name
+      id: fn-name
+      shell: bash
+      run: |
+        BASE_FN=${{ inputs.function_name }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate requirements.txt
+      shell: bash
+      run: |
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      shell: bash
+      run: |
+        FN_NAME="${{ steps.fn-name.outputs.name }}"
+        FLAGS_FILE=$(mktemp)
+
+        # Start building the flags file
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --memory: "${{ inputs.memory }}"
+        --cpu: "${{ inputs.cpu }}"
+        --source: "generator"
+        --entry-point: "${{ inputs.entry_point }}"
+        --concurrency: ${{ inputs.concurrency }}
+        --max-instances: ${{ inputs.max_instances }}
+        --allow-unauthenticated: ${{ inputs.allow_unauthenticated }}
+        EOF
+
+        # Add trigger configuration
+        if [[ "${{ inputs.trigger_type }}" == "http" ]]; then
+          echo "--trigger-http: true" >> "$FLAGS_FILE"
+        elif [[ "${{ inputs.trigger_type }}" == "topic" && -n "${{ inputs.trigger_topic }}" ]]; then
+          echo "--trigger-topic: \"${{ inputs.trigger_topic }}\"" >> "$FLAGS_FILE"
+        fi
+
+        # Add environment variables if provided
+        if [[ -n "${{ inputs.env_vars }}" ]]; then
+          echo "--set-env-vars:" >> "$FLAGS_FILE"
+          echo '${{ inputs.env_vars }}' | sed 's/^/  /' >> "$FLAGS_FILE"
+        fi
+
+        echo "Deploying function with flags:"
+        cat "$FLAGS_FILE"
+
+        # Deploy the function
+        gcloud functions deploy "$FN_NAME" --flags-file="$FLAGS_FILE"
+
+        # Output function URL for HTTP triggers
+        if [[ "${{ inputs.trigger_type }}" == "http" ]]; then
+          FUNCTION_URL=$(gcloud functions describe "$FN_NAME" --region="${{ env.GCP_REGION }}" --format="value(serviceConfig.uri)")
+          echo "function_url=$FUNCTION_URL" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: ${{ inputs.component_name }}
+        url: ${{ steps.deploy.outputs.function_url }}
+        function_name: ${{ steps.fn-name.outputs.name }}

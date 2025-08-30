@@ -3,7 +3,7 @@ description: 'Update the consolidated PR preview comment'
 
 inputs:
   component:
-    description: 'Component name (API, Generator Worker, Merger, Drive Watcher, UI)'
+    description: 'Component name (API, Generator Worker, Merger, Drive Watcher, Tag Updater, UI)'
     required: true
   url:
     description: 'URL for the deployed component'
@@ -44,6 +44,8 @@ runs:
             componentLine = `- [x] Merger: \`${functionName}\` (Pub/Sub triggered)`;
           } else if (component === 'Drive Watcher' && functionName) {
             componentLine = `- [x] Drive Watcher: \`${functionName}\` (Pub/Sub triggered)`;
+          } else if (component === 'Tag Updater' && functionName) {
+            componentLine = `- [x] Tag Updater: \`${functionName}\` (Pub/Sub triggered)`;
           } else if (component === 'UI' && url) {
             componentLine = `- [x] UI: [${url}](${url})`;
           }
@@ -60,6 +62,8 @@ runs:
               body = body.replace(/- \[ \] Merger:.*/, componentLine);
             } else if (component === 'Drive Watcher') {
               body = body.replace(/- \[ \] Drive Watcher:.*/, componentLine);
+            } else if (component === 'Tag Updater') {
+              body = body.replace(/- \[ \] Tag Updater:.*/, componentLine);
             } else if (component === 'UI') {
               body = body.replace(/- \[ \] UI:.*/, componentLine);
             }
@@ -70,6 +74,7 @@ runs:
             const generatorLine = component === 'Generator Worker' ? componentLine : '- [ ] Generator Worker: ⏳ Deploying...';
             const mergerLine = component === 'Merger' ? componentLine : '- [ ] Merger: ⏳ Deploying...';
             const driveWatcherLine = component === 'Drive Watcher' ? componentLine : '- [ ] Drive Watcher: ⏳ Deploying...';
+            const tagUpdaterLine = component === 'Tag Updater' ? componentLine : '- [ ] Tag Updater: ⏳ Deploying...';
             const uiLine = component === 'UI' ? componentLine : '- [ ] UI: ⏳ Deploying...';
 
             commentBody = `## 🚀 Preview Deployments
@@ -78,6 +83,7 @@ runs:
           ${generatorLine}
           ${mergerLine}
           ${driveWatcherLine}
+          ${tagUpdaterLine}
           ${uiLine}
 
           _Preview deployments will be automatically cleaned up when the PR is merged or closed._`;
