@@ -237,7 +237,7 @@ def drivewatcher_main(cloud_event: CloudEvent):
     """
     Cloud Function entry point for Google Drive change detection.
 
-    This function is triggered by Cloud Scheduler every minute to check
+    This function is triggered by Cloud Scheduler every 5 minutes to check
     for changes in configured Google Drive folders.
     """
     services = _get_services()
