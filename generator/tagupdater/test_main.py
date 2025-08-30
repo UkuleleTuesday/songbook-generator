@@ -187,7 +187,7 @@ def test_tagupdater_main_with_errors(mock_get_services, sample_cloud_event_data)
     """Test processing with some tagging errors."""
     # Mock tagger to raise error on second file
     mock_tagger = Mock()
-    mock_tagger.update_tags.side_effect = [None, Exception("Tagging failed")]
+    mock_tagger.update_tags.side_effect = [None, RuntimeError("Tagging failed")]
 
     mock_span = Mock()
     mock_tracer = Mock()
