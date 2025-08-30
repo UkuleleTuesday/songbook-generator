@@ -330,15 +330,15 @@ jobs:
           --project="${{ env.GCP_PROJECT_ID }}" \
           --quiet || echo "Job may not exist, continuing..."
 
-        # Create the scheduler job to trigger every 5 minutes
+        # Create the scheduler job to trigger every minute
         gcloud scheduler jobs create pubsub "${SCHEDULER_JOB_NAME}" \
           --location="${{ env.GCP_REGION }}" \
           --project="${{ env.GCP_PROJECT_ID }}" \
-          --schedule="*/5 * * * *" \
+          --schedule="* * * * *" \
           --topic="${DRIVEWATCHER_TRIGGER_TOPIC}" \
           --message-body='{"trigger": "scheduled", "source": "cloud-scheduler"}' \
           --attributes="source=cloud-scheduler" \
-          --description="Trigger drive watcher function every 5 minutes"
+          --description="Trigger drive watcher function every minute"
 
   deploy-ui:
     name: Deploy UI
