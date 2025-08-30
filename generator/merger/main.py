@@ -21,7 +21,6 @@ from cloudevents.http import CloudEvent
 from . import sync
 from ..common.config import get_settings
 from ..worker.gcp import get_credentials
-from .tags import Tagger
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -48,17 +47,6 @@ def _get_services():
         target_principal=merger_credential_config.principal,
     )
 
-    tagging_credential_config = settings.google_cloud.credentials.get(
-        "songbook-metadata-writer"
-    )
-    if not tagging_credential_config:
-        raise click.Abort("Credential config 'songbook-metadata-writer' not found.")
-
-    tagging_creds = get_credentials(
-        scopes=tagging_credential_config.scopes,
-        target_principal=tagging_credential_config.principal,
-    )
-
     service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
@@ -69,13 +57,11 @@ def _get_services():
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
     drive_service = build("drive", "v3", credentials=merger_creds)
-    tagging_drive_service = build("drive", "v3", credentials=tagging_creds)
 
     return {
         "tracer": tracer,
         "cache_bucket": cache_bucket,
         "drive": drive_service,
-        "tagger": Tagger(tagging_drive_service),
     }
 
 
