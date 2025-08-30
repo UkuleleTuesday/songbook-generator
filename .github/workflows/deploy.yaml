@@ -57,11 +57,13 @@ jobs:
         # Override environment variables for PR environment
         echo "PUBSUB_TOPIC=${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC=${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "DRIVE_CHANGES_PUBSUB_TOPIC=${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
 
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        echo "- DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC: ${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- DRIVE_CHANGES_PUBSUB_TOPIC: ${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
     - name: Create Pub/Sub topic
@@ -270,11 +272,17 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Create Pub/Sub topic for drive changes
+    - name: Create Pub/Sub topics for drive watcher
       run: |
         DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
         echo "Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
         gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+        # Create separate topic for drivewatcher scheduling (separate from file changes)
+        DRIVEWATCHER_TRIGGER_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
+        echo "Creating Pub/Sub topic ${DRIVEWATCHER_TRIGGER_TOPIC}…"
+        gcloud pubsub topics create "${DRIVEWATCHER_TRIGGER_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
     - name: Deploy Drive Watcher Cloud Function
@@ -289,7 +297,7 @@ jobs:
         concurrency: 1
         max_instances: 1
         trigger_type: 'topic'
-        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
         env_vars: |
           SERVICE_NAME: "songbook-drivewatcher"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
@@ -308,7 +316,7 @@ jobs:
     - name: Create Cloud Scheduler job
       run: |
         DRIVEWATCHER_FN_NAME="${{ steps.deploy.outputs.function_name }}"
-        DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        DRIVEWATCHER_TRIGGER_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
 
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler-pr-${{ github.event.pull_request.number }}"
@@ -329,7 +337,7 @@ jobs:
           --location="${{ env.GCP_REGION }}" \
           --project="${{ env.GCP_PROJECT_ID }}" \
           --schedule="* * * * *" \
-          --topic="${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+          --topic="${DRIVEWATCHER_TRIGGER_TOPIC}" \
           --message-body='{"trigger": "scheduled", "source": "cloud-scheduler"}' \
           --attributes="source=cloud-scheduler" \
           --description="Trigger drive watcher function every minute"
@@ -465,4 +473,12 @@ jobs:
           gcloud pubsub topics delete "$DRIVE_CHANGES_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
         else
           echo "Pub/Sub topic $DRIVE_CHANGES_TOPIC_NAME not found, skipping"
+        fi
+
+        DRIVEWATCHER_TRIGGER_TOPIC_NAME="${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$DRIVEWATCHER_TRIGGER_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $DRIVEWATCHER_TRIGGER_TOPIC_NAME"
+          gcloud pubsub topics delete "$DRIVEWATCHER_TRIGGER_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $DRIVEWATCHER_TRIGGER_TOPIC_NAME not found, skipping"
         fi
