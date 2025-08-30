@@ -5,6 +5,7 @@ from .api.main import api_main
 from .worker.main import worker_main
 from .merger.main import merger_main
 from .drivewatcher.main import drivewatcher_main
+from .tagupdater.main import tagupdater_main
 
 
 # Create and decorate the entrypoints that Cloud Functions will discover.
@@ -31,3 +32,9 @@ def merger(cloud_event):
 def drivewatcher(cloud_event):
     """CloudEvent Function for Google Drive change detection."""
     return drivewatcher_main(cloud_event)
+
+
+@functions_framework.cloud_event
+def tagupdater(cloud_event):
+    """CloudEvent Function for updating Google Drive file tags."""
+    return tagupdater_main(cloud_event)

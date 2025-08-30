@@ -13,7 +13,6 @@ def mock_services():
         "tracer": MagicMock(),
         "drive": MagicMock(),
         "cache_bucket": MagicMock(),
-        "tagger": MagicMock(),
     }
     services[
         "tracer"
@@ -21,7 +20,6 @@ def mock_services():
     return services
 
 
-@patch("generator.merger.sync.Tagger")
 @patch("generator.merger.sync.GoogleDriveClient")
 @patch("generator.merger.sync._get_files_to_update")
 @patch("generator.merger.sync.init_cache")
@@ -31,7 +29,6 @@ def test_sync_cache_calls_sync_metadata_correctly(
     mock_init_cache,
     mock_get_files,
     mock_gdrive_client,
-    mock_tagger,
     mock_services,
 ):
     """
@@ -47,7 +44,6 @@ def test_sync_cache_calls_sync_metadata_correctly(
         source_folders=["folder1"],
         services=mock_services,
         with_metadata=True,
-        update_tags_only=False,
     )
 
     # Assert
@@ -60,7 +56,6 @@ def test_sync_cache_calls_sync_metadata_correctly(
     )
 
 
-@patch("generator.merger.sync.Tagger")
 @patch("generator.merger.sync.GoogleDriveClient")
 @patch("generator.merger.sync._get_files_to_update")
 @patch("generator.merger.sync.init_cache")
@@ -70,7 +65,6 @@ def test_sync_cache_download_file_stream_args(
     mock_init_cache,
     mock_get_files,
     mock_gdrive_client,
-    mock_tagger,
     mock_services,
 ):
     """
