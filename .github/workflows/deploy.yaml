@@ -306,6 +306,76 @@ jobs:
           --message="Initial sync after deploy" \
           --attribute="force=false"
 
+  deploy-tagupdater:
+    name: Deploy Tag Updater
+    needs: [test, deploy-infrastructure]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Compute function name
+      id: fn-name
+      run: |
+        BASE_FN=${{ env.TAGUPDATER_FUNCTION_NAME }}
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "name=${BASE_FN}-pr-${{ github.event.pull_request.number }}" >>"$GITHUB_OUTPUT"
+        else
+          echo "name=${BASE_FN}" >>"$GITHUB_OUTPUT"
+        fi
+
+    - name: Generate requirements.txt
+      run: |
+        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        cat generator/requirements.txt
+
+    - name: Deploy to Cloud Functions
+      id: deploy
+      run: |
+        TAGUPDATER_FN_NAME="${{ steps.fn-name.outputs.name }}"
+        FLAGS_FILE=$(mktemp)
+        cat > "$FLAGS_FILE" <<EOF
+        --gen2: true
+        --region: "${{ env.GCP_REGION }}"
+        --runtime: "python312"
+        --source: "generator"
+        --entry-point: "tagupdater"
+        --trigger-topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        --memory: "512Mi"
+        --cpu: "0.5"
+        --concurrency: 1
+        --max-instances: 5
+        --allow-unauthenticated: true
+        --set-env-vars:
+          SERVICE_NAME: "songbook-tagupdater"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          OTEL_SERVICE_NAME: "songbook-tagupdater"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-tagupdater"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
+          LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
+        EOF
+        gcloud functions deploy "$TAGUPDATER_FN_NAME" --flags-file="$FLAGS_FILE"
+
+    - name: Update PR preview status
+      if: github.event_name == 'pull_request'
+      uses: ./.github/actions/update-pr-comment
+      with:
+        component: 'Tag Updater'
+        function_name: ${{ steps.fn-name.outputs.name }}
+
   deploy-drivewatcher:
     name: Deploy Drive Watcher
     needs: [test, deploy-infrastructure]
@@ -462,6 +532,7 @@ jobs:
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
         MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
         DRIVEWATCHER_FN_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        TAGUPDATER_FN_NAME="${{ env.TAGUPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
         echo "Cleaning up PR #${PR_NUM} resources..."
 
@@ -495,6 +566,14 @@ jobs:
           gcloud functions delete "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
           echo "Drive Watcher function $DRIVEWATCHER_FN_NAME not found, skipping"
+        fi
+
+        # Delete Tag Updater function
+        if gcloud functions describe "$TAGUPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Tag Updater function: $TAGUPDATER_FN_NAME"
+          gcloud functions delete "$TAGUPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Tag Updater function $TAGUPDATER_FN_NAME not found, skipping"
         fi
 
     - name: Delete PR Cloud Scheduler jobs
