@@ -7,6 +7,8 @@ from typing import Optional, Dict, Any
 
 import fitz
 
+from .common.titles import generate_short_title
+
 
 class PDFValidationError(Exception):
     """Raised when PDF validation fails."""
@@ -414,48 +416,14 @@ def _titles_match(expected_title: str, toc_title: str) -> bool:
         return True
 
     # Check for common title variations (bracketed info removal, featuring info, etc.)
-    # This mimics the logic from toc.py's _generate_toc_title method
-    expected_shortened = _simulate_toc_title_shortening(expected_title)
+    # This uses the same logic from the shared title utilities
+    expected_shortened = generate_short_title(expected_title)
     if clean_toc_title == expected_shortened or expected_shortened.startswith(
         clean_toc_title
     ):
         return True
 
     return False
-
-
-def _simulate_toc_title_shortening(original_title: str) -> str:
-    """
-    Simulate the title shortening logic from toc.py to help with matching.
-
-    This applies similar transformations as TocGenerator._generate_toc_title()
-    to help match shortened TOC entries with original file names.
-    """
-    title = original_title.strip()
-
-    # Remove featuring information in both parentheses and brackets
-    title = re.sub(
-        r"\s*[\(\[][^\)\]]*(?:feat\.|featuring)[^\)\]]*[\)\]]",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-
-    # Remove bracketed information
-    title = re.sub(r"\s*\[[^\]]*\]", "", title)
-
-    # Remove version/edit information in parentheses
-    title = re.sub(
-        r"\s*\([^)]*(?:Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
-        "",
-        title,
-        flags=re.IGNORECASE,
-    )
-
-    # Clean up any extra whitespace
-    title = re.sub(r"\s+", " ", title).strip()
-
-    return title
 
 
 def validate_song_titles_on_pages(

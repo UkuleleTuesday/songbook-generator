@@ -1,11 +1,11 @@
 import fitz  # PyMuPDF
-import re
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import logging
 
 from ..common.fonts import resolve_font
 from ..common.tracing import get_tracer
+from ..common.titles import generate_short_title
 from .difficulty import assign_difficulty_bins
 from .models import File
 from ..common.config import get_settings, Toc
@@ -52,7 +52,7 @@ class TocGenerator:
         self, original_title: str, max_length: int, is_ready_to_play: bool = False
     ) -> str:
         """
-        Generate a shortened title for TOC entries using simple heuristics.
+        Generate a shortened title for TOC entries using shared logic.
 
         Args:
             original_title: The original song title
@@ -62,60 +62,12 @@ class TocGenerator:
         Returns:
             Shortened title that fits within max_length
         """
-        title = original_title.strip()
-
-        # If already short enough, return as-is
-        if len(title) <= max_length:
-            # Still apply cleaning for consistency
-            pass
-
-        # Remove featuring information in both parentheses and brackets
-        # This regex matches parentheses or brackets containing feat./featuring
-        title = re.sub(
-            r"\s*[\(\[][^\)\]]*(?:feat\.|featuring)[^\)\]]*[\)\]]",
-            "",
-            title,
-            flags=re.IGNORECASE,
+        return generate_short_title(
+            original_title,
+            max_length=max_length,
+            include_wip_marker=self.config.include_wip_marker,
+            is_ready_to_play=is_ready_to_play,
         )
-
-        # Remove bracketed information (after featuring removal to avoid conflicts)
-        title = re.sub(r"\s*\[[^\]]*\]", "", title)
-
-        # Remove version/edit information in parentheses
-        # This regex matches specific keywords that indicate versions/edits
-        title = re.sub(
-            r"\s*\([^)]*(?:Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
-            "",
-            title,
-            flags=re.IGNORECASE,
-        )
-
-        # Clean up any extra whitespace
-        title = re.sub(r"\s+", " ", title).strip()
-
-        # If still too long, truncate with ellipsis
-        if len(title) > max_length:
-            # Try to cut at a word boundary if possible
-            if max_length > 3:
-                truncate_length = max_length - 3  # Reserve space for "..."
-                if " " in title[:truncate_length]:
-                    # Find the last space before the truncation point
-                    last_space = title[:truncate_length].rfind(" ")
-                    if (
-                        last_space > max_length // 2
-                    ):  # Only use word boundary if it's not too short
-                        title = title[:last_space] + "..."
-                    else:
-                        title = title[:truncate_length] + "..."
-                else:
-                    title = title[:truncate_length] + "..."
-            else:
-                title = title[:max_length]
-
-        if self.config.include_wip_marker and is_ready_to_play:
-            title += "*"
-
-        return title
 
     def _add_toc_entry(
         self,
