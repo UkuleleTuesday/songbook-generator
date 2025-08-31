@@ -198,6 +198,26 @@ Merges all individual song sheet PDFs from the local cache into a single, large 
 uv run songbook-tools merge-pdfs --output out/merged.pdf
 ```
 
+#### `validate-pdf`
+Validates a PDF file for basic sanity checks to ensure it's not corrupted and meets quality standards for a songbook. This is automatically run in the GitHub Actions workflow before uploading PDFs.
+
+```bash
+# Basic validation
+uv run songbook-tools validate-pdf songbook.pdf
+
+# Validation with specific expectations
+uv run songbook-tools validate-pdf songbook.pdf \
+  --expected-title "Ukulele Tuesday - Current Songbook" \
+  --expected-author "Ukulele Tuesday" \
+  --verbose
+
+# Custom validation parameters
+uv run songbook-tools validate-pdf songbook.pdf \
+  --min-pages 5 \
+  --max-size-mb 100 \
+  --no-check-structure
+```
+
 #### `editions`
 A group of commands to manage which songbook editions a song belongs to. This is a shortcut for managing the `specialbooks` tag.
 
