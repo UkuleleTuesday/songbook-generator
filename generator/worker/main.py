@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 import click
 from google.cloud import firestore, storage
@@ -9,7 +10,12 @@ from flask import abort
 import traceback
 from ..common.filters import parse_filters
 
-from .pdf import generate_songbook, generate_songbook_from_edition, init_services
+from .pdf import (
+    generate_songbook,
+    generate_songbook_from_edition,
+    init_services,
+    generate_manifest,
+)
 from ..common.config import get_settings
 
 # Initialize tracing
@@ -117,7 +123,13 @@ def worker_main(cloud_event):
             if postface_file_ids:
                 main_span.set_attribute("postface_files_count", len(postface_file_ids))
 
+            # Initialize temp file paths for cleanup
+            out_path_str = None
+            manifest_path_str = None
+
             # 3) Generate into a temp file
+            generation_start_time = datetime.now(timezone.utc)
+            selected_edition = None
             with services["tracer"].start_as_current_span(
                 "generate_songbook"
             ) as gen_span:
@@ -139,7 +151,7 @@ def worker_main(cloud_event):
                     click.echo(
                         f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
                     )
-                    generate_songbook_from_edition(
+                    generation_info = generate_songbook_from_edition(
                         drive=drive,
                         cache=cache,
                         source_folders=source_folders,
@@ -163,7 +175,7 @@ def worker_main(cloud_event):
                     if postface_file_ids:
                         click.echo(f"Using {len(postface_file_ids)} postface files")
 
-                    generate_songbook(
+                    generation_info = generate_songbook(
                         drive=drive,
                         cache=cache,
                         source_folders=source_folders,
@@ -176,6 +188,36 @@ def worker_main(cloud_event):
                         on_progress=progress_callback,
                     )
                 gen_span.set_attribute("output_path", str(out_path))
+                generation_end_time = datetime.now(timezone.utc)
+
+            # 3.5) Generate manifest.json
+            with services["tracer"].start_as_current_span(
+                "generate_manifest"
+            ) as manifest_span:
+                click.echo(f"Generating manifest for job {job_id}")
+                manifest_data = generate_manifest(
+                    job_id=job_id,
+                    params=params,
+                    destination_path=out_path,
+                    files=generation_info["files"],
+                    edition=selected_edition,
+                    title=generation_info["title"],
+                    subject=generation_info["subject"],
+                    source_folders=source_folders,
+                    generation_start_time=generation_start_time,
+                    generation_end_time=generation_end_time,
+                )
+
+                # Save manifest to temporary file for upload
+                manifest_path_str = tempfile.mktemp(suffix=".json")
+                manifest_path = Path(manifest_path_str)
+                with open(manifest_path, "w", encoding="utf-8") as f:
+                    json.dump(manifest_data, f, indent=2)
+
+                manifest_span.set_attribute("manifest_path", str(manifest_path))
+                manifest_span.set_attribute(
+                    "manifest_size", os.path.getsize(manifest_path)
+                )
 
             # 4) Upload to GCS
             with services["tracer"].start_as_current_span(
@@ -191,6 +233,21 @@ def worker_main(cloud_event):
                 upload_span.set_attribute("gcs_bucket", services["gcs_cdn_bucket_name"])
                 upload_span.set_attribute("blob_name", f"{job_id}/songbook.pdf")
 
+                # Upload manifest.json alongside the PDF
+                manifest_blob = services["cdn_bucket"].blob(f"{job_id}/manifest.json")
+                click.echo(
+                    f"Uploading generation manifest to GCS bucket: "
+                    f"{services['gcs_cdn_bucket_name']}"
+                )
+                manifest_blob.upload_from_filename(
+                    manifest_path_str, content_type="application/json"
+                )
+                manifest_url = manifest_blob.public_url
+                upload_span.set_attribute(
+                    "manifest_blob_name", f"{job_id}/manifest.json"
+                )
+                upload_span.set_attribute("manifest_url", manifest_url)
+
             # 5) Update Firestore to COMPLETED
             with services["tracer"].start_as_current_span(
                 "complete_job"
@@ -203,6 +260,7 @@ def worker_main(cloud_event):
                         "status": "COMPLETED",
                         "completed_at": firestore.SERVER_TIMESTAMP,
                         "result_url": result_url,
+                        "manifest_url": manifest_url,
                     }
                 )
                 complete_span.set_attribute("status", "COMPLETED")

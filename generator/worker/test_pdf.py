@@ -1,10 +1,12 @@
 import fitz
 import pytest
+from datetime import datetime, timezone
 from ..common.config import Edition
 from .pdf import (
     collect_and_sort_files,
     generate_songbook,
     generate_songbook_from_edition,
+    generate_manifest,
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
@@ -485,3 +487,127 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
 
     # Should have queried all folders
     assert mock_gdrive_client.query_drive_files_with_client_filter.call_count == 3
+
+
+def test_generate_manifest(tmp_path):
+    """Test that generate_manifest creates comprehensive metadata."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()  # Create empty PDF
+    doc.new_page()
+    doc.new_page()  # 2 pages
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data
+    job_id = "test-job-123"
+    params = {
+        "edition": "current",
+        "limit": 10,
+        "force": False,
+    }
+    files = [
+        File(name="Song 1.pdf", id="file1"),
+        File(name="Song 2.pdf", id="file2"),
+    ]
+    edition = Edition(
+        id="current",
+        title="Test Edition",
+        description="A test edition",
+        cover_file_id="cover123",
+        filters=[
+            PropertyFilter(
+                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
+            )
+        ],
+    )
+    title = "Test Songbook"
+    subject = "Test Subject"
+    source_folders = ["folder1", "folder2"]
+    start_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    end_time = datetime(2024, 1, 1, 12, 5, 0, tzinfo=timezone.utc)
+
+    # Generate manifest
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        edition=edition,
+        title=title,
+        subject=subject,
+        source_folders=source_folders,
+        generation_start_time=start_time,
+        generation_end_time=end_time,
+    )
+
+    # Verify manifest structure and content
+    assert manifest["job_id"] == job_id
+    assert "generated_at" in manifest
+
+    # Verify generation info
+    gen_info = manifest["generation_info"]
+    assert gen_info["start_time"] == start_time.isoformat()
+    assert gen_info["end_time"] == end_time.isoformat()
+    assert gen_info["duration_seconds"] == 300.0  # 5 minutes
+
+    # Verify input parameters
+    assert manifest["input_parameters"] == params
+
+    # Verify PDF info
+    pdf_info = manifest["pdf_info"]
+    assert pdf_info["title"] == title
+    assert pdf_info["subject"] == subject
+    assert pdf_info["author"] == "Ukulele Tuesday"
+    assert pdf_info["creator"] == "Ukulele Tuesday Songbook Generator"
+    assert pdf_info["producer"] == "PyMuPDF"
+    assert pdf_info["page_count"] == 2
+    assert pdf_info["file_size_bytes"] > 0
+    assert pdf_info["has_toc"] is False
+    assert pdf_info["toc_entries"] == 0
+
+    # Verify content info
+    content_info = manifest["content_info"]
+    assert content_info["total_files"] == 2
+    assert content_info["file_names"] == ["Song 1.pdf", "Song 2.pdf"]
+    assert content_info["source_folders"] == source_folders
+
+    # Verify edition info
+    edition_info = manifest["edition"]
+    assert edition_info["id"] == "current"
+    assert edition_info["title"] == "Test Edition"
+    assert edition_info["description"] == "A test edition"
+    assert edition_info["cover_file_id"] == "cover123"
+    assert len(edition_info["filters"]) == 1
+    assert edition_info["filters"][0]["key"] == "status"
+
+
+def test_generate_manifest_without_edition(tmp_path):
+    """Test that generate_manifest works without an edition (legacy mode)."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create minimal test data
+    job_id = "test-job-456"
+    params = {"limit": 5}
+    files = [File(name="Song.pdf", id="file1")]
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+    )
+
+    # Verify basic structure
+    assert manifest["job_id"] == job_id
+    assert manifest["input_parameters"] == params
+    assert manifest["content_info"]["total_files"] == 1
+    assert manifest["pdf_info"]["page_count"] == 1
+
+    # Edition should not be present in legacy mode
+    assert "edition" not in manifest

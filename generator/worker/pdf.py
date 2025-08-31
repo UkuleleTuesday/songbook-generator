@@ -1,9 +1,10 @@
 import fitz
 import click
 import os
+from datetime import datetime, timezone
 from opentelemetry import trace
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from . import progress
 from . import toc
 from . import cover
@@ -564,6 +565,107 @@ def generate_songbook(
                                 f"Failed to save master PDF at {destination_path}"
                             )
         click.echo(f"SUCCESS: Completed generated PDF at {destination_path}.")
+
+        # Return generation information for manifest creation
+        return {
+            "files": files,
+            "title": title,
+            "subject": subject,
+        }
+
+
+def generate_manifest(
+    job_id: str,
+    params: Dict[str, Any],
+    destination_path: Path,
+    files: List[File],
+    edition: Optional[config.Edition] = None,
+    title: Optional[str] = None,
+    subject: Optional[str] = None,
+    source_folders: Optional[List[str]] = None,
+    generation_start_time: Optional[datetime] = None,
+    generation_end_time: Optional[datetime] = None,
+) -> Dict[str, Any]:
+    """Generate manifest data for a PDF generation job.
+
+    Args:
+        job_id: Unique identifier for the generation job
+        params: Original job parameters
+        destination_path: Path where the PDF was generated
+        files: List of files included in the songbook
+        edition: Edition configuration if used
+        title: PDF title
+        subject: PDF subject
+        source_folders: Source Google Drive folder IDs
+        generation_start_time: When generation started
+        generation_end_time: When generation completed
+
+    Returns:
+        Dictionary containing manifest data
+    """
+    manifest = {
+        "job_id": job_id,
+        "generated_at": (generation_end_time or datetime.now(timezone.utc)).isoformat(),
+        "generation_info": {
+            "start_time": (
+                generation_start_time or datetime.now(timezone.utc)
+            ).isoformat(),
+            "end_time": (generation_end_time or datetime.now(timezone.utc)).isoformat(),
+            "duration_seconds": (
+                (generation_end_time - generation_start_time).total_seconds()
+                if generation_start_time and generation_end_time
+                else None
+            ),
+        },
+        "input_parameters": params.copy() if params else {},
+        "pdf_info": {
+            "title": title,
+            "subject": subject,
+            "author": "Ukulele Tuesday",
+            "creator": "Ukulele Tuesday Songbook Generator",
+            "producer": "PyMuPDF",
+            "file_size_bytes": os.path.getsize(destination_path)
+            if destination_path.exists()
+            else None,
+        },
+        "content_info": {
+            "total_files": len(files),
+            "file_names": [f.name for f in files],
+            "source_folders": source_folders or [],
+        },
+    }
+
+    # Add edition information if available
+    if edition:
+        manifest["edition"] = {
+            "id": edition.id,
+            "title": edition.title,
+            "description": edition.description,
+            "cover_file_id": edition.cover_file_id,
+            "preface_file_ids": edition.preface_file_ids,
+            "postface_file_ids": edition.postface_file_ids,
+            "table_of_contents_config": (
+                edition.table_of_contents.model_dump(mode="json")
+                if edition.table_of_contents
+                else None
+            ),
+            "filters": [{**f.model_dump(mode="json")} for f in edition.filters]
+            if edition.filters
+            else [],
+        }
+
+    # Add page information if PDF exists
+    if destination_path.exists():
+        try:
+            with fitz.open(destination_path) as pdf_doc:
+                manifest["pdf_info"]["page_count"] = pdf_doc.page_count
+                manifest["pdf_info"]["has_toc"] = bool(pdf_doc.get_toc())
+                manifest["pdf_info"]["toc_entries"] = len(pdf_doc.get_toc())
+        except (OSError, ValueError) as e:
+            # Don't fail manifest generation if PDF reading fails
+            click.echo(f"Warning: Could not read PDF metadata: {e}", err=True)
+
+    return manifest
 
 
 def add_page_number(page, page_index):
