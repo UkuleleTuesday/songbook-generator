@@ -217,49 +217,6 @@ jobs:
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
 
-    - name: Validate Generated PDF
-      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
-      run: |
-        set -e
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
-        EDITION="${{ matrix.edition }}"
-
-        echo "Validating generated PDF: ${OUTPUT_PDF}"
-
-        # Set expected title based on edition
-        case "${EDITION}" in
-          "current")
-            EXPECTED_TITLE="Ukulele Tuesday - Current Songbook"
-            ;;
-          "complete")
-            EXPECTED_TITLE="Ukulele Tuesday - Complete Songbook"
-            ;;
-          "ukulele-hooley-2025")
-            EXPECTED_TITLE="Ukulele Hooley 2025"
-            ;;
-          *)
-            # For any other edition, just check it contains "Ukulele Tuesday"
-            EXPECTED_TITLE=""
-            ;;
-        esac
-
-        if [[ -n "${EXPECTED_TITLE}" ]]; then
-          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
-            --expected-title "${EXPECTED_TITLE}" \
-            --expected-author "Ukulele Tuesday" \
-            --min-pages 3 \
-            --max-size-mb 25 \
-            --verbose
-        else
-          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
-            --expected-author "Ukulele Tuesday" \
-            --min-pages 3 \
-            --max-size-mb 25 \
-            --verbose
-        fi
-
-        echo "✅ PDF validation passed for ${EDITION} edition"
-
     - name: Post-process PDF
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       id: post-process
@@ -283,7 +240,6 @@ jobs:
           "${INPUT_PDF}"
 
     - name: Validate Generated PDF
-      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       run: |
         set -e
         OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
