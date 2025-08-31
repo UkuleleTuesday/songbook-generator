@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  EDITIONS: "current complete ukulele-hooley-2025"
+  SONGBOOK_EDITIONS: "current complete ukulele-hooley-2025"
   USE_GHOSTSCRIPT_COMPRESSION: false
 
 jobs:
@@ -61,7 +61,7 @@ jobs:
           if [[ $? -ne 0 ]]; then
               echo "::warning::'gcloud storage ls' command failed for source path. Assuming cache is empty and building all editions."
               echo "Output was: $GCS_LIST_JSON"
-              EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
+              EDITIONS_TO_BUILD_STR="${{ env.SONGBOOK_EDITIONS }}"
           else
               SOURCE_LATEST_UPDATE_JSON=$(echo "$GCS_LIST_JSON" | jq -r '.[].metadata.updated' | sort -r | head -n 1)
               if [[ -z "$SOURCE_LATEST_UPDATE_JSON" || "$SOURCE_LATEST_UPDATE_JSON" == "null" ]]; then
@@ -70,7 +70,7 @@ jobs:
             SOURCE_LATEST_UPDATE_TS=$(date -d "$SOURCE_LATEST_UPDATE_JSON" +%s)
             echo "Latest source file update: $(date -d @$SOURCE_LATEST_UPDATE_TS)"
 
-            for edition in ${{ env.EDITIONS }}; do
+            for edition in ${{ env.SONGBOOK_EDITIONS }}; do
               FILENAME_PREFIX="ukulele-tuesday-songbook-${edition}"
               DEST_PATH_PREFIX="gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME_PREFIX}"
               GCS_DEST_LIST_JSON=$(gcloud storage ls "${DEST_PATH_PREFIX}*.pdf" --json 2>/dev/null)
@@ -104,7 +104,7 @@ jobs:
           # Override result if force mode is enabled or if this is a PR/push
           if [[ ("${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.force }}" == "true") || "${{ github.event_name }}" == "push" || "${{ github.event_name }}" == "pull_request" ]]; then
             echo "Force mode enabled (triggered by: ${{ github.event_name }}). Overriding change detection to build all editions."
-            EDITIONS_TO_BUILD_STR="${{ env.EDITIONS }}"
+            EDITIONS_TO_BUILD_STR="${{ env.SONGBOOK_EDITIONS }}"
           fi
 
           # Convert the space-separated string to a JSON array for the output
@@ -147,6 +147,9 @@ jobs:
     - name: Set up Cloud SDK
       id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
@@ -235,6 +238,48 @@ jobs:
           -dNOPAUSE -dBATCH \
           -sOutputFile="${OUTPUT_PDF}" \
           "${INPUT_PDF}"
+
+    - name: Validate Generated PDF
+      run: |
+        set -e
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        EDITION="${{ matrix.edition }}"
+
+        echo "Validating generated PDF: ${OUTPUT_PDF}"
+
+        # Set expected title based on edition
+        case "${EDITION}" in
+          "current")
+            EXPECTED_TITLE="Ukulele Tuesday - Current Songbook"
+            ;;
+          "complete")
+            EXPECTED_TITLE="Ukulele Tuesday - Complete Songbook"
+            ;;
+          "ukulele-hooley-2025")
+            EXPECTED_TITLE="Ukulele Hooley 2025"
+            ;;
+          *)
+            # For any other edition, just check it contains "Ukulele Tuesday"
+            EXPECTED_TITLE=""
+            ;;
+        esac
+
+        if [[ -n "${EXPECTED_TITLE}" ]]; then
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
+            --expected-title "${EXPECTED_TITLE}" \
+            --expected-author "Ukulele Tuesday" \
+            --min-pages 3 \
+            --max-size-mb 25 \
+            --verbose
+        else
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
+            --expected-author "Ukulele Tuesday" \
+            --min-pages 3 \
+            --max-size-mb 25 \
+            --verbose
+        fi
+
+        echo "✅ PDF validation passed for ${EDITION} edition"
 
     - name: Upload to GCS
       if: github.ref == 'refs/heads/main'

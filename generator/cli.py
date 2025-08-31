@@ -2,7 +2,9 @@ import traceback
 import os
 import functools
 import logging
+import sys
 import click
+import fitz
 from pathlib import Path
 
 
@@ -401,6 +403,67 @@ def print_settings():
     click.echo("Current application settings:")
     settings = get_settings()
     click.echo(settings.model_dump_json(indent=2))
+
+
+@cli.command(name="validate-pdf")
+@global_options
+@click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--check-structure",
+    is_flag=True,
+    default=True,
+    help="Validate songbook-specific structure",
+)
+@click.option(
+    "--min-pages", type=int, default=3, help="Minimum number of pages expected"
+)
+@click.option("--max-size-mb", type=int, default=25, help="Maximum file size in MB")
+@click.option("--expected-title", type=str, help="Expected PDF title in metadata")
+@click.option(
+    "--expected-author",
+    type=str,
+    default="Ukulele Tuesday",
+    help="Expected PDF author in metadata",
+)
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
+def validate_pdf_cli(
+    pdf_path: Path,
+    check_structure: bool,
+    min_pages: int,
+    max_size_mb: int,
+    expected_title: str,
+    expected_author: str,
+    verbose: bool,
+    **kwargs,
+):
+    """
+    Validate a PDF file for basic sanity checks.
+
+    This command performs comprehensive validation of a PDF file to ensure
+    it's not corrupted and meets basic quality standards for a songbook.
+    """
+    from .validation import validate_pdf_file, PDFValidationError
+
+    try:
+        validate_pdf_file(
+            pdf_path=pdf_path,
+            check_structure=check_structure,
+            min_pages=min_pages,
+            max_size_mb=max_size_mb,
+            expected_title=expected_title,
+            expected_author=expected_author,
+            verbose=verbose,
+        )
+
+        if not verbose:
+            click.echo("✅ PDF validation passed")
+
+    except PDFValidationError as e:
+        click.echo(f"❌ PDF validation failed: {e}", err=True)
+        sys.exit(1)
+    except (OSError, IOError, fitz.FileDataError) as e:
+        click.echo(f"❌ Error accessing PDF file: {e}", err=True)
+        sys.exit(1)
 
 
 @cli.group()
