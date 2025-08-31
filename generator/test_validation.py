@@ -295,7 +295,7 @@ def sample_manifest_data():
         },
         "content_info": {
             "total_files": 2,
-            "file_names": ["Song 1.pdf", "Song 2.pdf"],
+            "file_names": ["Song 1", "Song 2"],
             "source_folders": ["folder1", "folder2"],
         },
         "edition": {
@@ -493,8 +493,8 @@ def test_validate_content_info_file_count_mismatch():
         "content_info": {
             "total_files": 3,
             "file_names": [
-                "file1.pdf",
-                "file2.pdf",
+                "file1",
+                "file2",
             ],  # Only 2 files but total_files says 3
         }
     }
@@ -506,7 +506,7 @@ def test_validate_content_info_file_count_mismatch():
 def test_validate_content_info_suspicious_duration():
     """Test content info validation with suspicious generation duration."""
     manifest_data = {
-        "content_info": {"total_files": 1, "file_names": ["test.pdf"]},
+        "content_info": {"total_files": 1, "file_names": ["test"]},
         "generation_info": {"duration_seconds": 7200},  # 2 hours - too long
     }
 
@@ -519,7 +519,7 @@ def test_validate_content_info_success():
     manifest_data = {
         "content_info": {
             "total_files": 2,
-            "file_names": ["file1.pdf", "file2.pdf"],
+            "file_names": ["file1", "file2"],
         },
         "generation_info": {"duration_seconds": 300.0},
     }
@@ -601,7 +601,7 @@ def test_validate_toc_entries_against_manifest_success(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+            "file_names": ["Amazing Grace", "Hotel California"],
         },
     }
 
@@ -640,7 +640,7 @@ def test_validate_toc_entries_with_no_toc_expected(tmp_path):
         },
         "content_info": {
             "total_files": 2,
-            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+            "file_names": ["Amazing Grace", "Hotel California"],
         },
     }
 
@@ -690,7 +690,7 @@ def test_validate_song_titles_on_pages_success(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -742,7 +742,7 @@ def test_validate_song_titles_on_pages_missing_title(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -787,7 +787,7 @@ def test_validate_song_titles_on_pages_no_toc(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -843,7 +843,7 @@ def test_validate_song_titles_on_pages_title_variations(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall - Oasis.pdf", "Hey Jude - The Beatles.pdf"],
+            "file_names": ["Wonderwall - Oasis", "Hey Jude - The Beatles"],
         },
     }
 
@@ -938,6 +938,108 @@ def test_validate_preface_section_valid_after_cover(tmp_path):
         validate_preface_section(doc, page_indices, verbose=True)
 
 
+def test_validate_toc_section_with_artist_names(tmp_path):
+    """Test TOC validation with song titles that include artist names - reproduces issue #199."""
+    from generator.validation import validate_toc_section
+
+    # Create test PDF that reproduces the issue from #199
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page - this simulates how the TOC actually appears in generated PDFs
+    # The TOC entries are often shortened to just the main title without artist names
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    # This is the key issue: TOC shows shortened titles, but validation expects full titles
+    toc_page.insert_text(
+        (100, 150),
+        "You're The One That I Want ......................... 3",
+        fontsize=12,
+    )
+    toc_page.insert_text(
+        (100, 170),
+        "Another Song ........................................ 4",
+        fontsize=12,
+    )
+
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        # This is the problematic case from the issue
+        manifest_data = {
+            "content_info": {
+                "file_names": [
+                    "You're The One That I Want - John Travolta, Olivia Newton-John",
+                    "Another Song - Some Artist",
+                ]
+            }
+        }
+        page_indices = {"table_of_contents": {"first_page": 2, "last_page": 2}}
+
+        # This SHOULD NOT raise an error because the validation should be smart enough
+        # to match the shortened TOC entry "You're The One That I Want" with the
+        # full filename "You're The One That I Want - John Travolta, Olivia Newton-John"
+        validate_toc_section(doc, manifest_data, page_indices, verbose=True)
+
+
+def test_validate_toc_section_with_structured_toc(tmp_path):
+    """Test TOC validation with actual TOC structure (not just text)."""
+    from generator.validation import validate_toc_section
+
+    pdf_path = tmp_path / "test_structured.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text(
+        (100, 150), "You're The One That I Want ......... 3", fontsize=12
+    )
+    toc_page.insert_text(
+        (100, 170), "Another Song ........................ 4", fontsize=12
+    )
+
+    # Song pages
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text((100, 100), "You're The One That I Want", fontsize=16)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text((100, 100), "Another Song", fontsize=16)
+
+    # Set TOC structure - this is key for testing the structured path
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "You're The One That I Want", 3],
+        [1, "Another Song", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        manifest_data = {
+            "content_info": {
+                "file_names": [
+                    "You're The One That I Want - John Travolta, Olivia Newton-John",
+                    "Another Song - Some Artist",
+                ]
+            }
+        }
+        page_indices = {"table_of_contents": {"first_page": 2, "last_page": 2}}
+
+        # This should pass using the structured TOC approach
+        validate_toc_section(doc, manifest_data, page_indices, verbose=True)
+
+
 def test_validate_pdf_sections_complete(tmp_path):
     """Test complete PDF sections validation with all sections."""
     from generator.validation import validate_pdf_sections
@@ -968,7 +1070,7 @@ def test_validate_pdf_sections_complete(tmp_path):
                 "body": {"first_page": 6, "last_page": 10},
                 "postface": None,
             },
-            "content_info": {"file_names": ["Song 1.pdf", "Song 2.pdf"]},
+            "content_info": {"file_names": ["Song 1", "Song 2"]},
         }
         # Should not raise exception
         validate_pdf_sections(doc, manifest_data, verbose=True)
