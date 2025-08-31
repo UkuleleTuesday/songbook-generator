@@ -43,9 +43,6 @@ uv sync --locked --all-extras --dev
 # Install pre-commit hooks (MANDATORY)
 uvx --from 'pre-commit<5' pre-commit install
 
-# Preinstall pre-commit dependencies (optional - may fail on first setup)
-uvx --from 'pre-commit<5' pre-commit run --all-files || true
-
 # Run tests
 uv run pytest
 
