@@ -1,6 +1,7 @@
 """PDF validation utilities for songbook generation."""
 
 import json
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -272,6 +273,9 @@ def validate_pdf_against_manifest(
                 if verbose:
                     print(f"✓ TOC entries match: {actual_toc_entries}")
 
+            # Validate TOC entry content against expected files
+            validate_toc_entries_against_manifest(doc, manifest_data, verbose=verbose)
+
             # Validate metadata fields from manifest
             for field in ["title", "subject", "author", "creator", "producer"]:
                 expected_value = pdf_info.get(field)
@@ -290,6 +294,165 @@ def validate_pdf_against_manifest(
 
     # Validate content information
     validate_content_info(manifest_data, verbose=verbose)
+
+
+def validate_toc_entries_against_manifest(
+    doc: fitz.Document, manifest_data: Dict[str, Any], verbose: bool = False
+) -> None:
+    """
+    Validate that TOC entries in PDF match expected files from manifest.
+
+    This function checks that all expected files from the manifest appear
+    in the PDF's table of contents, handling title shortening and formatting.
+
+    Args:
+        doc: Opened PDF document
+        manifest_data: Manifest data dictionary
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If TOC entries don't match expected files
+    """
+    content_info = manifest_data.get("content_info", {})
+    expected_file_names = content_info.get("file_names", [])
+
+    # Skip validation if no expected files in manifest
+    if not expected_file_names:
+        if verbose:
+            print("✓ No expected files in manifest, skipping TOC content validation")
+        return
+
+    # Get actual TOC entries from PDF
+    actual_toc = doc.get_toc()
+    if not actual_toc:
+        if expected_file_names:
+            raise PDFValidationError(
+                f"PDF has no TOC entries but manifest expects {len(expected_file_names)} files"
+            )
+        return
+
+    # Extract TOC entry titles (level 1 entries only, skip "Table of Contents" header)
+    toc_titles = []
+    for level, title, page in actual_toc:
+        if level == 1 and title.lower() != "table of contents":
+            toc_titles.append(title.strip())
+
+    if verbose:
+        print(f"Found {len(toc_titles)} TOC entries in PDF")
+        print(f"Expected {len(expected_file_names)} files from manifest")
+
+    # Check that we have the expected number of content entries
+    if len(toc_titles) != len(expected_file_names):
+        raise PDFValidationError(
+            f"TOC content mismatch: PDF has {len(toc_titles)} content entries, "
+            f"manifest expects {len(expected_file_names)} files"
+        )
+
+    # Validate each expected file has a corresponding TOC entry
+    missing_entries = []
+    for expected_file in expected_file_names:
+        # Remove .pdf extension and clean up file name for comparison
+        expected_title = _clean_file_name_for_toc_comparison(expected_file)
+
+        # Check if any TOC entry matches this expected title
+        found_match = False
+        for toc_title in toc_titles:
+            if _titles_match(expected_title, toc_title):
+                found_match = True
+                break
+
+        if not found_match:
+            missing_entries.append(expected_file)
+
+    if missing_entries:
+        raise PDFValidationError(
+            f"Missing TOC entries for files: {missing_entries}. "
+            f"TOC contains: {toc_titles}"
+        )
+
+    if verbose:
+        print(f"✓ All {len(expected_file_names)} expected files found in TOC")
+
+
+def _clean_file_name_for_toc_comparison(file_name: str) -> str:
+    """Clean up a file name for TOC comparison by removing extension and normalizing."""
+    # Remove .pdf extension
+    if file_name.lower().endswith(".pdf"):
+        file_name = file_name[:-4]
+
+    # Basic cleanup - remove extra whitespace
+    return file_name.strip()
+
+
+def _titles_match(expected_title: str, toc_title: str) -> bool:
+    """
+    Check if an expected title matches a TOC title, accounting for shortening.
+
+    TOC titles may be shortened versions of the original titles, so we need
+    to check if the TOC title is a reasonable abbreviation of the expected title.
+    """
+    # Exact match
+    if expected_title == toc_title:
+        return True
+
+    # Remove potential WIP marker (*) from TOC title
+    clean_toc_title = toc_title.rstrip("*").strip()
+
+    # Check if TOC title is a prefix of expected title (accounting for shortening)
+    if clean_toc_title and expected_title.startswith(clean_toc_title):
+        return True
+
+    # Check if expected title starts with TOC title when both are normalized
+    # This handles cases where punctuation or spacing differences exist
+    expected_normalized = re.sub(r"[^\w\s]", "", expected_title.lower()).strip()
+    toc_normalized = re.sub(r"[^\w\s]", "", clean_toc_title.lower()).strip()
+
+    if toc_normalized and expected_normalized.startswith(toc_normalized):
+        return True
+
+    # Check for common title variations (bracketed info removal, featuring info, etc.)
+    # This mimics the logic from toc.py's _generate_toc_title method
+    expected_shortened = _simulate_toc_title_shortening(expected_title)
+    if clean_toc_title == expected_shortened or expected_shortened.startswith(
+        clean_toc_title
+    ):
+        return True
+
+    return False
+
+
+def _simulate_toc_title_shortening(original_title: str) -> str:
+    """
+    Simulate the title shortening logic from toc.py to help with matching.
+
+    This applies similar transformations as TocGenerator._generate_toc_title()
+    to help match shortened TOC entries with original file names.
+    """
+    title = original_title.strip()
+
+    # Remove featuring information in both parentheses and brackets
+    title = re.sub(
+        r"\s*[\(\[][^\)\]]*(?:feat\.|featuring)[^\)\]]*[\)\]]",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    # Remove bracketed information
+    title = re.sub(r"\s*\[[^\]]*\]", "", title)
+
+    # Remove version/edit information in parentheses
+    title = re.sub(
+        r"\s*\([^)]*(?:Radio|Single|Edit|Version|Mix|Remix|Mono)\b[^)]*\)",
+        "",
+        title,
+        flags=re.IGNORECASE,
+    )
+
+    # Clean up any extra whitespace
+    title = re.sub(r"\s+", " ", title).strip()
+
+    return title
 
 
 def validate_content_info(manifest_data: Dict[str, Any], verbose: bool = False) -> None:

@@ -11,6 +11,7 @@ from .validation import (
     validate_pdf_with_manifest,
     load_manifest,
     validate_pdf_against_manifest,
+    validate_toc_entries_against_manifest,
     validate_content_info,
     PDFValidationError,
 )
@@ -289,7 +290,7 @@ def sample_manifest_data():
             "page_count": 3,
             "file_size_bytes": None,  # Will be set dynamically in tests
             "has_toc": True,
-            "toc_entries": 2,
+            "toc_entries": 3,  # TOC header + 2 content entries
         },
         "content_info": {
             "total_files": 2,
@@ -311,16 +312,20 @@ def matching_pdf_and_manifest(tmp_path, sample_manifest_data):
 
     doc = fitz.open()
 
-    # Create 3 pages to match manifest page_count
+    # Create 4 pages to match manifest content (cover + toc + 2 songs)
     cover_page = doc.new_page()
     cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
 
     toc_page = doc.new_page()
     toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
     toc_page.insert_text((100, 150), "1. Song 1 .................. 3", fontsize=12)
+    toc_page.insert_text((100, 170), "2. Song 2 .................. 4", fontsize=12)
 
-    content_page = doc.new_page()
-    content_page.insert_text((100, 100), "Song 1", fontsize=16)
+    content_page_1 = doc.new_page()
+    content_page_1.insert_text((100, 100), "Song 1", fontsize=16)
+
+    content_page_2 = doc.new_page()
+    content_page_2.insert_text((100, 100), "Song 2", fontsize=16)
 
     # Set metadata to match manifest
     pdf_info = sample_manifest_data["pdf_info"]
@@ -334,19 +339,21 @@ def matching_pdf_and_manifest(tmp_path, sample_manifest_data):
         }
     )
 
-    # Add TOC to match manifest
+    # Add TOC to match manifest - 2 content entries plus TOC header
     toc = [
         [1, "Table of Contents", 2],
         [1, "Song 1", 3],
+        [1, "Song 2", 4],
     ]
     doc.set_toc(toc)
 
     doc.save(pdf_path)
     doc.close()
 
-    # Update the manifest with the actual file size
+    # Update the manifest with the actual file size and page count
     actual_file_size = pdf_path.stat().st_size
     sample_manifest_data["pdf_info"]["file_size_bytes"] = actual_file_size
+    sample_manifest_data["pdf_info"]["page_count"] = 4  # Updated to match actual pages
 
     # Create manifest file
     manifest_path = tmp_path / "manifest.json"
@@ -473,6 +480,7 @@ def test_validate_pdf_against_manifest_metadata_mismatch(
     sample_manifest_data["pdf_info"]["file_size_bytes"] = None  # Don't check file size
     sample_manifest_data["pdf_info"]["has_toc"] = None  # Don't check TOC presence
     sample_manifest_data["pdf_info"]["toc_entries"] = None  # Don't check TOC entries
+    sample_manifest_data["content_info"]["file_names"] = []  # Don't check TOC content
 
     with pytest.raises(PDFValidationError, match="Metadata field 'title' mismatch"):
         validate_pdf_against_manifest(valid_songbook_pdf, sample_manifest_data)
@@ -551,3 +559,51 @@ def test_cli_with_manifest_failure(valid_songbook_pdf, tmp_path, sample_manifest
 
     assert result.exit_code == 1
     assert "❌ PDF validation failed" in result.output
+
+
+def test_validate_toc_entries_against_manifest_success(tmp_path):
+    """Test successful TOC entry validation against manifest."""
+    # Create PDF with matching TOC entries
+    pdf_path = tmp_path / "toc_match.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text((100, 150), "1. Amazing Grace .............. 3", fontsize=12)
+    toc_page.insert_text((100, 170), "2. Hotel California ........... 4", fontsize=12)
+
+    # Content pages
+    content_page_1 = doc.new_page()
+    content_page_1.insert_text((100, 100), "Amazing Grace", fontsize=16)
+
+    content_page_2 = doc.new_page()
+    content_page_2.insert_text((100, 100), "Hotel California", fontsize=16)
+
+    # Set TOC structure
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "Amazing Grace", 3],
+        [1, "Hotel California", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create matching manifest
+    manifest_data = {
+        "job_id": "test-toc-validation",
+        "pdf_info": {"page_count": 4},
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+        },
+    }
+
+    # This should not raise an exception
+    with fitz.open(pdf_path) as doc:
+        validate_toc_entries_against_manifest(doc, manifest_data, verbose=True)
