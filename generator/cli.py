@@ -3,6 +3,7 @@ import os
 import functools
 import logging
 import sys
+from typing import Optional
 import click
 import fitz
 from pathlib import Path
@@ -409,6 +410,12 @@ def print_settings():
 @global_options
 @click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
 @click.option(
+    "--manifest",
+    "-m",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to manifest.json file for enhanced validation",
+)
+@click.option(
     "--check-structure",
     is_flag=True,
     default=True,
@@ -428,6 +435,7 @@ def print_settings():
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def validate_pdf_cli(
     pdf_path: Path,
+    manifest: Optional[Path],
     check_structure: bool,
     min_pages: int,
     max_size_mb: int,
@@ -441,19 +449,35 @@ def validate_pdf_cli(
 
     This command performs comprehensive validation of a PDF file to ensure
     it's not corrupted and meets basic quality standards for a songbook.
+
+    If a manifest.json file is provided, additional validation will be
+    performed using the rich metadata from the generation process.
     """
-    from .validation import validate_pdf_file, PDFValidationError
+    from .validation import (
+        validate_pdf_file,
+        validate_pdf_with_manifest,
+        PDFValidationError,
+    )
 
     try:
-        validate_pdf_file(
-            pdf_path=pdf_path,
-            check_structure=check_structure,
-            min_pages=min_pages,
-            max_size_mb=max_size_mb,
-            expected_title=expected_title,
-            expected_author=expected_author,
-            verbose=verbose,
-        )
+        if manifest:
+            # Use enhanced validation with manifest
+            validate_pdf_with_manifest(
+                pdf_path=pdf_path,
+                manifest_path=manifest,
+                verbose=verbose,
+            )
+        else:
+            # Use standard validation
+            validate_pdf_file(
+                pdf_path=pdf_path,
+                check_structure=check_structure,
+                min_pages=min_pages,
+                max_size_mb=max_size_mb,
+                expected_title=expected_title,
+                expected_author=expected_author,
+                verbose=verbose,
+            )
 
         if not verbose:
             click.echo("✅ PDF validation passed")

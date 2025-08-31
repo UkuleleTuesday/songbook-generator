@@ -206,6 +206,7 @@ def worker_main(cloud_event):
                     source_folders=source_folders,
                     generation_start_time=generation_start_time,
                     generation_end_time=generation_end_time,
+                    page_indices=generation_info.get("page_indices"),
                 )
 
                 # Save manifest to temporary file for upload

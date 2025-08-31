@@ -396,8 +396,19 @@ def generate_songbook(
         )
         span.set_attribute("add_page_numbers", add_page_numbers)
 
+        # Initialize page index tracking
+        page_indices = {
+            "cover": None,
+            "preface": None,
+            "table_of_contents": None,
+            "body": None,
+            "postface": None,
+        }
+
         with tracer.start_as_current_span("create_songbook_pdf") as pdf_span:
             with fitz.open() as songbook_pdf:
+                current_page = 0
+
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover"):
@@ -439,11 +450,19 @@ def generate_songbook(
                 page_offset = cover_page_count + len(preface_files) + toc_page_count
                 pdf_span.set_attribute("page_offset", page_offset)
 
+                # Add cover and track page indices
                 if cover_pdf:
+                    cover_start = current_page
                     songbook_pdf.insert_pdf(cover_pdf, start_at=0)
+                    current_page = len(songbook_pdf)
+                    page_indices["cover"] = {
+                        "first_page": cover_start + 1,  # 1-based page numbers
+                        "last_page": current_page,
+                    }
 
-                # Add preface files after cover
+                # Add preface files after cover and track page indices
                 if preface_files:
+                    preface_start = current_page
                     with reporter.step(
                         len(preface_files), "Adding preface files..."
                     ) as step:
@@ -470,8 +489,14 @@ def generate_songbook(
                             preface_span.set_attribute(
                                 "preface_files_added", len(preface_files)
                             )
+                    current_page = len(songbook_pdf)
+                    page_indices["preface"] = {
+                        "first_page": preface_start + 1,  # 1-based page numbers
+                        "last_page": current_page,
+                    }
 
-                # Generate TOC with correct page offset
+                # Generate TOC with correct page offset and track page indices
+                toc_start = current_page
                 with reporter.step(1, "Generating table of contents..."):
                     with tracer.start_as_current_span("generate_toc"):
                         toc_pdf, toc_entries = toc.build_table_of_contents(
@@ -479,8 +504,15 @@ def generate_songbook(
                         )
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)
+                current_page = len(songbook_pdf)
+                if toc_page_count > 0:  # Only set if TOC actually exists
+                    page_indices["table_of_contents"] = {
+                        "first_page": toc_start + 1,  # 1-based page numbers
+                        "last_page": current_page,
+                    }
 
                 # Add main content - try cached approach first, fall back to individual downloads
+                body_start = current_page
                 with reporter.step(len(files), "Copying from cached PDF...") as step:
                     try:
                         copy_pdfs(
@@ -495,9 +527,16 @@ def generate_songbook(
                     except PdfCopyException as e:
                         click.echo(f"Error copying from cached PDF: {str(e)}", err=True)
                         raise
+                current_page = len(songbook_pdf)
+                if files:  # Only set if there are actual song files
+                    page_indices["body"] = {
+                        "first_page": body_start + 1,  # 1-based page numbers
+                        "last_page": current_page,
+                    }
 
-                # Add postface files at the end
+                # Add postface files at the end and track page indices
                 if postface_files:
+                    postface_start = current_page
                     with reporter.step(
                         len(postface_files), "Adding postface files..."
                     ) as step:
@@ -532,6 +571,11 @@ def generate_songbook(
                             postface_span.set_attribute(
                                 "postface_files_added", len(postface_files)
                             )
+                    current_page = len(songbook_pdf)
+                    page_indices["postface"] = {
+                        "first_page": postface_start + 1,  # 1-based page numbers
+                        "last_page": current_page,
+                    }
 
                 # Add TOC links after all content is in place
                 with reporter.step(1, "Adding table of contents links..."):
@@ -571,6 +615,7 @@ def generate_songbook(
             "files": files,
             "title": title,
             "subject": subject,
+            "page_indices": page_indices,
         }
 
 
@@ -585,6 +630,7 @@ def generate_manifest(
     source_folders: Optional[List[str]] = None,
     generation_start_time: Optional[datetime] = None,
     generation_end_time: Optional[datetime] = None,
+    page_indices: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Generate manifest data for a PDF generation job.
 
@@ -599,6 +645,7 @@ def generate_manifest(
         source_folders: Source Google Drive folder IDs
         generation_start_time: When generation started
         generation_end_time: When generation completed
+        page_indices: Dictionary with page indices for each section (cover, preface, table_of_contents, body, postface)
 
     Returns:
         Dictionary containing manifest data
@@ -664,6 +711,10 @@ def generate_manifest(
         except (OSError, ValueError) as e:
             # Don't fail manifest generation if PDF reading fails
             click.echo(f"Warning: Could not read PDF metadata: {e}", err=True)
+
+    # Add page indices information if available
+    if page_indices:
+        manifest["page_indices"] = page_indices
 
     return manifest
 
