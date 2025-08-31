@@ -1,6 +1,5 @@
 """Tests for title utilities."""
 
-
 from generator.common.titles import generate_short_title
 
 
@@ -70,9 +69,7 @@ def test_generate_short_title_wip_marker():
     title = "Song Title"
 
     # Test with WIP marker enabled and ready to play
-    result = generate_short_title(
-        title, include_wip_marker=True, is_ready_to_play=True
-    )
+    result = generate_short_title(title, include_wip_marker=True, is_ready_to_play=True)
     assert result == "Song Title*"
 
     # Test with WIP marker enabled but not ready to play

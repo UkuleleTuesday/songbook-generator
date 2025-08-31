@@ -7,7 +7,7 @@ def generate_short_title(
     original_title: str,
     max_length: int = None,
     include_wip_marker: bool = False,
-    is_ready_to_play: bool = False
+    is_ready_to_play: bool = False,
 ) -> str:
     """
     Generate a shortened title using consistent heuristics.
