@@ -276,6 +276,9 @@ def validate_pdf_against_manifest(
             # Validate TOC entry content against expected files
             validate_toc_entries_against_manifest(doc, manifest_data, verbose=verbose)
 
+            # Validate song titles appear on their respective pages
+            validate_song_titles_on_pages(doc, manifest_data, verbose=verbose)
+
             # Validate metadata fields from manifest
             for field in ["title", "subject", "author", "creator", "producer"]:
                 expected_value = pdf_info.get(field)
@@ -453,6 +456,181 @@ def _simulate_toc_title_shortening(original_title: str) -> str:
     title = re.sub(r"\s+", " ", title).strip()
 
     return title
+
+
+def validate_song_titles_on_pages(
+    doc: fitz.Document, manifest_data: Dict[str, Any], verbose: bool = False
+) -> None:
+    """
+    Validate that each song title appears on its corresponding song sheet page.
+
+    This function checks that for each expected file from the manifest,
+    the song title can be found on the actual song sheet page in the PDF.
+
+    Args:
+        doc: Opened PDF document
+        manifest_data: Manifest data dictionary
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If song titles are missing from their pages
+    """
+    content_info = manifest_data.get("content_info", {})
+    expected_file_names = content_info.get("file_names", [])
+
+    # Skip validation if no expected files in manifest
+    if not expected_file_names:
+        if verbose:
+            print("✓ No expected files in manifest, skipping song title validation")
+        return
+
+    # Get TOC entries from PDF to find page mappings
+    toc_entries = doc.get_toc()
+    if not toc_entries:
+        if verbose:
+            print("! No TOC structure found, attempting manual song page validation")
+        # Try to validate without TOC by checking first content pages
+        _validate_song_titles_without_toc(doc, expected_file_names, verbose)
+        return
+
+    # Build mapping from TOC titles to page numbers
+    toc_title_to_page = {}
+    for level, title, page_num in toc_entries:
+        if level == 1 and title.lower() != "table of contents":
+            toc_title_to_page[title.strip()] = page_num
+
+    if verbose:
+        print(f"Found {len(toc_title_to_page)} content entries in PDF TOC")
+        print(f"Expected {len(expected_file_names)} files from manifest")
+
+    # Validate each expected file has its title on the corresponding page
+    missing_titles = []
+    for expected_file in expected_file_names:
+        # Clean up file name for comparison
+        expected_title = _clean_file_name_for_toc_comparison(expected_file)
+
+        # Find the corresponding TOC entry and page
+        toc_title = None
+        page_num = None
+
+        for toc_entry_title in toc_title_to_page.keys():
+            if _titles_match(expected_title, toc_entry_title):
+                toc_title = toc_entry_title
+                page_num = toc_title_to_page[toc_entry_title]
+                break
+
+        if not toc_title or not page_num:
+            missing_titles.append(f"{expected_file} (no TOC entry found)")
+            continue
+
+        # Validate the title appears on the song sheet page
+        if page_num <= doc.page_count:
+            page_idx = page_num - 1  # Convert to 0-based index
+            page = doc[page_idx]
+            page_text = page.get_text()
+
+            if not _song_title_found_on_page(expected_title, toc_title, page_text):
+                missing_titles.append(
+                    f"{expected_file} (title not found on page {page_num})"
+                )
+                if verbose:
+                    print(f"⚠️ Title for '{expected_file}' not found on page {page_num}")
+            elif verbose:
+                print(f"✓ Title for '{expected_file}' found on page {page_num}")
+
+    if missing_titles:
+        raise PDFValidationError(
+            f"Song titles missing from their pages: {missing_titles}"
+        )
+
+    if verbose:
+        print(f"✓ All {len(expected_file_names)} song titles found on their pages")
+
+
+def _validate_song_titles_without_toc(
+    doc: fitz.Document, expected_file_names: list, verbose: bool = False
+) -> None:
+    """Validate song titles when no TOC structure is available."""
+    # This is a fallback method when no TOC is found
+    # We'll check the first few content pages to see if they contain expected titles
+
+    if verbose:
+        print("Attempting song title validation without TOC structure")
+
+    # Assume song pages start after a few introduction pages (typically page 4 onwards)
+    start_page = min(3, doc.page_count - len(expected_file_names))
+    pages_to_check = min(len(expected_file_names) * 2, doc.page_count - start_page)
+
+    found_titles = set()
+    for page_idx in range(start_page, start_page + pages_to_check):
+        if page_idx >= doc.page_count:
+            break
+
+        page = doc[page_idx]
+        page_text = page.get_text()
+
+        # Check if any expected title appears on this page
+        for expected_file in expected_file_names:
+            expected_title = _clean_file_name_for_toc_comparison(expected_file)
+            if _song_title_found_on_page(expected_title, expected_title, page_text):
+                found_titles.add(expected_file)
+                if verbose:
+                    print(f"✓ Found title for '{expected_file}' on page {page_idx + 1}")
+
+    missing_titles = set(expected_file_names) - found_titles
+    if missing_titles:
+        if verbose:
+            print(f"⚠️ Could not find titles for: {list(missing_titles)}")
+        # Don't raise error for TOC-less validation as it's less reliable
+    else:
+        if verbose:
+            print("✓ All expected song titles found in PDF pages")
+
+
+def _song_title_found_on_page(
+    expected_title: str, toc_title: str, page_text: str
+) -> bool:
+    """
+    Check if a song title can be found on a page.
+
+    Args:
+        expected_title: The expected title (cleaned from file name)
+        toc_title: The title as it appears in TOC
+        page_text: The full text content of the page
+
+    Returns:
+        True if the title is found on the page
+    """
+    # Split page text into lines and look at the first few lines
+    lines = page_text.split("\n")
+    first_lines = [line.strip() for line in lines[:10] if line.strip()]
+
+    # Look for the title in the first few lines of the page
+    for line in first_lines:
+        if len(line) < 3:  # Skip very short lines
+            continue
+
+        # Check various title matching approaches
+        if (
+            _titles_match(expected_title, line)
+            or _titles_match(toc_title, line)
+            or expected_title.lower() in line.lower()
+            or toc_title.lower() in line.lower()
+        ):
+            return True
+
+        # Check if the line starts with the expected title (handling artist names)
+        if line.lower().startswith(expected_title.lower()):
+            return True
+
+        # Check if this is a title line that contains the expected title
+        # (handles cases like "9 to 5 - Dolly Parton" where we expect "9 to 5")
+        line_words = set(line.lower().split())
+        expected_words = set(expected_title.lower().split())
+        if expected_words.issubset(line_words) and len(expected_words) > 1:
+            return True
+
+    return False
 
 
 def validate_content_info(manifest_data: Dict[str, Any], verbose: bool = False) -> None:

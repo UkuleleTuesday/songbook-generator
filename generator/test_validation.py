@@ -12,6 +12,7 @@ from .validation import (
     load_manifest,
     validate_pdf_against_manifest,
     validate_toc_entries_against_manifest,
+    validate_song_titles_on_pages,
     validate_content_info,
     PDFValidationError,
 )
@@ -607,3 +608,231 @@ def test_validate_toc_entries_against_manifest_success(tmp_path):
     # This should not raise an exception
     with fitz.open(pdf_path) as doc:
         validate_toc_entries_against_manifest(doc, manifest_data, verbose=True)
+
+
+def test_validate_song_titles_on_pages_success(tmp_path):
+    """Test successful song title validation on pages."""
+    # Create PDF with song titles on pages
+    pdf_path = tmp_path / "song_titles.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text((100, 150), "1. Wonderwall .............. 3", fontsize=12)
+    toc_page.insert_text((100, 170), "2. Hey Jude ................ 4", fontsize=12)
+
+    # Song pages with titles
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text((100, 100), "Wonderwall - Oasis", fontsize=16)
+    song_page_1.insert_text((100, 150), "Today is gonna be the day", fontsize=12)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text((100, 100), "Hey Jude - The Beatles", fontsize=16)
+    song_page_2.insert_text((100, 150), "Hey Jude, don't be afraid", fontsize=12)
+
+    # Set TOC structure
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "Wonderwall", 3],
+        [1, "Hey Jude", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create matching manifest
+    manifest_data = {
+        "job_id": "test-song-titles",
+        "pdf_info": {"page_count": 4},
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+        },
+    }
+
+    # This should not raise an exception
+    with fitz.open(pdf_path) as doc:
+        validate_song_titles_on_pages(doc, manifest_data, verbose=True)
+
+
+def test_validate_song_titles_on_pages_missing_title(tmp_path):
+    """Test song title validation with missing title on page."""
+    # Create PDF with missing title on one page
+    pdf_path = tmp_path / "missing_title.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text((100, 150), "1. Wonderwall .............. 3", fontsize=12)
+    toc_page.insert_text((100, 170), "2. Hey Jude ................ 4", fontsize=12)
+
+    # Song pages - first has title, second doesn't
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text((100, 100), "Wonderwall - Oasis", fontsize=16)
+    song_page_1.insert_text((100, 150), "Today is gonna be the day", fontsize=12)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text(
+        (100, 100), "Some Other Content", fontsize=16
+    )  # Wrong title!
+    song_page_2.insert_text((100, 150), "This is not the expected song", fontsize=12)
+
+    # Set TOC structure
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "Wonderwall", 3],
+        [1, "Hey Jude", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create manifest expecting both songs
+    manifest_data = {
+        "job_id": "test-missing-title",
+        "pdf_info": {"page_count": 4},
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+        },
+    }
+
+    # This should raise an exception for missing title
+    with pytest.raises(
+        PDFValidationError, match="Song titles missing from their pages"
+    ):
+        with fitz.open(pdf_path) as doc:
+            validate_song_titles_on_pages(doc, manifest_data, verbose=True)
+
+
+def test_validate_song_titles_on_pages_no_toc(tmp_path):
+    """Test song title validation without TOC structure."""
+    # Create PDF without TOC structure
+    pdf_path = tmp_path / "no_toc_titles.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # Introduction page
+    intro_page = doc.new_page()
+    intro_page.insert_text((100, 100), "About This Book", fontsize=16)
+
+    # Song pages with titles (starting at page 3)
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text((100, 100), "Wonderwall", fontsize=16)
+    song_page_1.insert_text((100, 150), "Today is gonna be the day", fontsize=12)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text((100, 100), "Hey Jude", fontsize=16)
+    song_page_2.insert_text((100, 150), "Hey Jude, don't be afraid", fontsize=12)
+
+    # No TOC structure set
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create manifest
+    manifest_data = {
+        "job_id": "test-no-toc-titles",
+        "pdf_info": {"page_count": 4},
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+        },
+    }
+
+    # This should not raise an exception (fallback validation)
+    with fitz.open(pdf_path) as doc:
+        validate_song_titles_on_pages(doc, manifest_data, verbose=True)
+
+
+def test_validate_song_titles_on_pages_title_variations(tmp_path):
+    """Test song title validation with various title formats."""
+    # Create PDF with different title formats
+    pdf_path = tmp_path / "title_variations.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page with shortened titles
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text(
+        (100, 150), "1. Wonderwall* ............. 3", fontsize=12
+    )  # WIP marker
+    toc_page.insert_text((100, 170), "2. Hey Jude ................ 4", fontsize=12)
+
+    # Song pages with full titles including artists
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text(
+        (100, 100), "Wonderwall - Oasis", fontsize=16
+    )  # Full title with artist
+    song_page_1.insert_text((100, 150), "Today is gonna be the day", fontsize=12)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text(
+        (100, 100), "Hey Jude - The Beatles", fontsize=16
+    )  # Full title with artist
+    song_page_2.insert_text((100, 150), "Hey Jude, don't be afraid", fontsize=12)
+
+    # Set TOC structure
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "Wonderwall*", 3],  # WIP marker in TOC
+        [1, "Hey Jude", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create manifest with original file names
+    manifest_data = {
+        "job_id": "test-title-variations",
+        "pdf_info": {"page_count": 4},
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Wonderwall - Oasis.pdf", "Hey Jude - The Beatles.pdf"],
+        },
+    }
+
+    # This should not raise an exception despite title format differences
+    with fitz.open(pdf_path) as doc:
+        validate_song_titles_on_pages(doc, manifest_data, verbose=True)
+
+
+def test_validate_song_titles_on_pages_no_expected_files(tmp_path):
+    """Test song title validation with no expected files."""
+    # Create simple PDF
+    pdf_path = tmp_path / "no_files.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((100, 100), "Empty songbook", fontsize=16)
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create manifest with no expected files
+    manifest_data = {
+        "job_id": "test-no-files",
+        "pdf_info": {"page_count": 1},
+        "content_info": {
+            "total_files": 0,
+            "file_names": [],
+        },
+    }
+
+    # This should not raise an exception
+    with fitz.open(pdf_path) as doc:
+        validate_song_titles_on_pages(doc, manifest_data, verbose=True)
