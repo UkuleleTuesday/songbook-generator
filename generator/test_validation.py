@@ -938,6 +938,108 @@ def test_validate_preface_section_valid_after_cover(tmp_path):
         validate_preface_section(doc, page_indices, verbose=True)
 
 
+def test_validate_toc_section_with_artist_names(tmp_path):
+    """Test TOC validation with song titles that include artist names - reproduces issue #199."""
+    from generator.validation import validate_toc_section
+
+    # Create test PDF that reproduces the issue from #199
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page - this simulates how the TOC actually appears in generated PDFs
+    # The TOC entries are often shortened to just the main title without artist names
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    # This is the key issue: TOC shows shortened titles, but validation expects full titles
+    toc_page.insert_text(
+        (100, 150),
+        "You're The One That I Want ......................... 3",
+        fontsize=12,
+    )
+    toc_page.insert_text(
+        (100, 170),
+        "Another Song ........................................ 4",
+        fontsize=12,
+    )
+
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        # This is the problematic case from the issue
+        manifest_data = {
+            "content_info": {
+                "file_names": [
+                    "You're The One That I Want - John Travolta, Olivia Newton-John.pdf",
+                    "Another Song - Some Artist.pdf",
+                ]
+            }
+        }
+        page_indices = {"table_of_contents": {"first_page": 2, "last_page": 2}}
+
+        # This SHOULD NOT raise an error because the validation should be smart enough
+        # to match the shortened TOC entry "You're The One That I Want" with the
+        # full filename "You're The One That I Want - John Travolta, Olivia Newton-John.pdf"
+        validate_toc_section(doc, manifest_data, page_indices, verbose=True)
+
+
+def test_validate_toc_section_with_structured_toc(tmp_path):
+    """Test TOC validation with actual TOC structure (not just text)."""
+    from generator.validation import validate_toc_section
+
+    pdf_path = tmp_path / "test_structured.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # TOC page
+    toc_page = doc.new_page()
+    toc_page.insert_text((100, 100), "Table of Contents", fontsize=16)
+    toc_page.insert_text(
+        (100, 150), "You're The One That I Want ......... 3", fontsize=12
+    )
+    toc_page.insert_text(
+        (100, 170), "Another Song ........................ 4", fontsize=12
+    )
+
+    # Song pages
+    song_page_1 = doc.new_page()
+    song_page_1.insert_text((100, 100), "You're The One That I Want", fontsize=16)
+
+    song_page_2 = doc.new_page()
+    song_page_2.insert_text((100, 100), "Another Song", fontsize=16)
+
+    # Set TOC structure - this is key for testing the structured path
+    toc = [
+        [1, "Table of Contents", 2],
+        [1, "You're The One That I Want", 3],
+        [1, "Another Song", 4],
+    ]
+    doc.set_toc(toc)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        manifest_data = {
+            "content_info": {
+                "file_names": [
+                    "You're The One That I Want - John Travolta, Olivia Newton-John.pdf",
+                    "Another Song - Some Artist.pdf",
+                ]
+            }
+        }
+        page_indices = {"table_of_contents": {"first_page": 2, "last_page": 2}}
+
+        # This should pass using the structured TOC approach
+        validate_toc_section(doc, manifest_data, page_indices, verbose=True)
+
+
 def test_validate_pdf_sections_complete(tmp_path):
     """Test complete PDF sections validation with all sections."""
     from generator.validation import validate_pdf_sections
