@@ -26,7 +26,7 @@ from google.cloud import storage
 )
 @click.option(
     "--editions-order",
-    envvar="EDITIONS",
+    envvar="SONGBOOK_EDITIONS",
     help="Space-separated string of editions in the desired order.",
     default="",
 )
