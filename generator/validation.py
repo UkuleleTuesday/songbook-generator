@@ -1,17 +1,8 @@
-#!/usr/bin/env -S uv run --script
-#
-# /// script
-# requires-python = ">=3.11"
-# dependencies = [
-#   "click",
-#   "pymupdf>=1.26.1",
-# ]
-# ///
+"""PDF validation utilities for songbook generation."""
 
-import sys
 from pathlib import Path
+from typing import Optional
 
-import click
 import fitz
 
 
@@ -44,7 +35,9 @@ def validate_pdf_structure(pdf_path: Path) -> None:
         raise PDFValidationError(f"Failed to read PDF: {e}")
 
 
-def validate_pdf_metadata(pdf_path: Path, expected_metadata: dict = None) -> None:
+def validate_pdf_metadata(
+    pdf_path: Path, expected_metadata: Optional[dict] = None
+) -> None:
     """Validate PDF metadata is properly set."""
     try:
         with fitz.open(pdf_path) as doc:
@@ -72,7 +65,7 @@ def validate_pdf_metadata(pdf_path: Path, expected_metadata: dict = None) -> Non
 
 
 def validate_pdf_content(
-    pdf_path: Path, min_pages: int = 1, max_size_mb: int = 500
+    pdf_path: Path, min_pages: int = 1, max_size_mb: int = 25
 ) -> None:
     """Validate PDF content and size constraints."""
     # Check file size
@@ -138,55 +131,33 @@ def validate_songbook_structure(pdf_path: Path) -> None:
         raise PDFValidationError(f"PDF file is corrupted: {e}")
 
 
-@click.command()
-@click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--check-structure",
-    is_flag=True,
-    default=True,
-    help="Validate songbook-specific structure",
-)
-@click.option(
-    "--min-pages", type=int, default=3, help="Minimum number of pages expected"
-)
-@click.option("--max-size-mb", type=int, default=500, help="Maximum file size in MB")
-@click.option("--expected-title", type=str, help="Expected PDF title in metadata")
-@click.option(
-    "--expected-author",
-    type=str,
-    default="Ukulele Tuesday",
-    help="Expected PDF author in metadata",
-)
-@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def validate_pdf(
+def validate_pdf_file(
     pdf_path: Path,
-    check_structure: bool,
-    min_pages: int,
-    max_size_mb: int,
-    expected_title: str,
-    expected_author: str,
-    verbose: bool,
-):
+    check_structure: bool = True,
+    min_pages: int = 3,
+    max_size_mb: int = 25,
+    expected_title: Optional[str] = None,
+    expected_author: str = "Ukulele Tuesday",
+    verbose: bool = False,
+) -> dict:
     """
-    Validate a PDF file for basic sanity checks.
+    Comprehensive PDF validation function.
 
-    This script performs comprehensive validation of a PDF file to ensure
-    it's not corrupted and meets basic quality standards for a songbook.
+    Returns a dictionary with validation results and file information.
+    Raises PDFValidationError if validation fails.
     """
     if verbose:
-        click.echo(f"Validating PDF: {pdf_path}")
+        print(f"Validating PDF: {pdf_path}")
 
     try:
         # Basic structure validation
         if verbose:
-            click.echo("Checking PDF structure and integrity...")
+            print("Checking PDF structure and integrity...")
         validate_pdf_structure(pdf_path)
 
         # Content validation
         if verbose:
-            click.echo(
-                f"Checking content (min {min_pages} pages, max {max_size_mb}MB)..."
-            )
+            print(f"Checking content (min {min_pages} pages, max {max_size_mb}MB)...")
         validate_pdf_content(pdf_path, min_pages=min_pages, max_size_mb=max_size_mb)
 
         # Metadata validation
@@ -197,34 +168,36 @@ def validate_pdf(
             expected_metadata["author"] = expected_author
 
         if verbose:
-            click.echo("Checking PDF metadata...")
+            print("Checking PDF metadata...")
         validate_pdf_metadata(pdf_path, expected_metadata)
 
         # Songbook structure validation
         if check_structure:
             if verbose:
-                click.echo("Checking songbook structure...")
+                print("Checking songbook structure...")
             validate_songbook_structure(pdf_path)
 
-        # Print summary info if verbose
+        # Collect summary info
+        with fitz.open(pdf_path) as doc:
+            file_size_mb = pdf_path.stat().st_size / (1024 * 1024)
+            summary = {
+                "pages": doc.page_count,
+                "size_mb": round(file_size_mb, 1),
+                "title": doc.metadata.get("title", "Not set"),
+                "author": doc.metadata.get("author", "Not set"),
+                "valid": True,
+            }
+
         if verbose:
-            with fitz.open(pdf_path) as doc:
-                file_size_mb = pdf_path.stat().st_size / (1024 * 1024)
-                click.echo("✅ PDF validation passed:")
-                click.echo(f"   Pages: {doc.page_count}")
-                click.echo(f"   Size: {file_size_mb:.1f}MB")
-                click.echo(f"   Title: {doc.metadata.get('title', 'Not set')}")
-                click.echo(f"   Author: {doc.metadata.get('author', 'Not set')}")
-        else:
-            click.echo("✅ PDF validation passed")
+            print("✅ PDF validation passed:")
+            print(f"   Pages: {summary['pages']}")
+            print(f"   Size: {summary['size_mb']}MB")
+            print(f"   Title: {summary['title']}")
+            print(f"   Author: {summary['author']}")
 
-    except PDFValidationError as e:
-        click.echo(f"❌ PDF validation failed: {e}", err=True)
-        sys.exit(1)
+        return summary
+
+    except PDFValidationError:
+        raise
     except (OSError, IOError, fitz.FileDataError) as e:
-        click.echo(f"❌ Error accessing PDF file: {e}", err=True)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    validate_pdf()
+        raise PDFValidationError(f"Error accessing PDF file: {e}")

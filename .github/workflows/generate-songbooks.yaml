@@ -148,6 +148,9 @@ jobs:
       id: setup-sdk
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
     - name: Trigger and poll for completion
       id: trigger-and-poll
       run: |
@@ -241,17 +244,17 @@ jobs:
         esac
 
         if [[ -n "${EXPECTED_TITLE}" ]]; then
-          ./scripts/validate_pdf.py "${OUTPUT_PDF}" \
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
             --expected-title "${EXPECTED_TITLE}" \
             --expected-author "Ukulele Tuesday" \
             --min-pages 3 \
-            --max-size-mb 500 \
+            --max-size-mb 25 \
             --verbose
         else
-          ./scripts/validate_pdf.py "${OUTPUT_PDF}" \
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
             --expected-author "Ukulele Tuesday" \
             --min-pages 3 \
-            --max-size-mb 500 \
+            --max-size-mb 25 \
             --verbose
         fi
 
@@ -306,17 +309,17 @@ jobs:
         esac
 
         if [[ -n "${EXPECTED_TITLE}" ]]; then
-          ./scripts/validate_pdf.py "${OUTPUT_PDF}" \
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
             --expected-title "${EXPECTED_TITLE}" \
             --expected-author "Ukulele Tuesday" \
             --min-pages 3 \
-            --max-size-mb 500 \
+            --max-size-mb 25 \
             --verbose
         else
-          ./scripts/validate_pdf.py "${OUTPUT_PDF}" \
+          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
             --expected-author "Ukulele Tuesday" \
             --min-pages 3 \
-            --max-size-mb 500 \
+            --max-size-mb 25 \
             --verbose
         fi
 

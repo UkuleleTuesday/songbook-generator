@@ -1,20 +1,15 @@
 import pytest
 import fitz
-from pathlib import Path
 from click.testing import CliRunner
-import sys
 
-# Add the scripts directory to the path to import the validation script
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-
-from validate_pdf import (
+from .validation import (
     validate_pdf_structure,
     validate_pdf_metadata,
     validate_pdf_content,
     validate_songbook_structure,
-    validate_pdf,
     PDFValidationError,
 )
+from .cli import validate_pdf_cli
 
 
 @pytest.fixture
@@ -170,7 +165,7 @@ def test_validate_pdf_metadata_wrong_expected_value(valid_songbook_pdf):
 def test_validate_pdf_content_valid_content(valid_songbook_pdf):
     """Test that valid content passes validation."""
     # Should not raise any exception
-    validate_pdf_content(valid_songbook_pdf, min_pages=3, max_size_mb=500)
+    validate_pdf_content(valid_songbook_pdf, min_pages=3, max_size_mb=25)
 
 
 def test_validate_pdf_content_too_few_pages(pdf_too_few_pages):
@@ -221,7 +216,7 @@ def test_validate_songbook_structure_no_toc(tmp_path):
 def test_cli_valid_pdf(valid_songbook_pdf):
     """Test CLI with valid PDF."""
     runner = CliRunner()
-    result = runner.invoke(validate_pdf, [str(valid_songbook_pdf), "--verbose"])
+    result = runner.invoke(validate_pdf_cli, [str(valid_songbook_pdf), "--verbose"])
 
     assert result.exit_code == 0
     assert "✅ PDF validation passed" in result.output
@@ -231,7 +226,7 @@ def test_cli_valid_pdf(valid_songbook_pdf):
 def test_cli_invalid_pdf(invalid_pdf):
     """Test CLI with invalid PDF."""
     runner = CliRunner()
-    result = runner.invoke(validate_pdf, [str(invalid_pdf)])
+    result = runner.invoke(validate_pdf_cli, [str(invalid_pdf)])
 
     assert result.exit_code == 1
     assert "❌ PDF validation failed" in result.output
@@ -241,7 +236,7 @@ def test_cli_with_expected_metadata(valid_songbook_pdf):
     """Test CLI with expected metadata parameters."""
     runner = CliRunner()
     result = runner.invoke(
-        validate_pdf,
+        validate_pdf_cli,
         [
             str(valid_songbook_pdf),
             "--expected-title",
@@ -260,7 +255,7 @@ def test_cli_with_wrong_expected_metadata(valid_songbook_pdf):
     """Test CLI with wrong expected metadata."""
     runner = CliRunner()
     result = runner.invoke(
-        validate_pdf, [str(valid_songbook_pdf), "--expected-title", "Wrong Title"]
+        validate_pdf_cli, [str(valid_songbook_pdf), "--expected-title", "Wrong Title"]
     )
 
     assert result.exit_code == 1
