@@ -610,6 +610,45 @@ def test_validate_toc_entries_against_manifest_success(tmp_path):
         validate_toc_entries_against_manifest(doc, manifest_data, verbose=True)
 
 
+def test_validate_toc_entries_with_no_toc_expected(tmp_path):
+    """Test TOC validation when manifest indicates no TOC should exist."""
+    # Create PDF with no TOC structure
+    pdf_path = tmp_path / "no_toc.pdf"
+    doc = fitz.open()
+
+    # Cover page
+    cover_page = doc.new_page()
+    cover_page.insert_text((100, 100), "Test Songbook", fontsize=20)
+
+    # Content pages (no TOC structure)
+    content_page_1 = doc.new_page()
+    content_page_1.insert_text((100, 100), "Amazing Grace", fontsize=16)
+
+    content_page_2 = doc.new_page()
+    content_page_2.insert_text((100, 100), "Hotel California", fontsize=16)
+
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create manifest indicating no TOC expected but with content files
+    manifest_data = {
+        "job_id": "test-no-toc-validation",
+        "pdf_info": {
+            "page_count": 3,
+            "has_toc": False,  # Explicitly indicates no TOC expected
+            "toc_entries": 0,
+        },
+        "content_info": {
+            "total_files": 2,
+            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+        },
+    }
+
+    # This should not raise an exception since manifest says no TOC expected
+    with fitz.open(pdf_path) as doc:
+        validate_toc_entries_against_manifest(doc, manifest_data, verbose=True)
+
+
 def test_validate_song_titles_on_pages_success(tmp_path):
     """Test successful song title validation on pages."""
     # Create PDF with song titles on pages

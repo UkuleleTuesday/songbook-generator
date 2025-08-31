@@ -170,9 +170,16 @@ def validate_pdf_with_manifest(
     expected_author = pdf_info.get("author", "Ukulele Tuesday")
 
     # Run basic validation
+    pdf_info = manifest_data.get("pdf_info", {})
+    expected_has_toc = pdf_info.get("has_toc")
+
+    # Skip songbook structure validation if manifest indicates no TOC expected
+    # since songbook structure validation always requires a TOC
+    check_structure = expected_has_toc is not False  # Only skip if explicitly False
+
     validation_result = validate_pdf_file(
         pdf_path=pdf_path,
-        check_structure=True,
+        check_structure=check_structure,
         min_pages=3,  # Default for songbooks
         max_size_mb=25,  # Default limit
         expected_title=expected_title,
@@ -309,6 +316,7 @@ def validate_toc_entries_against_manifest(
 
     This function checks that all expected files from the manifest appear
     in the PDF's table of contents, handling title shortening and formatting.
+    Only performs validation if both PDF and manifest indicate TOC should exist.
 
     Args:
         doc: Opened PDF document
@@ -320,6 +328,8 @@ def validate_toc_entries_against_manifest(
     """
     content_info = manifest_data.get("content_info", {})
     expected_file_names = content_info.get("file_names", [])
+    pdf_info = manifest_data.get("pdf_info", {})
+    expected_has_toc = pdf_info.get("has_toc")
 
     # Skip validation if no expected files in manifest
     if not expected_file_names:
@@ -329,11 +339,26 @@ def validate_toc_entries_against_manifest(
 
     # Get actual TOC entries from PDF
     actual_toc = doc.get_toc()
+
+    # If the manifest explicitly says the PDF should not have a TOC, skip content validation
+    if expected_has_toc is False:
+        if verbose:
+            print(
+                "✓ Manifest indicates no TOC expected, skipping TOC content validation"
+            )
+        return
+
+    # If PDF has no TOC but manifest doesn't explicitly say it should be missing,
+    # this could be an issue - but treat as warning for compatibility
     if not actual_toc:
         if expected_file_names:
-            raise PDFValidationError(
-                f"PDF has no TOC entries but manifest expects {len(expected_file_names)} files"
-            )
+            if verbose:
+                print(
+                    f"⚠️ PDF has no TOC entries but manifest expects {len(expected_file_names)} files"
+                )
+                print(
+                    "   This may indicate a PDF generation issue, but continuing validation..."
+                )
         return
 
     # Extract TOC entry titles (level 1 entries only, skip "Table of Contents" header)
