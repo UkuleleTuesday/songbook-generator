@@ -324,13 +324,15 @@ def matching_pdf_and_manifest(tmp_path, sample_manifest_data):
 
     # Set metadata to match manifest
     pdf_info = sample_manifest_data["pdf_info"]
-    doc.set_metadata({
-        "title": pdf_info["title"],
-        "subject": pdf_info["subject"],
-        "author": pdf_info["author"],
-        "creator": pdf_info["creator"],
-        "producer": pdf_info["producer"],
-    })
+    doc.set_metadata(
+        {
+            "title": pdf_info["title"],
+            "subject": pdf_info["subject"],
+            "author": pdf_info["author"],
+            "creator": pdf_info["creator"],
+            "producer": pdf_info["producer"],
+        }
+    )
 
     # Add TOC to match manifest
     toc = [
@@ -348,7 +350,7 @@ def matching_pdf_and_manifest(tmp_path, sample_manifest_data):
 
     # Create manifest file
     manifest_path = tmp_path / "manifest.json"
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump(sample_manifest_data, f, indent=2)
 
     return pdf_path, manifest_path
@@ -362,7 +364,7 @@ def manifest_file(tmp_path, sample_manifest_data):
     manifest_data = sample_manifest_data.copy()
     manifest_data["pdf_info"] = manifest_data["pdf_info"].copy()
     manifest_data["pdf_info"]["file_size_bytes"] = None
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump(manifest_data, f, indent=2)
     return manifest_path
 
@@ -379,6 +381,7 @@ def test_load_manifest_valid(manifest_file):
 def test_load_manifest_nonexistent():
     """Test loading a nonexistent manifest file."""
     from pathlib import Path
+
     nonexistent = Path("/nonexistent/manifest.json")
 
     with pytest.raises(PDFValidationError, match="Manifest file does not exist"):
@@ -397,10 +400,12 @@ def test_load_manifest_invalid_json(tmp_path):
 def test_load_manifest_missing_required_section(tmp_path):
     """Test loading a manifest missing required sections."""
     manifest_path = tmp_path / "incomplete.json"
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump({"job_id": "test"}, f)  # Missing pdf_info
 
-    with pytest.raises(PDFValidationError, match="Missing required section in manifest: pdf_info"):
+    with pytest.raises(
+        PDFValidationError, match="Missing required section in manifest: pdf_info"
+    ):
         load_manifest(manifest_path)
 
 
@@ -409,9 +414,7 @@ def test_validate_pdf_with_manifest_success(matching_pdf_and_manifest):
     pdf_path, manifest_path = matching_pdf_and_manifest
 
     result = validate_pdf_with_manifest(
-        pdf_path=pdf_path,
-        manifest_path=manifest_path,
-        verbose=False
+        pdf_path=pdf_path, manifest_path=manifest_path, verbose=False
     )
 
     assert result["valid"] is True
@@ -419,7 +422,9 @@ def test_validate_pdf_with_manifest_success(matching_pdf_and_manifest):
     assert "manifest_path" in result
 
 
-def test_validate_pdf_against_manifest_page_count_mismatch(sample_manifest_data, valid_songbook_pdf):
+def test_validate_pdf_against_manifest_page_count_mismatch(
+    sample_manifest_data, valid_songbook_pdf
+):
     """Test page count mismatch between PDF and manifest."""
     # Modify manifest to expect different page count
     sample_manifest_data["pdf_info"]["page_count"] = 5
@@ -429,27 +434,39 @@ def test_validate_pdf_against_manifest_page_count_mismatch(sample_manifest_data,
         validate_pdf_against_manifest(valid_songbook_pdf, sample_manifest_data)
 
 
-def test_validate_pdf_against_manifest_file_size_mismatch(sample_manifest_data, valid_songbook_pdf):
+def test_validate_pdf_against_manifest_file_size_mismatch(
+    sample_manifest_data, valid_songbook_pdf
+):
     """Test file size mismatch between PDF and manifest."""
     # Set unrealistic file size in manifest
-    sample_manifest_data["pdf_info"]["file_size_bytes"] = 1000000  # 1MB, but PDF is much smaller
+    sample_manifest_data["pdf_info"]["file_size_bytes"] = (
+        1000000  # 1MB, but PDF is much smaller
+    )
     sample_manifest_data["pdf_info"]["page_count"] = None  # Don't check page count
 
     with pytest.raises(PDFValidationError, match="File size mismatch"):
         validate_pdf_against_manifest(valid_songbook_pdf, sample_manifest_data)
 
 
-def test_validate_pdf_against_manifest_toc_presence_mismatch(sample_manifest_data, pdf_too_few_pages):
+def test_validate_pdf_against_manifest_toc_presence_mismatch(
+    sample_manifest_data, pdf_too_few_pages
+):
     """Test TOC presence mismatch between PDF and manifest."""
-    sample_manifest_data["pdf_info"]["has_toc"] = True  # Expect TOC but pdf_too_few_pages has none
-    sample_manifest_data["pdf_info"]["page_count"] = None  # Don't check page count (will fail first)
+    sample_manifest_data["pdf_info"]["has_toc"] = (
+        True  # Expect TOC but pdf_too_few_pages has none
+    )
+    sample_manifest_data["pdf_info"]["page_count"] = (
+        None  # Don't check page count (will fail first)
+    )
     sample_manifest_data["pdf_info"]["file_size_bytes"] = None  # Don't check file size
 
     with pytest.raises(PDFValidationError, match="TOC presence mismatch"):
         validate_pdf_against_manifest(pdf_too_few_pages, sample_manifest_data)
 
 
-def test_validate_pdf_against_manifest_metadata_mismatch(sample_manifest_data, valid_songbook_pdf):
+def test_validate_pdf_against_manifest_metadata_mismatch(
+    sample_manifest_data, valid_songbook_pdf
+):
     """Test metadata mismatch between PDF and manifest."""
     sample_manifest_data["pdf_info"]["title"] = "Wrong Title"
     sample_manifest_data["pdf_info"]["page_count"] = None  # Don't check page count
@@ -466,7 +483,10 @@ def test_validate_content_info_file_count_mismatch():
     manifest_data = {
         "content_info": {
             "total_files": 3,
-            "file_names": ["file1.pdf", "file2.pdf"],  # Only 2 files but total_files says 3
+            "file_names": [
+                "file1.pdf",
+                "file2.pdf",
+            ],  # Only 2 files but total_files says 3
         }
     }
 
@@ -505,8 +525,7 @@ def test_cli_with_manifest_success(matching_pdf_and_manifest):
 
     runner = CliRunner()
     result = runner.invoke(
-        validate_pdf_cli,
-        [str(pdf_path), "--manifest", str(manifest_path), "--verbose"]
+        validate_pdf_cli, [str(pdf_path), "--manifest", str(manifest_path), "--verbose"]
     )
 
     assert result.exit_code == 0
@@ -522,13 +541,12 @@ def test_cli_with_manifest_failure(valid_songbook_pdf, tmp_path, sample_manifest
     sample_manifest_data["pdf_info"]["file_size_bytes"] = None  # Don't check file size
 
     manifest_path = tmp_path / "bad_manifest.json"
-    with open(manifest_path, 'w') as f:
+    with open(manifest_path, "w") as f:
         json.dump(sample_manifest_data, f)
 
     runner = CliRunner()
     result = runner.invoke(
-        validate_pdf_cli,
-        [str(valid_songbook_pdf), "--manifest", str(manifest_path)]
+        validate_pdf_cli, [str(valid_songbook_pdf), "--manifest", str(manifest_path)]
     )
 
     assert result.exit_code == 1

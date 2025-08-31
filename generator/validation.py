@@ -193,7 +193,7 @@ def load_manifest(manifest_path: Path) -> Dict[str, Any]:
         raise PDFValidationError(f"Manifest file does not exist: {manifest_path}")
 
     try:
-        with open(manifest_path, 'r') as f:
+        with open(manifest_path, "r") as f:
             manifest_data = json.load(f)
     except json.JSONDecodeError as e:
         raise PDFValidationError(f"Invalid JSON in manifest file: {e}")
@@ -210,9 +210,7 @@ def load_manifest(manifest_path: Path) -> Dict[str, Any]:
 
 
 def validate_pdf_against_manifest(
-    pdf_path: Path,
-    manifest_data: Dict[str, Any],
-    verbose: bool = False
+    pdf_path: Path, manifest_data: Dict[str, Any], verbose: bool = False
 ) -> None:
     """Validate PDF properties against manifest expectations."""
     if verbose:
@@ -258,7 +256,9 @@ def validate_pdf_against_manifest(
                         f"manifest expects {'TOC' if expected_has_toc else 'no TOC'}"
                     )
                 if verbose:
-                    print(f"✓ TOC presence matches: {'yes' if actual_has_toc else 'no'}")
+                    print(
+                        f"✓ TOC presence matches: {'yes' if actual_has_toc else 'no'}"
+                    )
 
             # Validate TOC entry count
             expected_toc_entries = pdf_info.get("toc_entries")
