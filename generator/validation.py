@@ -918,17 +918,14 @@ def _validate_toc_titles_in_text(
     # Check for presence of titles using flexible matching
     missing_titles = []
     for file_name in expected_file_names:
-        # Try various approaches to find the title
+        # Use the canonical title shortening function
         base_name = file_name.replace(".pdf", "").strip()
         short_title = generate_short_title(base_name)
 
-        # Try different title variations
+        # Try only the base name and the properly generated short title
         title_variations = [
             base_name,
             short_title,
-            base_name.split(" - ")[0].strip()
-            if " - " in base_name
-            else base_name,  # Title before artist
         ]
 
         found_match = False
@@ -998,14 +995,12 @@ def validate_body_section(
 
         missing_titles = []
         for file_name in expected_file_names:
-            # Clean up file name to get expected title variations
+            # Use the canonical title shortening function for consistent matching
             base_name = file_name.replace(".pdf", "").strip()
+            short_title = generate_short_title(base_name)
             title_variations = [
                 base_name,
-                base_name.replace("_", " "),
-                base_name.replace("-", " "),
-                base_name.replace("feat.", "featuring"),
-                base_name.replace("Feat.", "Featuring"),
+                short_title,
             ]
 
             # Find the page for this song within body section
