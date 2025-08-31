@@ -611,3 +611,83 @@ def test_generate_manifest_without_edition(tmp_path):
 
     # Edition should not be present in legacy mode
     assert "edition" not in manifest
+
+
+def test_generate_manifest_with_page_indices(tmp_path):
+    """Test that generate_manifest includes page indices when provided."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.new_page()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data with page indices
+    job_id = "test-job-789"
+    params = {"edition": "complete"}
+    files = [File(name="Song.pdf", id="file1")]
+    page_indices = {
+        "cover": {"first_page": 1, "last_page": 1},
+        "preface": None,
+        "table_of_contents": {"first_page": 2, "last_page": 2},
+        "body": {"first_page": 3, "last_page": 3},
+        "postface": None,
+    }
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        page_indices=page_indices,
+    )
+
+    # Verify basic structure
+    assert manifest["job_id"] == job_id
+    assert manifest["content_info"]["total_files"] == 1
+    assert manifest["pdf_info"]["page_count"] == 3
+
+    # Verify page indices are included correctly
+    assert "page_indices" in manifest
+    assert manifest["page_indices"] == page_indices
+    assert manifest["page_indices"]["cover"]["first_page"] == 1
+    assert manifest["page_indices"]["cover"]["last_page"] == 1
+    assert manifest["page_indices"]["preface"] is None
+    assert manifest["page_indices"]["table_of_contents"]["first_page"] == 2
+    assert manifest["page_indices"]["table_of_contents"]["last_page"] == 2
+    assert manifest["page_indices"]["body"]["first_page"] == 3
+    assert manifest["page_indices"]["body"]["last_page"] == 3
+    assert manifest["page_indices"]["postface"] is None
+
+
+def test_generate_manifest_without_page_indices(tmp_path):
+    """Test that generate_manifest works without page indices."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data without page indices
+    job_id = "test-job-000"
+    params = {"edition": "minimal"}
+    files = [File(name="Song.pdf", id="file1")]
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        page_indices=None,
+    )
+
+    # Verify basic structure
+    assert manifest["job_id"] == job_id
+    assert manifest["content_info"]["total_files"] == 1
+    assert manifest["pdf_info"]["page_count"] == 1
+
+    # Verify page indices are not included when not provided
+    assert "page_indices" not in manifest
