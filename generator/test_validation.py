@@ -295,7 +295,7 @@ def sample_manifest_data():
         },
         "content_info": {
             "total_files": 2,
-            "file_names": ["Song 1.pdf", "Song 2.pdf"],
+            "file_names": ["Song 1", "Song 2"],
             "source_folders": ["folder1", "folder2"],
         },
         "edition": {
@@ -493,8 +493,8 @@ def test_validate_content_info_file_count_mismatch():
         "content_info": {
             "total_files": 3,
             "file_names": [
-                "file1.pdf",
-                "file2.pdf",
+                "file1",
+                "file2",
             ],  # Only 2 files but total_files says 3
         }
     }
@@ -506,7 +506,7 @@ def test_validate_content_info_file_count_mismatch():
 def test_validate_content_info_suspicious_duration():
     """Test content info validation with suspicious generation duration."""
     manifest_data = {
-        "content_info": {"total_files": 1, "file_names": ["test.pdf"]},
+        "content_info": {"total_files": 1, "file_names": ["test"]},
         "generation_info": {"duration_seconds": 7200},  # 2 hours - too long
     }
 
@@ -519,7 +519,7 @@ def test_validate_content_info_success():
     manifest_data = {
         "content_info": {
             "total_files": 2,
-            "file_names": ["file1.pdf", "file2.pdf"],
+            "file_names": ["file1", "file2"],
         },
         "generation_info": {"duration_seconds": 300.0},
     }
@@ -601,7 +601,7 @@ def test_validate_toc_entries_against_manifest_success(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+            "file_names": ["Amazing Grace", "Hotel California"],
         },
     }
 
@@ -640,7 +640,7 @@ def test_validate_toc_entries_with_no_toc_expected(tmp_path):
         },
         "content_info": {
             "total_files": 2,
-            "file_names": ["Amazing Grace.pdf", "Hotel California.pdf"],
+            "file_names": ["Amazing Grace", "Hotel California"],
         },
     }
 
@@ -690,7 +690,7 @@ def test_validate_song_titles_on_pages_success(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -742,7 +742,7 @@ def test_validate_song_titles_on_pages_missing_title(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -787,7 +787,7 @@ def test_validate_song_titles_on_pages_no_toc(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall.pdf", "Hey Jude.pdf"],
+            "file_names": ["Wonderwall", "Hey Jude"],
         },
     }
 
@@ -843,7 +843,7 @@ def test_validate_song_titles_on_pages_title_variations(tmp_path):
         "pdf_info": {"page_count": 4},
         "content_info": {
             "total_files": 2,
-            "file_names": ["Wonderwall - Oasis.pdf", "Hey Jude - The Beatles.pdf"],
+            "file_names": ["Wonderwall - Oasis", "Hey Jude - The Beatles"],
         },
     }
 
@@ -974,8 +974,8 @@ def test_validate_toc_section_with_artist_names(tmp_path):
         manifest_data = {
             "content_info": {
                 "file_names": [
-                    "You're The One That I Want - John Travolta, Olivia Newton-John.pdf",
-                    "Another Song - Some Artist.pdf",
+                    "You're The One That I Want - John Travolta, Olivia Newton-John",
+                    "Another Song - Some Artist",
                 ]
             }
         }
@@ -983,7 +983,7 @@ def test_validate_toc_section_with_artist_names(tmp_path):
 
         # This SHOULD NOT raise an error because the validation should be smart enough
         # to match the shortened TOC entry "You're The One That I Want" with the
-        # full filename "You're The One That I Want - John Travolta, Olivia Newton-John.pdf"
+        # full filename "You're The One That I Want - John Travolta, Olivia Newton-John"
         validate_toc_section(doc, manifest_data, page_indices, verbose=True)
 
 
@@ -1029,8 +1029,8 @@ def test_validate_toc_section_with_structured_toc(tmp_path):
         manifest_data = {
             "content_info": {
                 "file_names": [
-                    "You're The One That I Want - John Travolta, Olivia Newton-John.pdf",
-                    "Another Song - Some Artist.pdf",
+                    "You're The One That I Want - John Travolta, Olivia Newton-John",
+                    "Another Song - Some Artist",
                 ]
             }
         }
@@ -1070,7 +1070,7 @@ def test_validate_pdf_sections_complete(tmp_path):
                 "body": {"first_page": 6, "last_page": 10},
                 "postface": None,
             },
-            "content_info": {"file_names": ["Song 1.pdf", "Song 2.pdf"]},
+            "content_info": {"file_names": ["Song 1", "Song 2"]},
         }
         # Should not raise exception
         validate_pdf_sections(doc, manifest_data, verbose=True)
