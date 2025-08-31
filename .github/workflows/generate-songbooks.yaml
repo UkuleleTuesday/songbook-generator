@@ -188,7 +188,9 @@ jobs:
           if [[ "$STATUS" == "completed" ]]; then
             echo "✅ Songbook generation completed successfully!"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
+            MANIFEST_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/manifest.json"
             echo "source_gcs_path=${SOURCE_GCS_PATH}" >> $GITHUB_OUTPUT
+            echo "manifest_gcs_path=${MANIFEST_GCS_PATH}" >> $GITHUB_OUTPUT
             break
           elif [[ "$STATUS" == "failed" ]]; then
             echo "❌ Songbook generation failed"
@@ -239,47 +241,28 @@ jobs:
           -sOutputFile="${OUTPUT_PDF}" \
           "${INPUT_PDF}"
 
+    - name: Download Manifest
+      run: |
+        MANIFEST_GCS_PATH="${{ steps.trigger-and-poll.outputs.manifest_gcs_path }}"
+        MANIFEST_FILE="manifest.json"
+        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH} to ${MANIFEST_FILE}"
+        gcloud storage cp "${MANIFEST_GCS_PATH}" "${MANIFEST_FILE}"
+
     - name: Validate Generated PDF
       run: |
         set -e
         OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
-        EDITION="${{ matrix.edition }}"
+        MANIFEST_FILE="manifest.json"
 
         echo "Validating generated PDF: ${OUTPUT_PDF}"
+        echo "Using manifest file: ${MANIFEST_FILE}"
 
-        # Set expected title based on edition
-        case "${EDITION}" in
-          "current")
-            EXPECTED_TITLE="Ukulele Tuesday - Current Songbook"
-            ;;
-          "complete")
-            EXPECTED_TITLE="Ukulele Tuesday - Complete Songbook"
-            ;;
-          "ukulele-hooley-2025")
-            EXPECTED_TITLE="Ukulele Hooley 2025"
-            ;;
-          *)
-            # For any other edition, just check it contains "Ukulele Tuesday"
-            EXPECTED_TITLE=""
-            ;;
-        esac
+        # Use enhanced validation with manifest
+        uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
+          --manifest "${MANIFEST_FILE}" \
+          --verbose
 
-        if [[ -n "${EXPECTED_TITLE}" ]]; then
-          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
-            --expected-title "${EXPECTED_TITLE}" \
-            --expected-author "Ukulele Tuesday" \
-            --min-pages 3 \
-            --max-size-mb 25 \
-            --verbose
-        else
-          uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
-            --expected-author "Ukulele Tuesday" \
-            --min-pages 3 \
-            --max-size-mb 25 \
-            --verbose
-        fi
-
-        echo "✅ PDF validation passed for ${EDITION} edition"
+        echo "✅ PDF validation passed for ${{ matrix.edition }} edition"
 
     - name: Upload to GCS
       if: github.ref == 'refs/heads/main'
