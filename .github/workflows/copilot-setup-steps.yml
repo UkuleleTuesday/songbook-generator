@@ -40,3 +40,6 @@ jobs:
 
       - name: Install pre-commit hooks
         run: uvx --from 'pre-commit<5' pre-commit install
+
+      - name: Preinstall pre-commit dependencies
+        run: uvx --from 'pre-commit<5' pre-commit run --all-files || true
