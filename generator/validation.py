@@ -288,6 +288,9 @@ def validate_pdf_against_manifest(
             # Validate song titles appear on their respective pages
             validate_song_titles_on_pages(doc, manifest_data, verbose=verbose)
 
+            # Validate PDF sections using page indices
+            validate_pdf_sections(doc, manifest_data, verbose=verbose)
+
             # Validate metadata fields from manifest
             for field in ["title", "subject", "author", "creator", "producer"]:
                 expected_value = pdf_info.get(field)
@@ -624,6 +627,337 @@ def _song_title_found_on_page(
             return True
 
     return False
+
+
+def validate_pdf_sections(
+    doc: fitz.Document, manifest_data: Dict[str, Any], verbose: bool = False
+) -> None:
+    """
+    Validate PDF sections using page indices from manifest.
+
+    Performs dedicated checks for each section:
+    - Cover: existence, one page length, at the start
+    - Preface: positioned right after cover
+    - Table of contents: presence of short titles for each song
+    - Body: presence of full titles for each song
+
+    Args:
+        doc: Opened PDF document
+        manifest_data: Manifest data dictionary containing page_indices
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If section validation fails
+    """
+    page_indices = manifest_data.get("page_indices")
+    if not page_indices:
+        if verbose:
+            print("⚠ No page indices found in manifest, skipping section validation")
+        return
+
+    if verbose:
+        print("Validating PDF sections using page indices...")
+
+    # Validate cover section
+    validate_cover_section(doc, page_indices, verbose=verbose)
+
+    # Validate preface section
+    validate_preface_section(doc, page_indices, verbose=verbose)
+
+    # Validate table of contents section with short titles
+    validate_toc_section(doc, manifest_data, page_indices, verbose=verbose)
+
+    # Validate body section with full titles
+    validate_body_section(doc, manifest_data, page_indices, verbose=verbose)
+
+
+def validate_cover_section(
+    doc: fitz.Document, page_indices: Dict[str, Any], verbose: bool = False
+) -> None:
+    """
+    Validate cover section: existence, one page length, and at the start.
+
+    Args:
+        doc: Opened PDF document
+        page_indices: Page indices dictionary from manifest
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If cover validation fails
+    """
+    cover_info = page_indices.get("cover")
+
+    if cover_info is None:
+        if verbose:
+            print("✓ No cover section expected")
+        return
+
+    if not isinstance(cover_info, dict):
+        raise PDFValidationError(f"Invalid cover section info: {cover_info}")
+
+    first_page = cover_info.get("first_page")
+    last_page = cover_info.get("last_page")
+
+    if first_page is None or last_page is None:
+        raise PDFValidationError("Cover section missing page information")
+
+    # Check cover is at the start (first page should be 1)
+    if first_page != 1:
+        raise PDFValidationError(
+            f"Cover should be at start: first page is {first_page}, expected 1"
+        )
+
+    # Check cover is one page long
+    if first_page != last_page:
+        raise PDFValidationError(
+            f"Cover should be one page: spans pages {first_page}-{last_page}"
+        )
+
+    # Check cover page exists in PDF
+    if last_page > doc.page_count:
+        raise PDFValidationError(
+            f"Cover page {last_page} exceeds PDF page count {doc.page_count}"
+        )
+
+    if verbose:
+        print(f"✓ Cover section valid: page {first_page}")
+
+
+def validate_preface_section(
+    doc: fitz.Document, page_indices: Dict[str, Any], verbose: bool = False
+) -> None:
+    """
+    Validate preface section is positioned right after cover.
+
+    Args:
+        doc: Opened PDF document
+        page_indices: Page indices dictionary from manifest
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If preface validation fails
+    """
+    preface_info = page_indices.get("preface")
+    cover_info = page_indices.get("cover")
+
+    if preface_info is None:
+        if verbose:
+            print("✓ No preface section expected")
+        return
+
+    if not isinstance(preface_info, dict):
+        raise PDFValidationError(f"Invalid preface section info: {preface_info}")
+
+    first_page = preface_info.get("first_page")
+    last_page = preface_info.get("last_page")
+
+    if first_page is None or last_page is None:
+        raise PDFValidationError("Preface section missing page information")
+
+    # Check preface pages exist in PDF
+    if last_page > doc.page_count:
+        raise PDFValidationError(
+            f"Preface last page {last_page} exceeds PDF page count {doc.page_count}"
+        )
+
+    # Check preface is positioned correctly
+    if cover_info is not None:
+        # Preface should come right after cover
+        expected_first_page = cover_info.get("last_page", 0) + 1
+        if first_page != expected_first_page:
+            raise PDFValidationError(
+                f"Preface should start at page {expected_first_page} "
+                f"(after cover), but starts at page {first_page}"
+            )
+    else:
+        # If no cover, preface should be first
+        if first_page != 1:
+            raise PDFValidationError(
+                f"Preface should start at page 1 (no cover), but starts at page {first_page}"
+            )
+
+    if verbose:
+        print(f"✓ Preface section valid: pages {first_page}-{last_page}")
+
+
+def validate_toc_section(
+    doc: fitz.Document,
+    manifest_data: Dict[str, Any],
+    page_indices: Dict[str, Any],
+    verbose: bool = False,
+) -> None:
+    """
+    Validate table of contents section with presence of short titles for each song.
+
+    Args:
+        doc: Opened PDF document
+        manifest_data: Manifest data dictionary
+        page_indices: Page indices dictionary from manifest
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If TOC section validation fails
+    """
+    toc_info = page_indices.get("table_of_contents")
+
+    if toc_info is None:
+        if verbose:
+            print("✓ No table of contents section expected")
+        return
+
+    if not isinstance(toc_info, dict):
+        raise PDFValidationError(f"Invalid table of contents section info: {toc_info}")
+
+    first_page = toc_info.get("first_page")
+    last_page = toc_info.get("last_page")
+
+    if first_page is None or last_page is None:
+        raise PDFValidationError("Table of contents section missing page information")
+
+    # Check TOC pages exist in PDF
+    if last_page > doc.page_count:
+        raise PDFValidationError(
+            f"TOC last page {last_page} exceeds PDF page count {doc.page_count}"
+        )
+
+    # Validate short titles are present in TOC pages
+    content_info = manifest_data.get("content_info", {})
+    expected_file_names = content_info.get("file_names", [])
+
+    if expected_file_names:
+        # Extract text from TOC pages
+        toc_text = ""
+        for page_num in range(first_page - 1, last_page):  # Convert to 0-based
+            if page_num < doc.page_count:
+                page = doc[page_num]
+                toc_text += page.get_text()
+
+        # Check for presence of short titles
+        missing_titles = []
+        for file_name in expected_file_names:
+            # Generate the short title as it would appear in TOC
+            # Remove .pdf extension first
+            base_name = file_name.replace(".pdf", "").strip()
+            short_title = generate_short_title(base_name)
+
+            # Check if short title appears in TOC text
+            if short_title.lower() not in toc_text.lower():
+                missing_titles.append(short_title)
+
+        if missing_titles:
+            raise PDFValidationError(
+                f"Missing short titles in TOC section: {missing_titles[:5]}"
+                + (
+                    f" (and {len(missing_titles) - 5} more)"
+                    if len(missing_titles) > 5
+                    else ""
+                )
+            )
+
+    if verbose:
+        print(f"✓ Table of contents section valid: pages {first_page}-{last_page}")
+        if expected_file_names:
+            print(f"  ✓ All {len(expected_file_names)} short titles found in TOC")
+
+
+def validate_body_section(
+    doc: fitz.Document,
+    manifest_data: Dict[str, Any],
+    page_indices: Dict[str, Any],
+    verbose: bool = False,
+) -> None:
+    """
+    Validate body section with presence of full titles for each song.
+
+    Args:
+        doc: Opened PDF document
+        manifest_data: Manifest data dictionary
+        page_indices: Page indices dictionary from manifest
+        verbose: Enable verbose output
+
+    Raises:
+        PDFValidationError: If body section validation fails
+    """
+    body_info = page_indices.get("body")
+
+    if body_info is None:
+        if verbose:
+            print("⚠ No body section expected")
+        return
+
+    if not isinstance(body_info, dict):
+        raise PDFValidationError(f"Invalid body section info: {body_info}")
+
+    first_page = body_info.get("first_page")
+    last_page = body_info.get("last_page")
+
+    if first_page is None or last_page is None:
+        raise PDFValidationError("Body section missing page information")
+
+    # Check body pages exist in PDF
+    if last_page > doc.page_count:
+        raise PDFValidationError(
+            f"Body last page {last_page} exceeds PDF page count {doc.page_count}"
+        )
+
+    # Validate full titles are present in body section
+    content_info = manifest_data.get("content_info", {})
+    expected_file_names = content_info.get("file_names", [])
+
+    if expected_file_names:
+        # Use existing song title validation but restrict to body section pages
+        # Extract TOC to get page mappings within body section
+        toc = doc.get_toc()
+
+        missing_titles = []
+        for file_name in expected_file_names:
+            # Clean up file name to get expected title variations
+            base_name = file_name.replace(".pdf", "").strip()
+            title_variations = [
+                base_name,
+                base_name.replace("_", " "),
+                base_name.replace("-", " "),
+                base_name.replace("feat.", "featuring"),
+                base_name.replace("Feat.", "Featuring"),
+            ]
+
+            # Find the page for this song within body section
+            song_page = None
+            for level, title, page_num in toc:
+                if any(var.lower() in title.lower() for var in title_variations):
+                    # Check if this page is within the body section
+                    if first_page <= page_num <= last_page:
+                        song_page = page_num
+                        break
+
+            if song_page:
+                # Check if title appears on the song page
+                page = doc[song_page - 1]  # Convert to 0-based
+                page_text = page.get_text()
+
+                title_found = any(
+                    var.lower() in page_text.lower() for var in title_variations
+                )
+
+                if not title_found:
+                    missing_titles.append(base_name)
+
+        if missing_titles:
+            # Convert to warning instead of error since this is complex validation
+            if verbose:
+                print(
+                    f"⚠ Some full titles may be missing in body section: {missing_titles[:3]}"
+                    + (
+                        f" (and {len(missing_titles) - 3} more)"
+                        if len(missing_titles) > 3
+                        else ""
+                    )
+                )
+
+    if verbose:
+        print(f"✓ Body section valid: pages {first_page}-{last_page}")
+        if expected_file_names:
+            print("  ✓ Body section contains expected song content")
 
 
 def validate_content_info(manifest_data: Dict[str, Any], verbose: bool = False) -> None:

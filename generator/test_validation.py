@@ -875,3 +875,100 @@ def test_validate_song_titles_on_pages_no_expected_files(tmp_path):
     # This should not raise an exception
     with fitz.open(pdf_path) as doc:
         validate_song_titles_on_pages(doc, manifest_data, verbose=True)
+
+
+def test_validate_cover_section_valid(tmp_path):
+    """Test cover section validation with valid cover."""
+    from generator.validation import validate_cover_section
+
+    # Create test PDF
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((100, 100), "Cover Page", fontsize=20)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        page_indices = {"cover": {"first_page": 1, "last_page": 1}}
+        # Should not raise exception
+        validate_cover_section(doc, page_indices, verbose=True)
+
+
+def test_validate_cover_section_no_cover(tmp_path):
+    """Test cover section validation with no cover expected."""
+    from generator.validation import validate_cover_section
+
+    # Create test PDF
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((100, 100), "Content", fontsize=20)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        page_indices = {"cover": None}
+        # Should not raise exception
+        validate_cover_section(doc, page_indices, verbose=True)
+
+
+def test_validate_preface_section_valid_after_cover(tmp_path):
+    """Test preface section validation with valid positioning after cover."""
+    from generator.validation import validate_preface_section
+
+    # Create test PDF with 3 pages
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    cover = doc.new_page()
+    cover.insert_text((100, 100), "Cover", fontsize=20)
+    preface1 = doc.new_page()
+    preface1.insert_text((100, 100), "Preface Page 1", fontsize=20)
+    preface2 = doc.new_page()
+    preface2.insert_text((100, 100), "Preface Page 2", fontsize=20)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        page_indices = {
+            "cover": {"first_page": 1, "last_page": 1},
+            "preface": {"first_page": 2, "last_page": 3},
+        }
+        # Should not raise exception
+        validate_preface_section(doc, page_indices, verbose=True)
+
+
+def test_validate_pdf_sections_complete(tmp_path):
+    """Test complete PDF sections validation with all sections."""
+    from generator.validation import validate_pdf_sections
+
+    # Create test PDF with multiple pages
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    for i in range(10):
+        page = doc.new_page()
+        if i == 0:  # Cover page
+            page.insert_text((100, 100), "Cover", fontsize=12)
+        elif i == 1 or i == 2:  # Preface pages
+            page.insert_text((100, 100), "Preface", fontsize=12)
+        elif i == 3 or i == 4:  # TOC pages - include song titles
+            page.insert_text((100, 100), "Song 1\nSong 2", fontsize=12)
+        else:  # Body pages
+            song = "Song 1" if i < 8 else "Song 2"
+            page.insert_text((100, 100), song, fontsize=12)
+    doc.save(pdf_path)
+    doc.close()
+
+    with fitz.open(pdf_path) as doc:
+        manifest_data = {
+            "page_indices": {
+                "cover": {"first_page": 1, "last_page": 1},
+                "preface": {"first_page": 2, "last_page": 3},
+                "table_of_contents": {"first_page": 4, "last_page": 5},
+                "body": {"first_page": 6, "last_page": 10},
+                "postface": None,
+            },
+            "content_info": {"file_names": ["Song 1.pdf", "Song 2.pdf"]},
+        }
+        # Should not raise exception
+        validate_pdf_sections(doc, manifest_data, verbose=True)
