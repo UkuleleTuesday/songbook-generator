@@ -92,7 +92,7 @@ class GoogleDriveClient:
 
     def query_drive_files(
         self,
-        source_folder,
+        source_folders: List[str],
         property_filters: Optional[Dict[str, str]] = None,
         modified_after: Optional[datetime] = None,
     ) -> List[File]:
@@ -100,13 +100,14 @@ class GoogleDriveClient:
         Query Google Drive files with optional property filtering.
 
         Args:
-            source_folder: Folder ID to search in
+            source_folders: List of folder IDs to search in
             property_filters: Optional dict of property_name -> value pairs to filter by
 
         Returns:
             List of files, or empty list if error occurs
         """
-        base_query = f"'{source_folder}' in parents and trashed = false"
+        parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
+        base_query = f"({' or '.join(parent_queries)}) and trashed = false"
         property_query = _build_property_filters(property_filters)
         query = base_query + property_query
 
@@ -157,11 +158,11 @@ class GoogleDriveClient:
 
                 if error_code == 403:
                     click.echo(
-                        f"Permission denied accessing folder {source_folder}. Check your access rights."
+                        f"Permission denied accessing folder(s) {source_folders}. Check your access rights."
                     )
                 elif error_code == 404:
                     click.echo(
-                        f"Folder {source_folder} not found. Check the folder ID."
+                        f"Folder(s) {source_folders} not found. Check the folder ID(s)."
                     )
                 elif error_code == 429:
                     click.echo("API quota exceeded. Please try again later.")
@@ -192,7 +193,7 @@ class GoogleDriveClient:
         """
         # First, get all files from Drive (no server-side property filtering)
         click.echo("Fetching all files from Drive for client-side filtering...")
-        all_files = self.query_drive_files(source_folder, None)
+        all_files = self.query_drive_files([source_folder], None)
 
         if not client_filter:
             return all_files
