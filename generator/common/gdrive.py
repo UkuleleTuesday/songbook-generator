@@ -178,14 +178,14 @@ class GoogleDriveClient:
 
     def query_drive_files_with_client_filter(
         self,
-        source_folder,
+        source_folders: List[str],
         client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     ) -> List[File]:
         """
         Query Google Drive files and apply client-side filtering.
 
         Args:
-            source_folder: Folder ID to search in
+            source_folders: List of folder IDs to search in
             client_filter: Client-side filter to apply after fetching files
 
         Returns:
@@ -193,7 +193,7 @@ class GoogleDriveClient:
         """
         # First, get all files from Drive (no server-side property filtering)
         click.echo("Fetching all files from Drive for client-side filtering...")
-        all_files = self.query_drive_files([source_folder], None)
+        all_files = self.query_drive_files(source_folders, None)
 
         if not client_filter:
             return all_files
