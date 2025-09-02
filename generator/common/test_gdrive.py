@@ -257,9 +257,7 @@ def test__build_property_filters():
 def test_query_drive_files_with_client_filter_no_filter(mock_drive_client, mocker):
     """Test client-side filtering when no filter is provided."""
     mock_files = [Mock(properties={}), Mock(properties={})]
-    mocker.patch.object(
-        mock_drive_client, "query_drive_files", return_value=mock_files
-    )
+    mocker.patch.object(mock_drive_client, "query_drive_files", return_value=mock_files)
 
     result = mock_drive_client.query_drive_files_with_client_filter(["folder123"])
 
@@ -273,12 +271,13 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
         Mock(properties={"difficulty": "easy"}),
         Mock(properties={"difficulty": "hard"}),
     ]
-    mocker.patch.object(
-        mock_drive_client, "query_drive_files", return_value=mock_files
-    )
+    mocker.patch.object(mock_drive_client, "query_drive_files", return_value=mock_files)
 
     client_filter = Mock()
-    client_filter.matches.side_effect = [True, False]  # First song matches, second fails
+    client_filter.matches.side_effect = [
+        True,
+        False,
+    ]  # First song matches, second fails
 
     result = mock_drive_client.query_drive_files_with_client_filter(
         ["folder123"], client_filter
