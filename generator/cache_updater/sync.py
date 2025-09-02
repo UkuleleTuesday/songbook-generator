@@ -16,10 +16,7 @@ def _sync_gcs_metadata_from_drive(
     with tracer.start_as_current_span("_sync_gcs_metadata_from_drive") as span:
         click.echo("Starting metadata sync from Drive to GCS cache...")
         gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
-        all_drive_files = []
-        for folder_id in source_folders:
-            files = gdrive_client.query_drive_files(folder_id)
-            all_drive_files.extend(files)
+        all_drive_files = gdrive_client.query_drive_files(source_folders)
         drive_file_map = {file.id: file for file in all_drive_files}
         span.set_attribute("drive_files_found", len(all_drive_files))
 
@@ -72,13 +69,9 @@ def _get_files_to_update(
     Query Google Drive for files in given folders modified after a certain time.
     """
     gdrive_client = GoogleDriveClient(cache=init_cache(), drive=drive_service)
-    all_files: List[File] = []
-    for folder_id in source_folders:
-        files = gdrive_client.query_drive_files(
-            folder_id, modified_after=modified_after
-        )
-        all_files.extend(files)
-    return all_files
+    return gdrive_client.query_drive_files(
+        source_folders, modified_after=modified_after
+    )
 
 
 def sync_cache(

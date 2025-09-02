@@ -101,22 +101,14 @@ def collect_and_sort_files(
         )
         span.set_attribute("filter", client_filter)
 
-        files = []
-        for folder_index, folder in enumerate(source_folders):
-            with tracer.start_as_current_span("query_gdrive_folder") as folder_span:
-                folder_span.set_attribute("folder_id", folder)
-                folder_span.set_attribute("filter", client_filter)
-                folder_files = gdrive_client.query_drive_files_with_client_filter(
-                    folder, client_filter
-                )
-                files.extend(folder_files)
-                folder_span.set_attribute("files_found", len(folder_files))
+        files = gdrive_client.query_drive_files_with_client_filter(
+            source_folders, client_filter
+        )
 
-                if progress_step:
-                    progress_step.increment(
-                        1 / len(source_folders),
-                        f"Found {len(folder_files)} files in folder {folder_index + 1}: {folder}",
-                    )
+        if progress_step:
+            progress_step.increment(
+                1.0, f"Found {len(files)} files in {len(source_folders)} folder(s)"
+            )
 
         # Sort files alphabetically by name after aggregating from all folders
         sorted_files = _sort_titles(files)

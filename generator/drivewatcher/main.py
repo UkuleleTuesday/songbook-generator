@@ -153,31 +153,36 @@ def _detect_changes(
     with services["tracer"].start_as_current_span("detect_drive_changes") as span:
         cache = init_cache()
         gdrive_client = GoogleDriveClient(cache=cache, drive=services["drive"])
-
         all_changed_files = []
 
-        for folder_id in watched_folders:
-            click.echo(f"Checking folder {folder_id} for changes since {since}")
+        click.echo(f"Checking folders {watched_folders} for changes since {since}")
+        try:
+            # Query for files modified after the since timestamp
+            files = gdrive_client.query_drive_files(
+                watched_folders, modified_after=since
+            )
 
-            try:
-                # Query for files modified after the since timestamp
-                files = gdrive_client.query_drive_files(folder_id, modified_after=since)
+            for file in files:
+                # Find which of the watched folders this file belongs to.
+                # A file can have multiple parents; we care about the one we are watching.
+                parent_folder = next(
+                    (p for p in file.parents if p in watched_folders), None
+                )
 
-                for file in files:
-                    file_info = {
-                        "id": file.id,
-                        "name": file.name,
-                        "folder_id": folder_id,
-                        "mime_type": file.mimeType,
-                        "parents": file.parents,
-                        "properties": file.properties,
-                    }
-                    all_changed_files.append(file_info)
-                    click.echo(f"  CHANGED: {file.name} (ID: {file.id})")
+                file_info = {
+                    "id": file.id,
+                    "name": file.name,
+                    "folder_id": parent_folder,
+                    "mime_type": file.mimeType,
+                    "parents": file.parents,
+                    "properties": file.properties,
+                }
+                all_changed_files.append(file_info)
+                click.echo(f"  CHANGED: {file.name} (ID: {file.id})")
 
-            except (OSError, ValueError) as e:
-                click.echo(f"Error checking folder {folder_id}: {e}", err=True)
-                span.set_attribute(f"error_folder_{folder_id}", str(e))
+        except (OSError, ValueError) as e:
+            click.echo(f"Error checking folders {watched_folders}: {e}", err=True)
+            span.set_attribute(f"error_folders_{watched_folders}", str(e))
 
         span.set_attribute("changed_files_count", len(all_changed_files))
         span.set_attribute("watched_folders", ",".join(watched_folders))

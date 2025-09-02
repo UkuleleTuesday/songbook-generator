@@ -99,7 +99,7 @@ def test_detect_changes(mock_gdrive_client, mock_init_cache):
 
     # Verify the Google Drive client was called correctly
     mock_client_instance.query_drive_files.assert_called_once_with(
-        "folder1", modified_after=since_time
+        ["folder1"], modified_after=since_time
     )
 
 
