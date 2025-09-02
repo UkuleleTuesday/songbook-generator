@@ -167,8 +167,8 @@ jobs:
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
 
-  deploy-merger:
-    name: Deploy Merger
+  deploy-cache-updater:
+    name: Deploy Cache Updater
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -183,12 +183,12 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Deploy Merger Cloud Function
+    - name: Deploy Cache Updater Cloud Function
       uses: ./.github/actions/deploy-cloud-function
       with:
-        function_name: ${{ env.MERGER_FUNCTION_NAME }}
-        entry_point: 'merger'
-        component_name: 'Merger'
+        function_name: ${{ env.CACHE_UPDATER_FUNCTION_NAME }}
+        entry_point: 'cache_updater'
+        component_name: 'Cache Updater'
         memory: '1Gi'
         cpu: '1'
         concurrency: 1
@@ -196,15 +196,15 @@ jobs:
         trigger_type: 'topic'
         trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
         env_vars: |
-          SERVICE_NAME: "songbook-merger"
+          SERVICE_NAME: "songbook-cache-updater"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
           GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
           GDRIVE_SONG_SHEETS_FOLDER_IDS: "${{ env.GDRIVE_SONG_SHEETS_FOLDER_IDS }}"
           DEPLOY_VERSION: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}"
-          OTEL_SERVICE_NAME: "songbook-merger"
-          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-merger"
+          OTEL_SERVICE_NAME: "songbook-cache-updater"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-cache-updater"
           OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
@@ -393,7 +393,7 @@ jobs:
         PR_NUM="${{ github.event.pull_request.number }}"
         API_FN_NAME="${{ env.API_FUNCTION_NAME }}-pr-${PR_NUM}"
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
-        MERGER_FN_NAME="${{ env.MERGER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        CACHE_UPDATER_FN_NAME="${{ env.CACHE_UPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
         DRIVEWATCHER_FN_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-pr-${PR_NUM}"
         TAGUPDATER_FN_NAME="${{ env.TAGUPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
@@ -415,12 +415,12 @@ jobs:
           echo "Worker function $WORKER_FN_NAME not found, skipping"
         fi
 
-        # Delete Merger function
-        if gcloud functions describe "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
-          echo "Deleting Merger function: $MERGER_FN_NAME"
-          gcloud functions delete "$MERGER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        # Delete Cache Updater function
+        if gcloud functions describe "$CACHE_UPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Cache Updater function: $CACHE_UPDATER_FN_NAME"
+          gcloud functions delete "$CACHE_UPDATER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
-          echo "Merger function $MERGER_FN_NAME not found, skipping"
+          echo "Cache Updater function $CACHE_UPDATER_FN_NAME not found, skipping"
         fi
 
         # Delete Drive Watcher function
