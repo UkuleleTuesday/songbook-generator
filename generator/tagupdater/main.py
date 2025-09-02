@@ -18,7 +18,7 @@ from googleapiclient.discovery import build
 
 from ..common.config import get_settings
 from ..common.tracing import get_tracer, setup_tracing
-from ..cache_updater.tags import Tagger
+from .tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.models import File
 
