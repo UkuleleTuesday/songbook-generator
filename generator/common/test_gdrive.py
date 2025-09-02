@@ -252,3 +252,39 @@ def test__build_property_filters():
     result = _build_property_filters({"song": "Don't Stop Me Now"})
     expected = " and properties has { key='song' and value='Don\\'t Stop Me Now' }"
     assert result == expected
+
+
+def test_query_drive_files_with_client_filter_no_filter(mock_drive_client, mocker):
+    """Test client-side filtering when no filter is provided."""
+    mock_files = [Mock(properties={}), Mock(properties={})]
+    mocker.patch.object(
+        mock_drive_client, "query_drive_files", return_value=mock_files
+    )
+
+    result = mock_drive_client.query_drive_files_with_client_filter(["folder123"])
+
+    assert result == mock_files
+    mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
+
+
+def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, mocker):
+    """Test client-side filtering with a filter applied."""
+    mock_files = [
+        Mock(properties={"difficulty": "easy"}),
+        Mock(properties={"difficulty": "hard"}),
+    ]
+    mocker.patch.object(
+        mock_drive_client, "query_drive_files", return_value=mock_files
+    )
+
+    client_filter = Mock()
+    client_filter.matches.side_effect = [True, False]  # First song matches, second fails
+
+    result = mock_drive_client.query_drive_files_with_client_filter(
+        ["folder123"], client_filter
+    )
+
+    assert len(result) == 1
+    assert result[0] == mock_files[0]
+    mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
+    assert client_filter.matches.call_count == 2
