@@ -11,7 +11,7 @@ The Songbook Generator is a Python application that automatically generates PDF 
 - **Generator (`generator/`)**: Core Python package containing all business logic
 - **API Service**: Flask-based REST API for songbook generation requests
 - **Worker Service**: Background job processor for PDF generation
-- **Merger Service**: Syncs and merges song sheets from Google Drive
+- **Cache Updater Service**: Syncs and merges song sheets from Google Drive
 - **CLI Tools**: Command-line interface for local development and operations
 
 ### Architecture
@@ -19,7 +19,7 @@ The Songbook Generator is a Python application that automatically generates PDF 
 The application follows a distributed architecture:
 1. **API** receives generation requests and publishes jobs to Pub/Sub
 2. **Worker** processes jobs asynchronously, generating PDFs and storing in GCS
-3. **Merger** keeps the song sheet cache up-to-date from Google Drive sources
+3. **Cache Updater** keeps the song sheet cache up-to-date from Google Drive sources
 4. **GitHub Actions** automate deployments and scheduled songbook updates
 
 ## Development Setup
@@ -61,7 +61,7 @@ generator/
 │   ├── config.py  # Pydantic settings management
 │   ├── gdrive.py  # Google Drive integration
 │   └── tracing.py # OpenTelemetry observability setup
-├── merger/        # Google Drive sync and PDF merging
+├── cache_updater/ # Google Drive sync and PDF merging
 ├── worker/        # Background job processing
 └── main.py        # Application entry points
 

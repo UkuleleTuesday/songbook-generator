@@ -28,11 +28,11 @@ The application uses a microservices architecture deployed on Google Cloud:
 - **Frontend**: Static web app (`ui/`) hosted on GitHub Pages, built with [Material Design Lite](https://getmdl.io/).
 - **API Service** (`generator/api/main.py`): Handles job creation, queues work via Pub/Sub, and tracks job status in Firestore.
 - **Worker Service** (`generator/worker/main.py`): Processes PDF generation jobs asynchronously.
-- **Merger Service** (`generator/merger/main.py`): Periodically syncs song data and metadata from Google Drive to a GCS cache bucket (this way, the worker has very little work to do).
+- **Cache Updater Service** (`generator/cache_updater/main.py`): Periodically syncs song data and metadata from Google Drive to a GCS cache bucket (this way, the worker has very little work to do).
 - **Tag Updater Service** (`generator/tagupdater/main.py`): Processes individual file change events from Google Drive to update tags and metadata. This service is triggered by the Drive Watcher and ensures tags are kept up-to-date without causing timeouts.
 - **Drive Watcher Service** (`generator/drivewatcher/main.py`): Monitors Google Drive for file changes and publishes change events to trigger the Tag Updater and cache refresh operations.
 - **CLI Tool** (`generator/cli.py`): A standalone command-line interface for local development, testing, and utilities.
-    It exposes the features of both the worker and merger (downloading and syncing song sheets, and generating a
+    It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
     songbook) so they're easy to test locally.
 
 ## Wanna help?
@@ -180,7 +180,7 @@ uv run songbook-tools download-cache
 ```
 
 #### `sync-cache`
-Syncs files and metadata from Google Drive to the GCS cache. This command is typically run by the Merger service in the cloud but can be triggered locally.
+Syncs files and metadata from Google Drive to the GCS cache. This command is typically run by the Cache Updater service in the cloud but can be triggered locally.
 
 ```bash
 # Sync new and modified files from Google Drive to the GCS cache

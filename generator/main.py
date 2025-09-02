@@ -3,7 +3,7 @@ import functions_framework
 # Import the actual function handlers from sub-packages
 from .api.main import api_main
 from .worker.main import worker_main
-from .merger.main import merger_main
+from .cache_updater.main import cache_updater_main
 from .drivewatcher.main import drivewatcher_main
 from .tagupdater.main import tagupdater_main
 
@@ -23,9 +23,9 @@ def worker(cloud_event):
 
 
 @functions_framework.cloud_event
-def merger(cloud_event):
-    """CloudEvent Function for the PDF merging service."""
-    return merger_main(cloud_event)
+def cache_updater(cloud_event):
+    """CloudEvent Function for the cache updating service."""
+    return cache_updater_main(cloud_event)
 
 
 @functions_framework.cloud_event

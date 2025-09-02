@@ -2,7 +2,7 @@ from unittest.mock import Mock
 import pytest
 from cloudevents.http import CloudEvent
 
-from generator.merger.main import _parse_cloud_event
+from generator.cache_updater.main import _parse_cloud_event
 
 
 @pytest.fixture

@@ -38,16 +38,18 @@ def _get_services():
         if "GOOGLE_CLOUD_PROJECT" not in os.environ:
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
-    merger_credential_config = settings.google_cloud.credentials.get("songbook-merger")
-    if not merger_credential_config:
-        raise click.Abort("Credential config 'songbook-merger' not found.")
+    cache_updater_credential_config = settings.google_cloud.credentials.get(
+        "songbook-cache-updater"
+    )
+    if not cache_updater_credential_config:
+        raise click.Abort("Credential config 'songbook-cache-updater' not found.")
 
-    merger_creds = get_credentials(
-        scopes=merger_credential_config.scopes,
-        target_principal=merger_credential_config.principal,
+    cache_updater_creds = get_credentials(
+        scopes=cache_updater_credential_config.scopes,
+        target_principal=cache_updater_credential_config.principal,
     )
 
-    service_name = os.environ.get("K_SERVICE", "songbook-generator-merger")
+    service_name = os.environ.get("K_SERVICE", "songbook-generator-cache-updater")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
@@ -56,7 +58,7 @@ def _get_services():
     storage_client = storage.Client(project=project_id)
     cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
 
-    drive_service = build("drive", "v3", credentials=merger_creds)
+    drive_service = build("drive", "v3", credentials=cache_updater_creds)
 
     return {
         "tracer": tracer,
@@ -234,7 +236,7 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
     }
 
 
-def merger_main(cloud_event: CloudEvent):
+def cache_updater_main(cloud_event: CloudEvent):
     """
     Cloud Function triggered by a CloudEvent to sync and merge PDFs.
 
@@ -245,7 +247,7 @@ def merger_main(cloud_event: CloudEvent):
           The `data` payload is ignored, but `attributes` are used.
     """
     services = _get_services()
-    with services["tracer"].start_as_current_span("merger_main") as main_span:
+    with services["tracer"].start_as_current_span("cache_updater_main") as main_span:
         try:
             event_params = _parse_cloud_event(cloud_event)
             force_sync = event_params["force_sync"]

@@ -18,7 +18,7 @@ from googleapiclient.discovery import build
 
 from ..common.config import get_settings
 from ..common.tracing import get_tracer, setup_tracing
-from ..merger.tags import Tagger
+from ..cache_updater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.models import File
 
@@ -38,9 +38,11 @@ def _get_services():
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
     # Get credentials for tagging (needs drive write permissions)
-    tagger_credential_config = settings.google_cloud.credentials.get("songbook-merger")
+    tagger_credential_config = settings.google_cloud.credentials.get(
+        "songbook-cache-updater"
+    )
     if not tagger_credential_config:
-        raise click.Abort("Credential config 'songbook-merger' not found.")
+        raise click.Abort("Credential config 'songbook-cache-updater' not found.")
 
     tagger_creds = get_credentials(
         scopes=tagger_credential_config.scopes,

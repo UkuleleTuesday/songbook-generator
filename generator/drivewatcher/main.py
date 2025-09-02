@@ -37,13 +37,15 @@ def _get_services():
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
     # Get credentials for Google Drive access
-    merger_credential_config = settings.google_cloud.credentials.get("songbook-merger")
-    if not merger_credential_config:
-        raise click.Abort("Credential config 'songbook-merger' not found.")
+    cache_updater_credential_config = settings.google_cloud.credentials.get(
+        "songbook-cache-updater"
+    )
+    if not cache_updater_credential_config:
+        raise click.Abort("Credential config 'songbook-cache-updater' not found.")
 
-    merger_creds = get_credentials(
-        scopes=merger_credential_config.scopes,
-        target_principal=merger_credential_config.principal,
+    cache_updater_creds = get_credentials(
+        scopes=cache_updater_credential_config.scopes,
+        target_principal=cache_updater_credential_config.principal,
     )
 
     # Setup tracing
@@ -52,7 +54,7 @@ def _get_services():
     tracer = get_tracer(__name__)
 
     # Initialize Google services
-    drive_service = build("drive", "v3", credentials=merger_creds)
+    drive_service = build("drive", "v3", credentials=cache_updater_creds)
     storage_client = storage.Client(project=project_id)
 
     # Initialize Pub/Sub publisher
@@ -135,7 +137,7 @@ def _get_watched_folders() -> List[str]:
     if folder_ids_env:
         return [f.strip() for f in folder_ids_env.split(",") if f.strip()]
 
-    # Fall back to the same folders used by the merger
+    # Fall back to the same folders used by the cache updater
     settings = get_settings()
     return settings.song_sheets.folder_ids
 
