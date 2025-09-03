@@ -288,6 +288,105 @@ Key environment variables for deployment:
 - **Production**: Deployed on merges to main branch
 - **Scheduled Jobs**: Automated songbook regeneration every 10 minutes
 
+## GitHub Actions Workflows
+
+The repository uses several critical GitHub Actions workflows located in `.github/workflows/`. **IMPORTANT: When making changes that affect deployment, CI/CD, or automation processes, agents MUST update the relevant workflow files to ensure consistency and proper operation.**
+
+### Core Workflows
+
+#### `deploy.yaml` - Main Deployment Pipeline
+**Purpose**: Comprehensive deployment workflow that manages the entire application stack deployment to Google Cloud Platform.
+
+**Triggers**:
+- Push to `main` branch (production deployment)
+- Pull request events (preview environment deployment)
+- PR closure (cleanup of preview resources)
+
+**Key Responsibilities**:
+- **Infrastructure Setup**: Creates necessary Pub/Sub topics for job queuing
+- **Multi-Service Deployment**: Deploys 5 Cloud Functions:
+  - **API Service**: HTTP-triggered function for job creation and status
+  - **Worker Service**: Pub/Sub-triggered function for PDF generation
+  - **Cache Updater**: Syncs Google Drive content to GCS cache
+  - **Tag Updater**: Processes individual file changes from Google Drive
+  - **Drive Watcher**: Monitors Google Drive for changes via scheduled triggers
+- **UI Deployment**: Deploys static frontend to GitHub Pages
+- **Preview Environments**: Creates isolated environments for each PR with prefixed resources
+- **Resource Cleanup**: Automatically removes PR-specific resources when PRs close
+
+**Why Critical**: This workflow is the backbone of the entire deployment process. Any changes to service configuration, environment variables, or deployment logic must be reflected here.
+
+#### `generate-songbooks.yaml` - Automated Songbook Generation
+**Purpose**: Fully automated pipeline for generating and publishing songbook PDFs.
+
+**Triggers**:
+- **Scheduled**: Every 10 minutes via cron (`*/10 * * * *`)
+- **Manual**: `workflow_dispatch` with optional force flag
+- **Code Changes**: Push/PR events for testing
+
+**Key Responsibilities**:
+- **Change Detection**: Compares GCS cache modification times vs published songbooks
+- **Multi-Edition Support**: Generates multiple songbook editions (`current`, `complete`, `ukulele-hooley-2025`)
+- **Smart Rebuilding**: Only regenerates songbooks when source content changes (unless forced)
+- **PDF Processing**: Downloads, validates, and optionally compresses generated PDFs
+- **Public Publishing**: Uploads final PDFs to public GCS bucket for distribution
+- **Manifest Generation**: Creates and publishes metadata about available songbooks
+
+**Why Critical**: This is the primary automation that keeps public songbooks up-to-date. The 10-minute schedule ensures users always have access to the latest content from Google Drive.
+
+#### `test.yaml` - Continuous Integration Testing
+**Purpose**: Reusable workflow for running comprehensive code quality checks.
+
+**Triggers**: Called by other workflows (mainly `deploy.yaml`)
+
+**Key Responsibilities**:
+- **Test Execution**: Runs full pytest suite with JUnit XML reporting
+- **Code Quality**: Executes pre-commit hooks including ruff linting and formatting
+- **Result Publishing**: Reports test results with detailed failure information
+
+**Why Critical**: Ensures code quality and prevents broken deployments. All deployment workflows depend on this passing.
+
+### Utility Workflows
+
+#### `trigger_sync.yaml` - Manual Cache Synchronization
+**Purpose**: Provides manual trigger for Google Drive to GCS cache synchronization.
+
+**Triggers**: Manual `workflow_dispatch` only
+
+**Key Responsibilities**:
+- **Force Sync Option**: Can bypass timestamp checking to force full resync
+- **Environment Selection**: Supports different deployment environments
+- **Pub/Sub Integration**: Publishes sync messages to trigger Cache Updater service
+
+**Why Important**: Essential for debugging cache issues or forcing immediate content updates.
+
+#### `copilot-setup-steps.yml` - GitHub Copilot Environment Setup
+**Purpose**: Configures development environment for GitHub Copilot agents.
+
+**Triggers**:
+- Manual dispatch
+- Changes to the workflow file itself
+
+**Key Responsibilities**:
+- **Dependency Installation**: Sets up Python, uv, and project dependencies
+- **Development Tools**: Installs pre-commit hooks and runs initial checks
+- **Environment Validation**: Ensures Copilot has a properly configured workspace
+
+**Why Important**: Ensures consistent development environment setup for AI-assisted development.
+
+### Workflow Maintenance Guidelines
+
+When modifying the codebase, agents must consider workflow updates for:
+
+1. **Environment Variables**: Update `deploy.yaml` when adding new configuration requirements
+2. **Service Changes**: Modify function names, memory, CPU, or trigger configurations in `deploy.yaml`
+3. **Dependencies**: Update `test.yaml` and `copilot-setup-steps.yml` when changing Python dependencies
+4. **Scheduled Operations**: Adjust timing or logic in `generate-songbooks.yaml` for content publication changes
+5. **New Services**: Add deployment jobs to `deploy.yaml` and cleanup logic for new Cloud Functions
+6. **API Changes**: Update job polling logic in `generate-songbooks.yaml` if API contracts change
+
+**Critical Rule**: Always test workflow changes in a PR environment before merging to main, as these workflows control production deployments and data processing.
+
 ## Common Patterns to Follow
 
 1. **Use type hints**: All functions should have proper type annotations
