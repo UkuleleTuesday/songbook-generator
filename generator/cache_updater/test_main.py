@@ -171,9 +171,7 @@ def test_parse_cloud_event_combined_force_and_changes(sample_drive_change_data):
     message_json = json.dumps(sample_drive_change_data)
     encoded_data = base64.b64encode(message_json.encode("utf-8")).decode("utf-8")
 
-    pubsub_data = {
-        "message": {"data": encoded_data, "attributes": {"force": "true"}}
-    }
+    pubsub_data = {"message": {"data": encoded_data, "attributes": {"force": "true"}}}
 
     cloud_event = CloudEvent(
         {"type": "google.cloud.pubsub.topic.v1.messagePublished", "source": "test"},
@@ -191,9 +189,7 @@ def test_parse_cloud_event_combined_force_and_changes(sample_drive_change_data):
 
 def test_parse_cloud_event_invalid_base64():
     """Test parsing CloudEvent with invalid base64 data."""
-    pubsub_data = {
-        "message": {"data": "invalid-base64-data", "attributes": {}}
-    }
+    pubsub_data = {"message": {"data": "invalid-base64-data", "attributes": {}}}
 
     cloud_event = CloudEvent(
         {"type": "google.cloud.pubsub.topic.v1.messagePublished", "source": "test"},

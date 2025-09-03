@@ -246,6 +246,7 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
         try:
             import base64
             import json
+
             # Decode base64 encoded message data from drivewatcher
             decoded_data = base64.b64decode(message["data"]).decode("utf-8")
             message_content = json.loads(decoded_data)
@@ -307,11 +308,15 @@ def cache_updater_main(cloud_event: CloudEvent):
 
             # Determine sync strategy based on event type
             if changed_files and not force_sync:
-                click.echo(f"Processing {len(changed_files)} changed files from drive watcher")
+                click.echo(
+                    f"Processing {len(changed_files)} changed files from drive watcher"
+                )
                 # File change event - we can still do incremental sync
                 # but we know files have changed so we should proceed
                 main_span.set_attribute("sync_trigger", "file_changes")
-                last_merge_time = _get_last_merge_time(services["cache_bucket"], main_span)
+                last_merge_time = _get_last_merge_time(
+                    services["cache_bucket"], main_span
+                )
             elif force_sync:
                 click.echo("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")
@@ -321,7 +326,9 @@ def cache_updater_main(cloud_event: CloudEvent):
                 # No file changes and no force flag - check if we need to sync
                 click.echo("No file changes detected, checking if sync is needed")
                 main_span.set_attribute("sync_trigger", "scheduled_check")
-                last_merge_time = _get_last_merge_time(services["cache_bucket"], main_span)
+                last_merge_time = _get_last_merge_time(
+                    services["cache_bucket"], main_span
+                )
 
             with services["tracer"].start_as_current_span(
                 "sync_operation"
@@ -339,7 +346,9 @@ def cache_updater_main(cloud_event: CloudEvent):
                 main_span.set_attribute("status", "skipped_no_changes")
                 return
             elif changed_files and synced_files_count == 0:
-                click.echo("File changes detected but no files needed syncing. Proceeding with merge check.")
+                click.echo(
+                    "File changes detected but no files needed syncing. Proceeding with merge check."
+                )
 
             click.echo("Starting PDF merge operation")
 
