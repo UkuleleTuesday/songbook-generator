@@ -212,6 +212,10 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
     """
     Parses a CloudEvent to extract attributes from the Pub/Sub message.
 
+    This function can handle two types of events:
+    1. Force sync events (legacy cron format) with 'force' attribute
+    2. Drive file change events from drivewatcher service
+
     Args:
         cloud_event: The incoming CloudEvent object.
 
@@ -225,14 +229,43 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
     click.echo("--------------------------")
 
     data = cloud_event.get_data() or {}
+
+    # Handle different event formats
+    # Format 1: Legacy cron format with message.attributes.force
     message = data.get("message", {})
     attributes = message.get("attributes", {})
-
-    # The 'force' attribute will be a string 'true' or 'false'.
     force_sync = attributes.get("force", "false").lower() == "true"
+
+    # Format 2: Drive change events (can be direct or in Pub/Sub message format)
+    changed_files = []
+    check_time = None
+    file_count = 0
+
+    # Check if this is a Pub/Sub message with base64 encoded data
+    if "message" in data and "data" in message:
+        try:
+            import base64
+            import json
+            # Decode base64 encoded message data from drivewatcher
+            decoded_data = base64.b64decode(message["data"]).decode("utf-8")
+            message_content = json.loads(decoded_data)
+            changed_files = message_content.get("changed_files", [])
+            check_time = message_content.get("check_time")
+            file_count = message_content.get("file_count", len(changed_files))
+        except (ValueError, KeyError, json.JSONDecodeError):
+            # Not a valid drive change event, stick with force sync logic
+            pass
+    elif "changed_files" in data:
+        # Direct event data format
+        changed_files = data.get("changed_files", [])
+        check_time = data.get("check_time")
+        file_count = data.get("file_count", len(changed_files))
 
     return {
         "force_sync": force_sync,
+        "changed_files": changed_files,
+        "check_time": check_time,
+        "file_count": file_count,
     }
 
 
@@ -240,17 +273,27 @@ def cache_updater_main(cloud_event: CloudEvent):
     """
     Cloud Function triggered by a CloudEvent to sync and merge PDFs.
 
-    This function is designed to be triggered by a Pub/Sub message.
+    This function can be triggered by:
+    1. A Pub/Sub message with force sync attributes (legacy)
+    2. A Pub/Sub message from drivewatcher with file change events
 
     Args:
         cloud_event (CloudEvent): The CloudEvent representing the trigger.
-          The `data` payload is ignored, but `attributes` are used.
     """
     services = _get_services()
     with services["tracer"].start_as_current_span("cache_updater_main") as main_span:
         try:
             event_params = _parse_cloud_event(cloud_event)
             force_sync = event_params["force_sync"]
+            changed_files = event_params["changed_files"]
+            check_time = event_params["check_time"]
+            file_count = event_params["file_count"]
+
+            # Set span attributes for observability
+            main_span.set_attribute("force_sync", str(force_sync))
+            main_span.set_attribute("file_count", file_count)
+            if check_time:
+                main_span.set_attribute("check_time", check_time)
 
             source_folders = get_settings().song_sheets.folder_ids
 
@@ -261,17 +304,24 @@ def cache_updater_main(cloud_event: CloudEvent):
 
             # Add source_folders to span attributes for tracing
             main_span.set_attribute("source_folders", ",".join(source_folders))
-            main_span.set_attribute("force_sync", str(force_sync))
 
-            # Get the modification time of the last merged PDF to use as a cutoff
-            last_merge_time = None
-            if not force_sync:
-                last_merge_time = _get_last_merge_time(
-                    services["cache_bucket"], main_span
-                )
-            else:
+            # Determine sync strategy based on event type
+            if changed_files and not force_sync:
+                click.echo(f"Processing {len(changed_files)} changed files from drive watcher")
+                # File change event - we can still do incremental sync
+                # but we know files have changed so we should proceed
+                main_span.set_attribute("sync_trigger", "file_changes")
+                last_merge_time = _get_last_merge_time(services["cache_bucket"], main_span)
+            elif force_sync:
                 click.echo("Force flag set. Performing a full sync.")
                 main_span.set_attribute("last_merge_time", "None (forced)")
+                main_span.set_attribute("sync_trigger", "force_sync")
+                last_merge_time = None
+            else:
+                # No file changes and no force flag - check if we need to sync
+                click.echo("No file changes detected, checking if sync is needed")
+                main_span.set_attribute("sync_trigger", "scheduled_check")
+                last_merge_time = _get_last_merge_time(services["cache_bucket"], main_span)
 
             with services["tracer"].start_as_current_span(
                 "sync_operation"
@@ -284,10 +334,12 @@ def cache_updater_main(cloud_event: CloudEvent):
                 sync_span.set_attribute("synced_files_count", synced_files_count)
                 click.echo("Sync complete.")
 
-            if not force_sync and synced_files_count == 0:
+            if not force_sync and synced_files_count == 0 and not changed_files:
                 click.echo("No files were updated since the last merge. Nothing to do.")
                 main_span.set_attribute("status", "skipped_no_changes")
                 return
+            elif changed_files and synced_files_count == 0:
+                click.echo("File changes detected but no files needed syncing. Proceeding with merge check.")
 
             click.echo("Starting PDF merge operation")
 

@@ -194,7 +194,7 @@ jobs:
         concurrency: 1
         max_instances: 1
         trigger_type: 'topic'
-        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
         env_vars: |
           SERVICE_NAME: "songbook-cache-updater"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
@@ -212,11 +212,27 @@ jobs:
 
     - name: Publish test message to trigger a sync
       run: |
-        CACHE_REFRESH_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.CACHE_REFRESH_PUBSUB_TOPIC, github.event.pull_request.number) || env.CACHE_REFRESH_PUBSUB_TOPIC }}"
-        echo "Publishing test message to ${CACHE_REFRESH_PUBSUB_TOPIC} to trigger sync..."
-        gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
-          --message="Initial sync after deploy" \
-          --attribute="force=false"
+        DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
+        echo "Publishing test drive change message to ${DRIVE_CHANGES_PUBSUB_TOPIC} to trigger cache sync..."
+
+        # Create a test message simulating file changes
+        TEST_MESSAGE='{
+          "check_time": "'$(date -u +%Y-%m-%dT%H:%M:%S)'",
+          "changed_files": [{
+            "id": "test-file-id",
+            "name": "Test Deploy Trigger.pdf",
+            "folder_id": "test-folder",
+            "mime_type": "application/pdf",
+            "parents": ["test-folder"],
+            "properties": {"deploy": "test"}
+          }],
+          "file_count": 1,
+          "folders_checked": ["test-folder"]
+        }'
+
+        gcloud pubsub topics publish "$DRIVE_CHANGES_PUBSUB_TOPIC" \
+          --message="$TEST_MESSAGE" \
+          --attribute="source=deploy-test"
 
   deploy-tagupdater:
     name: Deploy Tag Updater
