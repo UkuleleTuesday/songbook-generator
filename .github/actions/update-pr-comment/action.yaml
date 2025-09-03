@@ -3,7 +3,7 @@ description: 'Update the consolidated PR preview comment'
 
 inputs:
   component:
-    description: 'Component name (API, Generator Worker, Merger, Drive Watcher, Tag Updater, UI)'
+    description: 'Component name (API, Generator Worker, Cache Updater, Drive Watcher, Tag Updater, UI)'
     required: true
   url:
     description: 'URL for the deployed component'
@@ -40,8 +40,8 @@ runs:
             componentLine = `- [x] API: [${url}](${url})`;
           } else if (component === 'Generator Worker' && functionName) {
             componentLine = `- [x] Generator Worker: \`${functionName}\` (Pub/Sub triggered)`;
-          } else if (component === 'Merger' && functionName) {
-            componentLine = `- [x] Merger: \`${functionName}\` (Pub/Sub triggered)`;
+          } else if (component === 'Cache Updater' && functionName) {
+            componentLine = `- [x] Cache Updater: \`${functionName}\` (Pub/Sub triggered)`;
           } else if (component === 'Drive Watcher' && functionName) {
             componentLine = `- [x] Drive Watcher: \`${functionName}\` (Pub/Sub triggered)`;
           } else if (component === 'Tag Updater' && functionName) {
@@ -58,8 +58,8 @@ runs:
               body = body.replace(/- \[ \] API:.*/, componentLine);
             } else if (component === 'Generator Worker') {
               body = body.replace(/- \[ \] Generator Worker:.*/, componentLine);
-            } else if (component === 'Merger') {
-              body = body.replace(/- \[ \] Merger:.*/, componentLine);
+            } else if (component === 'Cache Updater') {
+              body = body.replace(/- \[ \] Cache Updater:.*/, componentLine);
             } else if (component === 'Drive Watcher') {
               body = body.replace(/- \[ \] Drive Watcher:.*/, componentLine);
             } else if (component === 'Tag Updater') {
@@ -72,7 +72,7 @@ runs:
             // Create new comment
             const apiLine = component === 'API' ? componentLine : '- [ ] API: ⏳ Deploying...';
             const generatorLine = component === 'Generator Worker' ? componentLine : '- [ ] Generator Worker: ⏳ Deploying...';
-            const mergerLine = component === 'Merger' ? componentLine : '- [ ] Merger: ⏳ Deploying...';
+            const cacheUpdaterLine = component === 'Cache Updater' ? componentLine : '- [ ] Cache Updater: ⏳ Deploying...';
             const driveWatcherLine = component === 'Drive Watcher' ? componentLine : '- [ ] Drive Watcher: ⏳ Deploying...';
             const tagUpdaterLine = component === 'Tag Updater' ? componentLine : '- [ ] Tag Updater: ⏳ Deploying...';
             const uiLine = component === 'UI' ? componentLine : '- [ ] UI: ⏳ Deploying...';
@@ -81,7 +81,7 @@ runs:
 
           ${apiLine}
           ${generatorLine}
-          ${mergerLine}
+          ${cacheUpdaterLine}
           ${driveWatcherLine}
           ${tagUpdaterLine}
           ${uiLine}

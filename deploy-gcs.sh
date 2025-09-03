@@ -160,14 +160,14 @@ echo "9. Set up cron schedule for cache refresh"
 # shellcheck disable=SC2016
 PAYLOAD_JSON='{"source_folders":["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]}'
 
-gcloud scheduler jobs create http trigger-merger-job \
+gcloud scheduler jobs create http trigger-cache-updater-job \
   --schedule="*/15 * * * *" \
   --time-zone="Europe/Dublin" \
-  --uri="$(gcloud run services describe "${MERGER_FUNCTION_NAME}" --region "${GCP_REGION}" --format="value(uri)")" \
+  --uri="$(gcloud run services describe "${CACHE_UPDATER_FUNCTION_NAME}" --region "${GCP_REGION}" --format="value(uri)")" \
   --http-method=POST \
   --oidc-service-account-email="${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --message-body="${PAYLOAD_JSON}" \
   --location="${GCP_REGION}" \
-  --description="Triggers the PDF merger and cache sync for songbooks."
+  --description="Triggers the PDF cache updater and cache sync for songbooks."
 
 echo "✔ All done. 🎉"

@@ -107,7 +107,7 @@ class GoogleCloud(BaseModel):
             principal="songbook-metadata-writer@songbook-generator.iam.gserviceaccount.com",
             scopes=["https://www.googleapis.com/auth/drive.metadata"],
         ),
-        "songbook-merger": GoogleCloudCredentials(
+        "songbook-cache-updater": GoogleCloudCredentials(
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
             scopes=["https://www.googleapis.com/auth/drive.readonly"],
         ),

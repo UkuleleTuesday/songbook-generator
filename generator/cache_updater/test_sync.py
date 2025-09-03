@@ -20,10 +20,10 @@ def mock_services():
     return services
 
 
-@patch("generator.merger.sync.GoogleDriveClient")
-@patch("generator.merger.sync._get_files_to_update")
-@patch("generator.merger.sync.init_cache")
-@patch("generator.merger.sync._sync_gcs_metadata_from_drive")
+@patch("generator.cache_updater.sync.GoogleDriveClient")
+@patch("generator.cache_updater.sync._get_files_to_update")
+@patch("generator.cache_updater.sync.init_cache")
+@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_calls_sync_metadata_correctly(
     mock_sync_metadata,
     mock_init_cache,
@@ -56,10 +56,10 @@ def test_sync_cache_calls_sync_metadata_correctly(
     )
 
 
-@patch("generator.merger.sync.GoogleDriveClient")
-@patch("generator.merger.sync._get_files_to_update")
-@patch("generator.merger.sync.init_cache")
-@patch("generator.merger.sync._sync_gcs_metadata_from_drive")
+@patch("generator.cache_updater.sync.GoogleDriveClient")
+@patch("generator.cache_updater.sync._get_files_to_update")
+@patch("generator.cache_updater.sync.init_cache")
+@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_download_file_stream_args(
     mock_sync_metadata,
     mock_init_cache,

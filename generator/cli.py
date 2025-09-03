@@ -10,13 +10,13 @@ from pathlib import Path
 
 
 from .common.config import get_settings
-from .merger.main import fetch_and_merge_pdfs
+from .cache_updater.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import (
     GoogleDriveClient,
 )
 from .common.caching import init_cache
-from .merger.sync import download_gcs_cache_to_local, sync_cache
+from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
@@ -286,9 +286,9 @@ def sync_cache_command(
 
     try:
         click.echo("Starting cache synchronization (CLI mode)")
-        from .merger import main as merger_main
+        from .cache_updater import main as cache_updater_main
 
-        services = merger_main._get_services()
+        services = cache_updater_main._get_services()
         source_folders = list(source_folder) if source_folder else []
 
         if not source_folders:
@@ -298,7 +298,7 @@ def sync_cache_command(
         last_merge_time = None
         if not force:
             if not local:
-                last_merge_time = merger_main._get_last_merge_time(
+                last_merge_time = cache_updater_main._get_last_merge_time(
                     services["cache_bucket"]
                 )
         else:
@@ -339,9 +339,9 @@ def download_cache_command(with_metadata, **kwargs):
     """Downloads the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
-        from .merger import main as merger_main
+        from .cache_updater import main as cache_updater_main
 
-        services = merger_main._get_services()
+        services = cache_updater_main._get_services()
         local_cache_dir = get_settings().caching.local.dir
         click.echo(f"Local cache directory: {local_cache_dir}")
 
@@ -374,11 +374,11 @@ def merge_pdfs(output: str, **kwargs):
     try:
         click.echo("Starting PDF merge operation (CLI mode)")
 
-        # Lazily import to avoid issues if merger dependencies are not available
-        from .merger import main as merger_main
+        # Lazily import to avoid issues if cache_updater dependencies are not available
+        from .cache_updater import main as cache_updater_main
 
         # Manually get the services since we are not in a Cloud Function
-        services = merger_main._get_services()
+        services = cache_updater_main._get_services()
         click.echo("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
