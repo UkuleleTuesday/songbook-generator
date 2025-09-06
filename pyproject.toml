@@ -45,9 +45,13 @@ songbook-tools = "generator.cli:cli"
 
 [dependency-groups]
 dev = [
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.6",
+    "pandas>=2.3.2",
     "psutil>=7.0.0",
     "pytest>=8.4.1",
     "pytest-mock>=3.14.1",
+    "seaborn>=0.13.2",
 ]
 
 [tool.setuptools.packages.find]

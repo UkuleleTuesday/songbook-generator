@@ -184,7 +184,7 @@ def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
 
     # Verify the query was called correctly
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        "folder1", None
+        ["folder1"], None
     )
 
 
@@ -200,16 +200,8 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
         File(name="cherry.pdf", id="4"),
     ]
 
-    def mock_query_side_effect(folder, filter):
-        if folder == "folder1":
-            return folder1_files
-        elif folder == "folder2":
-            return folder2_files
-        return []
-
-    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
-        mock_query_side_effect
-    )
+    all_files = folder1_files + folder2_files
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = all_files
 
     result = collect_and_sort_files(
         gdrive_client=mock_gdrive_client,
@@ -225,8 +217,10 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
     ]
     assert result == expected
 
-    # Verify queries were called for both folders
-    assert mock_gdrive_client.query_drive_files_with_client_filter.call_count == 2
+    # Verify query was called once with both folders
+    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
+        ["folder1", "folder2"], None
+    )
 
 
 def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
@@ -247,7 +241,7 @@ def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
 
     assert result == mock_files
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        "folder1", mock_filter
+        ["folder1"], mock_filter
     )
 
 
@@ -270,15 +264,8 @@ def test_collect_and_sort_files_with_progress_step(mocker, mock_gdrive_client):
     folder1_files = [File(name="file1.pdf", id="1")]
     folder2_files = [File(name="file2.pdf", id="2")]
 
-    def mock_query_side_effect(folder, filter):
-        if folder == "folder1":
-            return folder1_files
-        elif folder == "folder2":
-            return folder2_files
-        return []
-
-    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
-        mock_query_side_effect
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = (
+        folder1_files + folder2_files
     )
 
     result = collect_and_sort_files(
@@ -287,13 +274,9 @@ def test_collect_and_sort_files_with_progress_step(mocker, mock_gdrive_client):
         progress_step=mock_progress_step,
     )
 
-    # Verify progress was reported for each folder
-    assert mock_progress_step.increment.call_count == 2
-    mock_progress_step.increment.assert_any_call(
-        0.5, "Found 1 files in folder 1: folder1"
-    )
-    mock_progress_step.increment.assert_any_call(
-        0.5, "Found 1 files in folder 2: folder2"
+    # Verify progress was reported once
+    mock_progress_step.increment.assert_called_once_with(
+        1.0, "Found 2 files in 2 folder(s)"
     )
 
     # Verify files are still sorted correctly
@@ -446,13 +429,10 @@ def test_collect_and_sort_files_progress_increment_calculation(
         progress_step=mock_progress_step,
     )
 
-    # Each folder should get 1/3 of the progress
-    expected_increment = 1.0 / 3
-    assert mock_progress_step.increment.call_count == 3
-    for i in range(3):
-        args, kwargs = mock_progress_step.increment.call_args_list[i]
-        assert args[0] == expected_increment
-        assert f"Found 1 files in folder {i + 1}: folder{i + 1}" in args[1]
+    # Progress should be reported once for the entire operation
+    mock_progress_step.increment.assert_called_once_with(
+        1.0, "Found 1 files in 3 folder(s)"
+    )
 
 
 def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
@@ -460,18 +440,10 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
 ):
     """Test handling of mixed empty and non-empty folders."""
 
-    def mock_query_side_effect(folder, filter):
-        if folder == "folder1":
-            return [File(name="file1.pdf", id="1")]
-        elif folder == "folder2":
-            return []  # Empty folder
-        elif folder == "folder3":
-            return [File(name="file2.pdf", id="2")]
-        return []
-
-    mock_gdrive_client.query_drive_files_with_client_filter.side_effect = (
-        mock_query_side_effect
-    )
+    mock_gdrive_client.query_drive_files_with_client_filter.return_value = [
+        File(name="file2.pdf", id="2"),
+        File(name="file1.pdf", id="1"),
+    ]
 
     result = collect_and_sort_files(
         gdrive_client=mock_gdrive_client,
@@ -485,8 +457,10 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
     ]
     assert result == expected
 
-    # Should have queried all folders
-    assert mock_gdrive_client.query_drive_files_with_client_filter.call_count == 3
+    # Should have queried all folders once
+    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
+        ["folder1", "folder2", "folder3"], None
+    )
 
 
 def test_generate_manifest(tmp_path):
