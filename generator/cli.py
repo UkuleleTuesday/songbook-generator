@@ -19,6 +19,7 @@ from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from googleapiclient.discovery import build
+from .worker.gcp import get_credentials
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 
@@ -738,10 +739,11 @@ def inspect_doc_command(file_identifier):
     # Add Docs API scope
     scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
 
-    drive, cache, creds = init_services(
+    creds = get_credentials(
         scopes=scopes,
         target_principal=credential_config.principal,
     )
+    drive, cache = init_services(credentials=creds)
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     docs_service = build("docs", "v1", credentials=creds)
 
