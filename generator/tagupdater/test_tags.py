@@ -132,7 +132,6 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "artist",
             "fun. (feat. Janelle Monáe)",
         ),
-        # Missing test cases for space_oddity.json
         (
             "space_oddity.json",
             "chords",
@@ -148,7 +147,6 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "time_signature",
             "4/4",
         ),
-        # Missing test cases for mustang_sally.json
         (
             "mustang_sally.json",
             "chords",
@@ -164,7 +162,6 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "time_signature",
             "4/4",
         ),
-        # Missing test cases for final_countdown.json
         (
             "final_countdown.json",
             "chords",
@@ -180,7 +177,6 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "time_signature",
             "4/4",
         ),
-        # Missing test cases for we_are_young.json
         (
             "we_are_young.json",
             "chords",
