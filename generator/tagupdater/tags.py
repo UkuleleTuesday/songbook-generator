@@ -172,7 +172,17 @@ class Tagger:
 
                 tag_value = tagger_func(context)
                 if tag_value is not None:
-                    new_properties[tag_name] = str(tag_value)
+                    value_str = str(tag_value)
+                    key_bytes = len(tag_name.encode("utf-8"))
+                    value_bytes = len(value_str.encode("utf-8"))
+                    if key_bytes + value_bytes > 124:
+                        click.echo(
+                            f"  WARNING: Tag '{tag_name}' is too long "
+                            f"({key_bytes + value_bytes} bytes > 124) and will be skipped.",
+                            err=True,
+                        )
+                        continue
+                    new_properties[tag_name] = value_str
 
             click.echo(f"New properties: {json.dumps(new_properties)}")
             if new_properties:

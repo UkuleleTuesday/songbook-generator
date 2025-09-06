@@ -788,19 +788,39 @@ def update_tags(file_identifier, all, dry_run):
         )
 
     tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
+    failed_updates = {}
 
     for file_obj in files_to_process:
-        if file_obj.mimeType != "application/vnd.google-apps.document":
-            click.echo(
-                f"Skipping '{file_obj.name}' (not a Google Doc).",
+        try:
+            if file_obj.mimeType != "application/vnd.google-apps.document":
+                click.echo(
+                    f"Skipping '{file_obj.name}' (not a Google Doc).",
+                )
+                continue
+
+            click.echo(f"Running auto-tagger for '{file_obj.name}'...")
+            if dry_run:
+                click.echo("  (Dry run mode)")
+
+            tagger.update_tags(file_obj, dry_run=dry_run)
+        except HttpError as e:
+            error_message = f"Failed to update tags for '{file_obj.name}': {e}"
+            click.echo(f"ERROR: {error_message}", err=True)
+            failed_updates[file_obj.name] = str(e)
+        except Exception as e:  # noqa: BLE001 - Catch all for CLI error reporting
+            error_message = (
+                f"An unexpected error occurred for '{file_obj.name}': {e}"
             )
-            continue
+            click.echo(f"ERROR: {error_message}", err=True)
+            failed_updates[file_obj.name] = str(e)
 
-        click.echo(f"Running auto-tagger for '{file_obj.name}'...")
-        if dry_run:
-            click.echo("  (Dry run mode)")
-
-        tagger.update_tags(file_obj, dry_run=dry_run)
+    if failed_updates:
+        click.echo("\n--- Auto-tagger summary ---", err=True)
+        click.echo("Auto-tagger run completed with some failures.", err=True)
+        click.echo("Failed files:", err=True)
+        for file_name, error in failed_updates.items():
+            click.echo(f"  - {file_name}: {error}", err=True)
+        sys.exit(1)
 
     click.echo("Auto-tagger run complete.")
 
