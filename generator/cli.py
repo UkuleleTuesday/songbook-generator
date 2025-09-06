@@ -7,7 +7,6 @@ from typing import Optional
 import click
 import fitz
 from pathlib import Path
-import re
 
 
 from .common.config import get_settings
@@ -738,7 +737,9 @@ def inspect_doc_command(file_identifier):
         raise click.Abort()
 
     # Add Docs API scope
-    scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
+    scopes = credential_config.scopes + [
+        "https://www.googleapis.com/auth/documents.readonly"
+    ]
 
     creds = get_credentials(
         scopes=scopes,
@@ -754,7 +755,9 @@ def inspect_doc_command(file_identifier):
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         files = gdrive_client.get_files_metadata_by_ids([file_id])
         if not files:
-            click.echo(f"Error: Could not retrieve metadata for file ID {file_id}", err=True)
+            click.echo(
+                f"Error: Could not retrieve metadata for file ID {file_id}", err=True
+            )
             raise click.Abort()
         file = files[0]
     else:
@@ -763,9 +766,8 @@ def inspect_doc_command(file_identifier):
         if not files:
             click.echo("Error: No files found in source folders.", err=True)
             raise click.Abort()
-        file = files[0] # Just get the first one for simplicity
+        file = files[0]  # Just get the first one for simplicity
         click.echo(f"Using file: {file.name} (ID: {file.id})")
-
 
     click.echo(f"\nFetching document content for '{file.name}' (ID: {file.id})...")
     document = docs_service.documents().get(documentId=file.id).execute()
@@ -795,7 +797,9 @@ def download_doc_json_command(file_identifier, output_path):
         raise click.Abort()
 
     # Add Docs API scope
-    scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
+    scopes = credential_config.scopes + [
+        "https://www.googleapis.com/auth/documents.readonly"
+    ]
 
     creds = get_credentials(
         scopes=scopes,

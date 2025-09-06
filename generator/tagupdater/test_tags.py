@@ -12,7 +12,6 @@ from .tags import (
     status,
     tag,
     Context,
-    chords,
     GoogleDocument,
 )
 
