@@ -232,13 +232,23 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
 )
-def test_tagger_functions(doc_json, tag_func, expected_value):
+def test_tagger_functions(mocker, doc_json, tag_func, expected_value):
     """Test tagger functions using real JSON fixtures."""
     from . import tags
 
+    # Patch __post_init__ so we can test taggers without document parsing logic
+    mocker.patch.object(SongSheetGoogleDocument, "__post_init__", return_value=None)
+
     # Dynamically get the tagger function by name
     func = getattr(tags, tag_func)
-    context = Context(file=Mock(), document=SongSheetGoogleDocument(json=doc_json))
+    doc = SongSheetGoogleDocument(json=doc_json)
+
+    # Manually run the compute methods to simulate __post_init__
+    doc.paragraph_texts = doc._compute_paragraph_texts()
+    doc.annotation_paragraph_text = doc._compute_annotation_paragraph_text()
+    doc.song_body_elements = doc._compute_song_body_elements()
+
+    context = Context(file=Mock(), document=doc)
     assert func(context) == expected_value
 
 
