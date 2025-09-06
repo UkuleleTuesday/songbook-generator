@@ -65,7 +65,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
 
     tagger.update_tags(file_to_tag)
 
-    expected_body = {"properties": {"status": "APPROVED", "tabber": "None"}}
+    expected_body = {"properties": {"status": "APPROVED"}}
     mock_drive_service.files.return_value.update.assert_called_once_with(
         fileId="file123", body=expected_body, fields="properties"
     )
@@ -267,7 +267,7 @@ def test_update_tags_no_update_if_tags_are_identical(
         id="file123",
         name="test.pdf",
         parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED", "tabber": "None"},
+        properties={"status": "APPROVED"},
     )
 
     tagger.update_tags(file_to_tag)
@@ -347,7 +347,6 @@ def test_only_if_unset_does_not_update_existing_tag(
             "tag_if_unset": "existing_value",  # Should remain unchanged
             "always_tag": "always_value",  # Should be added
             "existing_prop": "existing_value",
-            "tabber": "None",
         }
         expected_body = {"properties": expected_properties}
         mock_drive_service.files.return_value.update.assert_called_once_with(
@@ -384,7 +383,6 @@ def test_only_if_unset_sets_new_tag(mock_drive_service, mock_docs_service):
             "tag_if_unset": "new_value",  # Should be set
             "always_tag": "always_value",  # Should be set
             "existing_prop": "existing_value",
-            "tabber": "None",
         }
         expected_body = {"properties": expected_properties}
         mock_drive_service.files.return_value.update.assert_called_once_with(
