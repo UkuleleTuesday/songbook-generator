@@ -309,6 +309,65 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
         tags._TAGGERS.pop()
 
 
+def test_update_tags_with_only_if_unset(mock_drive_service, mock_docs_service):
+    """Test the only_if_unset logic in the tag decorator."""
+
+    @tag(only_if_unset=True)
+    def tag_if_unset(ctx: Context) -> str:
+        return "new_value"
+
+    @tag
+    def always_tag(ctx: Context) -> str:
+        return "always_value"
+
+    try:
+        tagger = Tagger(mock_drive_service, mock_docs_service)
+
+        # Case 1: Property exists, so it should not be updated.
+        file_with_prop = File(
+            id="file1",
+            name="test.pdf",
+            properties={
+                "tag_if_unset": "existing_value",
+                "existing_prop": "existing_value",
+            },
+        )
+        tagger.update_tags(file_with_prop)
+
+        expected_properties_1 = {
+            "tag_if_unset": "existing_value",  # Should remain unchanged
+            "always_tag": "always_value",  # Should be added
+            "existing_prop": "existing_value",
+        }
+        expected_body_1 = {"properties": expected_properties_1}
+        mock_drive_service.files.return_value.update.assert_called_once_with(
+            fileId="file1", body=expected_body_1, fields="properties"
+        )
+        mock_drive_service.files.return_value.update.reset_mock()
+
+        # Case 2: Property does not exist, so it should be set.
+        file_without_prop = File(
+            id="file2", name="test.pdf", properties={"existing_prop": "existing_value"}
+        )
+        tagger.update_tags(file_without_prop)
+
+        expected_properties_2 = {
+            "tag_if_unset": "new_value",  # Should be set
+            "always_tag": "always_value",  # Should be set
+            "existing_prop": "existing_value",
+        }
+        expected_body_2 = {"properties": expected_properties_2}
+        mock_drive_service.files.return_value.update.assert_called_once_with(
+            fileId="file2", body=expected_body_2, fields="properties"
+        )
+
+    finally:
+        from . import tags
+
+        tags._TAGGERS.pop()
+        tags._TAGGERS.pop()
+
+
 def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
     """Test behavior when no tags are defined (beyond the default status)."""
     # Temporarily clear taggers for this test
