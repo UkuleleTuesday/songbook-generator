@@ -1,6 +1,7 @@
 import json
 import re
-from typing import Any, Callable, List, Optional
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional
 
 import click
 from googleapiclient.discovery import build
@@ -8,8 +9,24 @@ from googleapiclient.discovery import build
 from ..common.tracing import get_tracer
 from ..worker.models import File
 
+
+@dataclass
+class GoogleDocument:
+    """Represents the content of a Google Doc."""
+
+    json: Dict[str, Any]
+
+
+@dataclass
+class Context:
+    """Context object passed to tagger functions."""
+
+    file: File
+    document: Optional[GoogleDocument] = None
+
+
 # A list to hold all tagged functions
-_TAGGERS: List[Callable[[File, Any], Any]] = []
+_TAGGERS: List[Callable[[Context], Any]] = []
 tracer = get_tracer(__name__)
 
 # Folder IDs for status checking.
@@ -18,7 +35,7 @@ FOLDER_ID_APPROVED = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 
 
-def tag(func: Callable[[File, Any], Any]) -> Callable[[File, Any], Any]:
+def tag(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
     """Decorator to register a function as a tag generator."""
     _TAGGERS.append(func)
     return func
@@ -33,18 +50,27 @@ class Tagger:
         """
         Update Google Drive file properties based on registered tag functions.
 
-        For each function decorated with @tag, this function calls it with the
-        file object and a context object (self). If the function returns a value
-        other than None, it updates the file's `properties` with the function
-        name as the key and the return value as the value.
+        This method builds a context for the file, which may include fetching
+        the content of a Google Doc. It then calls each registered tagger
+        function with this context. If a tagger returns a value, it's added
+        to the file's properties.
         """
         with tracer.start_as_current_span(
             "update_tags", attributes={"file.id": file.id, "file.name": file.name}
         ) as span:
+            # Build context, fetching doc content if necessary
+            document = None
+            if file.mimeType == "application/vnd.google-apps.document":
+                doc_json = (
+                    self.docs_service.documents().get(documentId=file.id).execute()
+                )
+                document = GoogleDocument(json=doc_json)
+            context = Context(file=file, document=document)
+
             new_properties = {}
             for tagger in _TAGGERS:
                 tag_name = tagger.__name__
-                tag_value = tagger(file, self)
+                tag_value = tagger(context)
                 if tag_value is not None:
                     new_properties[tag_name] = str(tag_value)
 
@@ -72,23 +98,22 @@ class Tagger:
 
 
 @tag
-def status(file: File, ctx: Tagger) -> Optional[str]:
+def status(ctx: Context) -> Optional[str]:
     """Determine the status of a file based on its parent folder."""
-    if FOLDER_ID_APPROVED in file.parents:
+    if FOLDER_ID_APPROVED in ctx.file.parents:
         return "APPROVED"
-    if FOLDER_ID_READY_TO_PLAY in file.parents:
+    if FOLDER_ID_READY_TO_PLAY in ctx.file.parents:
         return "READY_TO_PLAY"
     return None
 
 
 @tag
-def chords(file: File, ctx: Tagger) -> Optional[str]:
+def chords(ctx: Context) -> Optional[str]:
     """Extracts unique chords from a Google Doc in order of appearance."""
-    if file.mimeType != "application/vnd.google-apps.document":
+    if not ctx.document:
         return None
 
-    document = ctx.docs_service.documents().get(documentId=file.id).execute()
-
+    document = ctx.document.json
     ordered_unique_chords = []
     seen_chords = set()
     chord_pattern = re.compile(r"\(([^)]+)\)")
