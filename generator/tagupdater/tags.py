@@ -286,8 +286,17 @@ def features(ctx: Context) -> Optional[str]:
 
 @tag(only_if_unset=True)
 def tabber(ctx: Context) -> Optional[str]:
-    """Extracts the file owner's name as the tabber."""
-    return ctx.owner_name
+    """Extracts and cleans the file owner's name as the tabber."""
+    if not ctx.owner_name:
+        return None
+
+    name = ctx.owner_name.split(".")[0]
+
+    # TODO: Replace this with a more robust aliasing system.
+    if name.lower() == "miguel":
+        return "Mischa"
+
+    return name.capitalize()
 
 
 @tag
