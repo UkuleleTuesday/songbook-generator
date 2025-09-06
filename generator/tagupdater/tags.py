@@ -181,13 +181,20 @@ def song_title(ctx: Context) -> Optional[str]:
 
 @tag
 def bpm(ctx: Context) -> Optional[str]:
-    """Extracts the BPM from the document body."""
+    """Extracts all unique BPM values from the document body as comma-separated list."""
     if not ctx.document:
         return None
     full_text = _get_full_text(ctx.document)
-    match = re.search(r"(\d+)\s*bpm", full_text, re.IGNORECASE)
-    if match:
-        return match.group(1)
+    matches = re.findall(r"(\d+)bpm", full_text, re.IGNORECASE)
+    if matches:
+        # Remove duplicates while preserving order
+        unique_matches = []
+        seen = set()
+        for match in matches:
+            if match not in seen:
+                unique_matches.append(match)
+                seen.add(match)
+        return ",".join(unique_matches)
     return None
 
 

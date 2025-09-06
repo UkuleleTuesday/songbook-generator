@@ -189,7 +189,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "we_are_young.json",
             "bpm",
-            "116",
+            "116,92",
         ),
         (
             "we_are_young.json",
