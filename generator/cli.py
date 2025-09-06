@@ -770,6 +770,36 @@ def inspect_doc_command(file_identifier):
     click.echo(f"\nFetching document content for '{file.name}' (ID: {file.id})...")
     document = docs_service.documents().get(documentId=file.id).execute()
 
+    click.echo("\n--- Chord Analysis ---")
+    unique_chords = set()
+    # Regex to find content inside parentheses, e.g., (C), (Gmaj7)
+    chord_pattern = re.compile(r"\(([^)]+)\)")
+
+    if "body" in document and "content" in document["body"]:
+        for element in document["body"]["content"]:
+            if "paragraph" in element:
+                para = element["paragraph"]
+                if "elements" in para:
+                    for para_element in para["elements"]:
+                        if "textRun" in para_element:
+                            text_run = para_element["textRun"]
+                            text_style = text_run.get("textStyle", {})
+                            if text_style.get("bold"):
+                                content = text_run.get("content", "")
+                                matches = chord_pattern.findall(content)
+                                for chord in matches:
+                                    # Clean up chord name (e.g., remove down-arrow symbols)
+                                    cleaned_chord = chord.replace("\u2193", "").strip()
+                                    if cleaned_chord:
+                                        unique_chords.add(cleaned_chord)
+
+    if unique_chords:
+        click.echo(f"Found {len(unique_chords)} unique chords:")
+        click.echo(", ".join(sorted(list(unique_chords))))
+    else:
+        click.echo("No chords found in this document.")
+    click.echo("\n--- End Chord Analysis ---")
+
     click.echo("\n--- Document JSON ---")
     click.echo(json.dumps(document, indent=2))
     click.echo("--- End Document JSON ---\n")
