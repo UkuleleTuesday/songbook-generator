@@ -1,0 +1,5386 @@
+{
+  "title": "The Final Countdown - Europe",
+  "body": {
+    "content": [
+      {
+        "endIndex": 1,
+        "sectionBreak": {
+          "sectionStyle": {
+            "columnSeparatorStyle": "NONE",
+            "contentDirection": "LEFT_TO_RIGHT",
+            "sectionType": "CONTINUOUS"
+          }
+        }
+      },
+      {
+        "startIndex": 1,
+        "endIndex": 30,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1,
+              "endIndex": 29,
+              "textRun": {
+                "content": "The Final Countdown - Europe",
+                "textStyle": {
+                  "bold": true,
+                  "fontSize": {
+                    "magnitude": 14,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 29,
+              "endIndex": 30,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 14,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT"
+          }
+        }
+      },
+      {
+        "startIndex": 30,
+        "endIndex": 37,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 30,
+              "endIndex": 31,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.16uikv24bara",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 31,
+              "endIndex": 32,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.3rkv9hnp8zqw",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 32,
+              "endIndex": 33,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.6yze368t5f8s",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 33,
+              "endIndex": 34,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.sx4r737pe12q",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 34,
+              "endIndex": 35,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.j7g7ho8ddqo3",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 35,
+              "endIndex": 36,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.s2e1eml140iz",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 36,
+              "endIndex": 37,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT"
+          }
+        }
+      },
+      {
+        "startIndex": 37,
+        "endIndex": 43,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 37,
+              "endIndex": 38,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.ozuqruvrzv70",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 38,
+              "endIndex": 39,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.5b6q2dajteh7",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 39,
+              "endIndex": 40,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.17mvq7sro5n2",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 40,
+              "endIndex": 41,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.6aqgrpwh6vwq",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 41,
+              "endIndex": 42,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.bj87hnxx5cb3",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 42,
+              "endIndex": 43,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT"
+          }
+        }
+      },
+      {
+        "startIndex": 43,
+        "endIndex": 100,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 43,
+              "endIndex": 59,
+              "textRun": {
+                "content": "(Backing vocals)",
+                "textStyle": {
+                  "italic": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 59,
+              "endIndex": 63,
+              "textRun": {
+                "content": "    ",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 63,
+              "endIndex": 72,
+              "textRun": {
+                "content": "Harmonies",
+                "textStyle": {
+                  "underline": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 72,
+              "endIndex": 76,
+              "textRun": {
+                "content": "    ",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 76,
+              "endIndex": 93,
+              "textRun": {
+                "content": "118bpm    4/4    ",
+                "textStyle": {
+                  "bold": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 93,
+              "endIndex": 100,
+              "textRun": {
+                "content": "gallop\n",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT"
+          }
+        }
+      },
+      {
+        "startIndex": 100,
+        "endIndex": 101,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 100,
+              "endIndex": 101,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT"
+          }
+        }
+      },
+      {
+        "startIndex": 101,
+        "endIndex": 166,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 101,
+              "endIndex": 107,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 107,
+              "endIndex": 108,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 108,
+              "endIndex": 166,
+              "textRun": {
+                "content": "(F#m\u2193) (D\u2193) (Bm\u2193) (E\u2193)(C#\u2193) | (F#m\u2193) (D\u2193) (Bm\u2193) (E\u2193)(C#\u2193)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 166,
+        "endIndex": 228,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 166,
+              "endIndex": 218,
+              "textRun": {
+                "content": "(F#m\u2193) (D\u2193) (Bm\u2193) (E\u2193)(C#\u2193) | (F#m\u2193) (D\u2193) (Bm\u2193) (E\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 218,
+              "endIndex": 221,
+              "textRun": {
+                "content": "10 ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 221,
+              "endIndex": 226,
+              "textRun": {
+                "content": "(C#\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 226,
+              "endIndex": 228,
+              "textRun": {
+                "content": "9\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 228,
+        "endIndex": 294,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 228,
+              "endIndex": 234,
+              "textRun": {
+                "content": "(F#m\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 234,
+              "endIndex": 235,
+              "textRun": {
+                "content": "8",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 235,
+              "endIndex": 240,
+              "textRun": {
+                "content": " (E\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 240,
+              "endIndex": 241,
+              "textRun": {
+                "content": "7",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 241,
+              "endIndex": 246,
+              "textRun": {
+                "content": " (A\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 246,
+              "endIndex": 247,
+              "textRun": {
+                "content": "6",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 247,
+              "endIndex": 252,
+              "textRun": {
+                "content": " (D\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 252,
+              "endIndex": 253,
+              "textRun": {
+                "content": "5",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 253,
+              "endIndex": 264,
+              "textRun": {
+                "content": " (C#7sus4\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 264,
+              "endIndex": 265,
+              "textRun": {
+                "content": "4",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 265,
+              "endIndex": 276,
+              "textRun": {
+                "content": " (C#7sus4\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 276,
+              "endIndex": 277,
+              "textRun": {
+                "content": "3",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 277,
+              "endIndex": 284,
+              "textRun": {
+                "content": " (C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 284,
+              "endIndex": 285,
+              "textRun": {
+                "content": "2",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 285,
+              "endIndex": 292,
+              "textRun": {
+                "content": " (C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 292,
+              "endIndex": 294,
+              "textRun": {
+                "content": "1\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 294,
+        "endIndex": 334,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 294,
+              "endIndex": 334,
+              "textRun": {
+                "content": "(F#m) (D) (Bm) (E) | (F#m) (D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 334,
+        "endIndex": 404,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 334,
+              "endIndex": 375,
+              "textRun": {
+                "content": "(F#m) (E) (A) (D) (C#7sus4) (C#7) | (F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 375,
+              "endIndex": 376,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 376,
+              "endIndex": 382,
+              "textRun": {
+                "content": "(F#m) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 382,
+              "endIndex": 386,
+              "textRun": {
+                "content": "woo ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 386,
+              "endIndex": 391,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 391,
+              "endIndex": 397,
+              "textRun": {
+                "content": "oo-oo ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 397,
+              "endIndex": 402,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 402,
+              "endIndex": 404,
+              "textRun": {
+                "content": "o\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 404,
+        "endIndex": 405,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 404,
+              "endIndex": 405,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 405,
+        "endIndex": 468,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 405,
+              "endIndex": 410,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 410,
+              "endIndex": 434,
+              "textRun": {
+                "content": " We're leaving together ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 434,
+              "endIndex": 439,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 439,
+              "endIndex": 457,
+              "textRun": {
+                "content": " but still it's fa",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 457,
+              "endIndex": 461,
+              "textRun": {
+                "content": "(Bm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 461,
+              "endIndex": 468,
+              "textRun": {
+                "content": "rewell\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 468,
+        "endIndex": 536,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 468,
+              "endIndex": 473,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 473,
+              "endIndex": 500,
+              "textRun": {
+                "content": " And maybe we'll come back ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 500,
+              "endIndex": 505,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 505,
+              "endIndex": 509,
+              "textRun": {
+                "content": " to ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 509,
+              "endIndex": 512,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 512,
+              "endIndex": 523,
+              "textRun": {
+                "content": "earth, who ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 523,
+              "endIndex": 527,
+              "textRun": {
+                "content": "(A) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 527,
+              "endIndex": 536,
+              "textRun": {
+                "content": "can tell\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 536,
+        "endIndex": 576,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 536,
+              "endIndex": 539,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 539,
+              "endIndex": 557,
+              "textRun": {
+                "content": " I guess there is ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 557,
+              "endIndex": 560,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 560,
+              "endIndex": 576,
+              "textRun": {
+                "content": "no-one to blame\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 576,
+        "endIndex": 629,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 576,
+              "endIndex": 579,
+              "textRun": {
+                "content": "(A)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 579,
+              "endIndex": 586,
+              "textRun": {
+                "content": " We're ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 586,
+              "endIndex": 589,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 589,
+              "endIndex": 597,
+              "textRun": {
+                "content": "leaving ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 597,
+              "endIndex": 602,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 602,
+              "endIndex": 609,
+              "textRun": {
+                "content": "ground ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 609,
+              "endIndex": 617,
+              "textRun": {
+                "content": "(leaving",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 617,
+              "endIndex": 618,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 618,
+              "endIndex": 621,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 621,
+              "endIndex": 629,
+              "textRun": {
+                "content": "ground)\n",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 629,
+        "endIndex": 686,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 629,
+              "endIndex": 646,
+              "textRun": {
+                "content": "Will things ever ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 646,
+              "endIndex": 651,
+              "textRun": {
+                "content": "(C#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 651,
+              "endIndex": 669,
+              "textRun": {
+                "content": "be the same again ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 669,
+              "endIndex": 686,
+              "textRun": {
+                "content": "(E\u2193\u2193) (E\u2193\u2193) (E\u2193)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 686,
+        "endIndex": 687,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 686,
+              "endIndex": 687,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 687,
+        "endIndex": 737,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 687,
+              "endIndex": 702,
+              "textRun": {
+                "content": "It's the final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 702,
+              "endIndex": 707,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 707,
+              "endIndex": 717,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 717,
+              "endIndex": 723,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 723,
+              "endIndex": 724,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 724,
+              "endIndex": 737,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 737,
+        "endIndex": 782,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 737,
+              "endIndex": 746,
+              "textRun": {
+                "content": "The final",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 746,
+              "endIndex": 747,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 747,
+              "endIndex": 752,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 752,
+              "endIndex": 761,
+              "textRun": {
+                "content": "countdown",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 761,
+              "endIndex": 762,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 762,
+              "endIndex": 768,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 768,
+              "endIndex": 769,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 769,
+              "endIndex": 782,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 782,
+        "endIndex": 783,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 782,
+              "endIndex": 783,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 783,
+        "endIndex": 860,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 783,
+              "endIndex": 788,
+              "textRun": {
+                "content": "Oooh ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 788,
+              "endIndex": 793,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 793,
+              "endIndex": 818,
+              "textRun": {
+                "content": " we're heading for Venus ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 818,
+              "endIndex": 825,
+              "textRun": {
+                "content": "(Venus)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 825,
+              "endIndex": 826,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 826,
+              "endIndex": 832,
+              "textRun": {
+                "content": "(F#m) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 832,
+              "endIndex": 848,
+              "textRun": {
+                "content": "and still we sta",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 848,
+              "endIndex": 852,
+              "textRun": {
+                "content": "(Bm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 852,
+              "endIndex": 860,
+              "textRun": {
+                "content": "nd tall\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 860,
+        "endIndex": 942,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 860,
+              "endIndex": 865,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 865,
+              "endIndex": 894,
+              "textRun": {
+                "content": " Cause maybe they've seen us ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 894,
+              "endIndex": 903,
+              "textRun": {
+                "content": "(seen us)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 903,
+              "endIndex": 904,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 904,
+              "endIndex": 910,
+              "textRun": {
+                "content": "(F#m) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 910,
+              "endIndex": 914,
+              "textRun": {
+                "content": "and ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 914,
+              "endIndex": 917,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 917,
+              "endIndex": 928,
+              "textRun": {
+                "content": "welcome us ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 928,
+              "endIndex": 932,
+              "textRun": {
+                "content": "(A) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 932,
+              "endIndex": 942,
+              "textRun": {
+                "content": "all, yeah\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 942,
+        "endIndex": 1015,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 942,
+              "endIndex": 945,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 945,
+              "endIndex": 959,
+              "textRun": {
+                "content": " With so many ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 959,
+              "endIndex": 962,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 962,
+              "endIndex": 980,
+              "textRun": {
+                "content": "light years to go ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 980,
+              "endIndex": 983,
+              "textRun": {
+                "content": "(A)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 983,
+              "endIndex": 988,
+              "textRun": {
+                "content": " and ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 988,
+              "endIndex": 991,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 991,
+              "endIndex": 1004,
+              "textRun": {
+                "content": "things to be ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1004,
+              "endIndex": 1009,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1009,
+              "endIndex": 1015,
+              "textRun": {
+                "content": "found\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1015,
+        "endIndex": 1090,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1015,
+              "endIndex": 1021,
+              "textRun": {
+                "content": "(to be",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1021,
+              "endIndex": 1022,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1022,
+              "endIndex": 1025,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1025,
+              "endIndex": 1032,
+              "textRun": {
+                "content": "found) ",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1032,
+              "endIndex": 1052,
+              "textRun": {
+                "content": "I'm sure that we'll ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1052,
+              "endIndex": 1057,
+              "textRun": {
+                "content": "(C#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1057,
+              "endIndex": 1073,
+              "textRun": {
+                "content": "all miss her so ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1073,
+              "endIndex": 1089,
+              "textRun": {
+                "content": "(E\u2193\u2193) (E\u2193\u2193) (E\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1089,
+              "endIndex": 1090,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1090,
+        "endIndex": 1091,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1090,
+              "endIndex": 1091,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1091,
+        "endIndex": 1141,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1091,
+              "endIndex": 1106,
+              "textRun": {
+                "content": "It's the final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1106,
+              "endIndex": 1111,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1111,
+              "endIndex": 1121,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1121,
+              "endIndex": 1127,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1127,
+              "endIndex": 1128,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1128,
+              "endIndex": 1141,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1141,
+        "endIndex": 1186,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1141,
+              "endIndex": 1150,
+              "textRun": {
+                "content": "The final",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1150,
+              "endIndex": 1151,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1151,
+              "endIndex": 1156,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1156,
+              "endIndex": 1165,
+              "textRun": {
+                "content": "countdown",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1165,
+              "endIndex": 1166,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1166,
+              "endIndex": 1172,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1172,
+              "endIndex": 1173,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1173,
+              "endIndex": 1186,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1186,
+        "endIndex": 1300,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1186,
+              "endIndex": 1196,
+              "textRun": {
+                "content": "The final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1196,
+              "endIndex": 1201,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1201,
+              "endIndex": 1211,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1211,
+              "endIndex": 1215,
+              "textRun": {
+                "content": "(the",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1215,
+              "endIndex": 1216,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1216,
+              "endIndex": 1219,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1219,
+              "endIndex": 1224,
+              "textRun": {
+                "content": "final",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1224,
+              "endIndex": 1228,
+              "textRun": {
+                "content": " (A)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1228,
+              "endIndex": 1238,
+              "textRun": {
+                "content": "countdown)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1238,
+              "endIndex": 1252,
+              "textRun": {
+                "content": " (D) (C#7sus4)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1252,
+              "endIndex": 1256,
+              "textRun": {
+                "content": "ooh ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1256,
+              "endIndex": 1261,
+              "textRun": {
+                "content": "(C#7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1261,
+              "endIndex": 1265,
+              "textRun": {
+                "content": "wooo",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1265,
+              "endIndex": 1271,
+              "textRun": {
+                "content": "(F#m\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1271,
+              "endIndex": 1275,
+              "textRun": {
+                "content": "oah ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1275,
+              "endIndex": 1288,
+              "textRun": {
+                "content": "[drums only] ",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1288,
+              "endIndex": 1300,
+              "textRun": {
+                "content": "(N/C) (N/C)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1300,
+        "endIndex": 1301,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1300,
+              "endIndex": 1301,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1301,
+        "endIndex": 1347,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1301,
+              "endIndex": 1307,
+              "textRun": {
+                "content": "[solo]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1307,
+              "endIndex": 1347,
+              "textRun": {
+                "content": " (Bm) (A) (D) (G) | (Em) (A) (Bm) (F#m)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1347,
+        "endIndex": 1386,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1347,
+              "endIndex": 1386,
+              "textRun": {
+                "content": "(Bm) (A) (D) (G) | (Em) (A) (Bm) (C#m)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1386,
+        "endIndex": 1387,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1386,
+              "endIndex": 1387,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1387,
+        "endIndex": 1428,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1387,
+              "endIndex": 1393,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1393,
+              "endIndex": 1428,
+              "textRun": {
+                "content": " (F#m\u2193) (F#m\u2193)(D\u2193) (Bm\u2193) (Bm\u2193)(E\u2193)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1428,
+        "endIndex": 1469,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1428,
+              "endIndex": 1434,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1434,
+              "endIndex": 1468,
+              "textRun": {
+                "content": " (F#m\u2193) (F#m\u2193)(D\u2193) (Bm\u2193) (Bm\u2193)(E\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1468,
+              "endIndex": 1469,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1469,
+        "endIndex": 1528,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1469,
+              "endIndex": 1479,
+              "textRun": {
+                "content": "The final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1479,
+              "endIndex": 1485,
+              "textRun": {
+                "content": "(F#m\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1485,
+              "endIndex": 1495,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1495,
+              "endIndex": 1509,
+              "textRun": {
+                "content": "(E\u2193) (A\u2193) (D\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1509,
+              "endIndex": 1513,
+              "textRun": {
+                "content": " oh ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1513,
+              "endIndex": 1523,
+              "textRun": {
+                "content": "(C#7sus4\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1523,
+              "endIndex": 1528,
+              "textRun": {
+                "content": "oooh\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1528,
+        "endIndex": 1529,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1528,
+              "endIndex": 1529,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1529,
+        "endIndex": 1579,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1529,
+              "endIndex": 1544,
+              "textRun": {
+                "content": "It's the final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1544,
+              "endIndex": 1549,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1549,
+              "endIndex": 1559,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1559,
+              "endIndex": 1565,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1565,
+              "endIndex": 1566,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1566,
+              "endIndex": 1579,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1579,
+        "endIndex": 1624,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1579,
+              "endIndex": 1588,
+              "textRun": {
+                "content": "The final",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1588,
+              "endIndex": 1589,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1589,
+              "endIndex": 1594,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1594,
+              "endIndex": 1603,
+              "textRun": {
+                "content": "countdown",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1603,
+              "endIndex": 1604,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1604,
+              "endIndex": 1610,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1610,
+              "endIndex": 1611,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1611,
+              "endIndex": 1624,
+              "textRun": {
+                "content": "(D) (Bm) (E)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1624,
+        "endIndex": 1695,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1624,
+              "endIndex": 1634,
+              "textRun": {
+                "content": "The final ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1634,
+              "endIndex": 1639,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1639,
+              "endIndex": 1649,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1649,
+              "endIndex": 1653,
+              "textRun": {
+                "content": "(the",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1653,
+              "endIndex": 1654,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1654,
+              "endIndex": 1657,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1657,
+              "endIndex": 1662,
+              "textRun": {
+                "content": "final",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1662,
+              "endIndex": 1666,
+              "textRun": {
+                "content": " (A)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1666,
+              "endIndex": 1676,
+              "textRun": {
+                "content": "countdown)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1676,
+              "endIndex": 1690,
+              "textRun": {
+                "content": " (D) (C#7sus4)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1690,
+              "endIndex": 1695,
+              "textRun": {
+                "content": "oooh\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1695,
+        "endIndex": 1734,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1695,
+              "endIndex": 1701,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1701,
+              "endIndex": 1706,
+              "textRun": {
+                "content": "It's ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1706,
+              "endIndex": 1712,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1712,
+              "endIndex": 1716,
+              "textRun": {
+                "content": "the ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1716,
+              "endIndex": 1722,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1722,
+              "endIndex": 1724,
+              "textRun": {
+                "content": "fi",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1724,
+              "endIndex": 1730,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1730,
+              "endIndex": 1734,
+              "textRun": {
+                "content": "nal\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1734,
+        "endIndex": 1802,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1734,
+              "endIndex": 1739,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1739,
+              "endIndex": 1749,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1749,
+              "endIndex": 1755,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1755,
+              "endIndex": 1756,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1756,
+              "endIndex": 1759,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1759,
+              "endIndex": 1776,
+              "textRun": {
+                "content": " we're leaving to",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1776,
+              "endIndex": 1780,
+              "textRun": {
+                "content": "(Bm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1780,
+              "endIndex": 1787,
+              "textRun": {
+                "content": "gether ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1787,
+              "endIndex": 1790,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1790,
+              "endIndex": 1791,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1791,
+              "endIndex": 1802,
+              "textRun": {
+                "content": "(The final\n",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1802,
+        "endIndex": 1874,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1802,
+              "endIndex": 1807,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1807,
+              "endIndex": 1817,
+              "textRun": {
+                "content": "countdown)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1817,
+              "endIndex": 1818,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1818,
+              "endIndex": 1824,
+              "textRun": {
+                "content": "[riff]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1824,
+              "endIndex": 1825,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1825,
+              "endIndex": 1828,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1828,
+              "endIndex": 1848,
+              "textRun": {
+                "content": " we'll all miss her ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1848,
+              "endIndex": 1852,
+              "textRun": {
+                "content": "(Bm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1852,
+              "endIndex": 1855,
+              "textRun": {
+                "content": "so ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1855,
+              "endIndex": 1858,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1858,
+              "endIndex": 1874,
+              "textRun": {
+                "content": " It's the final\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1874,
+        "endIndex": 1935,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1874,
+              "endIndex": 1879,
+              "textRun": {
+                "content": "(F#m)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1879,
+              "endIndex": 1889,
+              "textRun": {
+                "content": "countdown ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1889,
+              "endIndex": 1893,
+              "textRun": {
+                "content": "(the",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1893,
+              "endIndex": 1894,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1894,
+              "endIndex": 1897,
+              "textRun": {
+                "content": "(E)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1897,
+              "endIndex": 1902,
+              "textRun": {
+                "content": "final",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1902,
+              "endIndex": 1903,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1903,
+              "endIndex": 1906,
+              "textRun": {
+                "content": "(A)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1906,
+              "endIndex": 1916,
+              "textRun": {
+                "content": "countdown)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1916,
+              "endIndex": 1917,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1917,
+              "endIndex": 1930,
+              "textRun": {
+                "content": "(D) (C#7sus4)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1930,
+              "endIndex": 1935,
+              "textRun": {
+                "content": "oooh\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1935,
+        "endIndex": 1990,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1935,
+              "endIndex": 1941,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1941,
+              "endIndex": 1946,
+              "textRun": {
+                "content": "It's ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1946,
+              "endIndex": 1952,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1952,
+              "endIndex": 1956,
+              "textRun": {
+                "content": "the ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1956,
+              "endIndex": 1962,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1962,
+              "endIndex": 1964,
+              "textRun": {
+                "content": "fi",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1964,
+              "endIndex": 1970,
+              "textRun": {
+                "content": "(C#7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1970,
+              "endIndex": 1974,
+              "textRun": {
+                "content": "nal ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1974,
+              "endIndex": 1980,
+              "textRun": {
+                "content": "(F#m\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1980,
+              "endIndex": 1989,
+              "textRun": {
+                "content": "countdown",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1989,
+              "endIndex": 1990,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "bold": true,
+                  "fontSize": {
+                    "magnitude": 14,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      }
+    ]
+  },
+  "documentStyle": {
+    "background": {
+      "color": {}
+    },
+    "useFirstPageHeaderFooter": true,
+    "pageNumberStart": 1,
+    "marginTop": {
+      "magnitude": 21.25984251968504,
+      "unit": "PT"
+    },
+    "marginBottom": {
+      "magnitude": 20.40944881889764,
+      "unit": "PT"
+    },
+    "marginRight": {
+      "magnitude": 36.85039370078741,
+      "unit": "PT"
+    },
+    "marginLeft": {
+      "magnitude": 36.85039370078741,
+      "unit": "PT"
+    },
+    "pageSize": {
+      "height": {
+        "magnitude": 841.8897637795277,
+        "unit": "PT"
+      },
+      "width": {
+        "magnitude": 595.2755905511812,
+        "unit": "PT"
+      }
+    },
+    "marginHeader": {
+      "magnitude": 14.173228346456694,
+      "unit": "PT"
+    },
+    "marginFooter": {
+      "magnitude": 14.173228346456694,
+      "unit": "PT"
+    },
+    "useCustomHeaderFooterMargins": true
+  },
+  "namedStyles": {
+    "styles": [
+      {
+        "namedStyleType": "NORMAL_TEXT",
+        "textStyle": {
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "strikethrough": false,
+          "smallCaps": false,
+          "backgroundColor": {},
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {}
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          },
+          "weightedFontFamily": {
+            "fontFamily": "Arial",
+            "weight": 400
+          },
+          "baselineOffset": "NONE"
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "alignment": "START",
+          "lineSpacing": 115,
+          "direction": "LEFT_TO_RIGHT",
+          "spacingMode": "COLLAPSE_LISTS",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "unit": "PT"
+          },
+          "borderBetween": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderTop": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderBottom": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderLeft": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderRight": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "indentFirstLine": {
+            "unit": "PT"
+          },
+          "indentStart": {
+            "unit": "PT"
+          },
+          "indentEnd": {
+            "unit": "PT"
+          },
+          "keepLinesTogether": false,
+          "keepWithNext": false,
+          "avoidWidowAndOrphan": true,
+          "shading": {
+            "backgroundColor": {}
+          },
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_1",
+        "textStyle": {
+          "fontSize": {
+            "magnitude": 20,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 20,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 6,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_2",
+        "textStyle": {
+          "bold": false,
+          "fontSize": {
+            "magnitude": 16,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 18,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 6,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_3",
+        "textStyle": {
+          "bold": false,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.2627451,
+                "green": 0.2627451,
+                "blue": 0.2627451
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 14,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 16,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_4",
+        "textStyle": {
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 12,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 14,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_5",
+        "textStyle": {
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 12,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_6",
+        "textStyle": {
+          "italic": true,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 12,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "TITLE",
+        "textStyle": {
+          "fontSize": {
+            "magnitude": 26,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 3,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "SUBTITLE",
+        "textStyle": {
+          "italic": false,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 15,
+            "unit": "PT"
+          },
+          "weightedFontFamily": {
+            "fontFamily": "Arial",
+            "weight": 400
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 16,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      }
+    ]
+  },
+  "lists": {
+    "kix.v63a89tuthig": {
+      "listProperties": {
+        "nestingLevels": [
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%0",
+            "indentFirstLine": {
+              "magnitude": 18,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 36,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%1",
+            "indentFirstLine": {
+              "magnitude": 54,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 72,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%2",
+            "indentFirstLine": {
+              "magnitude": 90,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 108,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%3",
+            "indentFirstLine": {
+              "magnitude": 126,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 144,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%4",
+            "indentFirstLine": {
+              "magnitude": 162,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 180,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%5",
+            "indentFirstLine": {
+              "magnitude": 198,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 216,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%6",
+            "indentFirstLine": {
+              "magnitude": 234,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 252,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%7",
+            "indentFirstLine": {
+              "magnitude": 270,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 288,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%8",
+            "indentFirstLine": {
+              "magnitude": 306,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 324,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          }
+        ]
+      }
+    }
+  },
+  "suggestionsViewMode": "PREVIEW_WITHOUT_SUGGESTIONS",
+  "inlineObjects": {
+    "kix.16uikv24bara": {
+      "objectId": "kix.16uikv24bara",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXc9mpLZYIl3QcnCL73ZJZdJd9gN9LQbm7zb4eQh49eJWFvVrOii_QhGgfDcPmloPVbdEjUHNAfDpCICprXXCRXVW8S3rHN24x6nWtUKUyQxUpmU1udL1PPnYF1WmKDWH2kNJE_14nffsy0XEH9r-wp0EzI_0Z7dqDQuZbf865g09qA?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.17mvq7sro5n2": {
+      "objectId": "kix.17mvq7sro5n2",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXc3Xt9vOqyYZxSgCh2LmT1hLNG3ksVnxDZgPXaQnWlvNE4myR1wD8_A3tig2D_lyN2HT-rzpVb6o9G4io1dWgTaH5syHIX7E1DhX49Wclpl-GHGkNqFzPvu5lzTUILcVSR9poaDTyjGFwrt7_zJYgFsqP7seZXC_AWsg1iYymDiNF4?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.3rkv9hnp8zqw": {
+      "objectId": "kix.3rkv9hnp8zqw",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdfsLBu70mddQRf7QB196uWdz-HkBLJhfY5MfJIHhaXuO7baNcoqGgFo803xm0FKf_uS94BYfyW2TQNFIuQZsuuG0QAEFQORGq7vuHnrM1RWMlm49VeUepgtxJYbE6S8hXdsFLnVvxkTNMRqcAtsoo1qGYOw197M5Ze4dLOINyf?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.5b6q2dajteh7": {
+      "objectId": "kix.5b6q2dajteh7",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdoqrFoSAPlo-BOc6QzTdzzcF9ntSdhS78xomCB70GgqMxStJTFMsssKrBBabw9FuzuMB_2CmA19jUQNjG-SaBRbqumPOSvmNfYZVJ8Kj3LdUDdev3qIj-lmk3HBkLhpAr9kuyRYbSaSgKZA1pIitvu7_p2WuPyj47wMtKqbaoCp9w?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.6aqgrpwh6vwq": {
+      "objectId": "kix.6aqgrpwh6vwq",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXd7qWkAC5-aE4O4BmcPvhASquUnjHzjW54M7Th7wK0R9CLm0KLGEg1eMl9DQ89ldkJWapGslWQav4EdcyKzKi5u7_BC7TAFUJSYGATC8s-CjF-x8gGuT0_P1Plyx2SQ2cL9lBWGfcFW46QYbe3U11nDezgIxK3bqqvOvKOvOgpf16c?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.6yze368t5f8s": {
+      "objectId": "kix.6yze368t5f8s",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdPguSUcQcrmvbuOklICxMyw-NASaEM6bBCwaLOIT5asM0NaVHoXHBnYAjIxIjSKwSYGbjU3YbTVvpFMbLus5Jj_z6diMxl6yrlLAA2uIVTqPN5ToIAE6rFohILGxnmFvK6tre6ZZuWwy468yhAQ5h8uEsbKYe5ZICcsaVVsf1kO7s?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.bj87hnxx5cb3": {
+      "objectId": "kix.bj87hnxx5cb3",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdVjfyeh9EhNm1P18aegtWxkxZFGTxWaR0bYoyxCSYrW3kkvapNyA205eTZRKUcs9U89NRV7x91YrQwW45PiErOwuFjaQUYNG__6iSonVKEdczo9P05lr-lmAUR7JkJjq2tKH4JbbHCWe-aETOpEbBcCrFiKka1D6W0l_M-oA?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.j7g7ho8ddqo3": {
+      "objectId": "kix.j7g7ho8ddqo3",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdmbJQNu6a5PpKeCgYxxyqpqpNqHQHAiw9YxKmrE-aco_rXONpi_8bKEfRbyRw8GOK6_Y0FuWg6T4YNqf8Opz7bKgMOWWMT1WDGIbYMuG6GbFogd_IgSf2-ckmLYakaSvc26ebb6rYrZhTJzTQmTEe4r6rYXtw3UHLo0gPkLkeq?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.ozuqruvrzv70": {
+      "objectId": "kix.ozuqruvrzv70",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdluNAKARON87x_E57FAzvcWrV5DDTnS5zM7T9anH2L41yfH1PE31MPo9qLagtvLPR1DG0xobG4OEUdkEspvjiHNrRFhB1cxVYvHSSD-q1Ky1YBD5oABqI-ZwsfSIS2YnfShBRS3CKHSFYVv1VpkGu6bQBf0yZV6mTQU7Bz2gWtK7Q?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.s2e1eml140iz": {
+      "objectId": "kix.s2e1eml140iz",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXcYJNdixbUHW4YphwBwXndPysxBpcEbQPHncirvOQPS6VHOoX5jyvFxIjshcE0S1MHkHr8A7syNGQyXPpR6DdV_o_YSxRLNkBXekglZvAEG2DSIYsj6hoSHs5ha1qyRSuh2XaC8oMrNMSc-d432hfcJgDgcZ8URIjviitQo2meXBXM?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.sx4r737pe12q": {
+      "objectId": "kix.sx4r737pe12q",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXefdc5iy9gXECZwHB73W4qfrFVAvOwblqw4PS2attKRNlvCa0JrNUtEqvJnPtoTJDhJ2pBuJ1phcZbX-tWEZWGvnjNh7BspbcLpjdGskfNLxEfXiKjgomt0_k38px9iYGaIkNf39sCRgA_tbWXGwK7Uh5JUNMxfbw9n5CozwO060w?key=fqiFpdMP2MCBIrj809J8rQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    }
+  },
+  "documentId": "1RlQzjj3yycIromcFqEEbeiWNtscQvsiZzf0efK4OQSg"
+}
