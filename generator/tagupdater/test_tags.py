@@ -132,6 +132,70 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "artist",
             "fun. (feat. Janelle Monáe)",
         ),
+        # Missing test cases for space_oddity.json
+        (
+            "space_oddity.json",
+            "chords",
+            "FMaj7,Em,C,Am,Am7,D7,N/C,E7,F,Fm,BbMaj7,G,A,D,E",
+        ),
+        (
+            "space_oddity.json",
+            "bpm",
+            "70",
+        ),
+        (
+            "space_oddity.json",
+            "time_signature",
+            "4/4",
+        ),
+        # Missing test cases for mustang_sally.json
+        (
+            "mustang_sally.json",
+            "chords",
+            "B7sus4,N/C,A,D7,A7,E7,D7sus4,Dsus4,D,Dsus2,A7no5,F#m,Eb7",
+        ),
+        (
+            "mustang_sally.json",
+            "bpm",
+            "111",
+        ),
+        (
+            "mustang_sally.json",
+            "time_signature",
+            "4/4",
+        ),
+        # Missing test cases for final_countdown.json
+        (
+            "final_countdown.json",
+            "chords",
+            "F#m,D,Bm,E,C#,A,C#7sus4,C#7,C#m,N/C,G,Em",
+        ),
+        (
+            "final_countdown.json",
+            "bpm",
+            "118",
+        ),
+        (
+            "final_countdown.json",
+            "time_signature",
+            "4/4",
+        ),
+        # Missing test cases for we_are_young.json
+        (
+            "we_are_young.json",
+            "chords",
+            "feat. Janelle Monáe,N/C,F,Dm,Gm,Bb,C,Am,Csus4",
+        ),
+        (
+            "we_are_young.json",
+            "bpm",
+            "116,92",
+        ),
+        (
+            "we_are_young.json",
+            "time_signature",
+            "4/4",
+        ),
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
 )
