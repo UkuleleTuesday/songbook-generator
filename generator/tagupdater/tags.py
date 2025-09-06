@@ -154,15 +154,14 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
     if not ctx.document:
         return []
 
-    document = ctx.document.json
     ordered_unique_notations = []
     seen_notations = set()
 
-    if "body" in document and "content" in document["body"]:
-        for element in document["body"]["content"]:
-            if "paragraph" in element:
-                para = element["paragraph"]
-                if "elements" in para:
+    song_body_elements = _get_song_body_elements(ctx.document)
+    for element in song_body_elements:
+        if "paragraph" in element:
+            para = element["paragraph"]
+            if "elements" in para:
                     for para_element in para["elements"]:
                         if "textRun" in para_element:
                             text_run = para_element["textRun"]
@@ -316,3 +315,27 @@ def time_signature(ctx: Context) -> Optional[str]:
     if match:
         return match.group(1)
     return None
+
+
+def _get_song_body_elements(document: GoogleDocument) -> List[Dict[str, Any]]:
+    """
+    Extracts the structural elements of the song's body, which are assumed
+    to start after the paragraph containing annotations (BPM, time signature).
+    """
+    doc_content = document.json.get("body", {}).get("content", [])
+    if not doc_content:
+        return []
+
+    annotation_para_index = -1
+    for i, element in enumerate(doc_content):
+        if "paragraph" in element:
+            para_text = ""
+            for para_element in element["paragraph"].get("elements", []):
+                if "textRun" in para_element:
+                    para_text += para_element["textRun"].get("content", "")
+            if ANNOTATION_PATTERN.search(para_text):
+                annotation_para_index = i
+                break
+
+    start_index = annotation_para_index + 1 if annotation_para_index != -1 else 0
+    return doc_content[start_index:]

@@ -186,7 +186,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         (
             "we_are_young.json",
             "chords",
-            "feat. Janelle Monáe,F,Dm,Gm,Bb,C,Am,Csus4",
+            "F,Dm,Gm,Bb,C,Am,Csus4",
         ),
         (
             "we_are_young.json",
