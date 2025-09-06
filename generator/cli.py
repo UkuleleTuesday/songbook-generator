@@ -18,6 +18,7 @@ from .common.gdrive import (
 from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
+from googleapiclient.discovery import build
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 
@@ -716,6 +717,57 @@ def set_tag(file_identifier, key, value):
     else:
         click.echo("Failed to set tag.", err=True)
         raise click.Abort()
+
+
+@cli.command(name="inspect-doc")
+@click.argument("file_identifier", required=False)
+def inspect_doc_command(file_identifier):
+    """
+    Fetches a Google Doc and prints its raw JSON structure from the Docs API.
+
+    This is a developer tool to inspect the structure of a song sheet.
+    If FILE_IDENTIFIER is provided, it will be used to find the file (either by
+    name or by ID). If omitted, a random file from the source folders will be used.
+    """
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    # Add Docs API scope
+    scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
+
+    drive, cache = init_services(
+        scopes=scopes,
+        target_principal=credential_config.principal,
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    docs_service = build("docs", "v1", credentials=drive._credentials)
+
+    if file_identifier:
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        files = gdrive_client.get_files_metadata_by_ids([file_id])
+        if not files:
+            click.echo(f"Error: Could not retrieve metadata for file ID {file_id}", err=True)
+            raise click.Abort()
+        file = files[0]
+    else:
+        click.echo("No file identifier provided. Fetching a random file...")
+        files = gdrive_client.query_drive_files(settings.song_sheets.folder_ids)
+        if not files:
+            click.echo("Error: No files found in source folders.", err=True)
+            raise click.Abort()
+        file = files[0] # Just get the first one for simplicity
+        click.echo(f"Using file: {file.name} (ID: {file.id})")
+
+
+    click.echo(f"\nFetching document content for '{file.name}' (ID: {file.id})...")
+    document = docs_service.documents().get(documentId=file.id).execute()
+
+    click.echo("\n--- Document JSON ---")
+    click.echo(json.dumps(document, indent=2))
+    click.echo("--- End Document JSON ---\n")
 
 
 if __name__ == "__main__":
