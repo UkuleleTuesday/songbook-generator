@@ -131,7 +131,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "we_are_young.json",
             "artist",
-            "Fun.",
+            "fun. (feat. Janelle Monáe)",
         ),
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
