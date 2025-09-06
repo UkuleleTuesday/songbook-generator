@@ -775,5 +775,50 @@ def inspect_doc_command(file_identifier):
     click.echo("--- End Document JSON ---\n")
 
 
+@cli.command(name="download-doc-json")
+@click.argument("file_identifier")
+@click.argument(
+    "output_path",
+    type=click.Path(path_type=Path, dir_okay=False, writable=True),
+)
+def download_doc_json_command(file_identifier, output_path):
+    """
+    Downloads the raw JSON of a Google Doc and saves it to a file.
+
+    FILE_IDENTIFIER can be a Google Drive file ID or a partial file name.
+    OUTPUT_PATH is the destination file to save the JSON to.
+    """
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    # Add Docs API scope
+    scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
+
+    creds = get_credentials(
+        scopes=scopes,
+        target_principal=credential_config.principal,
+    )
+    drive_service = build("drive", "v3", credentials=creds)
+    docs_service = build("docs", "v1", credentials=creds)
+    cache = init_cache()
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+
+    click.echo(f"Fetching document content for ID: {file_id}...")
+    document = docs_service.documents().get(documentId=file_id).execute()
+
+    # Ensure the output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "w") as f:
+        json.dump(document, f, indent=2)
+
+    click.echo(f"Successfully saved document JSON to {output_path}")
+
+
 if __name__ == "__main__":
     cli()

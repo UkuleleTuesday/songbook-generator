@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -13,6 +15,16 @@ from .tags import (
     chords,
     GoogleDocument,
 )
+
+TEST_DATA_DIR = Path(__file__).parent / "test_data"
+
+
+@pytest.fixture
+def doc_json(request):
+    """A fixture to load a JSON file from the test_data directory."""
+    file_path = TEST_DATA_DIR / request.param
+    with open(file_path) as f:
+        return json.load(f)
 
 
 @pytest.fixture
@@ -53,83 +65,45 @@ def test_update_tags_with_status_tag(mock_drive_service):
     )
 
 
-def test_chords_tagger(mocker):
-    """Test the chords tag function logic."""
-    # Mock the Google Docs API response
-    mock_doc_content = {
-        "body": {
-            "content": [
-                {
-                    "paragraph": {
-                        "elements": [
-                            {
-                                "textRun": {
-                                    "content": "(C)",
-                                    "textStyle": {"bold": True},
-                                }
-                            },
-                            {
-                                "textRun": {
-                                    "content": "some text",
-                                    "textStyle": {},
-                                }
-                            },
-                            {
-                                "textRun": {
-                                    "content": "(G7)",
-                                    "textStyle": {"bold": True},
-                                }
-                            },
-                        ]
-                    }
-                },
-                {
-                    "paragraph": {
-                        "elements": [
-                            {
-                                "textRun": {
-                                    "content": "(Am)",
-                                    "textStyle": {"bold": True},
-                                }
-                            },
-                            {
-                                "textRun": {
-                                    "content": "(C)",  # Duplicate
-                                    "textStyle": {"bold": True},
-                                }
-                            },
-                        ]
-                    }
-                },
-            ]
-        }
-    }
+@pytest.mark.parametrize(
+    "doc_json, tag_func, expected_value",
+    [
+        (
+            "all_the_small_things.json",
+            "chords",
+            "C,G,F",
+        ),
+        (
+            "all_the_small_things.json",
+            "artist",
+            "Blink-182",
+        ),
+        (
+            "all_the_small_things.json",
+            "song_title",
+            "All The Small Things",
+        ),
+        (
+            "all_the_small_things.json",
+            "bpm",
+            "149",
+        ),
+        (
+            "all_the_small_things.json",
+            "time_signature",
+            "4/4",
+        ),
+    ],
+    indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
+)
+def test_tagger_functions(doc_json, tag_func, expected_value):
+    """Test tagger functions using real JSON fixtures."""
+    from . import tags
 
-    mock_docs_service = Mock()
-    mock_docs_service.documents.return_value.get.return_value.execute.return_value = (
-        mock_doc_content
-    )
-    mocker.patch(
-        "generator.tagupdater.tags.build", return_value=mock_docs_service
-    )
-
-    # File must be a Google Doc
-    file = File(
-        id="doc1", name="song.gdoc", mimeType="application/vnd.google-apps.document"
-    )
-    tagger = Tagger(Mock())
-    doc_json = tagger.docs_service.documents().get(documentId=file.id).execute()
-    context = Context(file=file, document=GoogleDocument(json=doc_json))
-
-    result = chords(context)
-
-    # Chords should be unique and in order of appearance
-    assert result == "C,G7,Am"
-
-    # Test with non-doc file
-    pdf_file = File(id="doc2", name="song.pdf", mimeType="application/pdf")
-    context_pdf = Context(file=pdf_file)
-    assert chords(context_pdf) is None
+    # Dynamically get the tagger function by name
+    func = getattr(tags, tag_func)
+    context = Context(file=Mock(), document=GoogleDocument(json=doc_json))
+    assert func(context) == expected_value
 
 
 def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):

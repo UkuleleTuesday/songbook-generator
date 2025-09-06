@@ -143,3 +143,61 @@ def chords(ctx: Context) -> Optional[str]:
         return None
 
     return ",".join(ordered_unique_chords)
+
+
+def _get_full_text(document: GoogleDocument) -> str:
+    """A helper to extract the full text content from a document."""
+    full_text = ""
+    if "body" in document.json and "content" in document.json["body"]:
+        for element in document.json["body"]["content"]:
+            if "paragraph" in element:
+                for para_element in element["paragraph"].get("elements", []):
+                    if "textRun" in para_element:
+                        full_text += para_element["textRun"].get("content", "")
+    return full_text
+
+
+@tag
+def artist(ctx: Context) -> Optional[str]:
+    """Extracts the artist from the document title."""
+    if not ctx.document:
+        return None
+    title = ctx.document.json.get("title", "")
+    if " - " in title:
+        return title.split(" - ", 1)[1].strip()
+    return None
+
+
+@tag
+def song_title(ctx: Context) -> Optional[str]:
+    """Extracts the song title from the document title."""
+    if not ctx.document:
+        return None
+    title = ctx.document.json.get("title", "")
+    if " - " in title:
+        return title.split(" - ", 1)[0].strip()
+    return title
+
+
+@tag
+def bpm(ctx: Context) -> Optional[str]:
+    """Extracts the BPM from the document body."""
+    if not ctx.document:
+        return None
+    full_text = _get_full_text(ctx.document)
+    match = re.search(r"(\d+)\s*bpm", full_text, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
+@tag
+def time_signature(ctx: Context) -> Optional[str]:
+    """Extracts the time signature from the document body."""
+    if not ctx.document:
+        return None
+    full_text = _get_full_text(ctx.document)
+    match = re.search(r"(\d/\d)", full_text)
+    if match:
+        return match.group(1)
+    return None
