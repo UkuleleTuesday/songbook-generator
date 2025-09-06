@@ -1,6 +1,7 @@
 import json
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, Callable, Dict, List, Optional
 
 import click
@@ -107,6 +108,7 @@ def status(ctx: Context) -> Optional[str]:
     return None
 
 
+@lru_cache(maxsize=None)
 def _extract_all_chord_notations(ctx: Context) -> List[str]:
     """Extracts all unique, chord-like notations from a Google Doc."""
     if not ctx.document:
@@ -153,6 +155,7 @@ def chords(ctx: Context) -> Optional[str]:
     return ",".join(musical_chords)
 
 
+@lru_cache(maxsize=None)
 def _get_full_text(document: GoogleDocument) -> str:
     """A helper to extract the full text content from a document."""
     full_text = ""
@@ -165,6 +168,7 @@ def _get_full_text(document: GoogleDocument) -> str:
     return full_text
 
 
+@lru_cache(maxsize=None)
 def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
     """A helper to extract the text content of each paragraph from a document."""
     paragraph_texts = []
@@ -179,6 +183,7 @@ def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
     return paragraph_texts
 
 
+@lru_cache(maxsize=None)
 def _get_annotation_paragraph_text(document: GoogleDocument) -> Optional[str]:
     """Finds and returns the text of the paragraph containing song annotations."""
     annotation_pattern = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
