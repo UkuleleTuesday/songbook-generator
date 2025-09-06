@@ -47,7 +47,7 @@ class Tagger:
         self.drive_service = drive_service
         self.docs_service = build("docs", "v1", credentials=drive_service._credentials)
 
-    def update_tags(self, file: File):
+    def update_tags(self, file: File, dry_run: bool = False):
         """
         Update Google Drive file properties based on registered tag functions.
 
@@ -89,6 +89,11 @@ class Tagger:
                 if updated_properties == current_properties:
                     click.echo("  Tags are identical, no update needed.")
                     span.set_attribute("update_skipped", "true")
+                    return
+
+                if dry_run:
+                    click.echo("  DRY RUN: Skipping actual update.")
+                    span.set_attribute("dry_run", "true")
                     return
 
                 self.drive_service.files().update(

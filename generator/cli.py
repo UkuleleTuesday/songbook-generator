@@ -19,7 +19,9 @@ from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from googleapiclient.discovery import build
+from .tagupdater.tags import Tagger
 from .worker.gcp import get_credentials
+from .worker.models import File
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 
@@ -718,6 +720,68 @@ def set_tag(file_identifier, key, value):
     else:
         click.echo("Failed to set tag.", err=True)
         raise click.Abort()
+
+
+@tags.command(name="update")
+@click.argument("file_identifier")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what tags would be applied without making any changes.",
+)
+def update_tags(file_identifier, dry_run):
+    """Run the auto-tagger on a specific Google Drive file."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    # The Tagger needs to read Google Docs content.
+    scopes = list(
+        set(
+            credential_config.scopes
+            + ["https://www.googleapis.com/auth/documents.readonly"]
+        )
+    )
+
+    drive_service, cache = init_services(
+        scopes=scopes, target_principal=credential_config.principal
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+
+    # We need a File object for the Tagger. Fetch the full metadata.
+    files_metadata = gdrive_client.get_files_metadata_by_ids([file_id])
+    if not files_metadata:
+        click.echo(
+            f"Error: Could not retrieve metadata for file ID {file_id}", err=True
+        )
+        raise click.Abort()
+    file_obj = files_metadata[0]
+
+    if file_obj.mimeType != "application/vnd.google-apps.document":
+        click.echo(
+            "Skipping. File "
+            f"'{file_obj.name}' is not a Google Doc and cannot be auto-tagged.",
+            err=True,
+        )
+        return
+
+    if dry_run:
+        click.echo("Performing a dry run. No changes will be saved.")
+
+    click.echo(f"Running auto-tagger for '{file_obj.name}'...")
+
+    tagger = Tagger(drive_service=drive_service)
+    tagger.update_tags(file_obj, dry_run=dry_run)
+
+    click.echo("Auto-tagger run complete.")
 
 
 @cli.command(name="inspect-doc")
