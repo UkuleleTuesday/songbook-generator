@@ -55,6 +55,7 @@ def test_status_tagger():
 
 def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
     """Test Tagger.update_tags with the status tag."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(
         id="file123",
@@ -64,7 +65,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
 
     tagger.update_tags(file_to_tag)
 
-    expected_body = {"properties": {"status": "APPROVED"}}
+    expected_body = {"properties": {"status": "APPROVED", "tabber": "None"}}
     mock_drive_service.files.return_value.update.assert_called_once_with(
         fileId="file123", body=expected_body, fields="properties"
     )
@@ -85,7 +86,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         ),
         (
             "all_the_small_things.json",
-            "song_title",
+            "song",
             "All The Small Things",
         ),
         (
@@ -100,7 +101,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         ),
         (
             "space_oddity.json",
-            "song_title",
+            "song",
             "Space Oddity",
         ),
         (
@@ -110,7 +111,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         ),
         (
             "mustang_sally.json",
-            "song_title",
+            "song",
             "Kiss/Mustang Sally Medley",
         ),
         (
@@ -120,7 +121,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         ),
         (
             "final_countdown.json",
-            "song_title",
+            "song",
             "The Final Countdown",
         ),
         (
@@ -130,7 +131,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         ),
         (
             "we_are_young.json",
-            "song_title",
+            "song",
             "We Are Young",
         ),
         (
@@ -201,7 +202,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         # Test cases for love_me_do.json
         (
             "love_me_do.json",
-            "song_title",
+            "song",
             "Love Me Do",
         ),
         (
@@ -247,6 +248,7 @@ def test_update_tags_no_update_if_tag_returns_none(
     mock_drive_service, mock_docs_service
 ):
     """Test that no update is made if the tag function returns None."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=["other_folder"])
 
@@ -259,12 +261,13 @@ def test_update_tags_no_update_if_tags_are_identical(
     mock_drive_service, mock_docs_service
 ):
     """Test that no update is made if the generated tags match existing ones."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(
         id="file123",
         name="test.pdf",
         parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED"},
+        properties={"status": "APPROVED", "tabber": "None"},
     )
 
     tagger.update_tags(file_to_tag)
@@ -276,6 +279,9 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
     mock_drive_service, mock_docs_service
 ):
     """Test that multiple tags are applied and existing properties preserved."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "owners": [{"displayName": "Test Owner"}]
+    }
 
     @tag
     def another_tag(ctx: Context) -> str:
@@ -294,6 +300,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
 
         expected_properties = {
             "status": "APPROVED",
+            "tabber": "Test Owner",
             "another_tag": "another_value",
             "existing_prop": "existing_value",
         }
@@ -314,6 +321,7 @@ def test_only_if_unset_does_not_update_existing_tag(
     mock_drive_service, mock_docs_service
 ):
     """Test that a tag with only_if_unset=True is not updated if it exists."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
 
     @tag(only_if_unset=True)
     def tag_if_unset(ctx: Context) -> str:
@@ -339,6 +347,7 @@ def test_only_if_unset_does_not_update_existing_tag(
             "tag_if_unset": "existing_value",  # Should remain unchanged
             "always_tag": "always_value",  # Should be added
             "existing_prop": "existing_value",
+            "tabber": "None",
         }
         expected_body = {"properties": expected_properties}
         mock_drive_service.files.return_value.update.assert_called_once_with(
@@ -354,6 +363,7 @@ def test_only_if_unset_does_not_update_existing_tag(
 
 def test_only_if_unset_sets_new_tag(mock_drive_service, mock_docs_service):
     """Test that a tag with only_if_unset=True is set if it does not exist."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
 
     @tag(only_if_unset=True)
     def tag_if_unset(ctx: Context) -> str:
@@ -374,6 +384,7 @@ def test_only_if_unset_sets_new_tag(mock_drive_service, mock_docs_service):
             "tag_if_unset": "new_value",  # Should be set
             "always_tag": "always_value",  # Should be set
             "existing_prop": "existing_value",
+            "tabber": "None",
         }
         expected_body = {"properties": expected_properties}
         mock_drive_service.files.return_value.update.assert_called_once_with(
@@ -389,6 +400,7 @@ def test_only_if_unset_sets_new_tag(mock_drive_service, mock_docs_service):
 
 def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
     """Test behavior when no tags are defined (beyond the default status)."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     # Temporarily clear taggers for this test
     from . import tags
 
