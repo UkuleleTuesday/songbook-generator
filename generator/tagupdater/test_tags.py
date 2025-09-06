@@ -71,7 +71,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "all_the_small_things.json",
             "chords",
-            "C,G,F",
+            "G,F,C,X,N/C",
         ),
         (
             "all_the_small_things.json",
