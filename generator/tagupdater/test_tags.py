@@ -11,6 +11,7 @@ from .tags import (
     tag,
     Context,
     chords,
+    GoogleDocument,
 )
 
 
@@ -117,8 +118,9 @@ def test_chords_tagger(mocker):
         id="doc1", name="song.gdoc", mimeType="application/vnd.google-apps.document"
     )
     tagger = Tagger(Mock())
-    context = Context(file=file, document=tagger.docs_service.documents().get(documentId=file.id).execute())
-    
+    doc_json = tagger.docs_service.documents().get(documentId=file.id).execute()
+    context = Context(file=file, document=GoogleDocument(json=doc_json))
+
     result = chords(context)
 
     # Chords should be unique and in order of appearance
