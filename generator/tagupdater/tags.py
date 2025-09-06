@@ -264,12 +264,10 @@ def features(ctx: Context) -> Optional[str]:
 
     found_features = set()
 
-    # Check for chucks and no-chords from notations
+    # Check for chucks from notations
     all_notations = _extract_all_chord_notations(ctx)
     if "X" in all_notations:
         found_features.add("chucks")
-    if "N/C" in all_notations:
-        found_features.add("no_chord")
 
     # Check for other text-based features from annotation paragraphs
     if ctx.document.annotation_paragraph_text:

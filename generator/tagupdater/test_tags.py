@@ -228,7 +228,7 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
         (
             "love_me_do.json",
             "features",
-            "no_chord,swing",
+            "swing",
         ),
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
