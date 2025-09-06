@@ -745,7 +745,9 @@ def delete_tag(file_identifier, key):
 
     try:
         file_metadata = (
-            gdrive_client.drive.files().get(fileId=file_id, fields="properties").execute()
+            gdrive_client.drive.files()
+            .get(fileId=file_id, fields="properties")
+            .execute()
         )
         properties = file_metadata.get("properties", {})
 
@@ -853,9 +855,7 @@ def update_tags(file_identifier, all, dry_run):
             click.echo(f"ERROR: {error_message}", err=True)
             failed_updates[file_obj.name] = str(e)
         except Exception as e:  # noqa: BLE001 - Catch all for CLI error reporting
-            error_message = (
-                f"An unexpected error occurred for '{file_obj.name}': {e}"
-            )
+            error_message = f"An unexpected error occurred for '{file_obj.name}': {e}"
             click.echo(f"ERROR: {error_message}", err=True)
             failed_updates[file_obj.name] = str(e)
 
