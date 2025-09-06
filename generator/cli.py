@@ -19,6 +19,7 @@ from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from .tagupdater.tags import Tagger
 from .worker.gcp import get_credentials
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
@@ -801,8 +802,8 @@ def update_tags(file_identifier, all, dry_run):
 
         try:
             tagger.update_tags(file_obj, dry_run=dry_run)
-        except Exception as e:
-            click.echo(f"Error tagging '{file_obj.name}': {e}", err=True)
+        except HttpError as e:
+            click.echo(f"API Error tagging '{file_obj.name}': {e}", err=True)
             traceback.print_exc()
 
     click.echo("Auto-tagger run complete.")
