@@ -722,14 +722,32 @@ def set_tag(file_identifier, key, value):
 
 
 @tags.command(name="update")
-@click.argument("file_identifier")
+@click.argument("file_identifier", required=False)
+@click.option(
+    "--all",
+    is_flag=True,
+    default=False,
+    help="Run the auto-tagger on all song sheets.",
+)
 @click.option(
     "--dry-run",
     is_flag=True,
     help="Show what tags would be applied without making any changes.",
 )
-def update_tags(file_identifier, dry_run):
-    """Run the auto-tagger on a specific Google Drive file."""
+def update_tags(file_identifier, all, dry_run):
+    """Run the auto-tagger on a specific Google Drive file or all files."""
+    if not file_identifier and not all:
+        click.echo(
+            "Error: Either a file identifier or the --all flag must be provided.",
+            err=True,
+        )
+        raise click.Abort()
+    if file_identifier and all:
+        click.echo(
+            "Error: Cannot use both a file identifier and the --all flag.", err=True
+        )
+        raise click.Abort()
+
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
         "songbook-metadata-writer"
@@ -754,32 +772,38 @@ def update_tags(file_identifier, dry_run):
     cache = init_cache()
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
-    file_id = _resolve_file_id(gdrive_client, file_identifier)
-
-    # We need a File object for the Tagger. Fetch the full metadata.
-    files_metadata = gdrive_client.get_files_metadata_by_ids([file_id])
-    if not files_metadata:
-        click.echo(
-            f"Error: Could not retrieve metadata for file ID {file_id}", err=True
+    if file_identifier:
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
+        if not files_to_process:
+            click.echo(
+                f"Error: Could not retrieve metadata for file ID {file_id}", err=True
+            )
+            raise click.Abort()
+    else:  # --all flag
+        click.echo("Fetching all song sheets from Drive...")
+        files_to_process = gdrive_client.query_drive_files(
+            settings.song_sheets.folder_ids
         )
-        raise click.Abort()
-    file_obj = files_metadata[0]
-
-    if file_obj.mimeType != "application/vnd.google-apps.document":
-        click.echo(
-            "Skipping. File "
-            f"'{file_obj.name}' is not a Google Doc and cannot be auto-tagged.",
-            err=True,
-        )
-        return
-
-    if dry_run:
-        click.echo("Performing a dry run. No changes will be saved.")
-
-    click.echo(f"Running auto-tagger for '{file_obj.name}'...")
 
     tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
-    tagger.update_tags(file_obj, dry_run=dry_run)
+
+    for file_obj in files_to_process:
+        if file_obj.mimeType != "application/vnd.google-apps.document":
+            click.echo(
+                f"Skipping '{file_obj.name}' (not a Google Doc).",
+            )
+            continue
+
+        click.echo(f"Running auto-tagger for '{file_obj.name}'...")
+        if dry_run:
+            click.echo("  (Dry run mode)")
+
+        try:
+            tagger.update_tags(file_obj, dry_run=dry_run)
+        except Exception as e:
+            click.echo(f"Error tagging '{file_obj.name}': {e}", err=True)
+            traceback.print_exc()
 
     click.echo("Auto-tagger run complete.")
 
