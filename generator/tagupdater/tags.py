@@ -36,7 +36,7 @@ FOLDER_ID_APPROVED = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 
 # Unicode character for downward arrow, often used for strumming patterns.
-DOWNWARD_ARROW = "\u2193"
+DOWNWARD_ARROW = "↓"
 
 # Pre-compiled regex patterns for metadata extraction.
 CHORD_PATTERN = re.compile(r"\(([^)]+)\)")
