@@ -753,11 +753,12 @@ def delete_tag(file_identifier, key):
             click.echo(f"Tag '{key}' not found on file. No changes made.")
             return
 
-        del properties[key]
+        # To delete a property, set its value to null.
+        properties_to_update = {key: None}
 
         gdrive_client.drive.files().update(
             fileId=file_id,
-            body={"properties": properties},
+            body={"properties": properties_to_update},
             fields="properties",
         ).execute()
         click.echo(f"Successfully deleted tag '{key}'.")
