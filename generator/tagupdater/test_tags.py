@@ -300,7 +300,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
 
         expected_properties = {
             "status": "APPROVED",
-            "tabber": "Test Owner",
+            "tabber": "Test owner",
             "another_tag": "another_value",
             "existing_prop": "existing_value",
         }
