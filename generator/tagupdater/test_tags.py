@@ -93,6 +93,36 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "time_signature",
             "4/4",
         ),
+        (
+            "space_oddity.json",
+            "song_title",
+            "Space Oddity",
+        ),
+        (
+            "space_oddity.json",
+            "artist",
+            "David Bowie",
+        ),
+        (
+            "mustang_sally.json",
+            "song_title",
+            "Mustang Sally",
+        ),
+        (
+            "mustang_sally.json",
+            "artist",
+            "The Commitments",
+        ),
+        (
+            "final_countdown.json",
+            "song_title",
+            "Final Countdown",
+        ),
+        (
+            "final_countdown.json",
+            "artist",
+            "Europe",
+        ),
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
 )
