@@ -165,6 +165,20 @@ def _get_full_text(document: GoogleDocument) -> str:
     return full_text
 
 
+def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
+    """A helper to extract the text content of each paragraph from a document."""
+    paragraph_texts = []
+    if "body" in document.json and "content" in document.json["body"]:
+        for element in document.json["body"]["content"]:
+            if "paragraph" in element:
+                para_text = ""
+                for para_element in element["paragraph"].get("elements", []):
+                    if "textRun" in para_element:
+                        para_text += para_element["textRun"].get("content", "")
+                paragraph_texts.append(para_text)
+    return paragraph_texts
+
+
 @tag
 def features(ctx: Context) -> Optional[str]:
     """Extracts special musical features from the document."""
@@ -180,12 +194,14 @@ def features(ctx: Context) -> Optional[str]:
     if "N/C" in all_notations:
         found_features.add("no_chord")
 
-    # Check for other text-based features
-    full_text = _get_full_text(ctx.document)
-    if re.search(r"\bswing\b", full_text, re.IGNORECASE):
-        found_features.add("swing")
-    if re.search(r"\bgallop\b", full_text, re.IGNORECASE):
-        found_features.add("gallop")
+    # Check for other text-based features from annotation paragraphs
+    annotation_pattern = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
+    for para_text in _get_paragraph_texts(ctx.document):
+        if annotation_pattern.search(para_text):
+            if re.search(r"\bswing\b", para_text, re.IGNORECASE):
+                found_features.add("swing")
+            if re.search(r"\bgallop\b", para_text, re.IGNORECASE):
+                found_features.add("gallop")
 
     if not found_features:
         return None
