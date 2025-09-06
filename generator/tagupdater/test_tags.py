@@ -136,7 +136,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "space_oddity.json",
             "chords",
-            "FMaj7,Em,C,Am,Am7,D7,N/C,E7,F,Fm,BbMaj7,G,A,D,E",
+            "FMaj7,Em,C,Am,Am7,D7,E7,F,Fm,BbMaj7,G,A,D,E",
         ),
         (
             "space_oddity.json",
@@ -152,7 +152,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "mustang_sally.json",
             "chords",
-            "B7sus4,N/C,A,D7,A7,E7,D7sus4,Dsus4,D,Dsus2,A7no5,F#m,Eb7",
+            "B7sus4,A,D7,A7,E7,D7sus4,Dsus4,D,Dsus2,A7no5,F#m,Eb7",
         ),
         (
             "mustang_sally.json",
@@ -168,7 +168,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "final_countdown.json",
             "chords",
-            "F#m,D,Bm,E,C#,A,C#7sus4,C#7,C#m,N/C,G,Em",
+            "F#m,D,Bm,E,C#,A,C#7sus4,C#7,C#m,G,Em",
         ),
         (
             "final_countdown.json",
@@ -184,7 +184,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "we_are_young.json",
             "chords",
-            "feat. Janelle Monáe,N/C,F,Dm,Gm,Bb,C,Am,Csus4",
+            "feat. Janelle Monáe,F,Dm,Gm,Bb,C,Am,Csus4",
         ),
         (
             "we_are_young.json",
