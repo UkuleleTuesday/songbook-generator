@@ -106,17 +106,17 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "mustang_sally.json",
             "song_title",
-            "Mustang Sally",
+            "Kiss/Mustang Sally Medley",
         ),
         (
             "mustang_sally.json",
             "artist",
-            "The Commitments",
+            "Prince/The Commitments",
         ),
         (
             "final_countdown.json",
             "song_title",
-            "Final Countdown",
+            "The Final Countdown",
         ),
         (
             "final_countdown.json",
