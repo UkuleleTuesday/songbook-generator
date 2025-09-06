@@ -35,6 +35,9 @@ tracer = get_tracer(__name__)
 FOLDER_ID_APPROVED = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 
+# Unicode character for downward arrow, often used for strumming patterns.
+DOWNWARD_ARROW = "\u2193"
+
 
 def tag(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
     """Decorator to register a function as a tag generator."""
@@ -136,7 +139,7 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
                                 content = text_run.get("content", "")
                                 matches = chord_pattern.findall(content)
                                 for chord in matches:
-                                    cleaned_chord = chord.replace("\u2193", "").strip()
+                                    cleaned_chord = chord.replace(DOWNWARD_ARROW, "").strip()
                                     if (
                                         cleaned_chord
                                         and cleaned_chord not in seen_notations
