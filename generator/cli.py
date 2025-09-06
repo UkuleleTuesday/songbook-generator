@@ -722,6 +722,50 @@ def set_tag(file_identifier, key, value):
         raise click.Abort()
 
 
+@tags.command(name="delete")
+@click.argument("file_identifier")
+@click.argument("key")
+def delete_tag(file_identifier, key):
+    """Delete a tag from a Google Drive file."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+
+    try:
+        file_metadata = (
+            gdrive_client.drive.files().get(fileId=file_id, fields="properties").execute()
+        )
+        properties = file_metadata.get("properties", {})
+
+        if key not in properties:
+            click.echo(f"Tag '{key}' not found on file. No changes made.")
+            return
+
+        del properties[key]
+
+        gdrive_client.drive.files().update(
+            fileId=file_id,
+            body={"properties": properties},
+            fields="properties",
+        ).execute()
+        click.echo(f"Successfully deleted tag '{key}'.")
+    except HttpError as e:
+        click.echo(f"Failed to delete tag '{key}': {e}", err=True)
+        raise click.Abort()
+
+
 @tags.command(name="update")
 @click.argument("file_identifier", required=False)
 @click.option(
