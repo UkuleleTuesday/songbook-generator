@@ -204,7 +204,6 @@ class Tagger:
 @tag
 def status(ctx: Context) -> Optional[str]:
     """Determine the status of a file based on its parent folder."""
-    print(f"DEBUG: Checking file parents for status tag: {ctx.file.parents}")
     if FOLDER_ID_APPROVED in ctx.file.parents:
         return "APPROVED"
     if FOLDER_ID_READY_TO_PLAY in ctx.file.parents:
