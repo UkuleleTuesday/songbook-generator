@@ -242,7 +242,9 @@ def test_tagger_functions(doc_json, tag_func, expected_value):
     assert func(context) == expected_value
 
 
-def test_update_tags_no_update_if_tag_returns_none(mock_drive_service, mock_docs_service):
+def test_update_tags_no_update_if_tag_returns_none(
+    mock_drive_service, mock_docs_service
+):
     """Test that no update is made if the tag function returns None."""
     tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=["other_folder"])

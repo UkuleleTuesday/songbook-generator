@@ -21,7 +21,6 @@ from .common.filters import FilterParser
 from googleapiclient.discovery import build
 from .tagupdater.tags import Tagger
 from .worker.gcp import get_credentials
-from .worker.models import File
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 
@@ -749,9 +748,7 @@ def update_tags(file_identifier, dry_run):
         )
     )
 
-    creds = get_credentials(
-        scopes=scopes, target_principal=credential_config.principal
-    )
+    creds = get_credentials(scopes=scopes, target_principal=credential_config.principal)
     drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
     cache = init_cache()
@@ -785,8 +782,6 @@ def update_tags(file_identifier, dry_run):
     tagger.update_tags(file_obj, dry_run=dry_run)
 
     click.echo("Auto-tagger run complete.")
-
-
 
 
 @cli.command(name="download-doc-json")

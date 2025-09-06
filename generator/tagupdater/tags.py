@@ -1,11 +1,9 @@
 import json
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Any, Callable, Dict, List, Optional
 
 import click
-from googleapiclient.discovery import build
 
 from ..common.tracing import get_tracer
 from ..worker.models import File
@@ -146,7 +144,9 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
                                 content = text_run.get("content", "")
                                 matches = CHORD_PATTERN.findall(content)
                                 for chord in matches:
-                                    cleaned_chord = chord.replace(DOWNWARD_ARROW, "").strip()
+                                    cleaned_chord = chord.replace(
+                                        DOWNWARD_ARROW, ""
+                                    ).strip()
                                     if (
                                         cleaned_chord
                                         and cleaned_chord not in seen_notations
