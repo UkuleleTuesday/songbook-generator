@@ -771,7 +771,8 @@ def inspect_doc_command(file_identifier):
     document = docs_service.documents().get(documentId=file.id).execute()
 
     click.echo("\n--- Chord Analysis ---")
-    unique_chords = set()
+    ordered_unique_chords = []
+    seen_chords = set()
     # Regex to find content inside parentheses, e.g., (C), (Gmaj7)
     chord_pattern = re.compile(r"\(([^)]+)\)")
 
@@ -790,12 +791,13 @@ def inspect_doc_command(file_identifier):
                                 for chord in matches:
                                     # Clean up chord name (e.g., remove down-arrow symbols)
                                     cleaned_chord = chord.replace("\u2193", "").strip()
-                                    if cleaned_chord:
-                                        unique_chords.add(cleaned_chord)
+                                    if cleaned_chord and cleaned_chord not in seen_chords:
+                                        ordered_unique_chords.append(cleaned_chord)
+                                        seen_chords.add(cleaned_chord)
 
-    if unique_chords:
-        click.echo(f"Found {len(unique_chords)} unique chords:")
-        click.echo(", ".join(sorted(list(unique_chords))))
+    if ordered_unique_chords:
+        click.echo(f"Found {len(ordered_unique_chords)} unique chords (in order of appearance):")
+        click.echo(", ".join(ordered_unique_chords))
     else:
         click.echo("No chords found in this document.")
     click.echo("\n--- End Chord Analysis ---")
