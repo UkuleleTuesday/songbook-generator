@@ -753,6 +753,7 @@ def update_tags(file_identifier, dry_run):
         scopes=scopes, target_principal=credential_config.principal
     )
     drive_service = build("drive", "v3", credentials=creds)
+    docs_service = build("docs", "v1", credentials=creds)
     cache = init_cache()
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
@@ -780,7 +781,7 @@ def update_tags(file_identifier, dry_run):
 
     click.echo(f"Running auto-tagger for '{file_obj.name}'...")
 
-    tagger = Tagger(credentials=creds)
+    tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
     tagger.update_tags(file_obj, dry_run=dry_run)
 
     click.echo("Auto-tagger run complete.")

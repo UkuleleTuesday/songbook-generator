@@ -43,9 +43,9 @@ def tag(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
 
 
 class Tagger:
-    def __init__(self, credentials: Any):
-        self.drive_service = build("drive", "v3", credentials=credentials)
-        self.docs_service = build("docs", "v1", credentials=credentials)
+    def __init__(self, drive_service: Any, docs_service: Any):
+        self.drive_service = drive_service
+        self.docs_service = docs_service
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
