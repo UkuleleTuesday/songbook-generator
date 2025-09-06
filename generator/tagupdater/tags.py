@@ -1,6 +1,6 @@
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 import click
@@ -10,10 +10,68 @@ from ..worker.models import File
 
 
 @dataclass
-class GoogleDocument:
-    """Represents the content of a Google Doc."""
+class SongSheetGoogleDocument:
+    """Represents the content of a Google Doc with helpers for song sheets."""
 
     json: Dict[str, Any]
+    _paragraph_texts: Optional[List[str]] = field(init=False, default=None)
+    _annotation_paragraph_text: Optional[str] = field(init=False, default=None)
+    _song_body_elements: Optional[List[Dict[str, Any]]] = field(init=False, default=None)
+
+    @property
+    def paragraph_texts(self) -> List[str]:
+        """A helper to extract the text content of each paragraph from a document."""
+        if self._paragraph_texts is None:
+            texts = []
+            if "body" in self.json and "content" in self.json["body"]:
+                for element in self.json["body"]["content"]:
+                    if "paragraph" in element:
+                        para_text = ""
+                        for para_element in element["paragraph"].get("elements", []):
+                            if "textRun" in para_element:
+                                para_text += para_element["textRun"].get("content", "")
+                        texts.append(para_text)
+            self._paragraph_texts = texts
+        return self._paragraph_texts
+
+    @property
+    def annotation_paragraph_text(self) -> Optional[str]:
+        """Finds and returns the text of the paragraph containing song annotations."""
+        if self._annotation_paragraph_text is None:
+            text = None
+            for para_text in self.paragraph_texts:
+                if ANNOTATION_PATTERN.search(para_text):
+                    text = para_text
+                    break
+            self._annotation_paragraph_text = text
+        return self._annotation_paragraph_text
+
+    @property
+    def song_body_elements(self) -> List[Dict[str, Any]]:
+        """
+        Extracts the structural elements of the song's body, which are assumed
+        to start after the paragraph containing annotations (BPM, time signature).
+        """
+        if self._song_body_elements is None:
+            doc_content = self.json.get("body", {}).get("content", [])
+            if not doc_content:
+                self._song_body_elements = []
+            else:
+                annotation_para_index = -1
+                for i, element in enumerate(doc_content):
+                    if "paragraph" in element:
+                        para_text = ""
+                        for para_element in element["paragraph"].get("elements", []):
+                            if "textRun" in para_element:
+                                para_text += para_element["textRun"].get("content", "")
+                        if ANNOTATION_PATTERN.search(para_text):
+                            annotation_para_index = i
+                            break
+                start_index = (
+                    annotation_para_index + 1 if annotation_para_index != -1 else 0
+                )
+                self._song_body_elements = doc_content[start_index:]
+        return self._song_body_elements
 
 
 @dataclass
@@ -21,7 +79,7 @@ class Context:
     """Context object passed to tagger functions."""
 
     file: File
-    document: Optional[GoogleDocument] = None
+    document: Optional[SongSheetGoogleDocument] = None
 
 
 @dataclass
@@ -96,7 +154,7 @@ class Tagger:
                 doc_json = (
                     self.docs_service.documents().get(documentId=file.id).execute()
                 )
-                document = GoogleDocument(json=doc_json)
+                document = SongSheetGoogleDocument(json=doc_json)
             context = Context(file=file, document=document)
 
             new_properties = {}
@@ -157,8 +215,7 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
     ordered_unique_notations = []
     seen_notations = set()
 
-    song_body_elements = _get_song_body_elements(ctx.document)
-    for element in song_body_elements:
+    for element in ctx.document.song_body_elements:
         if "paragraph" in element:
             para = element["paragraph"]
             if "elements" in para:
@@ -195,40 +252,6 @@ def chords(ctx: Context) -> Optional[str]:
     return ",".join(musical_chords)
 
 
-def _get_full_text(document: GoogleDocument) -> str:
-    """A helper to extract the full text content from a document."""
-    full_text = ""
-    if "body" in document.json and "content" in document.json["body"]:
-        for element in document.json["body"]["content"]:
-            if "paragraph" in element:
-                for para_element in element["paragraph"].get("elements", []):
-                    if "textRun" in para_element:
-                        full_text += para_element["textRun"].get("content", "")
-    return full_text
-
-
-def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
-    """A helper to extract the text content of each paragraph from a document."""
-    paragraph_texts = []
-    if "body" in document.json and "content" in document.json["body"]:
-        for element in document.json["body"]["content"]:
-            if "paragraph" in element:
-                para_text = ""
-                for para_element in element["paragraph"].get("elements", []):
-                    if "textRun" in para_element:
-                        para_text += para_element["textRun"].get("content", "")
-                paragraph_texts.append(para_text)
-    return paragraph_texts
-
-
-def _get_annotation_paragraph_text(document: GoogleDocument) -> Optional[str]:
-    """Finds and returns the text of the paragraph containing song annotations."""
-    for para_text in _get_paragraph_texts(document):
-        if ANNOTATION_PATTERN.search(para_text):
-            return para_text
-    return None
-
-
 @tag
 def features(ctx: Context) -> Optional[str]:
     """Extracts special musical features from the document."""
@@ -245,11 +268,10 @@ def features(ctx: Context) -> Optional[str]:
         found_features.add("no_chord")
 
     # Check for other text-based features from annotation paragraphs
-    annotation_para = _get_annotation_paragraph_text(ctx.document)
-    if annotation_para:
-        if SWING_PATTERN.search(annotation_para):
+    if ctx.document.annotation_paragraph_text:
+        if SWING_PATTERN.search(ctx.document.annotation_paragraph_text):
             found_features.add("swing")
-        if GALLOP_PATTERN.search(annotation_para):
+        if GALLOP_PATTERN.search(ctx.document.annotation_paragraph_text):
             found_features.add("gallop")
 
     if not found_features:
@@ -283,13 +305,10 @@ def song_title(ctx: Context) -> Optional[str]:
 @tag
 def bpm(ctx: Context) -> Optional[str]:
     """Extracts all unique BPM values from the document body as comma-separated list."""
-    if not ctx.document:
-        return None
-    annotation_para = _get_annotation_paragraph_text(ctx.document)
-    if not annotation_para:
+    if not ctx.document or not ctx.document.annotation_paragraph_text:
         return None
 
-    matches = BPM_PATTERN.findall(annotation_para)
+    matches = BPM_PATTERN.findall(ctx.document.annotation_paragraph_text)
     if matches:
         # Remove duplicates while preserving order
         unique_matches = []
@@ -305,37 +324,10 @@ def bpm(ctx: Context) -> Optional[str]:
 @tag
 def time_signature(ctx: Context) -> Optional[str]:
     """Extracts the time signature from the document body."""
-    if not ctx.document:
-        return None
-    annotation_para = _get_annotation_paragraph_text(ctx.document)
-    if not annotation_para:
+    if not ctx.document or not ctx.document.annotation_paragraph_text:
         return None
 
-    match = TIME_SIGNATURE_PATTERN.search(annotation_para)
+    match = TIME_SIGNATURE_PATTERN.search(ctx.document.annotation_paragraph_text)
     if match:
         return match.group(1)
     return None
-
-
-def _get_song_body_elements(document: GoogleDocument) -> List[Dict[str, Any]]:
-    """
-    Extracts the structural elements of the song's body, which are assumed
-    to start after the paragraph containing annotations (BPM, time signature).
-    """
-    doc_content = document.json.get("body", {}).get("content", [])
-    if not doc_content:
-        return []
-
-    annotation_para_index = -1
-    for i, element in enumerate(doc_content):
-        if "paragraph" in element:
-            para_text = ""
-            for para_element in element["paragraph"].get("elements", []):
-                if "textRun" in para_element:
-                    para_text += para_element["textRun"].get("content", "")
-            if ANNOTATION_PATTERN.search(para_text):
-                annotation_para_index = i
-                break
-
-    start_index = annotation_para_index + 1 if annotation_para_index != -1 else 0
-    return doc_content[start_index:]

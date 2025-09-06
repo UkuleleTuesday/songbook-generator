@@ -12,7 +12,7 @@ from .tags import (
     status,
     tag,
     Context,
-    GoogleDocument,
+    SongSheetGoogleDocument,
 )
 
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
@@ -238,7 +238,7 @@ def test_tagger_functions(doc_json, tag_func, expected_value):
 
     # Dynamically get the tagger function by name
     func = getattr(tags, tag_func)
-    context = Context(file=Mock(), document=GoogleDocument(json=doc_json))
+    context = Context(file=Mock(), document=SongSheetGoogleDocument(json=doc_json))
     assert func(context) == expected_value
 
 
