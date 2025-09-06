@@ -35,7 +35,7 @@ tracer = get_tracer(__name__)
 FOLDER_ID_APPROVED = "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95"
 FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 
-# Unicode character for downward arrow, often used for strumming patterns.
+# Character for downward arrow, used for single strums.
 DOWNWARD_ARROW = "↓"
 
 # Pre-compiled regex patterns for metadata extraction.
