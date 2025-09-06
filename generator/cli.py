@@ -738,12 +738,12 @@ def inspect_doc_command(file_identifier):
     # Add Docs API scope
     scopes = credential_config.scopes + ["https://www.googleapis.com/auth/documents.readonly"]
 
-    drive, cache = init_services(
+    drive, cache, creds = init_services(
         scopes=scopes,
         target_principal=credential_config.principal,
     )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-    docs_service = build("docs", "v1", credentials=drive._credentials)
+    docs_service = build("docs", "v1", credentials=creds)
 
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)
