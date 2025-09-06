@@ -604,7 +604,7 @@ def list_song_editions(file_identifier):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
     if properties is None:
@@ -677,7 +677,7 @@ def get_tag(file_identifier, key):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
 
@@ -713,7 +713,7 @@ def set_tag(file_identifier, key, value):
     drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     if gdrive_client.set_file_property(file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
