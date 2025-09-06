@@ -14,25 +14,28 @@ class SongSheetGoogleDocument:
     """Represents the content of a Google Doc with helpers for song sheets."""
 
     json: Dict[str, Any]
-    _paragraph_texts: Optional[List[str]] = field(init=False, default=None)
+    paragraph_texts: List[str] = field(init=False)
     _annotation_paragraph_text: Optional[str] = field(init=False, default=None)
-    _song_body_elements: Optional[List[Dict[str, Any]]] = field(init=False, default=None)
+    _song_body_elements: Optional[List[Dict[str, Any]]] = field(
+        init=False, default=None
+    )
 
-    @property
-    def paragraph_texts(self) -> List[str]:
-        """A helper to extract the text content of each paragraph from a document."""
-        if self._paragraph_texts is None:
-            texts = []
-            if "body" in self.json and "content" in self.json["body"]:
-                for element in self.json["body"]["content"]:
-                    if "paragraph" in element:
-                        para_text = ""
-                        for para_element in element["paragraph"].get("elements", []):
-                            if "textRun" in para_element:
-                                para_text += para_element["textRun"].get("content", "")
-                        texts.append(para_text)
-            self._paragraph_texts = texts
-        return self._paragraph_texts
+    def __post_init__(self):
+        """Compute derived fields after the object has been initialized."""
+        self.paragraph_texts = self._compute_paragraph_texts()
+
+    def _compute_paragraph_texts(self) -> List[str]:
+        """Extracts the text content of each paragraph from a document."""
+        texts = []
+        doc_content = self.json.get("body", {}).get("content", [])
+        for element in doc_content:
+            if "paragraph" in element:
+                para_text = ""
+                for para_element in element["paragraph"].get("elements", []):
+                    if "textRun" in para_element:
+                        para_text += para_element["textRun"].get("content", "")
+                texts.append(para_text)
+        return texts
 
     @property
     def annotation_paragraph_text(self) -> Optional[str]:
