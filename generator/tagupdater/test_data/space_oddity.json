@@ -1,0 +1,5295 @@
+{
+  "title": "Space Oddity - David Bowie",
+  "body": {
+    "content": [
+      {
+        "endIndex": 1,
+        "sectionBreak": {
+          "sectionStyle": {
+            "columnSeparatorStyle": "NONE",
+            "contentDirection": "LEFT_TO_RIGHT",
+            "sectionType": "CONTINUOUS"
+          }
+        }
+      },
+      {
+        "startIndex": 1,
+        "endIndex": 28,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1,
+              "endIndex": 27,
+              "textRun": {
+                "content": "Space Oddity - David Bowie",
+                "textStyle": {
+                  "bold": true,
+                  "fontSize": {
+                    "magnitude": 14,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 27,
+              "endIndex": 28,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 14,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT",
+            "indentFirstLine": {
+              "unit": "PT"
+            },
+            "indentStart": {
+              "unit": "PT"
+            },
+            "pageBreakBefore": false
+          }
+        }
+      },
+      {
+        "startIndex": 28,
+        "endIndex": 36,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 28,
+              "endIndex": 29,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.6rup94cr3l5g",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 29,
+              "endIndex": 30,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.kiwbo78margr",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 30,
+              "endIndex": 31,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.kyceb66lun7f",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 31,
+              "endIndex": 32,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.gv9xkdxtrstn",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 32,
+              "endIndex": 33,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.fmbkibbh36pu",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 33,
+              "endIndex": 34,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.ch3g5p7av4g0",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 34,
+              "endIndex": 35,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.sailmxdvucnw",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 35,
+              "endIndex": 36,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT",
+            "pageBreakBefore": false
+          }
+        }
+      },
+      {
+        "startIndex": 36,
+        "endIndex": 44,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 36,
+              "endIndex": 37,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.t9ix8avkxq9k",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 37,
+              "endIndex": 38,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.w5czjj6njax7",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 38,
+              "endIndex": 39,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.23fdp9ngz17y",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 39,
+              "endIndex": 40,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.uscepan70zts",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 40,
+              "endIndex": 41,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.qpqwbuf7q8cq",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 41,
+              "endIndex": 42,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.wkt5db500kt",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Cambria",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 42,
+              "endIndex": 43,
+              "inlineObjectElement": {
+                "inlineObjectId": "kix.rydk60c1fcqv",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 43,
+              "endIndex": 44,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT",
+            "pageBreakBefore": false
+          }
+        }
+      },
+      {
+        "startIndex": 44,
+        "endIndex": 90,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 44,
+              "endIndex": 64,
+              "textRun": {
+                "content": "(Backing vocals)    ",
+                "textStyle": {
+                  "italic": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 64,
+              "endIndex": 73,
+              "textRun": {
+                "content": "Harmonies",
+                "textStyle": {
+                  "underline": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 73,
+              "endIndex": 77,
+              "textRun": {
+                "content": "    ",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 77,
+              "endIndex": 90,
+              "textRun": {
+                "content": "70bpm    4/4\n",
+                "textStyle": {
+                  "bold": true,
+                  "fontSize": {
+                    "magnitude": 12,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT",
+            "pageBreakBefore": false
+          }
+        }
+      },
+      {
+        "startIndex": 90,
+        "endIndex": 91,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 90,
+              "endIndex": 91,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "fontSize": {
+                    "magnitude": 10,
+                    "unit": "PT"
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "alignment": "CENTER",
+            "direction": "LEFT_TO_RIGHT",
+            "pageBreakBefore": false
+          }
+        }
+      },
+      {
+        "startIndex": 91,
+        "endIndex": 129,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 91,
+              "endIndex": 102,
+              "textRun": {
+                "content": "[ukes only]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 102,
+              "endIndex": 103,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 103,
+              "endIndex": 129,
+              "textRun": {
+                "content": "(FMaj7) (Em) (FMaj7) (Em)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 129,
+        "endIndex": 161,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 129,
+              "endIndex": 134,
+              "textRun": {
+                "content": "[all]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 134,
+              "endIndex": 135,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 135,
+              "endIndex": 161,
+              "textRun": {
+                "content": "(FMaj7) (Em) (FMaj7) (Em)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 161,
+        "endIndex": 162,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 161,
+              "endIndex": 162,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 162,
+        "endIndex": 236,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 162,
+              "endIndex": 166,
+              "textRun": {
+                "content": "(C) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 166,
+              "endIndex": 194,
+              "textRun": {
+                "content": "Ground control to Major Tom ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 194,
+              "endIndex": 198,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 198,
+              "endIndex": 199,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 199,
+              "endIndex": 203,
+              "textRun": {
+                "content": "(C) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 203,
+              "endIndex": 231,
+              "textRun": {
+                "content": "Ground control to Major Tom ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 231,
+              "endIndex": 235,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 235,
+              "endIndex": 236,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 236,
+        "endIndex": 297,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 236,
+              "endIndex": 241,
+              "textRun": {
+                "content": "(Am) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 241,
+              "endIndex": 251,
+              "textRun": {
+                "content": "Take your ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 251,
+              "endIndex": 256,
+              "textRun": {
+                "content": "(Am7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 256,
+              "endIndex": 274,
+              "textRun": {
+                "content": "protein pills and ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 274,
+              "endIndex": 278,
+              "textRun": {
+                "content": "(D7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 278,
+              "endIndex": 297,
+              "textRun": {
+                "content": "put your helmet on\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 297,
+        "endIndex": 359,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 297,
+              "endIndex": 300,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 300,
+              "endIndex": 311,
+              "textRun": {
+                "content": "(ten, nine)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 311,
+              "endIndex": 312,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 312,
+              "endIndex": 340,
+              "textRun": {
+                "content": "Ground control to Major Tom ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 340,
+              "endIndex": 344,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 344,
+              "endIndex": 358,
+              "textRun": {
+                "content": "(eight, seven)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 358,
+              "endIndex": 359,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 359,
+        "endIndex": 425,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 359,
+              "endIndex": 362,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 362,
+              "endIndex": 373,
+              "textRun": {
+                "content": "(six, five)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 373,
+              "endIndex": 374,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 374,
+              "endIndex": 404,
+              "textRun": {
+                "content": "Commencing countdown engine\u2019s ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 404,
+              "endIndex": 408,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 408,
+              "endIndex": 411,
+              "textRun": {
+                "content": "on ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 411,
+              "endIndex": 425,
+              "textRun": {
+                "content": "(four, three)\n",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 425,
+        "endIndex": 508,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 425,
+              "endIndex": 429,
+              "textRun": {
+                "content": "(Am)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 429,
+              "endIndex": 439,
+              "textRun": {
+                "content": "(two, one)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 439,
+              "endIndex": 440,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 440,
+              "endIndex": 447,
+              "textRun": {
+                "content": "Check i",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 447,
+              "endIndex": 452,
+              "textRun": {
+                "content": "(Am7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 452,
+              "endIndex": 468,
+              "textRun": {
+                "content": "gnition and may ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 468,
+              "endIndex": 473,
+              "textRun": {
+                "content": "(D7\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 473,
+              "endIndex": 484,
+              "textRun": {
+                "content": "God\u2019s love ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 484,
+              "endIndex": 493,
+              "textRun": {
+                "content": "(liftoff)",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 493,
+              "endIndex": 507,
+              "textRun": {
+                "content": " be with you  ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 507,
+              "endIndex": 508,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 508,
+        "endIndex": 556,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 508,
+              "endIndex": 525,
+              "textRun": {
+                "content": "[dissonant slide]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 525,
+              "endIndex": 526,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 526,
+              "endIndex": 538,
+              "textRun": {
+                "content": "(N/C) (N/C) ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 538,
+              "endIndex": 549,
+              "textRun": {
+                "content": "[drum fill]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 549,
+              "endIndex": 555,
+              "textRun": {
+                "content": " (N/C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 555,
+              "endIndex": 556,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 556,
+        "endIndex": 557,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 556,
+              "endIndex": 557,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 557,
+        "endIndex": 634,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 557,
+              "endIndex": 560,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 560,
+              "endIndex": 595,
+              "textRun": {
+                "content": "This is ground control to Major Tom",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 595,
+              "endIndex": 596,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 596,
+              "endIndex": 600,
+              "textRun": {
+                "content": "(E7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 600,
+              "endIndex": 601,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 601,
+              "endIndex": 629,
+              "textRun": {
+                "content": "you've really made the grade",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 629,
+              "endIndex": 630,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 630,
+              "endIndex": 633,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 633,
+              "endIndex": 634,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 634,
+        "endIndex": 696,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 634,
+              "endIndex": 641,
+              "textRun": {
+                "content": "And the",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 641,
+              "endIndex": 642,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 642,
+              "endIndex": 646,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 646,
+              "endIndex": 665,
+              "textRun": {
+                "content": "papers want to know",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 665,
+              "endIndex": 666,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 666,
+              "endIndex": 669,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 669,
+              "endIndex": 670,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 670,
+              "endIndex": 691,
+              "textRun": {
+                "content": "whose shirts you wear",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 691,
+              "endIndex": 692,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 692,
+              "endIndex": 695,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 695,
+              "endIndex": 696,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 696,
+        "endIndex": 754,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 696,
+              "endIndex": 704,
+              "textRun": {
+                "content": "Now it's",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 704,
+              "endIndex": 705,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 705,
+              "endIndex": 709,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 709,
+              "endIndex": 726,
+              "textRun": {
+                "content": "time to leave the",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 726,
+              "endIndex": 727,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 727,
+              "endIndex": 730,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 730,
+              "endIndex": 749,
+              "textRun": {
+                "content": "capsule if you dare",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 749,
+              "endIndex": 750,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 750,
+              "endIndex": 753,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 753,
+              "endIndex": 754,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 754,
+        "endIndex": 755,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 754,
+              "endIndex": 755,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 755,
+        "endIndex": 833,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 755,
+              "endIndex": 758,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 758,
+              "endIndex": 794,
+              "textRun": {
+                "content": "This is Major Tom to ground control ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 794,
+              "endIndex": 798,
+              "textRun": {
+                "content": "(E7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 798,
+              "endIndex": 829,
+              "textRun": {
+                "content": " I'm stepping through the door ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 829,
+              "endIndex": 832,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 832,
+              "endIndex": 833,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 833,
+        "endIndex": 887,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 833,
+              "endIndex": 840,
+              "textRun": {
+                "content": "And I'm",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 840,
+              "endIndex": 841,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 841,
+              "endIndex": 845,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 845,
+              "endIndex": 865,
+              "textRun": {
+                "content": "floating in the most",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 865,
+              "endIndex": 866,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 866,
+              "endIndex": 869,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 869,
+              "endIndex": 870,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 870,
+              "endIndex": 882,
+              "textRun": {
+                "content": "peculiar way",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 882,
+              "endIndex": 883,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 883,
+              "endIndex": 886,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 886,
+              "endIndex": 887,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 887,
+        "endIndex": 939,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 887,
+              "endIndex": 900,
+              "textRun": {
+                "content": "And the stars",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 900,
+              "endIndex": 901,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 901,
+              "endIndex": 905,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 905,
+              "endIndex": 906,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 906,
+              "endIndex": 915,
+              "textRun": {
+                "content": "look very",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 915,
+              "endIndex": 916,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 916,
+              "endIndex": 919,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 919,
+              "endIndex": 934,
+              "textRun": {
+                "content": "different today",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 934,
+              "endIndex": 935,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 935,
+              "endIndex": 938,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 938,
+              "endIndex": 939,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 939,
+        "endIndex": 940,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 939,
+              "endIndex": 940,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 940,
+        "endIndex": 1018,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 940,
+              "endIndex": 943,
+              "textRun": {
+                "content": "For",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 943,
+              "endIndex": 944,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 944,
+              "endIndex": 951,
+              "textRun": {
+                "content": "(FMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 951,
+              "endIndex": 960,
+              "textRun": {
+                "content": "here am I",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 960,
+              "endIndex": 961,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 961,
+              "endIndex": 965,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 965,
+              "endIndex": 985,
+              "textRun": {
+                "content": "sitting in a tin can",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 985,
+              "endIndex": 986,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 986,
+              "endIndex": 993,
+              "textRun": {
+                "content": "(FMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 993,
+              "endIndex": 1012,
+              "textRun": {
+                "content": "Far above the world",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1012,
+              "endIndex": 1013,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1013,
+              "endIndex": 1017,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1017,
+              "endIndex": 1018,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1018,
+        "endIndex": 1087,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1018,
+              "endIndex": 1026,
+              "textRun": {
+                "content": "(BbMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1026,
+              "endIndex": 1041,
+              "textRun": {
+                "content": "Planet Earth is",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1041,
+              "endIndex": 1042,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1042,
+              "endIndex": 1046,
+              "textRun": {
+                "content": "(Am)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1046,
+              "endIndex": 1050,
+              "textRun": {
+                "content": "blue",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1050,
+              "endIndex": 1052,
+              "textRun": {
+                "content": ", ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1052,
+              "endIndex": 1063,
+              "textRun": {
+                "content": "and there's",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1063,
+              "endIndex": 1064,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1064,
+              "endIndex": 1067,
+              "textRun": {
+                "content": "(G)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1067,
+              "endIndex": 1080,
+              "textRun": {
+                "content": "nothing I can",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1080,
+              "endIndex": 1081,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1081,
+              "endIndex": 1084,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1084,
+              "endIndex": 1087,
+              "textRun": {
+                "content": "do\n",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1087,
+        "endIndex": 1088,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1087,
+              "endIndex": 1088,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1088,
+        "endIndex": 1130,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1088,
+              "endIndex": 1099,
+              "textRun": {
+                "content": "[ukes only]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1099,
+              "endIndex": 1100,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1100,
+              "endIndex": 1130,
+              "textRun": {
+                "content": "(C)(F)(G)(A\u2193\u2193) (C)(F)(G)(A\u2193\u2193)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1130,
+        "endIndex": 1172,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1130,
+              "endIndex": 1141,
+              "textRun": {
+                "content": "[all, solo]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1141,
+              "endIndex": 1142,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1142,
+              "endIndex": 1172,
+              "textRun": {
+                "content": "(FMaj7) (Em) (A) (C) (D) (E\u2193)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1172,
+        "endIndex": 1173,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1172,
+              "endIndex": 1173,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1173,
+        "endIndex": 1253,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1173,
+              "endIndex": 1176,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1176,
+              "endIndex": 1220,
+              "textRun": {
+                "content": "Though I\u2019m passed one hundred thousand miles",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1220,
+              "endIndex": 1221,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1221,
+              "endIndex": 1225,
+              "textRun": {
+                "content": "(E7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1225,
+              "endIndex": 1226,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1226,
+              "endIndex": 1248,
+              "textRun": {
+                "content": "I'm feeling very still",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1248,
+              "endIndex": 1249,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1249,
+              "endIndex": 1252,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1252,
+              "endIndex": 1253,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1253,
+        "endIndex": 1311,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1253,
+              "endIndex": 1258,
+              "textRun": {
+                "content": "And I",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1258,
+              "endIndex": 1259,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1259,
+              "endIndex": 1263,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1263,
+              "endIndex": 1281,
+              "textRun": {
+                "content": "think my spaceship",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1281,
+              "endIndex": 1282,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1282,
+              "endIndex": 1285,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1285,
+              "endIndex": 1306,
+              "textRun": {
+                "content": "knows which way to go",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1306,
+              "endIndex": 1307,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1307,
+              "endIndex": 1310,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1310,
+              "endIndex": 1311,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1311,
+        "endIndex": 1367,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1311,
+              "endIndex": 1319,
+              "textRun": {
+                "content": "Tell my ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1319,
+              "endIndex": 1323,
+              "textRun": {
+                "content": "(Fm)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1323,
+              "endIndex": 1339,
+              "textRun": {
+                "content": "wife I love her ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1339,
+              "endIndex": 1342,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1342,
+              "endIndex": 1363,
+              "textRun": {
+                "content": "very much, she knows ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1363,
+              "endIndex": 1366,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1366,
+              "endIndex": 1367,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1367,
+        "endIndex": 1368,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1367,
+              "endIndex": 1368,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1368,
+        "endIndex": 1403,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1368,
+              "endIndex": 1371,
+              "textRun": {
+                "content": "(G)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1371,
+              "endIndex": 1389,
+              "textRun": {
+                "content": "Ground control to ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1389,
+              "endIndex": 1393,
+              "textRun": {
+                "content": "(E7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1393,
+              "endIndex": 1403,
+              "textRun": {
+                "content": "Major Tom\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1403,
+        "endIndex": 1457,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1403,
+              "endIndex": 1408,
+              "textRun": {
+                "content": "Your ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1408,
+              "endIndex": 1412,
+              "textRun": {
+                "content": "(Am)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1412,
+              "endIndex": 1436,
+              "textRun": {
+                "content": "circuit's dead, there's ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1436,
+              "endIndex": 1441,
+              "textRun": {
+                "content": "(Am7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1441,
+              "endIndex": 1457,
+              "textRun": {
+                "content": "something wrong\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1457,
+        "endIndex": 1516,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1457,
+              "endIndex": 1465,
+              "textRun": {
+                "content": "Can you ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1465,
+              "endIndex": 1468,
+              "textRun": {
+                "content": "(D)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1468,
+              "endIndex": 1495,
+              "textRun": {
+                "content": "hear me Major Tom, can you ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1495,
+              "endIndex": 1498,
+              "textRun": {
+                "content": "(C)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1498,
+              "endIndex": 1516,
+              "textRun": {
+                "content": "hear me Major Tom\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1516,
+        "endIndex": 1545,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1516,
+              "endIndex": 1524,
+              "textRun": {
+                "content": "Can you ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1524,
+              "endIndex": 1527,
+              "textRun": {
+                "content": "(G)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1527,
+              "endIndex": 1545,
+              "textRun": {
+                "content": "hear me Major Tom\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1545,
+        "endIndex": 1600,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1545,
+              "endIndex": 1552,
+              "textRun": {
+                "content": "Can you",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1552,
+              "endIndex": 1553,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "backgroundColor": {
+                    "color": {
+                      "rgbColor": {
+                        "red": 1,
+                        "green": 1,
+                        "blue": 1
+                      }
+                    }
+                  },
+                  "foregroundColor": {
+                    "color": {
+                      "rgbColor": {
+                        "red": 0.1882353,
+                        "green": 0.1882353,
+                        "blue": 0.1882353
+                      }
+                    }
+                  },
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1553,
+              "endIndex": 1560,
+              "textRun": {
+                "content": "(FMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1560,
+              "endIndex": 1569,
+              "textRun": {
+                "content": "Here am I",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1569,
+              "endIndex": 1570,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1570,
+              "endIndex": 1574,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1574,
+              "endIndex": 1600,
+              "textRun": {
+                "content": "floating round my tin can\n",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1600,
+        "endIndex": 1631,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1600,
+              "endIndex": 1607,
+              "textRun": {
+                "content": "(FMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1607,
+              "endIndex": 1625,
+              "textRun": {
+                "content": "Far above the moon",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1625,
+              "endIndex": 1626,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1626,
+              "endIndex": 1630,
+              "textRun": {
+                "content": "(Em)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1630,
+              "endIndex": 1631,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1631,
+        "endIndex": 1700,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1631,
+              "endIndex": 1639,
+              "textRun": {
+                "content": "(BbMaj7)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1639,
+              "endIndex": 1654,
+              "textRun": {
+                "content": "Planet Earth is",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1654,
+              "endIndex": 1655,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1655,
+              "endIndex": 1659,
+              "textRun": {
+                "content": "(Am)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1659,
+              "endIndex": 1663,
+              "textRun": {
+                "content": "blue",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1663,
+              "endIndex": 1665,
+              "textRun": {
+                "content": ", ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1665,
+              "endIndex": 1676,
+              "textRun": {
+                "content": "and there's",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1676,
+              "endIndex": 1677,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1677,
+              "endIndex": 1680,
+              "textRun": {
+                "content": "(G)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1680,
+              "endIndex": 1693,
+              "textRun": {
+                "content": "nothing I can",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1693,
+              "endIndex": 1694,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1694,
+              "endIndex": 1697,
+              "textRun": {
+                "content": "(F)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1697,
+              "endIndex": 1699,
+              "textRun": {
+                "content": "do",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1699,
+              "endIndex": 1700,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "underline": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1700,
+        "endIndex": 1701,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1700,
+              "endIndex": 1701,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1701,
+        "endIndex": 1743,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1701,
+              "endIndex": 1713,
+              "textRun": {
+                "content": "[ukes only] ",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1713,
+              "endIndex": 1742,
+              "textRun": {
+                "content": "(C)(F)(G)(A\u2193\u2193) (C)(F)(G)(A\u2193\u2193)",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1742,
+              "endIndex": 1743,
+              "textRun": {
+                "content": "\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1743,
+        "endIndex": 1781,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1743,
+              "endIndex": 1754,
+              "textRun": {
+                "content": "[all, solo]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1754,
+              "endIndex": 1755,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1755,
+              "endIndex": 1781,
+              "textRun": {
+                "content": "(FMaj7) (Em) (A) (C) (D) \n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      },
+      {
+        "startIndex": 1781,
+        "endIndex": 1862,
+        "paragraph": {
+          "elements": [
+            {
+              "startIndex": 1781,
+              "endIndex": 1819,
+              "textRun": {
+                "content": "[chaotic dissonant slide and fade out]",
+                "textStyle": {
+                  "italic": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1819,
+              "endIndex": 1820,
+              "textRun": {
+                "content": " ",
+                "textStyle": {
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            },
+            {
+              "startIndex": 1820,
+              "endIndex": 1862,
+              "textRun": {
+                "content": "(E) (E) (E) (E) | (N/C) (N/C) (N/C) (N/C)\n",
+                "textStyle": {
+                  "bold": true,
+                  "weightedFontFamily": {
+                    "fontFamily": "Verdana",
+                    "weight": 400
+                  }
+                }
+              }
+            }
+          ],
+          "paragraphStyle": {
+            "namedStyleType": "NORMAL_TEXT",
+            "lineSpacing": 115,
+            "direction": "LEFT_TO_RIGHT",
+            "spacingMode": "NEVER_COLLAPSE"
+          }
+        }
+      }
+    ]
+  },
+  "documentStyle": {
+    "background": {
+      "color": {}
+    },
+    "useFirstPageHeaderFooter": true,
+    "pageNumberStart": 1,
+    "marginTop": {
+      "magnitude": 21.25984251968504,
+      "unit": "PT"
+    },
+    "marginBottom": {
+      "magnitude": 20.40944881889764,
+      "unit": "PT"
+    },
+    "marginRight": {
+      "magnitude": 36.85039370078741,
+      "unit": "PT"
+    },
+    "marginLeft": {
+      "magnitude": 36.85039370078741,
+      "unit": "PT"
+    },
+    "pageSize": {
+      "height": {
+        "magnitude": 841.8897637795277,
+        "unit": "PT"
+      },
+      "width": {
+        "magnitude": 595.2755905511812,
+        "unit": "PT"
+      }
+    },
+    "marginHeader": {
+      "magnitude": 14.173228346456694,
+      "unit": "PT"
+    },
+    "marginFooter": {
+      "magnitude": 14.173228346456694,
+      "unit": "PT"
+    },
+    "useCustomHeaderFooterMargins": true
+  },
+  "namedStyles": {
+    "styles": [
+      {
+        "namedStyleType": "NORMAL_TEXT",
+        "textStyle": {
+          "bold": false,
+          "italic": false,
+          "underline": false,
+          "strikethrough": false,
+          "smallCaps": false,
+          "backgroundColor": {},
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {}
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          },
+          "weightedFontFamily": {
+            "fontFamily": "Arial",
+            "weight": 400
+          },
+          "baselineOffset": "NONE"
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "alignment": "START",
+          "lineSpacing": 115,
+          "direction": "LEFT_TO_RIGHT",
+          "spacingMode": "COLLAPSE_LISTS",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "unit": "PT"
+          },
+          "borderBetween": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderTop": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderBottom": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderLeft": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "borderRight": {
+            "color": {},
+            "width": {
+              "unit": "PT"
+            },
+            "padding": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID"
+          },
+          "indentFirstLine": {
+            "unit": "PT"
+          },
+          "indentStart": {
+            "unit": "PT"
+          },
+          "indentEnd": {
+            "unit": "PT"
+          },
+          "keepLinesTogether": false,
+          "keepWithNext": false,
+          "avoidWidowAndOrphan": true,
+          "shading": {
+            "backgroundColor": {}
+          },
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_1",
+        "textStyle": {
+          "fontSize": {
+            "magnitude": 20,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 20,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 6,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_2",
+        "textStyle": {
+          "bold": false,
+          "fontSize": {
+            "magnitude": 16,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 18,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 6,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_3",
+        "textStyle": {
+          "bold": false,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.2627451,
+                "green": 0.2627451,
+                "blue": 0.2627451
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 14,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 16,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_4",
+        "textStyle": {
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 12,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 14,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_5",
+        "textStyle": {
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 12,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "HEADING_6",
+        "textStyle": {
+          "italic": true,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 11,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "magnitude": 12,
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 4,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "TITLE",
+        "textStyle": {
+          "fontSize": {
+            "magnitude": 26,
+            "unit": "PT"
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 3,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      },
+      {
+        "namedStyleType": "SUBTITLE",
+        "textStyle": {
+          "italic": false,
+          "foregroundColor": {
+            "color": {
+              "rgbColor": {
+                "red": 0.4,
+                "green": 0.4,
+                "blue": 0.4
+              }
+            }
+          },
+          "fontSize": {
+            "magnitude": 15,
+            "unit": "PT"
+          },
+          "weightedFontFamily": {
+            "fontFamily": "Arial",
+            "weight": 400
+          }
+        },
+        "paragraphStyle": {
+          "namedStyleType": "NORMAL_TEXT",
+          "direction": "LEFT_TO_RIGHT",
+          "spaceAbove": {
+            "unit": "PT"
+          },
+          "spaceBelow": {
+            "magnitude": 16,
+            "unit": "PT"
+          },
+          "keepLinesTogether": true,
+          "keepWithNext": true,
+          "pageBreakBefore": false
+        }
+      }
+    ]
+  },
+  "lists": {
+    "kix.v63a89tuthig": {
+      "listProperties": {
+        "nestingLevels": [
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%0",
+            "indentFirstLine": {
+              "magnitude": 18,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 36,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%1",
+            "indentFirstLine": {
+              "magnitude": 54,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 72,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%2",
+            "indentFirstLine": {
+              "magnitude": 90,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 108,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%3",
+            "indentFirstLine": {
+              "magnitude": 126,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 144,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%4",
+            "indentFirstLine": {
+              "magnitude": 162,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 180,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%5",
+            "indentFirstLine": {
+              "magnitude": 198,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 216,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%6",
+            "indentFirstLine": {
+              "magnitude": 234,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 252,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%7",
+            "indentFirstLine": {
+              "magnitude": 270,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 288,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          },
+          {
+            "bulletAlignment": "START",
+            "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+            "glyphFormat": "%8",
+            "indentFirstLine": {
+              "magnitude": 306,
+              "unit": "PT"
+            },
+            "indentStart": {
+              "magnitude": 324,
+              "unit": "PT"
+            },
+            "textStyle": {
+              "underline": false
+            },
+            "startNumber": 1
+          }
+        ]
+      }
+    }
+  },
+  "suggestionsViewMode": "PREVIEW_WITHOUT_SUGGESTIONS",
+  "inlineObjects": {
+    "kix.23fdp9ngz17y": {
+      "objectId": "kix.23fdp9ngz17y",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdJkPnMhk744g-HLOHkr-ReoGLOQJKLgpoVlJlP_sfNBNTsVBxH-z3-1VXyPPFY9HMyIRHk7X-K2hQ0JUthRXzZzER0KyMIEdIMNfGBaweV9JpU8O4EWJu6Qhwg1oQngm9_mRZKP5Z_D4mAcZ1-dh2u7xbD__q0snJaYvcEFySJ1HE?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.6rup94cr3l5g": {
+      "objectId": "kix.6rup94cr3l5g",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdu6wvoUSyCjkcFNw5lYwzfcWjfHY-MIF4wPljmf9F3p-qGz07pPtvtAl34ki1b4SUPmrKReZeH6F_QUXB0-PyEO3JV63TDqr6wa9OlR_7KiFaWDiJewlP6jfamsGs5ofhdMFhcVF1OoSsH_rmgkbnd98al5LQjaT9HR-jQG8cC?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.ch3g5p7av4g0": {
+      "objectId": "kix.ch3g5p7av4g0",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXez8R78IyisKrsCUPNvwq8k8FjTfMr79KMps5walip8heKaB585iYqRHU_Ohbv_VXNPF6AHDlAPsz_97befOXXfn6KOmTvEd_GvNffxPAe8SbRFC3KmJb0omw6K_i8hBTc-IDXkoGy8ksjakwsg_OQX9FqrVn4?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.fmbkibbh36pu": {
+      "objectId": "kix.fmbkibbh36pu",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXezNjoqlescCequLjvsBNuQB5RIoycFtRzTv0ZRGe6CKSs6LfBAOB-kENnPZM5IQj38ni7w7D4uwGXou0bV8j56bgPF6udD5geXwDaG5yo_Udq7uMtMdex8CTWGJN8pLkUaU9d9cGGTjWRpJKm1ezh6UkxzGqnaIfl1GfNDBkxra9o?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.gv9xkdxtrstn": {
+      "objectId": "kix.gv9xkdxtrstn",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXfcAl6WAUYyweej3IyV_GXZgYF3XmLpU8DLjSTa-m0pAit6vVBdbJ5pIoLFp-SYJZK4ggjEloCvevNDkjeIjnhSLTg146hp-Ml7VLNeNGUL_3Zn_gMpMtrzUoNeUyJ6GZkRfdQlLEW4UP0DrRX28ss1UG_p2jUyPaMBOhdnZsQmUao?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.kiwbo78margr": {
+      "objectId": "kix.kiwbo78margr",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXf5fZ-kEH03INcH-5FGqE8st2L07O3RD8tEpOcydasCLnNM8CuAc-ZQ8l4aGbhg76vdyDqxQgYwTbabs0DBmQfvj2Ql6loInmB3gs8KgbqZ23JicbCBeGibzJ1RPx5hYx3rIvEu5j33cR3uTy_QtNksvLAeucVaVwjGcxJ8foEv0CGU?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.kyceb66lun7f": {
+      "objectId": "kix.kyceb66lun7f",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXc2iUgNxr5hBf_f5s9MjzUnBxgL1Chf3PlwFXIMRwe2n3hcLu5c0lHVuRSPx4N7gpm_5Wt1R2GSKjh_9k2EsyQ1FPSY6gs93pkahbi9MBR9FAkLOB5YJeh5traZqNYhFCCpF2jw3z0mIfe9aym8g2G7OLs1HI1dz3F5qs_6t4ZUCYw?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.qpqwbuf7q8cq": {
+      "objectId": "kix.qpqwbuf7q8cq",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdlj2YU8q8BHkVpFC2vL-AifEjyNSqpZnxIBVos4RP9XpnFk_9LGnDe1s81ctmyJx0R-plIAtCThi4jXUPkTGEQTOK93JBZd7vuaYo3-UvM2xL_4MGvbcPUW86PMCFK6geaG7diHK1oAesX56fR1gMFvTVzFFk-vc1QD9l17SQgHZ4?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.rydk60c1fcqv": {
+      "objectId": "kix.rydk60c1fcqv",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXfcdnLpEIfrzQSmPb0HpNvLolmykf6aLN207HCtDZ5dzUQCvKEPd9yvenLMlDNu7TywSgalbLtDu8NSr0pmIyVavDpMzt3K1S3CBpSapOtnZkP3l2Isa9r_nXOm8htbkKbDI6yqFpWwQk4iJV0PpaUrTODkehe-lE2FG03ZOc0loaPc?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.sailmxdvucnw": {
+      "objectId": "kix.sailmxdvucnw",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdfb6yj-k6KBNYkx4U5YBTpRg5L7a1WOaj2tkUvC8rueqJMVaLKiA50y6lM5zaXRW0N2xVhNo9N-RjddGx6iyCAkDHqL3wIy7j-H0hu4vtJIW7pT91WWPRGEh8l1U7lBQ0KRw6FNeY-2lax-wrqzmqMAO2J6K3iNFBPYO1f_8aefdQ?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.t9ix8avkxq9k": {
+      "objectId": "kix.t9ix8avkxq9k",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXfN-em5wA1LVM03u240sSUhLAlMCfBWPEv6pP8m_xX0EmiyBsQ8UJHOUlMYwhJaPr19Fhr-jzBT5Pb40cEeLfBH6t1eaC2UBw_fK4B6sRMb0YbtyvZEg_cQxtrJiL9DKPb635FoN_oFsz-dYcPB6xF9xdc2xWfEhokp6Ubkw-kO?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.uscepan70zts": {
+      "objectId": "kix.uscepan70zts",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXf25MJWYTMigdi2Ut2p1hHC8rL9w44ysKaEXRJXavkmsl0o74oTEpQ_MF2mEObvMSXxbChvDq9IRE_CyP7bdTbM_efMCOkvSURhIjZJ6nuQV6e5MJMpTJrWPl8yj_Hwu9C3oDPiRL9-XKgJ33R2XLAEcYmJwYKiqNyLwwVs1oeP?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.w5czjj6njax7": {
+      "objectId": "kix.w5czjj6njax7",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXeM7BOvejrmkboY8DwwsOhQlTaMGCKgyOlcxIzM69iro0lIsXD-YQP5AdU4OoMmYah_7HWCWgU0ogDVXuNXpQKLCFkZFJ28TXEJ35lehuTx4Mp8yoE0ppiMXQwOwv_cALVcSSDIDe7MHR3K4AdihFK63oBc9eOelm9Vbzo27BhaGls?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    },
+    "kix.wkt5db500kt": {
+      "objectId": "kix.wkt5db500kt",
+      "inlineObjectProperties": {
+        "embeddedObject": {
+          "imageProperties": {
+            "contentUri": "https://lh7-rt.googleusercontent.com/docsz/AD_4nXdMAZdYWm4tu7NLG3M1__7u6IHVh9E-_Hfk7gNGIH_R3fZPeWivQeb0dEPe_rCQKPy8milXqg98krYZee2NIy98bzYEYtPCr-tDwJ0zY-AffbsLealOHJzox5cWQdMAsAR6Re1Ug5C7VPlKKzWDaoPqjhRSYsm3Bw81AvYaNbbDyDc?key=ibDKxHimKkkRrzEKDt6LqQ",
+            "cropProperties": {}
+          },
+          "embeddedObjectBorder": {
+            "color": {
+              "color": {
+                "rgbColor": {}
+              }
+            },
+            "width": {
+              "unit": "PT"
+            },
+            "dashStyle": "SOLID",
+            "propertyState": "NOT_RENDERED"
+          },
+          "size": {
+            "height": {
+              "magnitude": 63.35228346456693,
+              "unit": "PT"
+            },
+            "width": {
+              "magnitude": 49.039370078740156,
+              "unit": "PT"
+            }
+          },
+          "marginTop": {
+            "unit": "PT"
+          },
+          "marginBottom": {
+            "unit": "PT"
+          },
+          "marginRight": {
+            "magnitude": 9,
+            "unit": "PT"
+          },
+          "marginLeft": {
+            "magnitude": 9,
+            "unit": "PT"
+          }
+        }
+      }
+    }
+  },
+  "documentId": "1Yh0F2Anmkx9v9z6hOKzrGQSr0YMhXmibFaoQm76uUF8"
+}

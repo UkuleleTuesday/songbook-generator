@@ -18,6 +18,10 @@ from .common.gdrive import (
 from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from .tagupdater.tags import Tagger
+from .worker.gcp import get_credentials
 from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
 
 
@@ -600,7 +604,7 @@ def list_song_editions(file_identifier):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
     if properties is None:
@@ -673,7 +677,7 @@ def get_tag(file_identifier, key):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
 
@@ -709,13 +713,212 @@ def set_tag(file_identifier, key, value):
     drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    gdrive_client = GoogleDriveClient(drive._credentials, cache)
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     if gdrive_client.set_file_property(file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
     else:
         click.echo("Failed to set tag.", err=True)
         raise click.Abort()
+
+
+@tags.command(name="delete")
+@click.argument("file_identifier")
+@click.argument("key")
+def delete_tag(file_identifier, key):
+    """Delete a tag from a Google Drive file."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+
+    try:
+        file_metadata = (
+            gdrive_client.drive.files()
+            .get(fileId=file_id, fields="properties")
+            .execute()
+        )
+        properties = file_metadata.get("properties", {})
+
+        if key not in properties:
+            click.echo(f"Tag '{key}' not found on file. No changes made.")
+            return
+
+        # To delete a property, set its value to null.
+        properties_to_update = {key: None}
+
+        gdrive_client.drive.files().update(
+            fileId=file_id,
+            body={"properties": properties_to_update},
+            fields="properties",
+        ).execute()
+        click.echo(f"Successfully deleted tag '{key}'.")
+    except HttpError as e:
+        click.echo(f"Failed to delete tag '{key}': {e}", err=True)
+        raise click.Abort()
+
+
+@tags.command(name="update")
+@click.argument("file_identifier", required=False)
+@click.option(
+    "--all",
+    is_flag=True,
+    default=False,
+    help="Run the auto-tagger on all song sheets.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what tags would be applied without making any changes.",
+)
+def update_tags(file_identifier, all, dry_run):
+    """Run the auto-tagger on a specific Google Drive file or all files."""
+    if not file_identifier and not all:
+        click.echo(
+            "Error: Either a file identifier or the --all flag must be provided.",
+            err=True,
+        )
+        raise click.Abort()
+    if file_identifier and all:
+        click.echo(
+            "Error: Cannot use both a file identifier and the --all flag.", err=True
+        )
+        raise click.Abort()
+
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    # The Tagger needs to read Google Docs content.
+    scopes = list(
+        set(
+            credential_config.scopes
+            + ["https://www.googleapis.com/auth/documents.readonly"]
+        )
+    )
+
+    creds = get_credentials(scopes=scopes, target_principal=credential_config.principal)
+    drive_service = build("drive", "v3", credentials=creds)
+    docs_service = build("docs", "v1", credentials=creds)
+    cache = init_cache()
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+
+    if file_identifier:
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
+        if not files_to_process:
+            click.echo(
+                f"Error: Could not retrieve metadata for file ID {file_id}", err=True
+            )
+            raise click.Abort()
+    else:  # --all flag
+        click.echo("Fetching all song sheets from Drive...")
+        files_to_process = gdrive_client.query_drive_files(
+            settings.song_sheets.folder_ids
+        )
+
+    tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
+    failed_updates = {}
+
+    for file_obj in files_to_process:
+        try:
+            if file_obj.mimeType != "application/vnd.google-apps.document":
+                click.echo(
+                    f"Skipping '{file_obj.name}' (not a Google Doc).",
+                )
+                continue
+
+            click.echo(f"Running auto-tagger for '{file_obj.name}'...")
+            if dry_run:
+                click.echo("  (Dry run mode)")
+
+            tagger.update_tags(file_obj, dry_run=dry_run)
+        except HttpError as e:
+            error_message = f"Failed to update tags for '{file_obj.name}': {e}"
+            click.echo(f"ERROR: {error_message}", err=True)
+            failed_updates[file_obj.name] = str(e)
+        except Exception as e:  # noqa: BLE001 - Catch all for CLI error reporting
+            error_message = f"An unexpected error occurred for '{file_obj.name}': {e}"
+            click.echo(f"ERROR: {error_message}", err=True)
+            failed_updates[file_obj.name] = str(e)
+
+    if failed_updates:
+        click.echo("\n--- Auto-tagger summary ---", err=True)
+        click.echo("Auto-tagger run completed with some failures.", err=True)
+        click.echo("Failed files:", err=True)
+        for file_name, error in failed_updates.items():
+            click.echo(f"  - {file_name}: {error}", err=True)
+        sys.exit(1)
+
+    click.echo("Auto-tagger run complete.")
+
+
+@cli.command(name="download-doc-json")
+@click.argument("file_identifier")
+@click.argument(
+    "output_path",
+    type=click.Path(path_type=Path, dir_okay=False, writable=True),
+    required=False,
+)
+def download_doc_json_command(file_identifier, output_path):
+    """
+    Downloads the raw JSON of a Google Doc.
+
+    FILE_IDENTIFIER can be a Google Drive file ID or a partial file name.
+    If OUTPUT_PATH is provided, saves to that file. Otherwise, prints to stdout.
+    """
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    # Add Docs API scope
+    scopes = credential_config.scopes + [
+        "https://www.googleapis.com/auth/documents.readonly"
+    ]
+
+    creds = get_credentials(
+        scopes=scopes,
+        target_principal=credential_config.principal,
+    )
+    drive_service = build("drive", "v3", credentials=creds)
+    docs_service = build("docs", "v1", credentials=creds)
+    cache = init_cache()
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+
+    if not output_path:
+        click.echo(f"Fetching document content for ID: {file_id}...", err=True)
+
+    document = docs_service.documents().get(documentId=file_id).execute()
+
+    if output_path:
+        # Ensure the output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(document, f, indent=2)
+        click.echo(f"Successfully saved document JSON to {output_path}")
+    else:
+        click.echo(json.dumps(document, indent=2))
 
 
 if __name__ == "__main__":

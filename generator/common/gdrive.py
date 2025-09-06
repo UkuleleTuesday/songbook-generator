@@ -327,7 +327,7 @@ class GoogleDriveClient:
                 # Get file metadata from Drive
                 file_metadata = (
                     self.drive.files()
-                    .get(fileId=file_id, fields="id,name,properties,mimeType")
+                    .get(fileId=file_id, fields="id,name,parents,properties,mimeType")
                     .execute()
                 )
                 file_obj = File(
@@ -335,6 +335,7 @@ class GoogleDriveClient:
                     name=file_metadata.get("name", f"file_{file_id}"),
                     properties=file_metadata.get("properties", {}),
                     mimeType=file_metadata.get("mimeType"),
+                    parents=file_metadata.get("parents", []),
                 )
                 files.append(file_obj)
 
