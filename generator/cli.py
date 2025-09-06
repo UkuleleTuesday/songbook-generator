@@ -800,11 +800,7 @@ def update_tags(file_identifier, all, dry_run):
         if dry_run:
             click.echo("  (Dry run mode)")
 
-        try:
-            tagger.update_tags(file_obj, dry_run=dry_run)
-        except HttpError as e:
-            click.echo(f"API Error tagging '{file_obj.name}': {e}", err=True)
-            traceback.print_exc()
+        tagger.update_tags(file_obj, dry_run=dry_run)
 
     click.echo("Auto-tagger run complete.")
 
