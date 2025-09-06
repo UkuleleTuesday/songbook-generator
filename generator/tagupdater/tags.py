@@ -72,6 +72,7 @@ class Context:
 
     file: File
     document: Optional[SongSheetGoogleDocument] = None
+    owner_name: Optional[str] = None
 
 
 @dataclass
@@ -147,7 +148,18 @@ class Tagger:
                     self.docs_service.documents().get(documentId=file.id).execute()
                 )
                 document = SongSheetGoogleDocument(json=doc_json)
-            context = Context(file=file, document=document)
+
+            # Fetch file owner to get the tabber
+            file_meta = (
+                self.drive_service.files()
+                .get(fileId=file.id, fields="owners(displayName)")
+                .execute()
+            )
+            owner_name = None
+            if "owners" in file_meta and file_meta["owners"]:
+                owner_name = file_meta["owners"][0].get("displayName")
+
+            context = Context(file=file, document=document, owner_name=owner_name)
 
             new_properties = {}
             current_properties = file.properties.copy()
@@ -270,6 +282,12 @@ def features(ctx: Context) -> Optional[str]:
         return None
 
     return ",".join(sorted(list(found_features)))
+
+
+@tag
+def tabber(ctx: Context) -> Optional[str]:
+    """Extracts the file owner's name as the tabber."""
+    return ctx.owner_name
 
 
 @tag
