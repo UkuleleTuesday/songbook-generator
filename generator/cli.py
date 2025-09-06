@@ -743,9 +743,11 @@ def inspect_doc_command(file_identifier):
         scopes=scopes,
         target_principal=credential_config.principal,
     )
-    drive, cache = init_services(credentials=creds)
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    # init_services doesn't return credentials, so we build clients manually
+    drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
+    cache = init_cache()
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)
