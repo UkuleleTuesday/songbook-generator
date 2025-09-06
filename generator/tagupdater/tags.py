@@ -38,6 +38,14 @@ FOLDER_ID_READY_TO_PLAY = "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM"
 # Unicode character for downward arrow, often used for strumming patterns.
 DOWNWARD_ARROW = "\u2193"
 
+# Pre-compiled regex patterns for metadata extraction.
+CHORD_PATTERN = re.compile(r"\(([^)]+)\)")
+ANNOTATION_PATTERN = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
+SWING_PATTERN = re.compile(r"\bswing\b", re.IGNORECASE)
+GALLOP_PATTERN = re.compile(r"\bgallop\b", re.IGNORECASE)
+BPM_PATTERN = re.compile(r"(\d+)bpm", re.IGNORECASE)
+TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
+
 
 def tag(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
     """Decorator to register a function as a tag generator."""
@@ -124,7 +132,6 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
     document = ctx.document.json
     ordered_unique_notations = []
     seen_notations = set()
-    chord_pattern = re.compile(r"\(([^)]+)\)")
 
     if "body" in document and "content" in document["body"]:
         for element in document["body"]["content"]:
@@ -137,7 +144,7 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
                             text_style = text_run.get("textStyle", {})
                             if text_style.get("bold"):
                                 content = text_run.get("content", "")
-                                matches = chord_pattern.findall(content)
+                                matches = CHORD_PATTERN.findall(content)
                                 for chord in matches:
                                     cleaned_chord = chord.replace(DOWNWARD_ARROW, "").strip()
                                     if (
@@ -190,9 +197,8 @@ def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
 
 def _get_annotation_paragraph_text(document: GoogleDocument) -> Optional[str]:
     """Finds and returns the text of the paragraph containing song annotations."""
-    annotation_pattern = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
     for para_text in _get_paragraph_texts(document):
-        if annotation_pattern.search(para_text):
+        if ANNOTATION_PATTERN.search(para_text):
             return para_text
     return None
 
@@ -215,9 +221,9 @@ def features(ctx: Context) -> Optional[str]:
     # Check for other text-based features from annotation paragraphs
     annotation_para = _get_annotation_paragraph_text(ctx.document)
     if annotation_para:
-        if re.search(r"\bswing\b", annotation_para, re.IGNORECASE):
+        if SWING_PATTERN.search(annotation_para):
             found_features.add("swing")
-        if re.search(r"\bgallop\b", annotation_para, re.IGNORECASE):
+        if GALLOP_PATTERN.search(annotation_para):
             found_features.add("gallop")
 
     if not found_features:
@@ -257,7 +263,7 @@ def bpm(ctx: Context) -> Optional[str]:
     if not annotation_para:
         return None
 
-    matches = re.findall(r"(\d+)bpm", annotation_para, re.IGNORECASE)
+    matches = BPM_PATTERN.findall(annotation_para)
     if matches:
         # Remove duplicates while preserving order
         unique_matches = []
@@ -279,7 +285,7 @@ def time_signature(ctx: Context) -> Optional[str]:
     if not annotation_para:
         return None
 
-    match = re.search(r"(\d/\d)", annotation_para)
+    match = TIME_SIGNATURE_PATTERN.search(annotation_para)
     if match:
         return match.group(1)
     return None
