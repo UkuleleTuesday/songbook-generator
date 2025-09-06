@@ -822,16 +822,19 @@ def download_doc_json_command(file_identifier, output_path):
 
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
-    click.echo(f"Fetching document content for ID: {file_id}...")
+    if not output_path:
+        click.echo(f"Fetching document content for ID: {file_id}...", err=True)
+
     document = docs_service.documents().get(documentId=file_id).execute()
 
-    # Ensure the output directory exists
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(output_path, "w") as f:
-        json.dump(document, f, indent=2)
-
-    click.echo(f"Successfully saved document JSON to {output_path}")
+    if output_path:
+        # Ensure the output directory exists
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(document, f, indent=2)
+        click.echo(f"Successfully saved document JSON to {output_path}")
+    else:
+        click.echo(json.dumps(document, indent=2))
 
 
 if __name__ == "__main__":
