@@ -179,6 +179,15 @@ def _get_paragraph_texts(document: GoogleDocument) -> List[str]:
     return paragraph_texts
 
 
+def _get_annotation_paragraph_text(document: GoogleDocument) -> Optional[str]:
+    """Finds and returns the text of the paragraph containing song annotations."""
+    annotation_pattern = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
+    for para_text in _get_paragraph_texts(document):
+        if annotation_pattern.search(para_text):
+            return para_text
+    return None
+
+
 @tag
 def features(ctx: Context) -> Optional[str]:
     """Extracts special musical features from the document."""
@@ -195,13 +204,12 @@ def features(ctx: Context) -> Optional[str]:
         found_features.add("no_chord")
 
     # Check for other text-based features from annotation paragraphs
-    annotation_pattern = re.compile(r"(\d+bpm|\d/\d)", re.IGNORECASE)
-    for para_text in _get_paragraph_texts(ctx.document):
-        if annotation_pattern.search(para_text):
-            if re.search(r"\bswing\b", para_text, re.IGNORECASE):
-                found_features.add("swing")
-            if re.search(r"\bgallop\b", para_text, re.IGNORECASE):
-                found_features.add("gallop")
+    annotation_para = _get_annotation_paragraph_text(ctx.document)
+    if annotation_para:
+        if re.search(r"\bswing\b", annotation_para, re.IGNORECASE):
+            found_features.add("swing")
+        if re.search(r"\bgallop\b", annotation_para, re.IGNORECASE):
+            found_features.add("gallop")
 
     if not found_features:
         return None
@@ -236,8 +244,11 @@ def bpm(ctx: Context) -> Optional[str]:
     """Extracts all unique BPM values from the document body as comma-separated list."""
     if not ctx.document:
         return None
-    full_text = _get_full_text(ctx.document)
-    matches = re.findall(r"(\d+)bpm", full_text, re.IGNORECASE)
+    annotation_para = _get_annotation_paragraph_text(ctx.document)
+    if not annotation_para:
+        return None
+
+    matches = re.findall(r"(\d+)bpm", annotation_para, re.IGNORECASE)
     if matches:
         # Remove duplicates while preserving order
         unique_matches = []
@@ -255,8 +266,11 @@ def time_signature(ctx: Context) -> Optional[str]:
     """Extracts the time signature from the document body."""
     if not ctx.document:
         return None
-    full_text = _get_full_text(ctx.document)
-    match = re.search(r"(\d/\d)", full_text)
+    annotation_para = _get_annotation_paragraph_text(ctx.document)
+    if not annotation_para:
+        return None
+
+    match = re.search(r"(\d/\d)", annotation_para)
     if match:
         return match.group(1)
     return None
