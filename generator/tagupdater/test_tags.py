@@ -32,6 +32,12 @@ def mock_drive_service():
     return Mock()
 
 
+@pytest.fixture
+def mock_docs_service():
+    """Create a mock Google Docs service object."""
+    return Mock()
+
+
 def test_status_tagger():
     """Test the status tag function logic."""
     file_approved = File(id="1", name="f1", parents=[FOLDER_ID_APPROVED])
@@ -47,9 +53,9 @@ def test_status_tagger():
     assert status(Context(file=file_no_parents)) is None
 
 
-def test_update_tags_with_status_tag(mock_drive_service):
+def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
     """Test Tagger.update_tags with the status tag."""
-    tagger = Tagger(mock_drive_service)
+    tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(
         id="file123",
         name="test.pdf",
@@ -236,9 +242,9 @@ def test_tagger_functions(doc_json, tag_func, expected_value):
     assert func(context) == expected_value
 
 
-def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):
+def test_update_tags_no_update_if_tag_returns_none(mock_drive_service, mock_docs_service):
     """Test that no update is made if the tag function returns None."""
-    tagger = Tagger(mock_drive_service)
+    tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=["other_folder"])
 
     tagger.update_tags(file_to_tag)
@@ -246,9 +252,11 @@ def test_update_tags_no_update_if_tag_returns_none(mock_drive_service):
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
-def test_update_tags_no_update_if_tags_are_identical(mock_drive_service):
+def test_update_tags_no_update_if_tags_are_identical(
+    mock_drive_service, mock_docs_service
+):
     """Test that no update is made if the generated tags match existing ones."""
-    tagger = Tagger(mock_drive_service)
+    tagger = Tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(
         id="file123",
         name="test.pdf",
@@ -261,7 +269,9 @@ def test_update_tags_no_update_if_tags_are_identical(mock_drive_service):
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
-def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_service):
+def test_update_tags_with_multiple_tags_and_preserves_existing(
+    mock_drive_service, mock_docs_service
+):
     """Test that multiple tags are applied and existing properties preserved."""
 
     @tag
@@ -269,7 +279,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_servic
         return "another_value"
 
     try:
-        tagger = Tagger(mock_drive_service)
+        tagger = Tagger(mock_drive_service, mock_docs_service)
         file_to_tag = File(
             id="file123",
             name="test.pdf",
@@ -297,7 +307,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(mock_drive_servic
         tags._TAGGERS.pop()
 
 
-def test_update_tags_no_tags_defined(mock_drive_service):
+def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
     """Test behavior when no tags are defined (beyond the default status)."""
     # Temporarily clear taggers for this test
     from . import tags
@@ -306,7 +316,7 @@ def test_update_tags_no_tags_defined(mock_drive_service):
     tags._TAGGERS = []
 
     try:
-        tagger = Tagger(mock_drive_service)
+        tagger = Tagger(mock_drive_service, mock_docs_service)
         file_to_tag = File(
             id="file123",
             name="test.pdf",
