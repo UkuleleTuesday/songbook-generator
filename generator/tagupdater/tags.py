@@ -284,7 +284,7 @@ def features(ctx: Context) -> Optional[str]:
     return ",".join(sorted(list(found_features)))
 
 
-@tag
+@tag(only_if_unset=True)
 def tabber(ctx: Context) -> Optional[str]:
     """Extracts the file owner's name as the tabber."""
     return ctx.owner_name
