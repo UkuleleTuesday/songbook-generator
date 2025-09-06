@@ -211,23 +211,23 @@ def _extract_all_chord_notations(ctx: Context) -> List[str]:
         if "paragraph" in element:
             para = element["paragraph"]
             if "elements" in para:
-                    for para_element in para["elements"]:
-                        if "textRun" in para_element:
-                            text_run = para_element["textRun"]
-                            text_style = text_run.get("textStyle", {})
-                            if text_style.get("bold"):
-                                content = text_run.get("content", "")
-                                matches = CHORD_PATTERN.findall(content)
-                                for chord in matches:
-                                    cleaned_chord = chord.replace(
-                                        DOWNWARD_ARROW, ""
-                                    ).strip()
-                                    if (
-                                        cleaned_chord
-                                        and cleaned_chord not in seen_notations
-                                    ):
-                                        ordered_unique_notations.append(cleaned_chord)
-                                        seen_notations.add(cleaned_chord)
+                for para_element in para["elements"]:
+                    if "textRun" in para_element:
+                        text_run = para_element["textRun"]
+                        text_style = text_run.get("textStyle", {})
+                        if text_style.get("bold"):
+                            content = text_run.get("content", "")
+                            matches = CHORD_PATTERN.findall(content)
+                            for chord in matches:
+                                cleaned_chord = chord.replace(
+                                    DOWNWARD_ARROW, ""
+                                ).strip()
+                                if (
+                                    cleaned_chord
+                                    and cleaned_chord not in seen_notations
+                                ):
+                                    ordered_unique_notations.append(cleaned_chord)
+                                    seen_notations.add(cleaned_chord)
 
     return ordered_unique_notations
 
