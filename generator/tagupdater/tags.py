@@ -24,8 +24,16 @@ class Context:
     document: Optional[GoogleDocument] = None
 
 
+@dataclass
+class TaggerConfig:
+    """Configuration for a tagger function."""
+
+    func: Callable[[Context], Any]
+    only_if_unset: bool = False
+
+
 # A list to hold all tagged functions
-_TAGGERS: List[Callable[[Context], Any]] = []
+_TAGGERS: List[TaggerConfig] = []
 tracer = get_tracer(__name__)
 
 # Folder IDs for status checking.
@@ -45,10 +53,24 @@ BPM_PATTERN = re.compile(r"(\d+)bpm", re.IGNORECASE)
 TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
 
 
-def tag(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
-    """Decorator to register a function as a tag generator."""
-    _TAGGERS.append(func)
-    return func
+def tag(_func=None, *, only_if_unset: bool = False):
+    """
+    Decorator to register a function as a tag generator.
+
+    Args:
+        only_if_unset: If True, the tag will only be set if it's not
+                       already present on the file.
+    """
+
+    def decorator(func: Callable[[Context], Any]) -> Callable[[Context], Any]:
+        _TAGGERS.append(TaggerConfig(func=func, only_if_unset=only_if_unset))
+        return func
+
+    if _func is None:
+        # Called as @tag(only_if_unset=True)
+        return decorator
+    # Called as @tag
+    return decorator(_func)
 
 
 class Tagger:
@@ -78,9 +100,15 @@ class Tagger:
             context = Context(file=file, document=document)
 
             new_properties = {}
-            for tagger in _TAGGERS:
-                tag_name = tagger.__name__
-                tag_value = tagger(context)
+            current_properties = file.properties.copy()
+            for tagger_config in _TAGGERS:
+                tagger_func = tagger_config.func
+                tag_name = tagger_func.__name__
+
+                if tagger_config.only_if_unset and tag_name in current_properties:
+                    continue
+
+                tag_value = tagger_func(context)
                 if tag_value is not None:
                     new_properties[tag_name] = str(tag_value)
 
@@ -88,7 +116,6 @@ class Tagger:
             if new_properties:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
-                current_properties = file.properties.copy()
                 click.echo(f"  Current properties: {json.dumps(current_properties)}")
                 span.set_attribute("current_properties", json.dumps(current_properties))
                 updated_properties = current_properties.copy()
