@@ -284,7 +284,7 @@ def artist(ctx: Context) -> Optional[str]:
 
 
 @tag
-def song_title(ctx: Context) -> Optional[str]:
+def song(ctx: Context) -> Optional[str]:
     """Extracts the song title from the document title."""
     if not ctx.document:
         return None
