@@ -7,6 +7,7 @@ from typing import Optional
 import click
 import fitz
 from pathlib import Path
+import re
 
 
 from .common.config import get_settings
