@@ -107,15 +107,14 @@ def status(ctx: Context) -> Optional[str]:
     return None
 
 
-@tag
-def chords(ctx: Context) -> Optional[str]:
-    """Extracts unique chords from a Google Doc in order of appearance."""
+def _extract_all_chord_notations(ctx: Context) -> List[str]:
+    """Extracts all unique, chord-like notations from a Google Doc."""
     if not ctx.document:
-        return None
+        return []
 
     document = ctx.document.json
-    ordered_unique_chords = []
-    seen_chords = set()
+    ordered_unique_notations = []
+    seen_notations = set()
     chord_pattern = re.compile(r"\(([^)]+)\)")
 
     if "body" in document and "content" in document["body"]:
@@ -134,15 +133,24 @@ def chords(ctx: Context) -> Optional[str]:
                                     cleaned_chord = chord.replace("\u2193", "").strip()
                                     if (
                                         cleaned_chord
-                                        and cleaned_chord not in seen_chords
+                                        and cleaned_chord not in seen_notations
                                     ):
-                                        ordered_unique_chords.append(cleaned_chord)
-                                        seen_chords.add(cleaned_chord)
+                                        ordered_unique_notations.append(cleaned_chord)
+                                        seen_notations.add(cleaned_chord)
 
-    if not ordered_unique_chords:
+    return ordered_unique_notations
+
+
+@tag
+def chords(ctx: Context) -> Optional[str]:
+    """Extracts unique musical chords from a Google Doc in order of appearance."""
+    all_notations = _extract_all_chord_notations(ctx)
+    musical_chords = [c for c in all_notations if c not in ("N/C", "X")]
+
+    if not musical_chords:
         return None
 
-    return ",".join(ordered_unique_chords)
+    return ",".join(musical_chords)
 
 
 def _get_full_text(document: GoogleDocument) -> str:
@@ -155,6 +163,34 @@ def _get_full_text(document: GoogleDocument) -> str:
                     if "textRun" in para_element:
                         full_text += para_element["textRun"].get("content", "")
     return full_text
+
+
+@tag
+def features(ctx: Context) -> Optional[str]:
+    """Extracts special musical features from the document."""
+    if not ctx.document:
+        return None
+
+    found_features = set()
+
+    # Check for chucks and no-chords from notations
+    all_notations = _extract_all_chord_notations(ctx)
+    if "X" in all_notations:
+        found_features.add("chucks")
+    if "N/C" in all_notations:
+        found_features.add("no_chord")
+
+    # Check for other text-based features
+    full_text = _get_full_text(ctx.document)
+    if re.search(r"\bswing\b", full_text, re.IGNORECASE):
+        found_features.add("swing")
+    if re.search(r"\bgallop\b", full_text, re.IGNORECASE):
+        found_features.add("gallop")
+
+    if not found_features:
+        return None
+
+    return ",".join(sorted(list(found_features)))
 
 
 @tag

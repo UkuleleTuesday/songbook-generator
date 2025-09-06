@@ -70,7 +70,7 @@ def test_update_tags_with_status_tag(mock_drive_service):
         (
             "all_the_small_things.json",
             "chords",
-            "G,F,C,X,N/C",
+            "G,F,C",
         ),
         (
             "all_the_small_things.json",
@@ -195,6 +195,37 @@ def test_update_tags_with_status_tag(mock_drive_service):
             "we_are_young.json",
             "time_signature",
             "4/4",
+        ),
+        # Test cases for love_me_do.json
+        (
+            "love_me_do.json",
+            "song_title",
+            "Love Me Do",
+        ),
+        (
+            "love_me_do.json",
+            "artist",
+            "The Beatles",
+        ),
+        (
+            "love_me_do.json",
+            "chords",
+            "G,C,D,D7",
+        ),
+        (
+            "love_me_do.json",
+            "bpm",
+            "148",
+        ),
+        (
+            "love_me_do.json",
+            "time_signature",
+            "4/4",
+        ),
+        (
+            "love_me_do.json",
+            "features",
+            "no_chord,swing",
         ),
     ],
     indirect=["doc_json"],  # Tells pytest to pass the param to the fixture
