@@ -38,7 +38,7 @@ def sync_cache(
         if modified_after:
             span.set_attribute("modified_after", str(modified_after))
 
-        cache = init_cache()
+        cache = services.get("cache") or init_cache()
 
         files_to_update = _get_files_to_update(
             services["drive"], source_folders, modified_after
