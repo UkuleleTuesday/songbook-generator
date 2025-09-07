@@ -231,13 +231,6 @@ def generate(
     default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to sync from (can be passed multiple times)",
 )
-@click.option(
-    "--no-metadata",
-    is_flag=True,
-    default=False,
-    help="Disable syncing of file metadata from Drive to GCS.",
-)
-@click.option(
     "--force",
     is_flag=True,
     default=False,
@@ -265,8 +258,8 @@ def generate(
 )
 def sync_cache_command(
     ctx,
+
     source_folder,
-    no_metadata,
     force,
     update_tags_only,
     update_tags,
@@ -316,7 +309,6 @@ def sync_cache_command(
         sync_cache(
             source_folders,
             services,
-            with_metadata=not no_metadata,
             modified_after=last_merge_time,
         )
         click.echo("Cache synchronization complete.")
@@ -337,7 +329,7 @@ def sync_cache_command(
     "--with-metadata",
     is_flag=True,
     default=False,
-    help="Also download GCS object metadata and save it to a .metadata.json file.",
+    help="Also download GCS object metadata and save it to a local file.",
 )
 def download_cache_command(with_metadata, **kwargs):
     """Downloads the GCS cache to the local cache directory."""
