@@ -231,6 +231,7 @@ def generate(
     default=lambda: get_settings().song_sheets.folder_ids,
     help="Drive folder IDs to sync from (can be passed multiple times)",
 )
+@click.option(
     "--force",
     is_flag=True,
     default=False,
