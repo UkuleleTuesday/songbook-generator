@@ -13,6 +13,7 @@ from .common.config import get_settings
 from .cache_updater.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import (
+    CachedGoogleDriveClient,
     GoogleDriveClient,
 )
 from .common.caching import init_cache
@@ -537,7 +538,7 @@ def edition_management_command(func):
             scopes=credential_config.scopes,
             target_principal=credential_config.principal,
         )
-        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+        gdrive_client = CachedGoogleDriveClient(cache=cache, drive=drive)
 
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         properties = gdrive_client.get_file_properties(file_id)

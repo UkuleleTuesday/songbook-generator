@@ -15,6 +15,7 @@ from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from ..common.filters import PropertyFilter, FilterGroup
 from ..common.gdrive import (
+    CachedGoogleDriveClient,
     GoogleDriveClient,
     client,
 )
@@ -78,7 +79,7 @@ def _sort_titles(files: List[File]) -> List[File]:
 
 
 def collect_and_sort_files(
-    gdrive_client: GoogleDriveClient,
+    gdrive_client: Union[GoogleDriveClient, CachedGoogleDriveClient],
     source_folders: List[str],
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
@@ -323,7 +324,7 @@ def generate_songbook(
         reporter = progress.ProgressReporter(on_progress)
 
         with reporter.step(1, "Querying files...") as step:
-            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+            gdrive_client = CachedGoogleDriveClient(cache=cache, drive=drive)
             files = collect_and_sort_files(
                 gdrive_client, source_folders, client_filter, step
             )
@@ -418,7 +419,7 @@ def generate_songbook(
                         drive_write_service = build(
                             "drive", "v3", credentials=cover_creds
                         )
-                        gdrive_client_write = GoogleDriveClient(
+                        gdrive_client_write = CachedGoogleDriveClient(
                             cache=cache, drive=drive_write_service
                         )
                         cover_generator = cover.CoverGenerator(

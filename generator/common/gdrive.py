@@ -44,7 +44,6 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 class GoogleDriveClient:
     def __init__(
         self,
-        cache: Optional[Any] = None,
         credentials: Optional[credentials.Credentials] = None,
         drive=None,
     ):
@@ -54,7 +53,6 @@ class GoogleDriveClient:
             self.drive = client(credentials)
         else:
             raise ValueError("Either 'credentials' or 'drive' must be provided.")
-        self.cache = cache
 
     def search_files_by_name(
         self, file_name: str, source_folders: List[str]
@@ -249,45 +247,13 @@ class GoogleDriveClient:
         cache_prefix: str,
         mime_type: str = "application/pdf",
         export: bool = True,
-        use_cache: bool = True,
+        use_cache: bool = True,  # noqa: ARG002 - Kept for signature compatibility
     ) -> bytes:
         """
-        Generic file downloader with caching.
+        Generic file downloader.
 
         Can either download a file directly or export a Google Doc to a specific format.
         """
-        span = trace.get_current_span()
-        span.set_attribute("cache.enabled", use_cache)
-        cache_key = f"{cache_prefix}/{file_id}.pdf"
-        span.set_attribute("cache.key", cache_key)
-
-        if use_cache and self.cache:
-            details = (
-                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
-            )
-            remote_ts = datetime.fromisoformat(
-                details["modifiedTime"].replace("Z", "+00:00")
-            )
-            span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
-
-            try:
-                cached = self.cache.get(cache_key, newer_than=remote_ts)
-                if cached:
-                    span.set_attribute("cache.hit", True)
-                    click.echo(f"Using cached version of {file_name} (ID: {file_id})")
-                    return cached
-            except FileNotFoundError:
-                # This is an expected cache miss for local storage, not an error.
-                pass
-            except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
-                span.set_attribute("cache.error", str(e))
-                click.echo(
-                    f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
-                )
-        else:
-            use_cache = False  # Ensure cache is not used if not provided
-
-        span.set_attribute("cache.hit", False)
         click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
         if export:
             request = self.drive.files().export_media(
@@ -303,17 +269,6 @@ class GoogleDriveClient:
             _, done = downloader.next_chunk()
 
         data = buffer.getvalue()
-
-        if self.cache:
-            # GCSFS supports setting metadata on upload via `metadata` kwarg.
-            # The local file system fsspec impl does not support this.
-            try:
-                self.cache.put(
-                    cache_key, data, metadata={"gdrive-file-name": file_name}
-                )
-            except TypeError:
-                # Fallback for filesystems that don't support metadata
-                self.cache.put(cache_key, data)
         return data
 
     def get_files_metadata_by_ids(
@@ -369,6 +324,79 @@ class GoogleDriveClient:
         """
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
+
+
+class CachedGoogleDriveClient(GoogleDriveClient):
+    def __init__(
+        self,
+        cache: Any,
+        credentials: Optional[credentials.Credentials] = None,
+        drive=None,
+    ):
+        super().__init__(credentials=credentials, drive=drive)
+        self.cache = cache
+
+    def download_file(
+        self,
+        file_id: str,
+        file_name: str,
+        cache_prefix: str,
+        mime_type: str = "application/pdf",
+        export: bool = True,
+        use_cache: bool = True,
+    ) -> bytes:
+        """
+        Generic file downloader with caching.
+
+        Can either download a file directly or export a Google Doc to a specific format.
+        """
+        span = trace.get_current_span()
+        span.set_attribute("cache.enabled", use_cache)
+        cache_key = f"{cache_prefix}/{file_id}.pdf"
+        span.set_attribute("cache.key", cache_key)
+
+        if use_cache and self.cache:
+            details = (
+                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+            )
+            remote_ts = datetime.fromisoformat(
+                details["modifiedTime"].replace("Z", "+00:00")
+            )
+            span.set_attribute("gdrive.remote_modified_time", str(remote_ts))
+
+            try:
+                cached = self.cache.get(cache_key, newer_than=remote_ts)
+                if cached:
+                    span.set_attribute("cache.hit", True)
+                    click.echo(f"Using cached version of {file_name} (ID: {file_id})")
+                    return cached
+            except FileNotFoundError:
+                # This is an expected cache miss for local storage, not an error.
+                pass
+            except Exception as e:  # noqa: BLE001 - Safely ignore cache errors and re-download
+                span.set_attribute("cache.error", str(e))
+                click.echo(
+                    f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
+                )
+        else:
+            use_cache = False  # Ensure cache is not used if not provided
+
+        span.set_attribute("cache.hit", False)
+        data = super().download_file(
+            file_id, file_name, cache_prefix, mime_type, export, use_cache
+        )
+
+        if self.cache:
+            # GCSFS supports setting metadata on upload via `metadata` kwarg.
+            # The local file system fsspec impl does not support this.
+            try:
+                self.cache.put(
+                    cache_key, data, metadata={"gdrive-file-name": file_name}
+                )
+            except TypeError:
+                # Fallback for filesystems that don't support metadata
+                self.cache.put(cache_key, data)
+        return data
 
     def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
         """

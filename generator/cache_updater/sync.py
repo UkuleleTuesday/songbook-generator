@@ -78,7 +78,7 @@ def sync_cache(
                 click.echo(f"  Stored metadata for {file.name} at {metadata_key}")
 
                 # Download file without using cache to get fresh content
-                file_stream = gdrive_client.download_file_stream(file, use_cache=False)
+                file_stream = gdrive_client.download_file_stream(file)
 
                 # Explicitly write to cache with metadata
                 pdf_cache_key = f"song-sheets/{file.id}.pdf"

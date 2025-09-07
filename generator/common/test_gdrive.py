@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, _build_property_filters
+from .gdrive import CachedGoogleDriveClient, GoogleDriveClient, _build_property_filters
 
 
 @pytest.fixture
