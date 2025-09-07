@@ -29,6 +29,10 @@ echo "2b. Creating Pub/Sub topic ${CACHE_REFRESH_PUBSUB_TOPIC}…"
 gcloud pubsub topics create "${CACHE_REFRESH_PUBSUB_TOPIC}" \
   --project="${GCP_PROJECT_ID}" || echo "Topic may already exist, continuing…"
 
+echo "2c. Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
+gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+  --project="${GCP_PROJECT_ID}" || echo "Topic may already exist, continuing…"
+
 echo "3. Initializing Firestore in Native mode (region=${GCP_REGION})…"
 gcloud firestore databases create \
   --project="${GCP_PROJECT_ID}" \
@@ -154,20 +158,17 @@ gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
   --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/monitoring.metricWriter"
 
-echo "9. Set up cron schedule for cache refresh"
-# Create a JSON array of folder IDs from the comma-separated env var.
-# e.g., "id1,id2" becomes '{"source_folders":["id1","id2"]}'
-# shellcheck disable=SC2016
-PAYLOAD_JSON='{"source_folders":["'$(echo "${GDRIVE_SONG_SHEETS_FOLDER_IDS}" | sed 's/,/","/g')'"]}'
+echo "9. Set up pub/sub trigger for cache updater to listen to drive changes"
+# The cache updater will now be triggered by file changes from drivewatcher
+# instead of running on a schedule. This provides more efficient and responsive
+# cache updates when files actually change.
 
-gcloud scheduler jobs create http trigger-cache-updater-job \
-  --schedule="*/15 * * * *" \
-  --time-zone="Europe/Dublin" \
-  --uri="$(gcloud run services describe "${CACHE_UPDATER_FUNCTION_NAME}" --region "${GCP_REGION}" --format="value(uri)")" \
-  --http-method=POST \
-  --oidc-service-account-email="${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
-  --message-body="${PAYLOAD_JSON}" \
-  --location="${GCP_REGION}" \
-  --description="Triggers the PDF cache updater and cache sync for songbooks."
+# Set up IAM permissions for the drive changes topic
+gcloud pubsub topics add-iam-policy-binding "projects/${GCP_PROJECT_ID}/topics/${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+  --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
+  --role="roles/pubsub.subscriber" \
+  --project="${GCP_PROJECT_ID}"
+
+echo "✔ Cache updater is now configured to trigger on drive file changes instead of schedule."
 
 echo "✔ All done. 🎉"
