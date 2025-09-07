@@ -130,7 +130,7 @@ def test_sync_cache_stores_metadata_files(
         "parents": ["parent_folder_id"],
     }
     mock_cache_instance.put_metadata.assert_called_once_with(
-        "song-sheets/test_file_id", expected_metadata
+        "song-sheets/test_file_id.pdf", expected_metadata
     )
 
 
@@ -170,5 +170,5 @@ def test_sync_cache_stores_metadata_files_with_minimal_data(
         "parents": [],  # Should default to empty list
     }
     mock_cache_instance.put_metadata.assert_called_once_with(
-        "song-sheets/minimal_file", expected_metadata
+        "song-sheets/minimal_file.pdf", expected_metadata
     )
