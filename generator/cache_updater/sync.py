@@ -119,7 +119,7 @@ def sync_cache(
                 )
 
                 # Store metadata file alongside the PDF
-                metadata_key = f"song-sheets/{file.id}.pdf"
+                metadata_key = f"song-sheets/{file.id}"
                 file_metadata = {
                     "id": file.id,
                     "name": file.name,
