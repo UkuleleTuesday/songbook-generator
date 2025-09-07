@@ -46,7 +46,7 @@ def test_sync_cache_download_file_stream_args(
 
     # Assert
     mock_gdrive_instance.download_file_stream.assert_called_once_with(
-        mock_file, use_cache=True
+        mock_file, use_cache=False
     )
 
 
