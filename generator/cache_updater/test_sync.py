@@ -132,3 +132,43 @@ def test_sync_cache_stores_metadata_files(
     mock_cache_instance.put_metadata.assert_called_once_with(
         "song-sheets/test_file_id", expected_metadata
     )
+
+
+@patch("generator.cache_updater.sync.GoogleDriveClient")
+@patch("generator.cache_updater.sync._get_files_to_update")
+@patch("generator.cache_updater.sync.init_cache")
+@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
+def test_sync_cache_stores_metadata_files_with_minimal_data(
+    mock_sync_metadata,
+    mock_init_cache,
+    mock_get_files,
+    mock_gdrive_client,
+    mock_services,
+):
+    """
+    Verify that sync_cache stores metadata files even for files with minimal data.
+    """
+    # Arrange - Test with minimal File data (some fields None/empty)
+    mock_file = File(id="minimal_file", name="Minimal Song.pdf")
+    mock_get_files.return_value = [mock_file]
+    mock_cache_instance = mock_init_cache.return_value
+
+    # Act
+    sync_cache(
+        source_folders=["folder1"],
+        services=mock_services,
+        modified_after=None,
+    )
+
+    # Assert
+    # Verify the metadata file was stored with proper defaults
+    expected_metadata = {
+        "id": "minimal_file",
+        "name": "Minimal Song.pdf",
+        "properties": {},  # Should default to empty dict
+        "mimeType": None,  # Should handle None values
+        "parents": [],  # Should default to empty list
+    }
+    mock_cache_instance.put_metadata.assert_called_once_with(
+        "song-sheets/minimal_file", expected_metadata
+    )
