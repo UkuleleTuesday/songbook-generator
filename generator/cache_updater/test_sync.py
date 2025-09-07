@@ -45,9 +45,7 @@ def test_sync_cache_download_file_stream_args(
     )
 
     # Assert
-    mock_gdrive_instance.download_file_stream.assert_called_once_with(
-        mock_file, use_cache=False
-    )
+    mock_gdrive_instance.download_file_stream.assert_called_once_with(mock_file)
 
 
 @patch("generator.cache_updater.sync.GoogleDriveClient")
