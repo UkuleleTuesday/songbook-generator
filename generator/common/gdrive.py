@@ -1,4 +1,4 @@
-from typing import Generator, List, Dict, Optional, Union
+from typing import Any, Generator, List, Dict, Optional, Union
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload
@@ -43,7 +43,10 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 class GoogleDriveClient:
     def __init__(
-        self, cache, credentials: Optional[credentials.Credentials] = None, drive=None
+        self,
+        cache: Optional[Any] = None,
+        credentials: Optional[credentials.Credentials] = None,
+        drive=None,
     ):
         if drive:
             self.drive = drive
@@ -258,7 +261,7 @@ class GoogleDriveClient:
         cache_key = f"{cache_prefix}/{file_id}.pdf"
         span.set_attribute("cache.key", cache_key)
 
-        if use_cache:
+        if use_cache and self.cache:
             details = (
                 self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
             )
@@ -281,6 +284,8 @@ class GoogleDriveClient:
                 click.echo(
                     f"Cache lookup failed for {file_name} (ID: {file_id}): {e}. Will re-download."
                 )
+        else:
+            use_cache = False  # Ensure cache is not used if not provided
 
         span.set_attribute("cache.hit", False)
         click.echo(f"Downloading file: {file_name} (ID: {file_id})...")
@@ -299,13 +304,16 @@ class GoogleDriveClient:
 
         data = buffer.getvalue()
 
-        # GCSFS supports setting metadata on upload via `metadata` kwarg.
-        # The local file system fsspec impl does not support this.
-        try:
-            self.cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
-        except TypeError:
-            # Fallback for filesystems that don't support metadata
-            self.cache.put(cache_key, data)
+        if self.cache:
+            # GCSFS supports setting metadata on upload via `metadata` kwarg.
+            # The local file system fsspec impl does not support this.
+            try:
+                self.cache.put(
+                    cache_key, data, metadata={"gdrive-file-name": file_name}
+                )
+            except TypeError:
+                # Fallback for filesystems that don't support metadata
+                self.cache.put(cache_key, data)
         return data
 
     def get_files_metadata_by_ids(

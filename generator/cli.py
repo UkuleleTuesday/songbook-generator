@@ -622,7 +622,7 @@ def list_song_editions(file_identifier):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    gdrive_client = GoogleDriveClient(drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
     if properties is None:
@@ -695,7 +695,7 @@ def get_tag(file_identifier, key):
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    gdrive_client = GoogleDriveClient(drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     properties = gdrive_client.get_file_properties(file_id)
 
@@ -731,7 +731,7 @@ def set_tag(file_identifier, key, value):
     drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    gdrive_client = GoogleDriveClient(drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     if gdrive_client.set_file_property(file_id, key, value):
         click.echo(f"Successfully set tag '{key}' to '{value}'.")
@@ -758,7 +758,7 @@ def delete_tag(file_identifier, key):
     drive, cache = init_services(
         scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    gdrive_client = GoogleDriveClient(drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
     try:
@@ -835,8 +835,7 @@ def update_tags(file_identifier, all, dry_run):
     creds = get_credentials(scopes=scopes, target_principal=credential_config.principal)
     drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
-    cache = init_cache()
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+    gdrive_client = GoogleDriveClient(drive=drive_service)
 
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)
@@ -919,8 +918,7 @@ def download_doc_json_command(file_identifier, output_path):
     )
     drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
-    cache = init_cache()
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
+    gdrive_client = GoogleDriveClient(drive=drive_service)
 
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 

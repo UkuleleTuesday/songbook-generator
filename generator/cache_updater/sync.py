@@ -18,7 +18,7 @@ def _get_files_to_update(
     """
     Query Google Drive for files in given folders modified after a certain time.
     """
-    gdrive_client = GoogleDriveClient(cache=init_cache(), drive=drive_service)
+    gdrive_client = GoogleDriveClient(drive=drive_service)
     return gdrive_client.query_drive_files(
         source_folders, modified_after=modified_after
     )
@@ -57,7 +57,7 @@ def sync_cache(
             click.echo("No new or modified files to sync.")
             return 0
 
-        gdrive_client = GoogleDriveClient(cache=cache, drive=services["drive"])
+        gdrive_client = GoogleDriveClient(drive=services["drive"])
         for file in files_to_update:
             with services["tracer"].start_as_current_span("sync_file"):
                 click.echo(f"Syncing {file.name} (ID: {file.id})")
