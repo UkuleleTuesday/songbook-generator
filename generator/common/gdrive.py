@@ -334,6 +334,8 @@ class CachedGoogleDriveClient(GoogleDriveClient):
         drive=None,
     ):
         super().__init__(credentials=credentials, drive=drive)
+        if not cache:
+            raise ValueError("A cache instance must be provided for CachedGoogleDriveClient.")
         self.cache = cache
 
     def download_file(
@@ -355,7 +357,7 @@ class CachedGoogleDriveClient(GoogleDriveClient):
         cache_key = f"{cache_prefix}/{file_id}.pdf"
         span.set_attribute("cache.key", cache_key)
 
-        if use_cache and self.cache:
+        if use_cache:
             details = (
                 self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
             )
@@ -386,16 +388,13 @@ class CachedGoogleDriveClient(GoogleDriveClient):
             file_id, file_name, cache_prefix, mime_type, export, use_cache
         )
 
-        if self.cache:
-            # GCSFS supports setting metadata on upload via `metadata` kwarg.
-            # The local file system fsspec impl does not support this.
-            try:
-                self.cache.put(
-                    cache_key, data, metadata={"gdrive-file-name": file_name}
-                )
-            except TypeError:
-                # Fallback for filesystems that don't support metadata
-                self.cache.put(cache_key, data)
+        # GCSFS supports setting metadata on upload via `metadata` kwarg.
+        # The local file system fsspec impl does not support this.
+        try:
+            self.cache.put(cache_key, data, metadata={"gdrive-file-name": file_name})
+        except TypeError:
+            # Fallback for filesystems that don't support metadata
+            self.cache.put(cache_key, data)
         return data
 
     def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:

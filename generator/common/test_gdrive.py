@@ -286,3 +286,9 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
     assert result[0] == mock_files[0]
     mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
     assert client_filter.matches.call_count == 2
+
+
+def test_cached_gdrive_client_requires_cache():
+    """Test that CachedGoogleDriveClient raises an error if no cache is provided."""
+    with pytest.raises(ValueError, match="A cache instance must be provided"):
+        CachedGoogleDriveClient(cache=None, drive=Mock())
