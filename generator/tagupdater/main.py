@@ -39,10 +39,10 @@ def _get_services():
 
     # Get credentials for tagging (needs drive write permissions)
     tagger_credential_config = settings.google_cloud.credentials.get(
-        "songbook-cache-updater"
+        "songbook-generator"
     )
     if not tagger_credential_config:
-        raise click.Abort("Credential config 'songbook-cache-updater' not found.")
+        raise click.Abort("Credential config 'songbook-generator' not found.")
 
     tagger_creds = get_credentials(
         scopes=tagger_credential_config.scopes,
@@ -52,10 +52,13 @@ def _get_services():
     # Create Google Drive service for tagging
     drive_service = build("drive", "v3", credentials=tagger_creds)
 
+    # Create Google Docs service for document content fetching
+    docs_service = build("docs", "v1", credentials=tagger_creds)
+
     return {
         "tracer": tracer,
         "drive": drive_service,
-        "tagger": Tagger(drive_service),
+        "tagger": Tagger(drive_service, docs_service),
     }
 
 

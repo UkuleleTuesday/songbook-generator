@@ -4,10 +4,16 @@ import base64
 import json
 from unittest.mock import Mock, patch
 
+import click
 import pytest
 from cloudevents.http import CloudEvent
 
-from .main import _convert_to_file_objects, _parse_cloud_event, tagupdater_main
+from .main import (
+    _convert_to_file_objects,
+    _get_services,
+    _parse_cloud_event,
+    tagupdater_main,
+)
 
 
 @pytest.fixture
@@ -242,3 +248,170 @@ def test_tagupdater_main_parsing_error(mock_get_services):
 
     # Verify error status was set
     mock_span.set_attribute.assert_any_call("status", "error")
+
+
+@patch("generator.tagupdater.main.get_credentials")
+@patch("generator.tagupdater.main.build")
+@patch("generator.tagupdater.main.get_settings")
+@patch("generator.tagupdater.main.setup_tracing")
+@patch("generator.tagupdater.main.get_tracer")
+@patch("generator.tagupdater.main.default")
+def test_get_services_success(
+    mock_default,
+    mock_get_tracer,
+    mock_setup_tracing,
+    mock_get_settings,
+    mock_build,
+    mock_get_credentials,
+):
+    """Test successful creation of services with correct credential config."""
+    # Clear the cache before testing
+    _get_services.cache_clear()
+
+    # Mock default credentials
+    mock_default.return_value = (None, "test-project")
+
+    # Mock settings
+    mock_credential_config = Mock()
+    mock_credential_config.scopes = ["https://www.googleapis.com/auth/drive"]
+    mock_credential_config.principal = "test@example.com"
+
+    mock_settings = Mock()
+    mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_get_settings.return_value = mock_settings
+
+    # Mock tracer
+    mock_tracer = Mock()
+    mock_get_tracer.return_value = mock_tracer
+
+    # Mock credentials
+    mock_creds = Mock()
+    mock_get_credentials.return_value = mock_creds
+
+    # Mock Google API services
+    mock_drive_service = Mock()
+    mock_docs_service = Mock()
+    mock_build.side_effect = [mock_drive_service, mock_docs_service]
+
+    # Call the function
+    result = _get_services()
+
+    # Verify credentials config lookup used correct key
+    mock_settings.google_cloud.credentials.get.assert_called_once_with(
+        "songbook-generator"
+    )
+
+    # Verify get_credentials was called correctly
+    mock_get_credentials.assert_called_once_with(
+        scopes=mock_credential_config.scopes,
+        target_principal=mock_credential_config.principal,
+    )
+
+    # Verify both services were built
+    assert mock_build.call_count == 2
+    mock_build.assert_any_call("drive", "v3", credentials=mock_creds)
+    mock_build.assert_any_call("docs", "v1", credentials=mock_creds)
+
+    # Verify return structure
+    assert "tracer" in result
+    assert "drive" in result
+    assert "tagger" in result
+    assert result["tracer"] == mock_tracer
+    assert result["drive"] == mock_drive_service
+
+    # Verify Tagger was created with both services
+    # Note: We can't easily verify the Tagger constructor call without mocking it,
+    # but we can verify the tagger object exists
+    assert result["tagger"] is not None
+
+
+@patch("generator.tagupdater.main.get_settings")
+@patch("generator.tagupdater.main.setup_tracing")
+@patch("generator.tagupdater.main.get_tracer")
+@patch("generator.tagupdater.main.default")
+def test_get_services_missing_credential_config(
+    mock_default, mock_get_tracer, mock_setup_tracing, mock_get_settings
+):
+    """Test error handling when credential config is not found."""
+    # Clear the cache before testing
+    _get_services.cache_clear()
+
+    # Mock default credentials
+    mock_default.return_value = (None, "test-project")
+
+    # Mock settings with missing credential config
+    mock_settings = Mock()
+    mock_settings.google_cloud.credentials.get.return_value = None
+    mock_get_settings.return_value = mock_settings
+
+    # Mock tracer
+    mock_tracer = Mock()
+    mock_get_tracer.return_value = mock_tracer
+
+    # Call the function and expect it to raise
+    with pytest.raises(click.Abort):
+        _get_services()
+
+    # Verify the correct credential config was requested
+    mock_settings.google_cloud.credentials.get.assert_called_once_with(
+        "songbook-generator"
+    )
+
+
+@patch("generator.tagupdater.main.Tagger")
+@patch("generator.tagupdater.main.get_credentials")
+@patch("generator.tagupdater.main.build")
+@patch("generator.tagupdater.main.get_settings")
+@patch("generator.tagupdater.main.setup_tracing")
+@patch("generator.tagupdater.main.get_tracer")
+@patch("generator.tagupdater.main.default")
+def test_get_services_tagger_instantiation(
+    mock_default,
+    mock_get_tracer,
+    mock_setup_tracing,
+    mock_get_settings,
+    mock_build,
+    mock_get_credentials,
+    mock_tagger_class,
+):
+    """Test that Tagger is instantiated with both drive_service and docs_service."""
+    # Clear the cache before testing
+    _get_services.cache_clear()
+
+    # Mock default credentials
+    mock_default.return_value = (None, "test-project")
+
+    # Mock settings
+    mock_credential_config = Mock()
+    mock_credential_config.scopes = ["https://www.googleapis.com/auth/drive"]
+    mock_credential_config.principal = "test@example.com"
+
+    mock_settings = Mock()
+    mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_get_settings.return_value = mock_settings
+
+    # Mock tracer
+    mock_tracer = Mock()
+    mock_get_tracer.return_value = mock_tracer
+
+    # Mock credentials
+    mock_creds = Mock()
+    mock_get_credentials.return_value = mock_creds
+
+    # Mock Google API services
+    mock_drive_service = Mock()
+    mock_docs_service = Mock()
+    mock_build.side_effect = [mock_drive_service, mock_docs_service]
+
+    # Mock Tagger instance
+    mock_tagger_instance = Mock()
+    mock_tagger_class.return_value = mock_tagger_instance
+
+    # Call the function
+    result = _get_services()
+
+    # Verify Tagger was instantiated with both services
+    mock_tagger_class.assert_called_once_with(mock_drive_service, mock_docs_service)
+
+    # Verify the tagger is returned
+    assert result["tagger"] == mock_tagger_instance
