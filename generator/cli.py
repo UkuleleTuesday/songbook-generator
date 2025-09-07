@@ -16,7 +16,7 @@ from .common.gdrive import (
     GoogleDriveClient,
 )
 from .common.caching import init_cache
-from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
+from .cache_updater.sync import sync_cache
 from .common.filters import FilterParser
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -342,11 +342,36 @@ def download_cache_command(with_metadata, **kwargs):
         local_cache_dir = get_settings().caching.local.dir
         click.echo(f"Local cache directory: {local_cache_dir}")
 
-        download_gcs_cache_to_local(
-            services, os.path.expanduser(local_cache_dir), with_metadata
-        )
+        with services["tracer"].start_as_current_span(
+            "download_gcs_cache_to_local"
+        ) as span:
+            local_cache = init_cache(use_gcs=False)
+            expanded_local_cache_dir = os.path.expanduser(local_cache_dir)
+            span.set_attribute("local_cache_dir", expanded_local_cache_dir)
+            span.set_attribute("with_metadata", with_metadata)
 
-        click.echo("GCS cache download complete.")
+            cache_bucket = services["cache_bucket"]
+            blobs = list(cache_bucket.list_blobs())
+            span.set_attribute("total_blobs_to_download", len(blobs))
+
+            if not blobs:
+                click.echo("No files found in GCS cache. Nothing to download.")
+                return
+
+            click.echo(f"Found {len(blobs)} files in GCS cache. Starting download...")
+
+            for blob in blobs:
+                destination_path = os.path.join(expanded_local_cache_dir, blob.name)
+                os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+                click.echo(f"Downloading {blob.name} to {destination_path}")
+                blob.download_to_filename(destination_path)
+                if with_metadata and blob.metadata:
+                    # remove .pdf extension before adding .metadata.json
+                    base_key = os.path.splitext(blob.name)[0]
+                    click.echo(f"  ... saving metadata for {blob.name}")
+                    local_cache.put_metadata(base_key, blob.metadata)
+
+            click.echo("GCS cache download complete.")
 
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
