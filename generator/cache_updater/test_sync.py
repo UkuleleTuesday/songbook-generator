@@ -86,3 +86,49 @@ def test_sync_cache_download_file_stream_args(
     mock_gdrive_instance.download_file_stream.assert_called_once_with(
         mock_file, use_cache=True
     )
+
+
+@patch("generator.cache_updater.sync.GoogleDriveClient")
+@patch("generator.cache_updater.sync._get_files_to_update")
+@patch("generator.cache_updater.sync.init_cache")
+@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
+def test_sync_cache_stores_metadata_files(
+    mock_sync_metadata,
+    mock_init_cache,
+    mock_get_files,
+    mock_gdrive_client,
+    mock_services,
+):
+    """
+    Verify that sync_cache stores metadata files for each synced file.
+    """
+    # Arrange
+    mock_file = File(
+        id="test_file_id",
+        name="Test Song.pdf",
+        properties={"key1": "value1", "key2": "value2"},
+        mimeType="application/vnd.google-apps.document",
+        parents=["parent_folder_id"],
+    )
+    mock_get_files.return_value = [mock_file]
+    mock_cache_instance = mock_init_cache.return_value
+
+    # Act
+    sync_cache(
+        source_folders=["folder1"],
+        services=mock_services,
+        modified_after=None,
+    )
+
+    # Assert
+    # Verify the metadata file was stored
+    expected_metadata = {
+        "id": "test_file_id",
+        "name": "Test Song.pdf",
+        "properties": {"key1": "value1", "key2": "value2"},
+        "mimeType": "application/vnd.google-apps.document",
+        "parents": ["parent_folder_id"],
+    }
+    mock_cache_instance.put_metadata.assert_called_once_with(
+        "song-sheets/test_file_id", expected_metadata
+    )

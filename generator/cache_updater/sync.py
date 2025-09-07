@@ -118,6 +118,18 @@ def sync_cache(
                     use_cache=True,
                 )
 
+                # Store metadata file alongside the PDF
+                metadata_key = f"song-sheets/{file.id}"
+                file_metadata = {
+                    "id": file.id,
+                    "name": file.name,
+                    "properties": file.properties,
+                    "mimeType": file.mimeType,
+                    "parents": file.parents,
+                }
+                cache.put_metadata(metadata_key, file_metadata)
+                click.echo(f"  Stored metadata for {file.name}")
+
         if with_metadata:
             _sync_gcs_metadata_from_drive(
                 source_folders,
