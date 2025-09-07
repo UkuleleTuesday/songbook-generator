@@ -13,6 +13,7 @@ from typing import List, Optional
 
 import click
 from cloudevents.http import CloudEvent
+from google.api_core.exceptions import NotFound
 from google.auth import default
 from google.cloud import pubsub_v1, storage
 from googleapiclient.discovery import build
@@ -103,7 +104,13 @@ def _get_last_check_time(services) -> Optional[datetime]:
         click.echo(f"Last check was at {last_check_time}")
         return last_check_time
 
-    except (FileNotFoundError, ValueError, KeyError, json.JSONDecodeError) as e:
+    except (
+        FileNotFoundError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+        NotFound,
+    ) as e:
         click.echo(f"Error reading last check time: {e}")
         # Default to checking last hour if we can't read the timestamp
         return datetime.utcnow() - timedelta(hours=1)

@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch
 
+from google.api_core.exceptions import NotFound
 
 from generator.drivewatcher.main import (
     _detect_changes,
@@ -176,6 +177,33 @@ def test_get_last_check_time_malformed_json():
         result = _get_last_check_time(services)
 
         # Should fallback to 1 hour ago when JSON is malformed
+        now = datetime.utcnow()
+        expected = now - timedelta(hours=1)
+        assert (
+            abs((result - expected).total_seconds()) < 60
+        )  # Within 1 minute tolerance
+
+
+def test_get_last_check_time_not_found_exception():
+    """Test getting last check time when blob download raises NotFound."""
+    mock_blob = Mock()
+    mock_blob.download_as_text.side_effect = NotFound("No such object")
+
+    mock_bucket = Mock()
+    mock_bucket.get_blob.return_value = mock_blob
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        result = _get_last_check_time(services)
+
+        # Should fallback to 1 hour ago when NotFound is raised
         now = datetime.utcnow()
         expected = now - timedelta(hours=1)
         assert (
