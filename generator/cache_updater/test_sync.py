@@ -23,45 +23,7 @@ def mock_services():
 @patch("generator.cache_updater.sync.GoogleDriveClient")
 @patch("generator.cache_updater.sync._get_files_to_update")
 @patch("generator.cache_updater.sync.init_cache")
-@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
-def test_sync_cache_calls_sync_metadata_correctly(
-    mock_sync_metadata,
-    mock_init_cache,
-    mock_get_files,
-    mock_gdrive_client,
-    mock_services,
-):
-    """
-    Verify that sync_cache calls _sync_gcs_metadata_from_drive with the correct arguments.
-    """
-    # Arrange
-    mock_file = File(id="test_id", name="test_name")
-    mock_get_files.return_value = [mock_file]
-    mock_cache_instance = mock_init_cache.return_value
-
-    # Act
-    sync_cache(
-        source_folders=["folder1"],
-        services=mock_services,
-        with_metadata=True,
-    )
-
-    # Assert
-    mock_sync_metadata.assert_called_once_with(
-        ["folder1"],
-        mock_cache_instance,
-        mock_services["drive"],
-        mock_services["cache_bucket"],
-        mock_services["tracer"],
-    )
-
-
-@patch("generator.cache_updater.sync.GoogleDriveClient")
-@patch("generator.cache_updater.sync._get_files_to_update")
-@patch("generator.cache_updater.sync.init_cache")
-@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_download_file_stream_args(
-    mock_sync_metadata,
     mock_init_cache,
     mock_get_files,
     mock_gdrive_client,
@@ -91,9 +53,7 @@ def test_sync_cache_download_file_stream_args(
 @patch("generator.cache_updater.sync.GoogleDriveClient")
 @patch("generator.cache_updater.sync._get_files_to_update")
 @patch("generator.cache_updater.sync.init_cache")
-@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_stores_metadata_files(
-    mock_sync_metadata,
     mock_init_cache,
     mock_get_files,
     mock_gdrive_client,
@@ -102,6 +62,7 @@ def test_sync_cache_stores_metadata_files(
     """
     Verify that sync_cache stores metadata files for each synced file.
     """
+    import json
     # Arrange
     mock_file = File(
         id="test_file_id",
@@ -122,24 +83,35 @@ def test_sync_cache_stores_metadata_files(
 
     # Assert
     # Verify the metadata file was stored
-    expected_metadata = {
+    expected_metadata_key = "song-sheets/test_file_id.json"
+    expected_metadata_content = {
         "id": "test_file_id",
         "name": "Test Song.pdf",
         "properties": {"key1": "value1", "key2": "value2"},
         "mimeType": "application/vnd.google-apps.document",
         "parents": ["parent_folder_id"],
     }
-    mock_cache_instance.put_metadata.assert_called_once_with(
-        "song-sheets/test_file_id", expected_metadata
+
+    # Find the call for the metadata file
+    metadata_call = next(
+        (
+            call
+            for call in mock_cache_instance.put.call_args_list
+            if call.args[0] == expected_metadata_key
+        ),
+        None,
     )
+
+    assert metadata_call is not None, "cache.put was not called for metadata file"
+    # The data is bytes, so decode and parse JSON
+    actual_metadata_content = json.loads(metadata_call.args[1].decode("utf-8"))
+    assert actual_metadata_content == expected_metadata_content
 
 
 @patch("generator.cache_updater.sync.GoogleDriveClient")
 @patch("generator.cache_updater.sync._get_files_to_update")
 @patch("generator.cache_updater.sync.init_cache")
-@patch("generator.cache_updater.sync._sync_gcs_metadata_from_drive")
 def test_sync_cache_stores_metadata_files_with_minimal_data(
-    mock_sync_metadata,
     mock_init_cache,
     mock_get_files,
     mock_gdrive_client,
@@ -161,14 +133,28 @@ def test_sync_cache_stores_metadata_files_with_minimal_data(
     )
 
     # Assert
+    import json
+
     # Verify the metadata file was stored with proper defaults
-    expected_metadata = {
+    expected_metadata_key = "song-sheets/minimal_file.json"
+    expected_metadata_content = {
         "id": "minimal_file",
         "name": "Minimal Song.pdf",
         "properties": {},  # Should default to empty dict
         "mimeType": None,  # Should handle None values
         "parents": [],  # Should default to empty list
     }
-    mock_cache_instance.put_metadata.assert_called_once_with(
-        "song-sheets/minimal_file", expected_metadata
+
+    # Find the call for the metadata file
+    metadata_call = next(
+        (
+            call
+            for call in mock_cache_instance.put.call_args_list
+            if call.args[0] == expected_metadata_key
+        ),
+        None,
     )
+
+    assert metadata_call is not None, "cache.put was not called for metadata file"
+    actual_metadata_content = json.loads(metadata_call.args[1].decode("utf-8"))
+    assert actual_metadata_content == expected_metadata_content

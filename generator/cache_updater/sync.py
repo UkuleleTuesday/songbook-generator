@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List, Optional
 from datetime import datetime
 import click
@@ -60,17 +61,33 @@ def sync_cache(
         for file in files_to_update:
             with services["tracer"].start_as_current_span("sync_file"):
                 click.echo(f"Syncing {file.name} (ID: {file.id})")
+
+                # Store metadata file alongside the PDF
+                metadata_key = f"song-sheets/{file.id}.json"
+                file_metadata = {
+                    "id": file.id,
+                    "name": file.name,
+                    "properties": file.properties or {},
+                    "mimeType": file.mimeType,
+                    "parents": file.parents or [],
+                }
+                cache.put(
+                    metadata_key,
+                    json.dumps(file_metadata, indent=2).encode("utf-8"),
+                )
+                click.echo(f"  Stored metadata for {file.name} at {metadata_key}")
+
                 # Download file without using cache to get fresh content
                 file_stream = gdrive_client.download_file_stream(file, use_cache=False)
 
                 # Explicitly write to cache with metadata
-                cache_key = f"song-sheets/{file.id}.pdf"
-                metadata = {
+                pdf_cache_key = f"song-sheets/{file.id}.pdf"
+                gcs_metadata = {
                     "gdrive-file-id": file.id,
                     "gdrive-file-name": file.name,
                 }
-                cache.put(cache_key, file_stream.read(), metadata=metadata)
-                click.echo(f"  Stored {cache_key} in cache with metadata.")
+                cache.put(pdf_cache_key, file_stream.read(), metadata=gcs_metadata)
+                click.echo(f"  Stored {pdf_cache_key} in cache with GCS metadata.")
 
         return len(files_to_update)
 
