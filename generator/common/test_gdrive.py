@@ -1,7 +1,6 @@
 import pytest
-import ssl
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, _build_property_filters, _retry_on_ssl_error
+from .gdrive import GoogleDriveClient, _build_property_filters
 
 
 @pytest.fixture
@@ -9,6 +8,9 @@ def mock_drive_client():
     """Create a mock GoogleDriveClient."""
     cache = Mock()
     client = GoogleDriveClient(cache=cache, drive=Mock())
+    # Mock the settings to avoid dependency on config
+    client.settings = Mock()
+    client.settings.google_cloud.google_drive_api_retries = 3
     return client
 
 
@@ -41,6 +43,9 @@ def test_search_files_by_name(mock_drive_client):
         pageSize=10,
         fields="files(id,name,parents,properties,mimeType)",
     )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
 
 
 def test_query_drive_files_basic(mock_drive_client):
@@ -69,6 +74,9 @@ def test_query_drive_files_basic(mock_drive_client):
         orderBy="name_natural",
         pageToken=None,
     )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
 
 
 def test_query_drive_files_with_multiple_folders(mock_drive_client):
@@ -88,6 +96,9 @@ def test_query_drive_files_with_multiple_folders(mock_drive_client):
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
+    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
     )
 
 
@@ -121,11 +132,20 @@ def test_query_drive_files_pagination(mock_drive_client):
 
     # Verify two API calls were made
     assert mock_drive_client.drive.files.return_value.list.call_count == 2
+    assert (
+        mock_drive_client.drive.files.return_value.list.return_value.execute.call_count
+        == 2
+    )
 
     # Check the calls were made with correct parameters
     calls = mock_drive_client.drive.files.return_value.list.call_args_list
     assert calls[0].kwargs["pageToken"] is None
     assert calls[1].kwargs["pageToken"] == "token123"
+
+    # Verify num_retries was passed to execute calls
+    execute_calls = mock_drive_client.drive.files.return_value.list.return_value.execute.call_args_list
+    assert execute_calls[0].kwargs["num_retries"] == 3
+    assert execute_calls[1].kwargs["num_retries"] == 3
 
 
 def test_query_drive_files_empty_result(mock_drive_client):
@@ -200,6 +220,9 @@ def test_query_drive_files_with_property_filters(mock_drive_client):
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
+    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
     )
 
 
@@ -288,87 +311,3 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
     assert result[0] == mock_files[0]
     mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
     assert client_filter.matches.call_count == 2
-
-
-def test_retry_decorator_success_after_ssl_errors():
-    """Test that the retry decorator succeeds after SSL errors."""
-    call_count = 0
-
-    @_retry_on_ssl_error(max_retries=3, base_delay=0.01)
-    def test_function():
-        nonlocal call_count
-        call_count += 1
-        if call_count <= 2:
-            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
-        return {"success": True}
-
-    result = test_function()
-
-    assert result == {"success": True}
-    assert call_count == 3  # Should have been called 3 times
-
-
-def test_retry_decorator_max_retries_exceeded():
-    """Test that the retry decorator fails after max retries are exceeded."""
-    call_count = 0
-
-    @_retry_on_ssl_error(max_retries=2, base_delay=0.01)
-    def test_function():
-        nonlocal call_count
-        call_count += 1
-        raise ssl.SSLEOFError("EOF occurred in violation of protocol")
-
-    with pytest.raises(ssl.SSLEOFError):
-        test_function()
-
-    assert call_count == 3  # Should have been called 3 times (initial + 2 retries)
-
-
-def test_retry_decorator_non_ssl_error():
-    """Test that the retry decorator doesn't retry non-SSL errors."""
-    call_count = 0
-
-    @_retry_on_ssl_error(max_retries=3, base_delay=0.01)
-    def test_function():
-        nonlocal call_count
-        call_count += 1
-        raise ValueError("Not an SSL error")
-
-    with pytest.raises(ValueError):
-        test_function()
-
-    assert call_count == 1  # Should have been called only once
-
-
-def test_gdrive_client_ssl_retry_integration(mock_drive_client):
-    """Test that GoogleDriveClient properly retries on SSL errors."""
-    call_count = 0
-
-    def mock_execute():
-        nonlocal call_count
-        call_count += 1
-        if call_count <= 2:
-            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
-        return {
-            "files": [
-                {
-                    "id": "test_id",
-                    "name": "test_file.pdf",
-                    "parents": ["folder_id"],
-                    "properties": {},
-                    "mimeType": "application/pdf",
-                }
-            ]
-        }
-
-    # Mock the execute method of the request object
-    mock_request = Mock()
-    mock_request.execute = mock_execute
-    mock_drive_client.drive.files.return_value.list.return_value = mock_request
-
-    # This should succeed after retries
-    result = mock_drive_client.query_drive_files(["folder_id"])
-
-    assert len(result) == 1
-    assert result[0].name == "test_file.pdf"
-    assert call_count == 3  # Should have retried twice

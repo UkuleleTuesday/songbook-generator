@@ -77,3 +77,10 @@ def test_local_cache_dir_override(monkeypatch):
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.caching.local.dir == "/tmp/my-cache"
+
+
+def test_google_drive_api_retries_default():
+    """Test that google_drive_api_retries has a default value of 3."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.google_cloud.google_drive_api_retries == 3

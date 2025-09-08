@@ -4,60 +4,13 @@ import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
-import ssl
-import time
-import random
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
 from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
+from .config import get_settings
 from google.auth import credentials
-
-
-def _retry_on_ssl_error(max_retries: int = 3, base_delay: float = 1.0):
-    """
-    Decorator to retry function calls on SSL and connection errors.
-
-    Args:
-        max_retries: Maximum number of retry attempts
-        base_delay: Base delay between retries (will be exponentially increased)
-    """
-
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            last_exception = None
-
-            for attempt in range(max_retries + 1):
-                try:
-                    return func(*args, **kwargs)
-                except (ssl.SSLEOFError, ssl.SSLError, ConnectionError, OSError) as e:
-                    last_exception = e
-                    if attempt == max_retries:
-                        # Last attempt, re-raise the exception
-                        click.echo(
-                            f"SSL/Connection error after {max_retries} retries: {e}",
-                            err=True,
-                        )
-                        raise
-
-                    # Calculate delay with exponential backoff and jitter
-                    delay = base_delay * (2**attempt) + random.uniform(0, 1)
-                    click.echo(
-                        f"SSL/Connection error (attempt {attempt + 1}/{max_retries + 1}): {e}. Retrying in {delay:.1f}s..."
-                    )
-                    time.sleep(delay)
-                except Exception:
-                    # For non-SSL/connection errors, don't retry
-                    raise
-
-            # This should never be reached, but just in case
-            if last_exception:
-                raise last_exception
-
-        return wrapper
-
-    return decorator
 
 
 def client(credentials: credentials.Credentials):
@@ -100,11 +53,7 @@ class GoogleDriveClient:
         else:
             raise ValueError("Either 'credentials' or 'drive' must be provided.")
         self.cache = cache
-
-    @_retry_on_ssl_error(max_retries=3, base_delay=1.0)
-    def _execute_api_call(self, request):
-        """Execute a Google Drive API request with SSL error retry logic."""
-        return request.execute()
+        self.settings = get_settings()
 
     def search_files_by_name(
         self, file_name: str, source_folders: List[str]
@@ -119,11 +68,15 @@ class GoogleDriveClient:
         click.echo(f"Executing Drive API query: {query}")
 
         try:
-            resp = self._execute_api_call(
-                self.drive.files().list(
+            resp = (
+                self.drive.files()
+                .list(
                     q=query,
                     pageSize=10,  # Limit to a reasonable number for this use case
                     fields="files(id,name,parents,properties,mimeType)",
+                )
+                .execute(
+                    num_retries=self.settings.google_cloud.google_drive_api_retries
                 )
             )
             files = [
@@ -176,13 +129,17 @@ class GoogleDriveClient:
 
         while True:
             try:
-                resp = self._execute_api_call(
-                    self.drive.files().list(
+                resp = (
+                    self.drive.files()
+                    .list(
                         q=query,
                         pageSize=1000,
                         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
                         orderBy="name_natural",
                         pageToken=page_token,
+                    )
+                    .execute(
+                        num_retries=self.settings.google_cloud.google_drive_api_retries
                     )
                 )
 
@@ -308,8 +265,12 @@ class GoogleDriveClient:
         span.set_attribute("cache.key", cache_key)
 
         if use_cache:
-            details = self._execute_api_call(
-                self.drive.files().get(fileId=file_id, fields="modifiedTime")
+            details = (
+                self.drive.files()
+                .get(fileId=file_id, fields="modifiedTime")
+                .execute(
+                    num_retries=self.settings.google_cloud.google_drive_api_retries
+                )
             )
             remote_ts = datetime.fromisoformat(
                 details["modifiedTime"].replace("Z", "+00:00")
@@ -374,9 +335,11 @@ class GoogleDriveClient:
         for file_id in file_ids:
             try:
                 # Get file metadata from Drive
-                file_metadata = self._execute_api_call(
-                    self.drive.files().get(
-                        fileId=file_id, fields="id,name,parents,properties,mimeType"
+                file_metadata = (
+                    self.drive.files()
+                    .get(fileId=file_id, fields="id,name,parents,properties,mimeType")
+                    .execute(
+                        num_retries=self.settings.google_cloud.google_drive_api_retries
                     )
                 )
                 file_obj = File(
@@ -422,8 +385,12 @@ class GoogleDriveClient:
             A dictionary of properties, or None if the file is not found.
         """
         try:
-            file_metadata = self._execute_api_call(
-                self.drive.files().get(fileId=file_id, fields="properties")
+            file_metadata = (
+                self.drive.files()
+                .get(fileId=file_id, fields="properties")
+                .execute(
+                    num_retries=self.settings.google_cloud.google_drive_api_retries
+                )
             )
             return file_metadata.get("properties", {})
         except HttpError as e:
@@ -447,14 +414,20 @@ class GoogleDriveClient:
         """
         try:
             # First, get the current properties to not overwrite them
-            file_metadata = self._execute_api_call(
-                self.drive.files().get(fileId=file_id, fields="properties")
+            file_metadata = (
+                self.drive.files()
+                .get(fileId=file_id, fields="properties")
+                .execute(
+                    num_retries=self.settings.google_cloud.google_drive_api_retries
+                )
             )
             properties = file_metadata.get("properties", {})
             properties[key] = value
 
             body = {"properties": properties}
-            self._execute_api_call(self.drive.files().update(fileId=file_id, body=body))
+            self.drive.files().update(fileId=file_id, body=body).execute(
+                num_retries=self.settings.google_cloud.google_drive_api_retries
+            )
             return True
         except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)

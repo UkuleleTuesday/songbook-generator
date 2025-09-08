@@ -95,6 +95,10 @@ class GoogleCloudCredentials(BaseModel):
 
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
+    google_drive_api_retries: int = Field(
+        default=3,
+        description="Number of retries for Google Drive API calls with exponential backoff",
+    )
     credentials: dict[str, GoogleCloudCredentials] = {
         "songbook-generator": GoogleCloudCredentials(
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
