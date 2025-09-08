@@ -1,16 +1,15 @@
 import pytest
 from unittest.mock import Mock, patch
 from .gdrive import GoogleDriveClient, _build_property_filters
+from .config import GoogleDriveClientConfig
 
 
 @pytest.fixture
 def mock_drive_client():
     """Create a mock GoogleDriveClient."""
     cache = Mock()
-    client = GoogleDriveClient(cache=cache, drive=Mock())
-    # Mock the settings to avoid dependency on config
-    client.settings = Mock()
-    client.settings.google_cloud.google_drive_api_retries = 3
+    config = GoogleDriveClientConfig(api_retries=3)
+    client = GoogleDriveClient(cache=cache, drive=Mock(), config=config)
     return client
 
 
