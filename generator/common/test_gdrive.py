@@ -1,6 +1,7 @@
 import pytest
+import ssl
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, _build_property_filters
+from .gdrive import GoogleDriveClient, _build_property_filters, _retry_on_ssl_error
 
 
 @pytest.fixture
@@ -287,3 +288,87 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
     assert result[0] == mock_files[0]
     mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
     assert client_filter.matches.call_count == 2
+
+
+def test_retry_decorator_success_after_ssl_errors():
+    """Test that the retry decorator succeeds after SSL errors."""
+    call_count = 0
+
+    @_retry_on_ssl_error(max_retries=3, base_delay=0.01)
+    def test_function():
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+        return {"success": True}
+
+    result = test_function()
+
+    assert result == {"success": True}
+    assert call_count == 3  # Should have been called 3 times
+
+
+def test_retry_decorator_max_retries_exceeded():
+    """Test that the retry decorator fails after max retries are exceeded."""
+    call_count = 0
+
+    @_retry_on_ssl_error(max_retries=2, base_delay=0.01)
+    def test_function():
+        nonlocal call_count
+        call_count += 1
+        raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+
+    with pytest.raises(ssl.SSLEOFError):
+        test_function()
+
+    assert call_count == 3  # Should have been called 3 times (initial + 2 retries)
+
+
+def test_retry_decorator_non_ssl_error():
+    """Test that the retry decorator doesn't retry non-SSL errors."""
+    call_count = 0
+
+    @_retry_on_ssl_error(max_retries=3, base_delay=0.01)
+    def test_function():
+        nonlocal call_count
+        call_count += 1
+        raise ValueError("Not an SSL error")
+
+    with pytest.raises(ValueError):
+        test_function()
+
+    assert call_count == 1  # Should have been called only once
+
+
+def test_gdrive_client_ssl_retry_integration(mock_drive_client):
+    """Test that GoogleDriveClient properly retries on SSL errors."""
+    call_count = 0
+
+    def mock_execute():
+        nonlocal call_count
+        call_count += 1
+        if call_count <= 2:
+            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+        return {
+            "files": [
+                {
+                    "id": "test_id",
+                    "name": "test_file.pdf",
+                    "parents": ["folder_id"],
+                    "properties": {},
+                    "mimeType": "application/pdf",
+                }
+            ]
+        }
+
+    # Mock the execute method of the request object
+    mock_request = Mock()
+    mock_request.execute = mock_execute
+    mock_drive_client.drive.files.return_value.list.return_value = mock_request
+
+    # This should succeed after retries
+    result = mock_drive_client.query_drive_files(["folder_id"])
+
+    assert len(result) == 1
+    assert result[0].name == "test_file.pdf"
+    assert call_count == 3  # Should have retried twice
