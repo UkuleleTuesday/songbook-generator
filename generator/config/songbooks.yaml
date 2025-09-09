@@ -9,6 +9,7 @@
   cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface_file_ids:
     - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
+  archived: false
   filters:
     - key: "specialbooks"
       operator: "contains"
@@ -19,6 +20,7 @@
   description: >
     The complete collection of all available Ukulele Tuesday songs sheets.
   cover_file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
+  archived: false
   filters:
     - operator: "OR"
       filters:
@@ -35,6 +37,7 @@
   cover_file_id: "1jpZvqrpNF7HjX5_gpjH8FG8DLHKP63JjRU1gWbVpSg8"
   preface_file_ids:
     - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"
+  archived: false
   table_of_contents:
     include_difficulty: false
     include_wip_marker: false

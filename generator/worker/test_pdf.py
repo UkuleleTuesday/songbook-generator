@@ -665,3 +665,109 @@ def test_generate_manifest_without_page_indices(tmp_path):
 
     # Verify page indices are not included when not provided
     assert "page_indices" not in manifest
+
+
+def test_generate_manifest_archived_edition(tmp_path):
+    """Test that generate_manifest includes archived flag for archived editions."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data with archived edition
+    job_id = "test-job-archived"
+    params = {"edition": "archived-edition"}
+    files = [File(name="Song.pdf", id="file1")]
+    archived_edition = Edition(
+        id="archived-edition",
+        title="Archived Test Edition",
+        description="An archived test edition",
+        archived=True,
+        filters=[
+            PropertyFilter(
+                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
+            )
+        ],
+    )
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        edition=archived_edition,
+    )
+
+    # Verify archived flag is in top-level manifest
+    assert manifest["archived"] is True
+
+    # Verify archived flag is also in edition info
+    assert manifest["edition"]["archived"] is True
+
+
+def test_generate_manifest_non_archived_edition(tmp_path):
+    """Test that generate_manifest handles non-archived editions correctly."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data with non-archived edition
+    job_id = "test-job-current"
+    params = {"edition": "current-edition"}
+    files = [File(name="Song.pdf", id="file1")]
+    current_edition = Edition(
+        id="current-edition",
+        title="Current Test Edition",
+        description="A current test edition",
+        archived=False,
+        filters=[
+            PropertyFilter(
+                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
+            )
+        ],
+    )
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        edition=current_edition,
+    )
+
+    # Verify archived flag is in top-level manifest
+    assert manifest["archived"] is False
+
+    # Verify archived flag is also in edition info
+    assert manifest["edition"]["archived"] is False
+
+
+def test_generate_manifest_no_edition_archived_flag(tmp_path):
+    """Test that generate_manifest handles None archived flag when no edition."""
+    # Create a temporary PDF for testing
+    pdf_path = tmp_path / "test.pdf"
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(pdf_path)
+    doc.close()
+
+    # Create test data without edition (legacy mode)
+    job_id = "test-job-legacy"
+    params = {"filters": "some-filter"}
+    files = [File(name="Song.pdf", id="file1")]
+
+    manifest = generate_manifest(
+        job_id=job_id,
+        params=params,
+        destination_path=pdf_path,
+        files=files,
+        edition=None,  # No edition
+    )
+
+    # Verify archived flag is None when no edition
+    assert manifest["archived"] is None

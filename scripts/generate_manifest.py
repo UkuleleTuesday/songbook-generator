@@ -38,7 +38,14 @@ def generate_manifest(bucket_name: str, editions_order: str):
     the expected pattern, and outputs a JSON manifest to stdout.
     """
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(bucket_name, prefix="ukulele-tuesday-songbook-")
+
+    # Get blobs from both root directory and archive/ directory
+    root_blobs = storage_client.list_blobs(
+        bucket_name, prefix="ukulele-tuesday-songbook-"
+    )
+    archive_blobs = storage_client.list_blobs(
+        bucket_name, prefix="archive/ukulele-tuesday-songbook-"
+    )
 
     found_editions = {}
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
@@ -46,16 +53,21 @@ def generate_manifest(bucket_name: str, editions_order: str):
         r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$"
     )
 
-    for blob in blobs:
+    # Process both root and archive blobs
+    for blob in list(root_blobs) + list(archive_blobs):
         if not blob.name.endswith(".pdf"):
             continue
 
-        match = filename_re.match(os.path.basename(blob.name))
+        # Extract filename from full path (handle archive/ prefix)
+        filename = os.path.basename(blob.name)
+        match = filename_re.match(filename)
         if match:
             edition_name = match.group("edition")
+            is_archived = blob.name.startswith("archive/")
             found_editions[edition_name] = {
                 "url": f"https://storage.googleapis.com/{bucket_name}/{blob.name}",
                 "updated_utc": blob.updated.isoformat(),
+                "archived": is_archived,
             }
 
     # Order editions based on the provided order, appending any found but not specified editions at the end.
