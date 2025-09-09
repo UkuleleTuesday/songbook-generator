@@ -645,6 +645,7 @@ def generate_manifest(
     manifest = {
         "job_id": job_id,
         "generated_at": (generation_end_time or datetime.now(timezone.utc)).isoformat(),
+        "archived": edition.archived if edition else None,
         "generation_info": {
             "start_time": (
                 generation_start_time or datetime.now(timezone.utc)
@@ -683,6 +684,7 @@ def generate_manifest(
             "cover_file_id": edition.cover_file_id,
             "preface_file_ids": edition.preface_file_ids,
             "postface_file_ids": edition.postface_file_ids,
+            "archived": edition.archived,
             "table_of_contents_config": (
                 edition.table_of_contents.model_dump(mode="json")
                 if edition.table_of_contents

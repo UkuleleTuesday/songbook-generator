@@ -2897,6 +2897,7 @@ dev = [
     { name = "psutil" },
     { name = "pytest" },
     { name = "pytest-mock" },
+    { name = "pyyaml" },
     { name = "seaborn" },
 ]
 
@@ -2938,6 +2939,7 @@ dev = [
     { name = "psutil", specifier = ">=7.0.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "pytest-mock", specifier = ">=3.14.1" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "seaborn", specifier = ">=0.13.2" },
 ]
 
