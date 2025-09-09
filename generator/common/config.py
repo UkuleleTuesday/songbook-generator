@@ -93,8 +93,20 @@ class GoogleCloudCredentials(BaseModel):
     scopes: List[str]
 
 
+class GoogleDriveClientConfig(BaseModel):
+    """Configuration for Google Drive client operations."""
+
+    api_retries: int = Field(
+        default=3,
+        description="Number of retries for Google Drive API calls with exponential backoff",
+    )
+
+
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
+    drive_client: GoogleDriveClientConfig = Field(
+        default_factory=GoogleDriveClientConfig
+    )
     credentials: dict[str, GoogleCloudCredentials] = {
         "songbook-generator": GoogleCloudCredentials(
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
@@ -177,6 +189,16 @@ class Settings(BaseSettings):
             )
         if local_cache_dir_env := os.getenv("LOCAL_CACHE_DIR"):
             self.caching.local.dir = local_cache_dir_env
+
+        # Handle Google Drive client settings
+        if google_drive_api_retries_env := os.getenv("GOOGLE_DRIVE_API_RETRIES"):
+            try:
+                self.google_cloud.drive_client.api_retries = int(
+                    google_drive_api_retries_env
+                )
+            except ValueError:
+                # Ignore invalid values, keep the default
+                pass
 
         return self
 

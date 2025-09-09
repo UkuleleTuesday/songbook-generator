@@ -77,3 +77,26 @@ def test_local_cache_dir_override(monkeypatch):
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.caching.local.dir == "/tmp/my-cache"
+
+
+def test_google_drive_api_retries_default():
+    """Test that drive_client.api_retries has a default value of 3."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.google_cloud.drive_client.api_retries == 3
+
+
+def test_google_drive_api_retries_override(monkeypatch):
+    """Test that GOOGLE_DRIVE_API_RETRIES overrides drive_client.api_retries."""
+    monkeypatch.setenv("GOOGLE_DRIVE_API_RETRIES", "5")
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.google_cloud.drive_client.api_retries == 5
+
+
+def test_google_drive_api_retries_invalid_override(monkeypatch):
+    """Test that invalid GOOGLE_DRIVE_API_RETRIES values are ignored."""
+    monkeypatch.setenv("GOOGLE_DRIVE_API_RETRIES", "invalid")
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.google_cloud.drive_client.api_retries == 3  # Default value

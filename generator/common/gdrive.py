@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 
 from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
+from .config import get_settings, GoogleDriveClientConfig
 from google.auth import credentials
 
 
@@ -43,7 +44,11 @@ def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
 
 class GoogleDriveClient:
     def __init__(
-        self, cache, credentials: Optional[credentials.Credentials] = None, drive=None
+        self,
+        cache,
+        credentials: Optional[credentials.Credentials] = None,
+        drive=None,
+        config: Optional[GoogleDriveClientConfig] = None,
     ):
         if drive:
             self.drive = drive
@@ -52,6 +57,7 @@ class GoogleDriveClient:
         else:
             raise ValueError("Either 'credentials' or 'drive' must be provided.")
         self.cache = cache
+        self.config = config or get_settings().google_cloud.drive_client
 
     def search_files_by_name(
         self, file_name: str, source_folders: List[str]
@@ -73,7 +79,7 @@ class GoogleDriveClient:
                     pageSize=10,  # Limit to a reasonable number for this use case
                     fields="files(id,name,parents,properties,mimeType)",
                 )
-                .execute()
+                .execute(num_retries=self.config.api_retries)
             )
             files = [
                 File(
@@ -134,7 +140,7 @@ class GoogleDriveClient:
                         orderBy="name_natural",
                         pageToken=page_token,
                     )
-                    .execute()
+                    .execute(num_retries=self.config.api_retries)
                 )
 
                 for f in resp.get("files", []):
@@ -260,7 +266,9 @@ class GoogleDriveClient:
 
         if use_cache:
             details = (
-                self.drive.files().get(fileId=file_id, fields="modifiedTime").execute()
+                self.drive.files()
+                .get(fileId=file_id, fields="modifiedTime")
+                .execute(num_retries=self.config.api_retries)
             )
             remote_ts = datetime.fromisoformat(
                 details["modifiedTime"].replace("Z", "+00:00")
@@ -328,7 +336,7 @@ class GoogleDriveClient:
                 file_metadata = (
                     self.drive.files()
                     .get(fileId=file_id, fields="id,name,parents,properties,mimeType")
-                    .execute()
+                    .execute(num_retries=self.config.api_retries)
                 )
                 file_obj = File(
                     id=file_id,
@@ -374,7 +382,9 @@ class GoogleDriveClient:
         """
         try:
             file_metadata = (
-                self.drive.files().get(fileId=file_id, fields="properties").execute()
+                self.drive.files()
+                .get(fileId=file_id, fields="properties")
+                .execute(num_retries=self.config.api_retries)
             )
             return file_metadata.get("properties", {})
         except HttpError as e:
@@ -399,13 +409,17 @@ class GoogleDriveClient:
         try:
             # First, get the current properties to not overwrite them
             file_metadata = (
-                self.drive.files().get(fileId=file_id, fields="properties").execute()
+                self.drive.files()
+                .get(fileId=file_id, fields="properties")
+                .execute(num_retries=self.config.api_retries)
             )
             properties = file_metadata.get("properties", {})
             properties[key] = value
 
             body = {"properties": properties}
-            self.drive.files().update(fileId=file_id, body=body).execute()
+            self.drive.files().update(fileId=file_id, body=body).execute(
+                num_retries=self.config.api_retries
+            )
             return True
         except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)

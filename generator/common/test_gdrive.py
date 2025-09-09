@@ -1,13 +1,15 @@
 import pytest
 from unittest.mock import Mock, patch
 from .gdrive import GoogleDriveClient, _build_property_filters
+from .config import GoogleDriveClientConfig
 
 
 @pytest.fixture
 def mock_drive_client():
     """Create a mock GoogleDriveClient."""
     cache = Mock()
-    client = GoogleDriveClient(cache=cache, drive=Mock())
+    config = GoogleDriveClientConfig(api_retries=3)
+    client = GoogleDriveClient(cache=cache, drive=Mock(), config=config)
     return client
 
 
@@ -40,6 +42,9 @@ def test_search_files_by_name(mock_drive_client):
         pageSize=10,
         fields="files(id,name,parents,properties,mimeType)",
     )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
 
 
 def test_query_drive_files_basic(mock_drive_client):
@@ -68,6 +73,9 @@ def test_query_drive_files_basic(mock_drive_client):
         orderBy="name_natural",
         pageToken=None,
     )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
 
 
 def test_query_drive_files_with_multiple_folders(mock_drive_client):
@@ -87,6 +95,9 @@ def test_query_drive_files_with_multiple_folders(mock_drive_client):
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
+    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
     )
 
 
@@ -120,11 +131,20 @@ def test_query_drive_files_pagination(mock_drive_client):
 
     # Verify two API calls were made
     assert mock_drive_client.drive.files.return_value.list.call_count == 2
+    assert (
+        mock_drive_client.drive.files.return_value.list.return_value.execute.call_count
+        == 2
+    )
 
     # Check the calls were made with correct parameters
     calls = mock_drive_client.drive.files.return_value.list.call_args_list
     assert calls[0].kwargs["pageToken"] is None
     assert calls[1].kwargs["pageToken"] == "token123"
+
+    # Verify num_retries was passed to execute calls
+    execute_calls = mock_drive_client.drive.files.return_value.list.return_value.execute.call_args_list
+    assert execute_calls[0].kwargs["num_retries"] == 3
+    assert execute_calls[1].kwargs["num_retries"] == 3
 
 
 def test_query_drive_files_empty_result(mock_drive_client):
@@ -199,6 +219,9 @@ def test_query_drive_files_with_property_filters(mock_drive_client):
         fields="nextPageToken, files(id,name,parents,properties,mimeType)",
         orderBy="name_natural",
         pageToken=None,
+    )
+    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
+        num_retries=3
     )
 
 
