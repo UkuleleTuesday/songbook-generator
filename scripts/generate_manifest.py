@@ -53,10 +53,18 @@ def generate_manifest(bucket_name: str, editions_order: str):
         match = filename_re.match(os.path.basename(blob.name))
         if match:
             edition_name = match.group("edition")
-            found_editions[edition_name] = {
-                "url": f"https://storage.googleapis.com/{bucket_name}/{blob.name}",
-                "updated_utc": blob.updated.isoformat(),
-            }
+            date_str = match.group("date")
+
+            # Only keep the latest version for each edition based on the date in filename
+            if (
+                edition_name not in found_editions
+                or date_str > found_editions[edition_name]["date"]
+            ):
+                found_editions[edition_name] = {
+                    "url": f"https://storage.googleapis.com/{bucket_name}/{blob.name}",
+                    "updated_utc": blob.updated.isoformat(),
+                    "date": date_str,
+                }
 
     # Order editions based on the provided order, appending any found but not specified editions at the end.
     ordered_editions = {}
@@ -66,11 +74,15 @@ def generate_manifest(bucket_name: str, editions_order: str):
     # Add editions in the specified order
     for key in ordered_edition_keys:
         if key in found_editions:
-            ordered_editions[key] = found_editions[key]
+            # Remove the internal date field before adding to final manifest
+            edition_data = {k: v for k, v in found_editions[key].items() if k != "date"}
+            ordered_editions[key] = edition_data
 
     # Add any remaining found editions that were not in the order list
     for key in sorted(list(found_keys - set(ordered_edition_keys))):
-        ordered_editions[key] = found_editions[key]
+        # Remove the internal date field before adding to final manifest
+        edition_data = {k: v for k, v in found_editions[key].items() if k != "date"}
+        ordered_editions[key] = edition_data
 
     manifest = {
         "last_updated_utc": datetime.now(timezone.utc).isoformat(),
