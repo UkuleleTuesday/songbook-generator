@@ -19,10 +19,9 @@ from google.cloud import storage
 
 @click.command()
 @click.option(
-    "--bucket-name",
-    envvar="GCS_SONGBOOKS_BUCKET",
+    "--file-paths",
     required=True,
-    help="GCS bucket name for songbooks.",
+    help="Space-separated string of GCS file paths.",
 )
 @click.option(
     "--editions-order",
@@ -30,15 +29,15 @@ from google.cloud import storage
     help="Space-separated string of editions in the desired order.",
     default="",
 )
-def generate_manifest(bucket_name: str, editions_order: str):
+def generate_manifest(file_paths: str, editions_order: str):
     """
-    Generates a manifest.json file for songbook editions in a GCS bucket.
+    Generates a manifest.json file from a list of GCS file paths.
 
-    Lists all PDF files, extracts edition metadata from filenames that match
-    the expected pattern, and outputs a JSON manifest to stdout.
+    Extracts edition metadata from filenames that match the expected
+    pattern and outputs a JSON manifest to stdout.
     """
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(bucket_name, prefix="ukulele-tuesday-songbook-")
+    paths = file_paths.strip().split()
 
     found_editions = {}
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
@@ -46,15 +45,26 @@ def generate_manifest(bucket_name: str, editions_order: str):
         r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$"
     )
 
-    for blob in blobs:
-        if not blob.name.endswith(".pdf"):
+    for path in paths:
+        if not path.startswith("gs://") or not path.endswith(".pdf"):
             continue
 
-        match = filename_re.match(os.path.basename(blob.name))
+        parts = path.replace("gs://", "").split("/", 1)
+        if len(parts) != 2:
+            continue
+        bucket_name, blob_name = parts
+
+        match = filename_re.match(os.path.basename(blob_name))
         if match:
+            blob = storage.Blob(
+                name=blob_name, bucket=storage_client.bucket(bucket_name)
+            )
+            # The blob needs to be reloaded to get all the metadata
+            blob.reload()
+
             edition_name = match.group("edition")
             found_editions[edition_name] = {
-                "url": f"https://storage.googleapis.com/{bucket_name}/{blob.name}",
+                "url": f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
                 "updated_utc": blob.updated.isoformat(),
             }
 
