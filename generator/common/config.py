@@ -27,7 +27,7 @@ class SongSheets(BaseModel):
 
 
 class Cover(BaseModel):
-    file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
+    file_id: Optional[str] = "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
 
 
 class Toc(BaseModel):

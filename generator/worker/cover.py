@@ -8,8 +8,6 @@ from ..common.gdrive import GoogleDriveClient
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
-DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
-
 
 class CoverGenerator:
     def __init__(
