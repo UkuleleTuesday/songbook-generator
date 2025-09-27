@@ -7,6 +7,7 @@ from typing import Optional
 import click
 import fitz
 from pathlib import Path
+from loguru import logger
 
 
 from .common.config import get_settings
@@ -28,9 +29,9 @@ from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_
 def make_cli_progress_callback():
     """Return a callback that displays progress updates to the console."""
 
-    def _callback(percent: float, message: str = None):
+    def _callback(percent: float, message: str):
         percentage = int(percent * 100)
-        click.echo(f"[{percentage:3d}%] {message or ''}")
+        logger.info(f"[{percentage:3d}%] {message or ''}")
 
     return _callback
 
@@ -135,7 +136,7 @@ def generate(
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get("songbook-generator")
     if not credential_config:
-        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        logger.error("Error: credential config 'songbook-generator' not found.")
         raise click.Abort()
 
     drive, cache = init_services(
@@ -162,20 +163,19 @@ def generate(
             flag for flag, present in conflicting_flags.items() if present
         ]
         if used_conflicting:
-            click.echo(
-                f"Error: Cannot use {', '.join(used_conflicting)} with --edition.",
-                err=True,
+            logger.error(
+                f"Error: Cannot use {', '.join(used_conflicting)} with --edition."
             )
             raise click.Abort()
 
         selected_edition = next((e for e in settings.editions if e.id == edition), None)
         if not selected_edition:
             available = ", ".join([e.id for e in settings.editions])
-            click.echo(f"Error: Edition '{edition}' not found.", err=True)
-            click.echo(f"Available editions: {available}", err=True)
+            logger.error(f"Error: Edition '{edition}' not found.")
+            logger.error(f"Available editions: {available}")
             raise click.Abort()
 
-        click.echo(
+        logger.info(
             f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
         )
         generate_songbook_from_edition(
@@ -193,15 +193,15 @@ def generate(
         if filter:
             try:
                 client_filter = FilterParser.parse_simple_filter(filter)
-                click.echo(f"Applying client-side filter: {filter}")
+                logger.info(f"Applying client-side filter: {filter}")
             except ValueError as e:
-                click.echo(f"Error parsing filter: {e}")
+                logger.error(f"Error parsing filter: {e}")
                 return
 
         if preface_file_ids:
-            click.echo(f"Using {len(preface_file_ids)} preface file(s)")
+            logger.info(f"Using {len(preface_file_ids)} preface file(s)")
         if postface_file_ids:
-            click.echo(f"Using {len(postface_file_ids)} postface file(s)")
+            logger.info(f"Using {len(postface_file_ids)} postface file(s)")
 
         generate_songbook(
             drive,
@@ -217,7 +217,7 @@ def generate(
         )
 
     if open_generated_pdf:
-        click.echo(f"Opening generated songbook: {destination_path}")
+        logger.info(f"Opening generated songbook: {destination_path}")
         click.launch(str(destination_path))
 
 
@@ -276,27 +276,25 @@ def sync_cache_command(
     """Syncs files and metadata from Google Drive to the cache."""
     # Check for deprecated tagging options
     if update_tags_only or update_tags:
-        click.echo(
-            "WARNING: The --update-tags-only and --update-tags options are deprecated.",
-            err=True,
+        logger.warning(
+            "WARNING: The --update-tags-only and --update-tags options are deprecated."
         )
-        click.echo(
-            "Tagging is now handled automatically by a dedicated cloud function when files change.",
-            err=True,
+        logger.warning(
+            "Tagging is now handled automatically by a dedicated cloud function when files change."
         )
         if update_tags_only:
-            click.echo("ERROR: --update-tags-only is no longer supported.", err=True)
+            logger.error("ERROR: --update-tags-only is no longer supported.")
             raise click.Abort()
 
     try:
-        click.echo("Starting cache synchronization (CLI mode)")
+        logger.info("Starting cache synchronization (CLI mode)")
         from .cache_updater import main as cache_updater_main
 
         services = cache_updater_main._get_services()
         source_folders = list(source_folder) if source_folder else []
 
         if not source_folders:
-            click.echo("No source folders provided. Nothing to sync.", err=True)
+            logger.error("No source folders provided. Nothing to sync.")
             raise click.Abort()
 
         last_merge_time = None
@@ -306,28 +304,28 @@ def sync_cache_command(
                     services["cache_bucket"]
                 )
         else:
-            click.echo("Force flag set. Performing a full sync.")
+            logger.info("Force flag set. Performing a full sync.")
 
         if local:
-            click.echo("Using local cache.")
+            logger.info("Using local cache.")
             services["cache"] = init_cache(use_gcs=False)
 
-        click.echo(f"Syncing folders: {source_folders}")
+        logger.info(f"Syncing folders: {source_folders}")
         sync_cache(
             source_folders,
             services,
             with_metadata=not no_metadata,
             modified_after=last_merge_time,
         )
-        click.echo("Cache synchronization complete.")
+        logger.info("Cache synchronization complete.")
 
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
         raise
     except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
-        click.echo("Cache sync operation failed.", err=True)
-        click.echo("Error details:", err=True)
-        click.echo(traceback.format_exc(), err=True)
+        logger.error("Cache sync operation failed.")
+        logger.error("Error details:")
+        logger.error(traceback.format_exc())
         raise click.Abort()
 
 
@@ -342,26 +340,26 @@ def sync_cache_command(
 def download_cache_command(with_metadata, **kwargs):
     """Downloads the GCS cache to the local cache directory."""
     try:
-        click.echo("Starting GCS cache download (CLI mode)")
+        logger.info("Starting GCS cache download (CLI mode)")
         from .cache_updater import main as cache_updater_main
 
         services = cache_updater_main._get_services()
         local_cache_dir = get_settings().caching.local.dir
-        click.echo(f"Local cache directory: {local_cache_dir}")
+        logger.info(f"Local cache directory: {local_cache_dir}")
 
         download_gcs_cache_to_local(
             services, os.path.expanduser(local_cache_dir), with_metadata
         )
 
-        click.echo("GCS cache download complete.")
+        logger.info("GCS cache download complete.")
 
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
         raise
     except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
-        click.echo("Cache download operation failed.", err=True)
-        click.echo("Error details:", err=True)
-        click.echo(traceback.format_exc(), err=True)
+        logger.error("Cache download operation failed.")
+        logger.error("Error details:")
+        logger.error(traceback.format_exc())
         raise click.Abort()
 
 
@@ -376,38 +374,38 @@ def download_cache_command(with_metadata, **kwargs):
 def merge_pdfs(output: str, **kwargs):
     """CLI interface for merging PDFs from GCS cache."""
     try:
-        click.echo("Starting PDF merge operation (CLI mode)")
+        logger.info("Starting PDF merge operation (CLI mode)")
 
         # Lazily import to avoid issues if cache_updater dependencies are not available
         from .cache_updater import main as cache_updater_main
 
         # Manually get the services since we are not in a Cloud Function
         services = cache_updater_main._get_services()
-        click.echo("Merging PDFs from all song sheets in cache.")
+        logger.info("Merging PDFs from all song sheets in cache.")
         result_path = fetch_and_merge_pdfs(output, services)
 
         if not result_path:
-            click.echo("Error: No PDF files found to merge", err=True)
+            logger.error("Error: No PDF files found to merge")
             raise click.Abort()
 
-        click.echo(f"Successfully created merged PDF: {result_path}")
+        logger.info(f"Successfully created merged PDF: {result_path}")
 
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
         raise
     except Exception:  # noqa: BLE001 - Catch all for CLI error reporting
-        click.echo("Merge operation failed.", err=True)
-        click.echo("Error details:", err=True)
-        click.echo(traceback.format_exc(), err=True)
+        logger.error("Merge operation failed.")
+        logger.error("Error details:")
+        logger.error(traceback.format_exc())
         raise click.Abort()
 
 
 @cli.command(name="print-settings")
 def print_settings():
     """Prints the current settings for debugging purposes."""
-    click.echo("Current application settings:")
+    logger.info("Current application settings:")
     settings = get_settings()
-    click.echo(settings.model_dump_json(indent=2))
+    logger.info(settings.model_dump_json(indent=2))
 
 
 @cli.command(name="validate-pdf")
@@ -484,13 +482,13 @@ def validate_pdf_cli(
             )
 
         if not verbose:
-            click.echo("✅ PDF validation passed")
+            logger.info("✅ PDF validation passed")
 
     except PDFValidationError as e:
-        click.echo(f"❌ PDF validation failed: {e}", err=True)
+        logger.error(f"❌ PDF validation failed: {e}")
         sys.exit(1)
     except (OSError, IOError, fitz.FileDataError) as e:
-        click.echo(f"❌ Error accessing PDF file: {e}", err=True)
+        logger.error(f"❌ Error accessing PDF file: {e}")
         sys.exit(1)
 
 
@@ -509,9 +507,8 @@ def edition_management_command(func):
             "songbook-metadata-writer"
         )
         if not credential_config:
-            click.echo(
-                "Error: credential config 'songbook-metadata-writer' not found.",
-                err=True,
+            logger.error(
+                "Error: credential config 'songbook-metadata-writer' not found."
             )
             raise click.Abort()
 
@@ -541,11 +538,11 @@ def edition_management_command(func):
         # Persist the changes
         new_value = ",".join(sorted(list(new_editions)))
         if gdrive_client.set_file_property(file_id, "specialbooks", new_value):
-            click.echo(
+            logger.info(
                 f"Successfully updated editions. New 'specialbooks' value: '{new_value}'"
             )
         else:
-            click.echo("Failed to update editions.", err=True)
+            logger.error("Failed to update editions.")
             raise click.Abort()
 
     return wrapper
@@ -558,7 +555,7 @@ def edition_management_command(func):
 def add_song_to_edition(current_editions, edition_name, **kwargs):
     """Adds a song to a specific songbook edition (specialbooks tag)."""
     if edition_name in current_editions:
-        click.echo(f"Song is already in the '{edition_name}' edition.")
+        logger.info(f"Song is already in the '{edition_name}' edition.")
         return None  # Signal no-op
 
     current_editions.add(edition_name)
@@ -572,7 +569,7 @@ def add_song_to_edition(current_editions, edition_name, **kwargs):
 def remove_song_from_edition(current_editions, edition_name, **kwargs):
     """Removes a song from a specific songbook edition (specialbooks tag)."""
     if edition_name not in current_editions:
-        click.echo(f"Song is not in the '{edition_name}' edition. No changes made.")
+        logger.info(f"Song is not in the '{edition_name}' edition. No changes made.")
         return None  # Signal no-op
 
     current_editions.remove(edition_name)
@@ -594,10 +591,7 @@ def list_song_editions(file_identifier):
         )
 
     if not credential_config:
-        click.echo(
-            "Error: No suitable credential config found.",
-            err=True,
-        )
+        logger.error("Error: No suitable credential config found.")
         raise click.Abort()
 
     drive, cache = init_services(
@@ -614,11 +608,11 @@ def list_song_editions(file_identifier):
     current_editions = {s.strip() for s in special_books_raw.split(",") if s.strip()}
 
     if not current_editions:
-        click.echo("Song does not belong to any editions.")
+        logger.info("Song does not belong to any editions.")
     else:
-        click.echo("Song is in the following editions:")
+        logger.info("Song is in the following editions:")
         for edition in sorted(list(current_editions)):
-            click.echo(f"- {edition}")
+            logger.info(f"- {edition}")
 
 
 @cli.group()
@@ -641,20 +635,19 @@ def _resolve_file_id(gdrive_client: GoogleDriveClient, file_identifier: str) -> 
     found_files = gdrive_client.search_files_by_name(file_identifier, source_folders)
 
     if not found_files:
-        click.echo(f"Error: No file found matching '{file_identifier}'.", err=True)
+        logger.error(f"Error: No file found matching '{file_identifier}'.")
         raise click.Abort()
 
     if len(found_files) > 1:
-        click.echo(
-            f"Error: Found multiple files matching '{file_identifier}'. Please be more specific or use a file ID.",
-            err=True,
+        logger.error(
+            f"Error: Found multiple files matching '{file_identifier}'. Please be more specific or use a file ID."
         )
         for f in found_files:
-            click.echo(f"  - {f.name} (ID: {f.id})", err=True)
+            logger.error(f"  - {f.name} (ID: {f.id})")
         raise click.Abort()
 
     file_id = found_files[0].id
-    click.echo(f"Found file: {found_files[0].name} (ID: {file_id})")
+    logger.info(f"Found file: {found_files[0].name} (ID: {file_id})")
     return file_id
 
 
@@ -668,9 +661,7 @@ def get_tag(file_identifier, key):
         "songbook-metadata-writer"
     )
     if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
+        logger.error("Error: credential config 'songbook-metadata-writer' not found.")
         raise click.Abort()
 
     drive, cache = init_services(
@@ -686,12 +677,12 @@ def get_tag(file_identifier, key):
 
     if key:
         if key in properties:
-            click.echo(properties[key])
+            logger.info(properties[key])
         else:
-            click.echo(f"Error: Tag '{key}' not found.", err=True)
+            logger.error(f"Error: Tag '{key}' not found.")
             raise click.Abort()
     else:
-        click.echo(json.dumps(properties, indent=2))
+        logger.info(json.dumps(properties, indent=2))
 
 
 @tags.command(name="set")
@@ -705,9 +696,7 @@ def set_tag(file_identifier, key, value):
         "songbook-metadata-writer"
     )
     if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
+        logger.error("Error: credential config 'songbook-metadata-writer' not found.")
         raise click.Abort()
 
     drive, cache = init_services(
@@ -716,9 +705,9 @@ def set_tag(file_identifier, key, value):
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     if gdrive_client.set_file_property(file_id, key, value):
-        click.echo(f"Successfully set tag '{key}' to '{value}'.")
+        logger.info(f"Successfully set tag '{key}' to '{value}'.")
     else:
-        click.echo("Failed to set tag.", err=True)
+        logger.error("Failed to set tag.")
         raise click.Abort()
 
 
@@ -732,9 +721,7 @@ def delete_tag(file_identifier, key):
         "songbook-metadata-writer"
     )
     if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
+        logger.error("Error: credential config 'songbook-metadata-writer' not found.")
         raise click.Abort()
 
     drive, cache = init_services(
@@ -752,7 +739,7 @@ def delete_tag(file_identifier, key):
         properties = file_metadata.get("properties", {})
 
         if key not in properties:
-            click.echo(f"Tag '{key}' not found on file. No changes made.")
+            logger.info(f"Tag '{key}' not found on file. No changes made.")
             return
 
         # To delete a property, set its value to null.
@@ -763,9 +750,9 @@ def delete_tag(file_identifier, key):
             body={"properties": properties_to_update},
             fields="properties",
         ).execute()
-        click.echo(f"Successfully deleted tag '{key}'.")
+        logger.info(f"Successfully deleted tag '{key}'.")
     except HttpError as e:
-        click.echo(f"Failed to delete tag '{key}': {e}", err=True)
+        logger.error(f"Failed to delete tag '{key}': {e}")
         raise click.Abort()
 
 
@@ -785,15 +772,12 @@ def delete_tag(file_identifier, key):
 def update_tags(file_identifier, all, dry_run):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
-        click.echo(
-            "Error: Either a file identifier or the --all flag must be provided.",
-            err=True,
+        logger.error(
+            "Error: Either a file identifier or the --all flag must be provided."
         )
         raise click.Abort()
     if file_identifier and all:
-        click.echo(
-            "Error: Cannot use both a file identifier and the --all flag.", err=True
-        )
+        logger.error("Error: Cannot use both a file identifier and the --all flag.")
         raise click.Abort()
 
     settings = get_settings()
@@ -801,9 +785,7 @@ def update_tags(file_identifier, all, dry_run):
         "songbook-metadata-writer"
     )
     if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
+        logger.error("Error: credential config 'songbook-metadata-writer' not found.")
         raise click.Abort()
 
     # The Tagger needs to read Google Docs content.
@@ -824,12 +806,10 @@ def update_tags(file_identifier, all, dry_run):
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
         if not files_to_process:
-            click.echo(
-                f"Error: Could not retrieve metadata for file ID {file_id}", err=True
-            )
+            logger.error(f"Error: Could not retrieve metadata for file ID {file_id}")
             raise click.Abort()
     else:  # --all flag
-        click.echo("Fetching all song sheets from Drive...")
+        logger.info("Fetching all song sheets from Drive...")
         files_to_process = gdrive_client.query_drive_files(
             settings.song_sheets.folder_ids
         )
@@ -840,34 +820,32 @@ def update_tags(file_identifier, all, dry_run):
     for file_obj in files_to_process:
         try:
             if file_obj.mimeType != "application/vnd.google-apps.document":
-                click.echo(
-                    f"Skipping '{file_obj.name}' (not a Google Doc).",
-                )
+                logger.info(f"Skipping '{file_obj.name}' (not a Google Doc).")
                 continue
 
-            click.echo(f"Running auto-tagger for '{file_obj.name}'...")
+            logger.info(f"Running auto-tagger for '{file_obj.name}'...")
             if dry_run:
-                click.echo("  (Dry run mode)")
+                logger.info("  (Dry run mode)")
 
             tagger.update_tags(file_obj, dry_run=dry_run)
         except HttpError as e:
             error_message = f"Failed to update tags for '{file_obj.name}': {e}"
-            click.echo(f"ERROR: {error_message}", err=True)
+            logger.error(f"ERROR: {error_message}")
             failed_updates[file_obj.name] = str(e)
         except Exception as e:  # noqa: BLE001 - Catch all for CLI error reporting
             error_message = f"An unexpected error occurred for '{file_obj.name}': {e}"
-            click.echo(f"ERROR: {error_message}", err=True)
+            logger.error(f"ERROR: {error_message}")
             failed_updates[file_obj.name] = str(e)
 
     if failed_updates:
-        click.echo("\n--- Auto-tagger summary ---", err=True)
-        click.echo("Auto-tagger run completed with some failures.", err=True)
-        click.echo("Failed files:", err=True)
+        logger.error("\n--- Auto-tagger summary ---")
+        logger.error("Auto-tagger run completed with some failures.")
+        logger.error("Failed files:")
         for file_name, error in failed_updates.items():
-            click.echo(f"  - {file_name}: {error}", err=True)
+            logger.error(f"  - {file_name}: {error}")
         sys.exit(1)
 
-    click.echo("Auto-tagger run complete.")
+    logger.info("Auto-tagger run complete.")
 
 
 @cli.command(name="download-doc-json")
@@ -887,7 +865,7 @@ def download_doc_json_command(file_identifier, output_path):
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get("songbook-generator")
     if not credential_config:
-        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        logger.error("Error: credential config 'songbook-generator' not found.")
         raise click.Abort()
 
     # Add Docs API scope
@@ -907,7 +885,7 @@ def download_doc_json_command(file_identifier, output_path):
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
     if not output_path:
-        click.echo(f"Fetching document content for ID: {file_id}...", err=True)
+        logger.error(f"Fetching document content for ID: {file_id}...")
 
     document = docs_service.documents().get(documentId=file_id).execute()
 
@@ -916,9 +894,9 @@ def download_doc_json_command(file_identifier, output_path):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(document, f, indent=2)
-        click.echo(f"Successfully saved document JSON to {output_path}")
+        logger.info(f"Successfully saved document JSON to {output_path}")
     else:
-        click.echo(json.dumps(document, indent=2))
+        logger.info(json.dumps(document, indent=2))
 
 
 if __name__ == "__main__":
