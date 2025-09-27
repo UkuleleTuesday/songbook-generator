@@ -26,10 +26,6 @@ class SongSheets(BaseModel):
     )
 
 
-class Cover(BaseModel):
-    file_id: Optional[str] = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
-
-
 class Toc(BaseModel):
     columns_per_page: int = 2
     column_width: int = 250
@@ -145,7 +141,6 @@ class Settings(BaseSettings):
 
     google_cloud: GoogleCloud = Field(default_factory=GoogleCloud)
     song_sheets: SongSheets = Field(default_factory=SongSheets)
-    cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)

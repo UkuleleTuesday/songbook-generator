@@ -22,7 +22,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from .tagupdater.tags import Tagger
 from .worker.gcp import get_credentials
-from .worker.pdf import generate_songbook, generate_songbook_from_edition, init_services
+from .worker.pdf import generate_songbook_from_edition, init_services
 
 
 def make_cli_progress_callback():
@@ -68,6 +68,7 @@ def cli(ctx, log_level: str):
 @click.option(
     "--edition",
     "-e",
+    default="complete",
     help="The ID of the songbook edition to generate (from songbooks.yaml).",
 )
 @click.option(
@@ -92,7 +93,6 @@ def cli(ctx, log_level: str):
 @click.option(
     "--cover-file-id",
     "-c",
-    default=lambda: get_settings().cover.file_id,
     help="File ID of the cover",
 )
 @click.option(
@@ -150,71 +150,43 @@ def generate(
 
     progress_callback = make_cli_progress_callback()
 
-    if edition:
-        # When using an edition, certain CLI flags are disallowed.
-        conflicting_flags = {
-            "--filter": filter,
-            "--cover-file-id": cover_file_id != get_settings().cover.file_id,
-            "--preface-file-id": preface_file_ids,
-            "--postface-file-id": postface_file_ids,
-        }
-        used_conflicting = [
-            flag for flag, present in conflicting_flags.items() if present
-        ]
-        if used_conflicting:
-            click.echo(
-                f"Error: Cannot use {', '.join(used_conflicting)} with --edition.",
-                err=True,
-            )
-            raise click.Abort()
+    selected_edition = next((e for e in settings.editions if e.id == edition), None)
+    if not selected_edition:
+        available = ", ".join([e.id for e in settings.editions])
+        click.echo(f"Error: Edition '{edition}' not found.", err=True)
+        click.echo(f"Available editions: {available}", err=True)
+        raise click.Abort()
 
-        selected_edition = next((e for e in settings.editions if e.id == edition), None)
-        if not selected_edition:
-            available = ", ".join([e.id for e in settings.editions])
-            click.echo(f"Error: Edition '{edition}' not found.", err=True)
-            click.echo(f"Available editions: {available}", err=True)
-            raise click.Abort()
+    client_filter = None
+    if filter:
+        try:
+            client_filter = FilterParser.parse_simple_filter(filter)
+            click.echo(f"Applying client-side filter: {filter}")
+        except ValueError as e:
+            click.echo(f"Error parsing filter: {e}")
+            return
 
-        click.echo(
-            f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
-        )
-        generate_songbook_from_edition(
-            drive=drive,
-            cache=cache,
-            source_folders=source_folders,
-            destination_path=destination_path,
-            edition=selected_edition,
-            limit=limit,
-            on_progress=progress_callback,
-        )
-    else:
-        # Legacy mode without edition
-        client_filter = None
-        if filter:
-            try:
-                client_filter = FilterParser.parse_simple_filter(filter)
-                click.echo(f"Applying client-side filter: {filter}")
-            except ValueError as e:
-                click.echo(f"Error parsing filter: {e}")
-                return
+    if preface_file_ids:
+        click.echo(f"Using {len(preface_file_ids)} preface file(s)")
+    if postface_file_ids:
+        click.echo(f"Using {len(postface_file_ids)} postface file(s)")
 
-        if preface_file_ids:
-            click.echo(f"Using {len(preface_file_ids)} preface file(s)")
-        if postface_file_ids:
-            click.echo(f"Using {len(postface_file_ids)} postface file(s)")
-
-        generate_songbook(
-            drive,
-            cache,
-            source_folders,
-            destination_path,
-            limit,
-            cover_file_id,
-            client_filter,
-            preface_file_ids,
-            postface_file_ids,
-            on_progress=progress_callback,
-        )
+    click.echo(
+        f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
+    )
+    generate_songbook_from_edition(
+        drive=drive,
+        cache=cache,
+        source_folders=source_folders,
+        destination_path=destination_path,
+        edition=selected_edition,
+        limit=limit,
+        cover_file_id=cover_file_id,
+        client_filter=client_filter,
+        preface_file_ids=preface_file_ids,
+        postface_file_ids=postface_file_ids,
+        on_progress=progress_callback,
+    )
 
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")

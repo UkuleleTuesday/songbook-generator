@@ -3,12 +3,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import arrow
 import fitz  # PyMuPDF
-from ..common import config
 from ..common.gdrive import GoogleDriveClient
 from .exceptions import CoverGenerationException
 from .gcp import get_credentials
-
-DEFAULT_COVER_ID = "1HB1fUAY3uaARoHzSDh2TymfvNBvpKOEE221rubsjKoQ"
 
 
 class CoverGenerator:
@@ -16,12 +13,10 @@ class CoverGenerator:
         self,
         gdrive_client: GoogleDriveClient,
         docs_service,
-        cover_config: config.Cover,
         enable_templating=True,
     ):
         self.gdrive_client = gdrive_client
         self.docs = docs_service
-        self.config = cover_config
         self.enable_templating = enable_templating
 
     def _apply_template_replacements(self, document_id: str, replacement_map: dict):
@@ -114,7 +109,7 @@ class CoverGenerator:
             return fitz.open(stream=pdf_data, filetype="pdf")
 
 
-def generate_cover(cache, cover_file_id=None):
+def generate_cover(cache, cover_file_id):
     creds = get_credentials(
         scopes=[
             "https://www.googleapis.com/auth/documents",
@@ -123,6 +118,5 @@ def generate_cover(cache, cover_file_id=None):
     )
     docs_write = build("docs", "v1", credentials=creds)
     gdrive_client = GoogleDriveClient(cache=cache, credentials=creds)
-    cover_config = config.get_settings().cover
-    generator = CoverGenerator(gdrive_client, docs_write, cover_config)
+    generator = CoverGenerator(gdrive_client, docs_write)
     return generator.generate_cover(cover_file_id)

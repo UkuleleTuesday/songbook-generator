@@ -249,6 +249,10 @@ def generate_songbook_from_edition(
     destination_path: Path,
     edition: config.Edition,
     limit: int,
+    cover_file_id: str = None,
+    client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+    preface_file_ids: Optional[List[str]] = None,
+    postface_file_ids: Optional[List[str]] = None,
     on_progress=None,
 ):
     """
@@ -422,9 +426,7 @@ def generate_songbook(
                             cache=cache, drive=drive_write_service
                         )
                         cover_generator = cover.CoverGenerator(
-                            gdrive_client_write,
-                            docs_write_service,
-                            cover_config=config.get_settings().cover,
+                            gdrive_client_write, docs_write_service
                         )
                         cover_pdf = cover_generator.generate_cover(cover_file_id)
 
