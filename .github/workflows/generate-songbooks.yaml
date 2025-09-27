@@ -117,6 +117,8 @@ jobs:
     name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: check-for-updates
+    outputs:
+      dest_gcs_path: ${{ steps.upload-to-gcs.outputs.dest_gcs_path }}
     concurrency:
       group: generate-songbook-${{ matrix.edition }}
       cancel-in-progress: false
@@ -266,6 +268,7 @@ jobs:
 
     - name: Upload to GCS
       if: github.ref == 'refs/heads/main'
+      id: upload-to-gcs
       run: |
         set -e
         EDITION="${{ matrix.edition }}"
@@ -277,17 +280,7 @@ jobs:
         echo "Uploading PDF to public bucket: ${DEST_GCS_PATH}"
         gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
         echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
-
-        # Clean up old versions for this edition
-        FILENAME_PREFIX="ukulele-tuesday-songbook-${EDITION}"
-        EXISTING_FILES=$(gcloud storage ls "gs://${GCS_SONGBOOKS_BUCKET}/${FILENAME_PREFIX}*.pdf")
-
-        for old_file in $EXISTING_FILES; do
-          if [[ "$old_file" != "$DEST_GCS_PATH" ]]; then
-            echo "Deleting old songbook: $old_file"
-            gcloud storage rm "$old_file"
-          fi
-        done
+        echo "dest_gcs_path=${DEST_GCS_PATH}" >> $GITHUB_OUTPUT
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
@@ -299,7 +292,7 @@ jobs:
     name: Publish Manifest
     runs-on: ubuntu-latest
     needs: generate-songbook
-    if: success() || failure() # Always run this job
+    if: needs.generate-songbook.outputs.dest_gcs_path != ''
     steps:
     - name: Checkout repository
       id: checkout
@@ -325,11 +318,23 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v5
 
+    - name: Collect GCS Paths
+      id: collect-paths
+      run: |
+        FILE_PATHS=$(echo '${{ toJSON(needs.generate-songbook.outputs) }}' | jq -r '.[].dest_gcs_path' | tr '\n' ' ')
+        echo "Collected file paths: $FILE_PATHS"
+        echo "file_paths=$FILE_PATHS" >> $GITHUB_OUTPUT
+
     - name: Generate Manifest
       id: generate-manifest
       run: |
         set -e
-        MANIFEST_JSON=$(./scripts/generate_manifest.py)
+        FILE_PATHS="${{ steps.collect-paths.outputs.file_paths }}"
+        if [[ -z "$FILE_PATHS" ]]; then
+          echo "No files were generated, skipping manifest creation."
+          exit 0
+        fi
+        MANIFEST_JSON=$(./scripts/generate_manifest.py --file-paths "$FILE_PATHS")
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
         echo "$MANIFEST_JSON" > manifest.json
