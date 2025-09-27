@@ -393,5 +393,10 @@ The workflow can be triggered in two ways:
 1.  **Check for Updates**: A `check-for-updates` job runs first. It determines which songbook editions (e.g., "regular", "complete") need to be rebuilt based on the trigger type (scheduled or manual) and the `force` input. It outputs a list of editions to build.
 2.  **Generate Songbook**: A `generate-songbook` job runs for each edition in the list from the previous step. The jobs are run sequentially to avoid resource contention. This job calls the API service to start the asynchronous generation process, polls for completion, and finally copies the newly generated PDF to the public GCS bucket (`GCS_SONGBOOKS_BUCKET`).
 
+## Observability
+
 ### Logging
 Access logs at https://console.cloud.google.com/ under `Monitoring` > `Logs explorer`
+
+### Traces
+Access traces at https://console.cloud.google.com/ under `Monitoring` > `Trace explorer` 
