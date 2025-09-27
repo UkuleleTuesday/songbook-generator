@@ -2,11 +2,11 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta, UTC
-from typing import Optional
+from typing import Optional, Annotated
 from google.cloud import pubsub_v1, firestore
 from loguru import logger
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from vellox import Vellox
@@ -37,30 +37,41 @@ class JobStatusResponse(BaseModel):
     created_at: Optional[str] = None
 
 
-def get_services():
-    """Initialize and return services."""
+def get_tracer_dependency():
+    """Dependency to get OpenTelemetry tracer."""
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     service_name = os.environ.get("K_SERVICE", "songbook-generator-api")
     os.environ["GCP_PROJECT_ID"] = project_id
     setup_tracing(service_name)
-    tracer = get_tracer(__name__)
+    return get_tracer(__name__)
 
+
+def get_firestore_client():
+    """Dependency to get Firestore client."""
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
+    return firestore.Client(project=project_id)
+
+
+def get_pubsub_publisher():
+    """Dependency to get Pub/Sub publisher."""
+    return pubsub_v1.PublisherClient()
+
+
+def get_pubsub_topic_path(
+    publisher: Annotated[pubsub_v1.PublisherClient, Depends(get_pubsub_publisher)],
+):
+    """Dependency to get Pub/Sub topic path."""
+    project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     pubsub_topic = os.environ["PUBSUB_TOPIC"]
-    firestore_collection = os.environ["FIRESTORE_COLLECTION"]
-    publisher = pubsub_v1.PublisherClient()
-    topic_path = publisher.topic_path(project_id, pubsub_topic)
-    db = firestore.Client(project=project_id)
-
-    return {
-        "tracer": tracer,
-        "db": db,
-        "publisher": publisher,
-        "topic_path": topic_path,
-        "firestore_collection": firestore_collection,
-    }
+    return publisher.topic_path(project_id, pubsub_topic)
 
 
-def create_app(services_factory=None) -> FastAPI:
+def get_firestore_collection():
+    """Dependency to get Firestore collection name."""
+    return os.environ["FIRESTORE_COLLECTION"]
+
+
+def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="Songbook Generator API",
@@ -77,13 +88,9 @@ def create_app(services_factory=None) -> FastAPI:
         allow_headers=["Content-Type"],
     )
 
-    # Use provided services factory or default one
-    if services_factory is None:
-        services_factory = get_services
-
     # Initialize services for tracing (but don't depend on tracer provider)
     try:
-        services_factory()  # Initialize services without caching
+        get_tracer_dependency()  # Initialize tracing
         # Try to instrument with OpenTelemetry if available
         FastAPIInstrumentor.instrument_app(app)
     except (ImportError, AttributeError):
@@ -96,11 +103,16 @@ def create_app(services_factory=None) -> FastAPI:
         return "OK"
 
     @app.post("/", response_model=JobResponse, status_code=200)
-    async def create_job(job_request: JobRequest, request: Request):
+    async def create_job(
+        job_request: JobRequest,
+        request: Request,
+        tracer: Annotated[object, Depends(get_tracer_dependency)],
+        db: Annotated[firestore.Client, Depends(get_firestore_client)],
+        publisher: Annotated[pubsub_v1.PublisherClient, Depends(get_pubsub_publisher)],
+        topic_path: Annotated[str, Depends(get_pubsub_topic_path)],
+        firestore_collection: Annotated[str, Depends(get_firestore_collection)],
+    ):
         """Create a new songbook generation job."""
-        services = services_factory()
-        tracer = services["tracer"]
-
         with tracer.start_as_current_span("create_job") as span:
             # Convert the pydantic model to dict, filtering out None values
             payload = {
@@ -122,11 +134,9 @@ def create_app(services_factory=None) -> FastAPI:
                     "params": payload,
                 }
                 logger.info(f"Creating Firestore job document with ID: {job_id}")
-                services["db"].collection(services["firestore_collection"]).document(
-                    job_id
-                ).set(job_doc)
+                db.collection(firestore_collection).document(job_id).set(job_doc)
                 firestore_span.set_attribute(
-                    "firestore.collection", services["firestore_collection"]
+                    "firestore.collection", firestore_collection
                 )
                 firestore_span.set_attribute("firestore.document_id", job_id)
 
@@ -134,14 +144,12 @@ def create_app(services_factory=None) -> FastAPI:
             with tracer.start_as_current_span("publish_pubsub_message") as pubsub_span:
                 message = {"job_id": job_id, "params": payload}
                 serialized_message = json.dumps(message)
-                logger.info(
-                    f"Publishing message to Pub/Sub topic: {services['topic_path']}"
-                )
-                future = services["publisher"].publish(
-                    services["topic_path"], serialized_message.encode("utf-8")
+                logger.info(f"Publishing message to Pub/Sub topic: {topic_path}")
+                future = publisher.publish(
+                    topic_path, serialized_message.encode("utf-8")
                 )
                 future.result()
-                pubsub_span.set_attribute("pubsub.topic", services["topic_path"])
+                pubsub_span.set_attribute("pubsub.topic", topic_path)
                 pubsub_span.set_attribute(
                     "pubsub.message_size", len(serialized_message)
                 )
@@ -150,11 +158,13 @@ def create_app(services_factory=None) -> FastAPI:
             return JobResponse(job_id=job_id, status="queued")
 
     @app.get("/{job_id}", response_model=JobStatusResponse, status_code=200)
-    async def get_job_status(job_id: str):
+    async def get_job_status(
+        job_id: str,
+        tracer: Annotated[object, Depends(get_tracer_dependency)],
+        db: Annotated[firestore.Client, Depends(get_firestore_client)],
+        firestore_collection: Annotated[str, Depends(get_firestore_collection)],
+    ):
         """Get the status of a job."""
-        services = services_factory()
-        tracer = services["tracer"]
-
         with tracer.start_as_current_span("get_job_status") as span:
             span.set_attribute("job_id", job_id)
             logger.info(f"Fetching Firestore document for job ID: {job_id}")
@@ -162,14 +172,10 @@ def create_app(services_factory=None) -> FastAPI:
             with tracer.start_as_current_span(
                 "fetch_firestore_document"
             ) as firestore_span:
-                doc_ref = (
-                    services["db"]
-                    .collection(services["firestore_collection"])
-                    .document(job_id)
-                )
+                doc_ref = db.collection(firestore_collection).document(job_id)
                 snapshot = doc_ref.get()
                 firestore_span.set_attribute(
-                    "firestore.collection", services["firestore_collection"]
+                    "firestore.collection", firestore_collection
                 )
                 firestore_span.set_attribute("firestore.document_id", job_id)
                 firestore_span.set_attribute(

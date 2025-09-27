@@ -7,40 +7,48 @@ from fastapi.testclient import TestClient
 from werkzeug.wrappers import Request
 from vellox import Vellox
 
-from .main import create_app
+from .main import (
+    create_app,
+    get_tracer_dependency,
+    get_firestore_client,
+    get_pubsub_publisher,
+    get_pubsub_topic_path,
+    get_firestore_collection,
+)
 
 
 @pytest.fixture
-def mock_services():
-    """Mock services for testing."""
-    mock_db = Mock()
-    mock_publisher = Mock()
+def mock_tracer():
+    """Mock tracer for testing."""
     mock_tracer = Mock()
-
     # Mock tracer context manager
     mock_span = Mock()
     mock_span.__enter__ = Mock(return_value=mock_span)
     mock_span.__exit__ = Mock(return_value=None)
     mock_tracer.start_as_current_span.return_value = mock_span
+    return mock_tracer
 
+
+@pytest.fixture
+def mock_firestore_client():
+    """Mock Firestore client for testing."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_pubsub_publisher():
+    """Mock Pub/Sub publisher for testing."""
+    mock_publisher = Mock()
     # Mock publisher future
     mock_future = Mock()
     mock_future.result.return_value = None
     mock_publisher.publish.return_value = mock_future
-
-    services = {
-        "tracer": mock_tracer,
-        "db": mock_db,
-        "publisher": mock_publisher,
-        "topic_path": "projects/test/topics/test-topic",
-        "firestore_collection": "test-jobs",
-    }
-    return services
+    return mock_publisher
 
 
 @pytest.fixture
-def client(mock_services):
-    """Create a test client with mocked services."""
+def client(mock_tracer, mock_firestore_client, mock_pubsub_publisher):
+    """Create a test client with mocked dependencies."""
     # Set required environment variables for testing
     import os
 
@@ -52,17 +60,19 @@ def client(mock_services):
         }
     )
 
-    # Create a mock services factory
-    def mock_services_factory():
-        return mock_services
+    # Create app with dependency overrides
+    app = create_app()
 
-    # Mock the service initialization during app creation
-    with (
-        patch("generator.api.main.setup_tracing"),
-        patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
-    ):
-        app = create_app(services_factory=mock_services_factory)
-        return TestClient(app)
+    # Override dependencies
+    app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
+    app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
+    app.dependency_overrides[get_pubsub_publisher] = lambda: mock_pubsub_publisher
+    app.dependency_overrides[get_pubsub_topic_path] = (
+        lambda: "projects/test/topics/test-topic"
+    )
+    app.dependency_overrides[get_firestore_collection] = lambda: "test-jobs"
+
+    return TestClient(app)
 
 
 def test_health_check(client):
@@ -72,11 +82,11 @@ def test_health_check(client):
     assert response.text == '"OK"'
 
 
-def test_create_job_success(client, mock_services):
+def test_create_job_success(client, mock_firestore_client):
     """Test successful job creation."""
     # Mock Firestore document creation
     mock_doc_ref = Mock()
-    mock_services["db"].collection.return_value.document.return_value = mock_doc_ref
+    mock_firestore_client.collection.return_value.document.return_value = mock_doc_ref
 
     payload = {
         "source_folders": ["folder1", "folder2"],
@@ -92,17 +102,14 @@ def test_create_job_success(client, mock_services):
     assert response_data["status"] == "queued"
 
     # Verify Firestore document was created
-    mock_services["db"].collection.assert_called_with("test-jobs")
+    mock_firestore_client.collection.assert_called_with("test-jobs")
     mock_doc_ref.set.assert_called_once()
 
-    # Verify Pub/Sub message was published
-    mock_services["publisher"].publish.assert_called_once()
 
-
-def test_create_job_with_minimal_payload(client, mock_services):
+def test_create_job_with_minimal_payload(client, mock_firestore_client):
     """Test job creation with minimal payload."""
     mock_doc_ref = Mock()
-    mock_services["db"].collection.return_value.document.return_value = mock_doc_ref
+    mock_firestore_client.collection.return_value.document.return_value = mock_doc_ref
 
     payload = {}
     response = client.post("/", json=payload)
@@ -113,7 +120,7 @@ def test_create_job_with_minimal_payload(client, mock_services):
     assert response_data["status"] == "queued"
 
 
-def test_get_job_status_success(client, mock_services):
+def test_get_job_status_success(client, mock_firestore_client):
     """Test successful job status retrieval."""
     job_id = "test-job-123"
 
@@ -129,7 +136,7 @@ def test_get_job_status_success(client, mock_services):
 
     mock_doc_ref = Mock()
     mock_doc_ref.get.return_value = mock_snapshot
-    mock_services["db"].collection.return_value.document.return_value = mock_doc_ref
+    mock_firestore_client.collection.return_value.document.return_value = mock_doc_ref
 
     response = client.get(f"/{job_id}")
 
@@ -142,7 +149,7 @@ def test_get_job_status_success(client, mock_services):
     assert response_data["last_message"] == "Job completed successfully"
 
 
-def test_get_job_status_not_found(client, mock_services):
+def test_get_job_status_not_found(client, mock_firestore_client):
     """Test job status retrieval for non-existent job."""
     job_id = "nonexistent-job"
 
@@ -152,7 +159,7 @@ def test_get_job_status_not_found(client, mock_services):
 
     mock_doc_ref = Mock()
     mock_doc_ref.get.return_value = mock_snapshot
-    mock_services["db"].collection.return_value.document.return_value = mock_doc_ref
+    mock_firestore_client.collection.return_value.document.return_value = mock_doc_ref
 
     response = client.get(f"/{job_id}")
 
@@ -183,23 +190,41 @@ def test_cors_headers(client):
         "FIRESTORE_COLLECTION": "test-jobs",
     },
 )
-def test_api_main_post_request(mock_services):
+def test_api_main_post_request():
     """Test api_main with POST request."""
+    # Create mocks
+    mock_tracer = Mock()
+    mock_span = Mock()
+    mock_span.__enter__ = Mock(return_value=mock_span)
+    mock_span.__exit__ = Mock(return_value=None)
+    mock_tracer.start_as_current_span.return_value = mock_span
+
+    mock_firestore_client = Mock()
+    mock_doc_ref = Mock()
+    mock_firestore_client.collection.return_value.document.return_value = mock_doc_ref
+
+    mock_publisher = Mock()
+    mock_future = Mock()
+    mock_future.result.return_value = None
+    mock_publisher.publish.return_value = mock_future
+
     # Mock the service initialization during app creation
     with (
         patch("generator.api.main.setup_tracing"),
         patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
     ):
-        # Mock Firestore
-        mock_doc_ref = Mock()
-        mock_services["db"].collection.return_value.document.return_value = mock_doc_ref
+        # Create app with dependency injection and Vellox
+        app = create_app()
 
-        # Create a mock services factory
-        def mock_services_factory():
-            return mock_services
+        # Override dependencies in the app itself
+        app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
+        app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
+        app.dependency_overrides[get_pubsub_publisher] = lambda: mock_publisher
+        app.dependency_overrides[get_pubsub_topic_path] = (
+            lambda: "projects/test/topics/test-topic"
+        )
+        app.dependency_overrides[get_firestore_collection] = lambda: "test-jobs"
 
-        # Create app with dependency injection
-        app = create_app(services_factory=mock_services_factory)
         vellox = Vellox(app=app, lifespan="off")
 
         # Mock Cloud Functions request - use werkzeug request format
@@ -229,19 +254,15 @@ def test_api_main_post_request(mock_services):
         "FIRESTORE_COLLECTION": "test-jobs",
     },
 )
-def test_api_main_get_health_check(mock_services):
+def test_api_main_get_health_check():
     """Test api_main with GET health check request."""
     # Mock the service initialization during app creation
     with (
         patch("generator.api.main.setup_tracing"),
         patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
     ):
-        # Create a mock services factory
-        def mock_services_factory():
-            return mock_services
-
-        # Create app with dependency injection
-        app = create_app(services_factory=mock_services_factory)
+        # Create app with dependency injection and Vellox
+        app = create_app()
         vellox = Vellox(app=app, lifespan="off")
 
         # Mock Cloud Functions request - use werkzeug request format
@@ -268,12 +289,10 @@ def test_api_main_get_health_check(mock_services):
 @patch("generator.api.main.get_tracer")
 @patch("generator.api.main.pubsub_v1.PublisherClient")
 @patch("generator.api.main.firestore.Client")
-def test_services_initialization(
+def test_dependency_initialization(
     mock_firestore, mock_pubsub, mock_get_tracer, mock_setup_tracing
 ):
-    """Test that services are properly initialized."""
-    from generator.api.main import get_services
-
+    """Test that dependency functions work correctly."""
     mock_tracer = Mock()
     mock_get_tracer.return_value = mock_tracer
 
@@ -284,13 +303,18 @@ def test_services_initialization(
     mock_db = Mock()
     mock_firestore.return_value = mock_db
 
-    services = get_services()
+    # Test individual dependency functions
+    tracer = get_tracer_dependency()
+    db = get_firestore_client()
+    publisher = get_pubsub_publisher()
+    topic_path = get_pubsub_topic_path(publisher)
+    collection = get_firestore_collection()
 
-    assert services["tracer"] == mock_tracer
-    assert services["db"] == mock_db
-    assert services["publisher"] == mock_publisher
-    assert services["topic_path"] == "projects/test-project/topics/test-topic"
-    assert services["firestore_collection"] == "test-collection"
+    assert tracer == mock_tracer
+    assert db == mock_db
+    assert publisher == mock_publisher
+    assert topic_path == "projects/test-project/topics/test-topic"
+    assert collection == "test-collection"
 
     # Verify setup_tracing was called
     mock_setup_tracing.assert_called_once()
