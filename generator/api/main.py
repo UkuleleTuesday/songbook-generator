@@ -9,6 +9,7 @@ from loguru import logger
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from vellox import Vellox
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -17,6 +18,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
 _app = None
+_vellox = None
 
 
 class JobRequest(BaseModel):
@@ -231,55 +233,16 @@ def get_app() -> FastAPI:
     return _app
 
 
+def get_vellox() -> Vellox:
+    """Get or create the Vellox adapter instance."""
+    global _vellox
+    if _vellox is None:
+        app = get_app()
+        _vellox = Vellox(app=app, lifespan="off")
+    return _vellox
+
+
 def api_main(req):
     """Main entry point for Cloud Functions compatibility."""
-    # For Cloud Functions, we need to handle the request using the FastAPI app
-    app = get_app()
-
-    # Convert Cloud Functions request to ASGI format
-    from fastapi.testclient import TestClient
-
-    with TestClient(app) as client:
-        # Map the Cloud Functions request to a proper HTTP request
-        method = req.method
-        path = req.path
-        headers = {}
-
-        # Safely get headers if they exist
-        try:
-            if hasattr(req, "headers") and req.headers:
-                headers = dict(req.headers) if hasattr(req.headers, "keys") else {}
-        except (TypeError, AttributeError):
-            headers = {}
-
-        # Get request data
-        if method == "POST":
-            try:
-                json_data = req.get_json(silent=True)
-            except (AttributeError, ValueError):
-                json_data = None
-        else:
-            json_data = None
-
-        # Make the request through TestClient
-        if method == "POST":
-            response = client.post(path, json=json_data, headers=headers)
-        elif method == "GET":
-            response = client.get(path, headers=headers)
-        elif method == "OPTIONS":
-            response = client.options(path, headers=headers)
-        else:
-            response = client.get("/nonexistent", headers=headers)  # Will return 404
-
-        # Convert response to Cloud Functions format
-        response_headers = dict(response.headers)
-
-        # Ensure CORS headers are present
-        cors_headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type",
-        }
-        response_headers.update(cors_headers)
-
-        return (response.text, response.status_code, response_headers)
+    vellox = get_vellox()
+    return vellox(req)
