@@ -32,8 +32,8 @@ The application uses a microservices architecture deployed on Google Cloud:
 - **Tag Updater Service** (`generator/tagupdater/main.py`): Processes individual file change events from Google Drive to update tags and metadata. This service is triggered by the Drive Watcher and ensures tags are kept up-to-date without causing timeouts.
 - **Drive Watcher Service** (`generator/drivewatcher/main.py`): Monitors Google Drive for file changes and publishes change events to trigger the Tag Updater and cache refresh operations.
 - **CLI Tool** (`generator/cli.py`): A standalone command-line interface for local development, testing, and utilities.
-    It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
-    songbook) so they're easy to test locally.
+  It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
+  songbook) so they're easy to test locally.
 
 ## Wanna help?
 
@@ -70,6 +70,7 @@ uv python install
 Should tell uv to install the latest Python version.
 
 ### Authentication
+
 To run the application locally against live Google Cloud services, you need to
 authenticate. This project uses service account impersonation, which allows you
 to run code locally with the permissions of a service account.
@@ -80,6 +81,7 @@ Account User` role on the `songbook-generator` service account.
 **Note:** members of dev@ukuleletuesday.ie should have permissions by default.
 
 Once you have permission, authenticate by running the following command:
+
 ```bash
 gcloud auth application-default login
 ```
@@ -153,6 +155,7 @@ Run `uv run songbook-tools --help` for more commands and options.
 The `songbook-tools` CLI provides several commands for local development and utility tasks. Here's a summary of the available commands. Run `uv run songbook-tools [COMMAND] --help` for a full list of options.
 
 #### `generate`
+
 Generates a songbook PDF from files in Google Drive. This is the primary command for local testing of the end-to-end PDF generation process. You can either specify a predefined edition or use manual flags for filtering and customization. When using `--edition`, other flags like `--filter`, `--cover-file-id`, etc., are not allowed.
 
 ```bash
@@ -173,6 +176,7 @@ uv run songbook-tools generate --filter "difficulty:in:easy,medium"
 ```
 
 #### `download-cache`
+
 Downloads the GCS cache (containing song sheets and metadata) to your local machine. This is useful for speeding up local `generate` commands.
 
 ```bash
@@ -180,6 +184,7 @@ uv run songbook-tools download-cache
 ```
 
 #### `sync-cache`
+
 Syncs files and metadata from Google Drive to the GCS cache. This command is typically run by the Cache Updater service in the cloud but can be triggered locally.
 
 ```bash
@@ -191,6 +196,7 @@ uv run songbook-tools sync-cache --force
 ```
 
 #### `merge-pdfs`
+
 Merges all individual song sheet PDFs from the local cache into a single, large PDF with a table of contents. This is a sub-step of the `sync-cache` process.
 
 ```bash
@@ -199,6 +205,7 @@ uv run songbook-tools merge-pdfs --output out/merged.pdf
 ```
 
 #### `validate-pdf`
+
 Validates a PDF file for basic sanity checks to ensure it's not corrupted and meets quality standards for a songbook. This is automatically run in the GitHub Actions workflow before uploading PDFs.
 
 ```bash
@@ -219,6 +226,7 @@ uv run songbook-tools validate-pdf songbook.pdf \
 ```
 
 #### `editions`
+
 A group of commands to manage which songbook editions a song belongs to. This is a shortcut for managing the `specialbooks` tag.
 
 - **`editions add-song <edition_name> <file_identifier>`**: Adds a song to a specific edition.
@@ -240,6 +248,7 @@ uv run songbook-tools editions remove-song test "Chaise Longue"
 ```
 
 #### `tags`
+
 A group of commands to manage custom properties (tags) on Google Drive files.
 
 - **`tags get <file_identifier> [key]`**: Get all tags for a file, or the value of a specific tag. The identifier can be a Google Drive file ID or a partial file name to search for.
@@ -281,6 +290,7 @@ uv run songbook-tools tags set "Hate To Say" specialbooks "sweden,regular"
 ```
 
 #### `print-settings`
+
 Prints the current application settings, which are loaded from environment variables and the local config file. This is useful for debugging configuration issues.
 
 ```bash
@@ -298,11 +308,15 @@ For testing the complete web application including the asynchronous job processi
 ### Configuration
 
 #### Local CLI Configuration
+
 The CLI uses a configuration file located at:
+
 ```bash
 ~/.config/songbook-generator/config.toml
 ```
+
 This file allows you to specify folder IDs, fonts, and other settings. Example structure:
+
 ```toml
 [song-sheets]
 folder-ids = ["<DEFAULT_FOLDER_ID>"]
@@ -320,7 +334,9 @@ title-fontsize = 16
 It's definitely not complete at this stage though and doesn't expose all possible config options.
 
 #### Cloud Functions Environment
+
 The Cloud Functions require these environment variables:
+
 - `GCP_PROJECT_ID`: Google Cloud Project ID
 - `FIRESTORE_COLLECTION`: Firestore collection name for job tracking
 - `GCS_CDN_BUCKET`: Storage bucket for generated PDFs
@@ -330,17 +346,22 @@ The Cloud Functions require these environment variables:
 ... and probably a bunch more. Check `.env` for the
 
 ### Caching
+
 The backend uses a caching mechanism to store downloaded files and generated covers locally. Supported caching implementations are the local file system when running locally, and GCS when running on the cloud. Locally, cached files are stored in:
+
 ```bash
 ~/.cache/songbook-generator/cache
 ```
+
 Subdirectories include:
+
 - `song-sheets`: Cached song sheet PDFs.
 - `covers`: Cached cover PDFs.
 
 ### Testing
 
 Run tests locally via:
+
 ```bash
 uv run pytest
 ```
@@ -364,6 +385,7 @@ export GCP_REGION="us-central1"
 `.env` contains good defaults, excluding necessary exports for credential files you will need for interacting with Google services.
 
 This script will:
+
 - Enable required APIs (Pub/Sub, Firestore, Storage, Eventarc)
 - Create Pub/Sub topics
 - Initialize Firestore database
@@ -385,8 +407,8 @@ The workflow can be triggered in two ways:
 1.  **Scheduled**: It runs automatically every 10 minutes. On a scheduled run, it checks for any updates to the source song files in the GCS cache and compares their modification times against the last publication time of the final songbook PDFs. If the source files are newer, the corresponding songbook editions are queued for regeneration.
 
 2.  **Manual (`workflow_dispatch`)**: You can trigger the workflow manually from the "Actions" tab in the GitHub repository. When triggered manually, you have two options:
-    -   **Default (force=false)**: The workflow behaves like a scheduled run, checking for changes and only rebuilding outdated songbooks.
-    -   **Forced (force=true)**: The workflow bypasses the change detection logic and queues all songbook editions for a complete rebuild.
+    - **Default (force=false)**: The workflow behaves like a scheduled run, checking for changes and only rebuilding outdated songbooks.
+    - **Forced (force=true)**: The workflow bypasses the change detection logic and queues all songbook editions for a complete rebuild.
 
 **Workflow Logic**
 
@@ -396,7 +418,9 @@ The workflow can be triggered in two ways:
 ## Observability
 
 ### Logging
+
 Access logs at https://console.cloud.google.com/ under `Monitoring` > `Logs explorer`
 
 ### Traces
-Access traces at https://console.cloud.google.com/ under `Monitoring` > `Trace explorer` 
+
+Access traces at https://console.cloud.google.com/ under `Monitoring` > `Trace explorer`
