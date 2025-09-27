@@ -117,8 +117,6 @@ jobs:
     name: Generate Songbook (${{ matrix.edition }})
     runs-on: ubuntu-latest
     needs: check-for-updates
-    outputs:
-      dest_gcs_path: ${{ steps.upload-to-gcs.outputs.dest_gcs_path }}
     concurrency:
       group: generate-songbook-${{ matrix.edition }}
       cancel-in-progress: false
@@ -152,6 +150,9 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
+
+    - name: Set output PDF name
+      run: echo "OUTPUT_PDF=ukulele-tuesday-songbook-${{ matrix.edition }}-$(date -u +%Y-%m-%d).pdf" >> $GITHUB_ENV
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
@@ -217,9 +218,8 @@ jobs:
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
-        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
-        gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${{ env.OUTPUT_PDF }}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${{ env.OUTPUT_PDF }}"
 
     - name: Post-process PDF
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
@@ -227,7 +227,6 @@ jobs:
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
         INPUT_PDF="uncompressed.pdf"
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
 
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
@@ -240,7 +239,7 @@ jobs:
           -dEmbedAllFonts=true \
           -dDetectDuplicateImages=true \
           -dNOPAUSE -dBATCH \
-          -sOutputFile="${OUTPUT_PDF}" \
+          -sOutputFile="${{ env.OUTPUT_PDF }}" \
           "${INPUT_PDF}"
 
     - name: Download Manifest
@@ -253,46 +252,29 @@ jobs:
     - name: Validate Generated PDF
       run: |
         set -e
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
         MANIFEST_FILE="manifest.json"
 
-        echo "Validating generated PDF: ${OUTPUT_PDF}"
+        echo "Validating generated PDF: ${{ env.OUTPUT_PDF }}"
         echo "Using manifest file: ${MANIFEST_FILE}"
 
         # Use enhanced validation with manifest
-        uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
+        uv run songbook-tools validate-pdf "${{ env.OUTPUT_PDF }}" \
           --manifest "${MANIFEST_FILE}" \
           --verbose
 
         echo "✅ PDF validation passed for ${{ matrix.edition }} edition"
 
-    - name: Upload to GCS
-      if: github.ref == 'refs/heads/main'
-      id: upload-to-gcs
-      run: |
-        set -e
-        EDITION="${{ matrix.edition }}"
-        DATE=$(date -u +%Y-%m-%d)
-        NEW_FILENAME="ukulele-tuesday-songbook-${EDITION}-${DATE}.pdf"
-        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${NEW_FILENAME}"
-        OUTPUT_PDF="ukulele-tuesday-songbook-${EDITION}.pdf"
-
-        echo "Uploading PDF to public bucket: ${DEST_GCS_PATH}"
-        gcloud storage cp "${OUTPUT_PDF}" "${DEST_GCS_PATH}"
-        echo "✅ Successfully uploaded to ${DEST_GCS_PATH}"
-        echo "dest_gcs_path=${DEST_GCS_PATH}" >> $GITHUB_OUTPUT
-
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: songbook-${{ matrix.edition }}
-        path: ukulele-tuesday-songbook-${{ matrix.edition }}.pdf
+        name: songbook-artifact-${{ matrix.edition }}
+        path: ${{ env.OUTPUT_PDF }}
 
-  publish-manifest:
-    name: Publish Manifest
+  publish-songbooks:
+    name: Publish Songbooks and Manifest
     runs-on: ubuntu-latest
-    needs: generate-songbook
-    if: needs.generate-songbook.outputs.dest_gcs_path != ''
+    needs: [check-for-updates, generate-songbook]
+    if: github.ref == 'refs/heads/main' && needs.check-for-updates.outputs.editions_to_build != '[]' && needs.check-for-updates.outputs.editions_to_build != ''
     steps:
     - name: Checkout repository
       id: checkout
@@ -318,35 +300,50 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v5
 
-    - name: Collect GCS Paths
-      id: collect-paths
+    - name: Download all songbook artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./songbooks
+        pattern: songbook-artifact-*
+        merge-multiple: true
+
+    - name: Upload PDFs to GCS and Collect Paths
+      id: upload-pdfs
       run: |
-        FILE_PATHS=$(echo '${{ toJSON(needs.generate-songbook.outputs) }}' | jq -r '.[].dest_gcs_path' | tr '\n' ' ')
-        echo "Collected file paths: $FILE_PATHS"
-        echo "file_paths=$FILE_PATHS" >> $GITHUB_OUTPUT
+        set -e
+        NEW_FILE_PATHS=""
+        for pdf_file in ./songbooks/*.pdf; do
+          if [ -f "$pdf_file" ]; then
+            filename=$(basename "$pdf_file")
+            dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${filename}"
+            echo "Uploading '$filename' to '$dest_gcs_path'"
+            gcloud storage cp "$pdf_file" "$dest_gcs_path"
+            NEW_FILE_PATHS="${NEW_FILE_PATHS}${dest_gcs_path} "
+          fi
+        done
+        echo "new_file_paths=${NEW_FILE_PATHS}" >> $GITHUB_OUTPUT
 
     - name: Generate Manifest
       id: generate-manifest
       run: |
         set -e
-        FILE_PATHS="${{ steps.collect-paths.outputs.file_paths }}"
-        if [[ -z "$FILE_PATHS" ]]; then
-          echo "No files were generated, skipping manifest creation."
+        NEW_FILE_PATHS="${{ steps.upload-pdfs.outputs.new_file_paths }}"
+        if [[ -z "$NEW_FILE_PATHS" ]]; then
+          echo "No new files were generated, skipping manifest creation."
           exit 0
         fi
-        MANIFEST_JSON=$(./scripts/generate_manifest.py --file-paths "$FILE_PATHS")
+        MANIFEST_JSON=$(./scripts/generate_manifest.py \
+          --bucket-name "${GCS_SONGBOOKS_BUCKET}" \
+          --new-file-paths "$NEW_FILE_PATHS")
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
         echo "$MANIFEST_JSON" > manifest.json
 
-    - name: Upload Manifest Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: manifest
-        path: manifest.json
-
-    - name: Upload to GCS
-      if: github.ref == 'refs/heads/main'
+    - name: Upload Manifest to GCS
       run: |
-        gcloud storage cp manifest.json "gs://${GCS_SONGBOOKS_BUCKET}/manifest.json" --cache-control="public, max-age=60"
-        echo "✅ Successfully uploaded manifest.json"
+        if [ -f "manifest.json" ]; then
+          gcloud storage cp manifest.json "gs://${GCS_SONGBOOKS_BUCKET}/manifest.json" --cache-control="public, max-age=60"
+          echo "✅ Successfully uploaded manifest.json"
+        else
+          echo "manifest.json not found, skipping upload."
+        fi
