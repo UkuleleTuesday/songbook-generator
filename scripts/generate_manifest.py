@@ -19,9 +19,14 @@ from google.cloud import storage
 
 @click.command()
 @click.option(
-    "--file-paths",
+    "--bucket-name",
     required=True,
-    help="Space-separated string of GCS file paths.",
+    help="GCS bucket name where songbooks and manifest are stored.",
+)
+@click.option(
+    "--new-file-paths",
+    required=True,
+    help="Space-separated string of newly generated GCS file paths.",
 )
 @click.option(
     "--editions-order",
@@ -29,23 +34,31 @@ from google.cloud import storage
     help="Space-separated string of editions in the desired order.",
     default="",
 )
-def generate_manifest(file_paths: str, editions_order: str):
+def generate_manifest(bucket_name: str, new_file_paths: str, editions_order: str):
     """
-    Generates a manifest.json file from a list of GCS file paths.
+    Updates or creates a manifest.json file in a GCS bucket.
 
-    Extracts edition metadata from filenames that match the expected
-    pattern and outputs a JSON manifest to stdout.
+    Reads the existing manifest, updates it with new songbook files,
+    and prints the new manifest to stdout.
     """
     storage_client = storage.Client()
-    paths = file_paths.strip().split()
+    bucket = storage_client.bucket(bucket_name)
+    manifest_blob = bucket.blob("manifest.json")
 
-    latest_editions = {}
+    # Load existing manifest or create a new one
+    try:
+        manifest_data = json.loads(manifest_blob.download_as_string())
+        editions = manifest_data.get("editions", {})
+    except Exception:
+        editions = {}
+
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
     filename_re = re.compile(
         r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$"
     )
 
-    for path in paths:
+    # Process only the newly generated files
+    for path in new_file_paths.strip().split():
         if not path.startswith("gs://") or not path.endswith(".pdf"):
             continue
 
@@ -53,42 +66,25 @@ def generate_manifest(file_paths: str, editions_order: str):
         match = filename_re.match(blob_name)
         if match:
             edition_name = match.group("edition")
-            file_date_str = match.group("date")
+            blob = bucket.blob(blob_name)
+            blob.reload()  # Reload to get metadata
 
-            if edition_name not in latest_editions or file_date_str > latest_editions[
-                edition_name
-            ]["date"]:
-                latest_editions[edition_name] = {"date": file_date_str, "path": path}
+            editions[edition_name] = {
+                "url": f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
+                "updated_utc": blob.updated.isoformat(),
+            }
 
-    # Retrieve metadata only for the latest files
-    found_editions = {}
-    for edition_name, data in latest_editions.items():
-        path = data["path"]
-        parts = path.replace("gs://", "").split("/", 1)
-        bucket_name, blob_name = parts
-        blob = storage.Blob(
-            name=blob_name, bucket=storage_client.bucket(bucket_name)
-        )
-        blob.reload()
-
-        found_editions[edition_name] = {
-            "url": f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
-            "updated_utc": blob.updated.isoformat(),
-        }
-
-    # Order editions based on the provided order, appending any found but not specified editions at the end.
+    # Order editions based on the provided order
     ordered_editions = {}
     ordered_edition_keys = editions_order.split()
-    found_keys = set(found_editions.keys())
+    found_keys = set(editions.keys())
 
-    # Add editions in the specified order
     for key in ordered_edition_keys:
-        if key in found_editions:
-            ordered_editions[key] = found_editions[key]
+        if key in editions:
+            ordered_editions[key] = editions[key]
 
-    # Add any remaining found editions that were not in the order list
     for key in sorted(list(found_keys - set(ordered_edition_keys))):
-        ordered_editions[key] = found_editions[key]
+        ordered_editions[key] = editions[key]
 
     manifest = {
         "last_updated_utc": datetime.now(timezone.utc).isoformat(),

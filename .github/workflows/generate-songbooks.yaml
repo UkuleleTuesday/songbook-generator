@@ -308,30 +308,34 @@ jobs:
         pattern: songbook-artifact-*
         merge-multiple: true
 
-    - name: Upload PDFs to GCS
+    - name: Upload PDFs to GCS and Collect Paths
       id: upload-pdfs
       run: |
         set -e
+        NEW_FILE_PATHS=""
         for pdf_file in ./songbooks/*.pdf; do
           if [ -f "$pdf_file" ]; then
             filename=$(basename "$pdf_file")
             dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${filename}"
             echo "Uploading '$filename' to '$dest_gcs_path'"
             gcloud storage cp "$pdf_file" "$dest_gcs_path"
+            NEW_FILE_PATHS="${NEW_FILE_PATHS}${dest_gcs_path} "
           fi
         done
+        echo "new_file_paths=${NEW_FILE_PATHS}" >> $GITHUB_OUTPUT
 
     - name: Generate Manifest
       id: generate-manifest
       run: |
         set -e
-        # List all dated PDF files in the bucket to create a comprehensive manifest
-        ALL_FILE_PATHS=$(gcloud storage ls "gs://${GCS_SONGBOOKS_BUCKET}/ukulele-tuesday-songbook-*-*.pdf" | tr '\n' ' ')
-        if [[ -z "$ALL_FILE_PATHS" ]]; then
-          echo "No files found in bucket, skipping manifest creation."
+        NEW_FILE_PATHS="${{ steps.upload-pdfs.outputs.new_file_paths }}"
+        if [[ -z "$NEW_FILE_PATHS" ]]; then
+          echo "No new files were generated, skipping manifest creation."
           exit 0
         fi
-        MANIFEST_JSON=$(./scripts/generate_manifest.py --file-paths "$ALL_FILE_PATHS")
+        MANIFEST_JSON=$(./scripts/generate_manifest.py \
+          --bucket-name "${GCS_SONGBOOKS_BUCKET}" \
+          --new-file-paths "$NEW_FILE_PATHS")
         echo "Generated Manifest:"
         echo "$MANIFEST_JSON" | jq .
         echo "$MANIFEST_JSON" > manifest.json
