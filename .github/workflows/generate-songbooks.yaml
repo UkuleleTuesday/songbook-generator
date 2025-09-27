@@ -268,7 +268,7 @@ jobs:
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: songbook-artifact
+        name: songbook-artifact-${{ matrix.edition }}
         path: ${{ env.OUTPUT_PDF }}
 
   publish-songbooks:
@@ -305,7 +305,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./songbooks
-        pattern: songbook-artifact
+        pattern: songbook-artifact-*
         merge-multiple: true
 
     - name: Upload PDFs to GCS
