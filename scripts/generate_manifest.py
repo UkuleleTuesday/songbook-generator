@@ -56,7 +56,9 @@ def generate_manifest(file_paths: str, editions_order: str):
 
         match = filename_re.match(os.path.basename(blob_name))
         if match:
-            blob = storage.Blob(name=blob_name, bucket=storage_client.bucket(bucket_name))
+            blob = storage.Blob(
+                name=blob_name, bucket=storage_client.bucket(bucket_name)
+            )
             # The blob needs to be reloaded to get all the metadata
             blob.reload()
 
