@@ -216,7 +216,8 @@ jobs:
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        DATE=$(date -u +%Y-%m-%d)
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
 
@@ -226,7 +227,8 @@ jobs:
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
         INPUT_PDF="uncompressed.pdf"
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        DATE=$(date -u +%Y-%m-%d)
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
 
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
@@ -252,7 +254,8 @@ jobs:
     - name: Validate Generated PDF
       run: |
         set -e
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}.pdf"
+        DATE=$(date -u +%Y-%m-%d)
+        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
         MANIFEST_FILE="manifest.json"
 
         echo "Validating generated PDF: ${OUTPUT_PDF}"
@@ -269,7 +272,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ukulele-tuesday-songbook-${{ matrix.edition }}
-        path: ukulele-tuesday-songbook-${{ matrix.edition }}.pdf
+        path: ukulele-tuesday-songbook-${{ matrix.edition }}-*.pdf
 
   publish-songbooks:
     name: Publish Songbooks and Manifest
@@ -312,16 +315,11 @@ jobs:
       id: upload-pdfs
       run: |
         set -e
-        DATE=$(date -u +%Y-%m-%d)
         for pdf_file in ./songbooks/*.pdf; do
           if [ -f "$pdf_file" ]; then
-            original_filename=$(basename "$pdf_file")
-            # Extract edition from "ukulele-tuesday-songbook-EDITION.pdf"
-            edition=$(echo "$original_filename" | sed -e 's/ukulele-tuesday-songbook-\(.*\)\.pdf/\1/')
-            new_filename="ukulele-tuesday-songbook-${edition}-${DATE}.pdf"
-            dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${new_filename}"
-
-            echo "Uploading '$original_filename' to '$dest_gcs_path'"
+            filename=$(basename "$pdf_file")
+            dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${filename}"
+            echo "Uploading '$filename' to '$dest_gcs_path'"
             gcloud storage cp "$pdf_file" "$dest_gcs_path"
           fi
         done
