@@ -15,11 +15,6 @@ from vellox import Vellox
 from ..common.tracing import get_tracer, setup_tracing
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-# Cache for initialized clients to avoid re-initialization on warm starts
-_services = None
-_app = None
-_vellox = None
-
 
 class JobRequest(BaseModel):
     source_folders: Optional[list[str]] = None
@@ -42,12 +37,8 @@ class JobStatusResponse(BaseModel):
     created_at: Optional[str] = None
 
 
-def _get_services():
-    """Initializes and returns services, using a cache for warm starts."""
-    global _services
-    if _services is not None:
-        return _services
-
+def get_services():
+    """Initialize and return services."""
     project_id = os.environ["GOOGLE_CLOUD_PROJECT"]
     service_name = os.environ.get("K_SERVICE", "songbook-generator-api")
     os.environ["GCP_PROJECT_ID"] = project_id
@@ -60,17 +51,16 @@ def _get_services():
     topic_path = publisher.topic_path(project_id, pubsub_topic)
     db = firestore.Client(project=project_id)
 
-    _services = {
+    return {
         "tracer": tracer,
         "db": db,
         "publisher": publisher,
         "topic_path": topic_path,
         "firestore_collection": firestore_collection,
     }
-    return _services
 
 
-def _create_fastapi_app() -> FastAPI:
+def create_app(services_factory=None) -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
         title="Songbook Generator API",
@@ -87,9 +77,13 @@ def _create_fastapi_app() -> FastAPI:
         allow_headers=["Content-Type"],
     )
 
+    # Use provided services factory or default one
+    if services_factory is None:
+        services_factory = get_services
+
     # Initialize services for tracing (but don't depend on tracer provider)
     try:
-        _get_services()  # Initialize services without assigning to unused variable
+        services_factory()  # Initialize services without caching
         # Try to instrument with OpenTelemetry if available
         FastAPIInstrumentor.instrument_app(app)
     except (ImportError, AttributeError):
@@ -104,7 +98,7 @@ def _create_fastapi_app() -> FastAPI:
     @app.post("/", response_model=JobResponse, status_code=200)
     async def create_job(job_request: JobRequest, request: Request):
         """Create a new songbook generation job."""
-        services = _get_services()
+        services = services_factory()
         tracer = services["tracer"]
 
         with tracer.start_as_current_span("create_job") as span:
@@ -158,7 +152,7 @@ def _create_fastapi_app() -> FastAPI:
     @app.get("/{job_id}", response_model=JobStatusResponse, status_code=200)
     async def get_job_status(job_id: str):
         """Get the status of a job."""
-        services = _get_services()
+        services = services_factory()
         tracer = services["tracer"]
 
         with tracer.start_as_current_span("get_job_status") as span:
@@ -225,24 +219,8 @@ def _create_fastapi_app() -> FastAPI:
     return app
 
 
-def get_app() -> FastAPI:
-    """Get or create the FastAPI application instance."""
-    global _app
-    if _app is None:
-        _app = _create_fastapi_app()
-    return _app
-
-
-def get_vellox() -> Vellox:
-    """Get or create the Vellox adapter instance."""
-    global _vellox
-    if _vellox is None:
-        app = get_app()
-        _vellox = Vellox(app=app, lifespan="off")
-    return _vellox
-
-
 def api_main(req):
     """Main entry point for Cloud Functions compatibility."""
-    vellox = get_vellox()
+    app = create_app()
+    vellox = Vellox(app=app, lifespan="off")
     return vellox(req)
