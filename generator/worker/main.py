@@ -4,10 +4,9 @@ import base64
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-import click
 from google.cloud import firestore, storage
-from flask import abort
 import traceback
+from loguru import logger
 from ..common.filters import parse_filters
 
 from .pdf import (
@@ -72,18 +71,19 @@ def worker_main(cloud_event):
     services = _get_services()
     with services["tracer"].start_as_current_span("worker_main") as main_span:
         # 1) Decode Pub/Sub message
-        click.echo(f"Received Cloud Event with data: {cloud_event.data}")
+        logger.info(f"Received Cloud Event with data: {cloud_event.data}")
         envelope = cloud_event.data
         if "message" not in envelope:
-            abort(400, "No Pub/Sub message received")
-        click.echo("Extracting Pub/Sub message from envelope")
+            logger.error("No Pub/Sub message received in cloud event")
+            raise ValueError("No Pub/Sub message received")
+        logger.info("Extracting Pub/Sub message from envelope")
         msg = envelope["message"]
 
         data_payload = base64.b64decode(msg["data"]).decode("utf-8")
-        click.echo("Decoding and parsing Pub/Sub message payload")
+        logger.info("Decoding and parsing Pub/Sub message payload")
         evt = json.loads(data_payload)
 
-        click.echo(f"Received event: {evt}")
+        logger.info(f"Received event: {evt}")
         job_id = evt["job_id"]
         params = evt["params"]
 
@@ -98,7 +98,7 @@ def worker_main(cloud_event):
         with services["tracer"].start_as_current_span(
             "update_job_status"
         ) as status_span:
-            click.echo(f"Marking job {job_id} as RUNNING in Firestore")
+            logger.info(f"Marking job {job_id} as RUNNING in Firestore")
             job_ref.update(
                 {"status": "RUNNING", "started_at": firestore.SERVER_TIMESTAMP}
             )
@@ -135,7 +135,7 @@ def worker_main(cloud_event):
             ) as gen_span:
                 out_path_str = tempfile.mktemp(suffix=".pdf")
                 out_path = Path(out_path_str)
-                click.echo(
+                logger.info(
                     f"Generating songbook for job {job_id} with parameters: {params}"
                 )
                 progress_callback = make_progress_callback(job_ref)
@@ -148,7 +148,7 @@ def worker_main(cloud_event):
                     if not selected_edition:
                         raise ValueError(f"Edition '{edition_id}' not found.")
 
-                    click.echo(
+                    logger.info(
                         f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
                     )
                     generation_info = generate_songbook_from_edition(
@@ -171,9 +171,9 @@ def worker_main(cloud_event):
                             raise ValueError(f"Invalid filter format: {str(e)}") from e
 
                     if preface_file_ids:
-                        click.echo(f"Using {len(preface_file_ids)} preface files")
+                        logger.info(f"Using {len(preface_file_ids)} preface files")
                     if postface_file_ids:
-                        click.echo(f"Using {len(postface_file_ids)} postface files")
+                        logger.info(f"Using {len(postface_file_ids)} postface files")
 
                     generation_info = generate_songbook(
                         drive=drive,
@@ -194,7 +194,7 @@ def worker_main(cloud_event):
             with services["tracer"].start_as_current_span(
                 "generate_manifest"
             ) as manifest_span:
-                click.echo(f"Generating manifest for job {job_id}")
+                logger.info(f"Generating manifest for job {job_id}")
                 manifest_data = generate_manifest(
                     job_id=job_id,
                     params=params,
@@ -225,9 +225,8 @@ def worker_main(cloud_event):
                 "upload_to_gcs"
             ) as upload_span:
                 blob = services["cdn_bucket"].blob(f"{job_id}/songbook.pdf")
-                click.echo(
-                    "Uploading generated songbook to GCS bucket: "
-                    f"{services['gcs_cdn_bucket_name']}"
+                logger.info(
+                    f"Uploading generated songbook to GCS bucket: {services['gcs_cdn_bucket_name']}"
                 )
                 blob.upload_from_filename(out_path_str, content_type="application/pdf")
                 result_url = blob.public_url  # or use signed URL if you need auth
@@ -236,9 +235,8 @@ def worker_main(cloud_event):
 
                 # Upload manifest.json alongside the PDF
                 manifest_blob = services["cdn_bucket"].blob(f"{job_id}/manifest.json")
-                click.echo(
-                    f"Uploading generation manifest to GCS bucket: "
-                    f"{services['gcs_cdn_bucket_name']}"
+                logger.info(
+                    f"Uploading generation manifest to GCS bucket: {services['gcs_cdn_bucket_name']}"
                 )
                 manifest_blob.upload_from_filename(
                     manifest_path_str, content_type="application/json"
@@ -253,7 +251,7 @@ def worker_main(cloud_event):
             with services["tracer"].start_as_current_span(
                 "complete_job"
             ) as complete_span:
-                click.echo(
+                logger.info(
                     f"Marking job {job_id} as COMPLETED in Firestore with result URL: {result_url}"
                 )
                 job_ref.update(
@@ -278,9 +276,9 @@ def worker_main(cloud_event):
                     "error": "Internal error during songbook generation",
                 }
             )
-            click.echo(f"Job failed: {job_id}", err=True)
-            click.echo("Error details:", err=True)
+            logger.error(f"Job failed: {job_id}")
+            logger.error("Error details:")
             exc_info = traceback.format_exc()
-            click.echo(exc_info, err=True)
+            logger.error(f"{exc_info}")
             main_span.set_attribute("error.stack_trace", exc_info)
             raise
