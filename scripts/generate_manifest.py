@@ -14,7 +14,7 @@ import re
 from datetime import datetime, timezone
 
 import click
-from google.cloud import storage
+from google.cloud import exceptions, storage
 
 
 @click.command()
@@ -49,7 +49,7 @@ def generate_manifest(bucket_name: str, new_file_paths: str, editions_order: str
     try:
         manifest_data = json.loads(manifest_blob.download_as_string())
         editions = manifest_data.get("editions", {})
-    except Exception:
+    except (exceptions.NotFound, json.JSONDecodeError):
         editions = {}
 
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
