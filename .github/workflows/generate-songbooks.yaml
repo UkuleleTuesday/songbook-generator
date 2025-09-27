@@ -152,6 +152,9 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v5
 
+    - name: Set output PDF name
+      run: echo "OUTPUT_PDF=ukulele-tuesday-songbook-${{ matrix.edition }}-$(date -u +%Y-%m-%d).pdf" >> $GITHUB_ENV
+
     - name: Trigger and poll for completion
       id: trigger-and-poll
       run: |
@@ -216,10 +219,8 @@ jobs:
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
-        DATE=$(date -u +%Y-%m-%d)
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
-        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${OUTPUT_PDF}"
-        gcloud storage cp "${SOURCE_GCS_PATH}" "${OUTPUT_PDF}"
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${{ env.OUTPUT_PDF }}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${{ env.OUTPUT_PDF }}"
 
     - name: Post-process PDF
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
@@ -227,8 +228,6 @@ jobs:
       run: |
         SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
         INPUT_PDF="uncompressed.pdf"
-        DATE=$(date -u +%Y-%m-%d)
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
 
         echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
         gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
@@ -241,7 +240,7 @@ jobs:
           -dEmbedAllFonts=true \
           -dDetectDuplicateImages=true \
           -dNOPAUSE -dBATCH \
-          -sOutputFile="${OUTPUT_PDF}" \
+          -sOutputFile="${{ env.OUTPUT_PDF }}" \
           "${INPUT_PDF}"
 
     - name: Download Manifest
@@ -254,15 +253,13 @@ jobs:
     - name: Validate Generated PDF
       run: |
         set -e
-        DATE=$(date -u +%Y-%m-%d)
-        OUTPUT_PDF="ukulele-tuesday-songbook-${{ matrix.edition }}-${DATE}.pdf"
         MANIFEST_FILE="manifest.json"
 
-        echo "Validating generated PDF: ${OUTPUT_PDF}"
+        echo "Validating generated PDF: ${{ env.OUTPUT_PDF }}"
         echo "Using manifest file: ${MANIFEST_FILE}"
 
         # Use enhanced validation with manifest
-        uv run songbook-tools validate-pdf "${OUTPUT_PDF}" \
+        uv run songbook-tools validate-pdf "${{ env.OUTPUT_PDF }}" \
           --manifest "${MANIFEST_FILE}" \
           --verbose
 
@@ -271,8 +268,8 @@ jobs:
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ukulele-tuesday-songbook-${{ matrix.edition }}
-        path: ukulele-tuesday-songbook-${{ matrix.edition }}-*.pdf
+        name: songbook-artifact
+        path: ${{ env.OUTPUT_PDF }}
 
   publish-songbooks:
     name: Publish Songbooks and Manifest
@@ -308,7 +305,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./songbooks
-        pattern: ukulele-tuesday-songbook-*
+        pattern: songbook-artifact
         merge-multiple: true
 
     - name: Upload PDFs to GCS
