@@ -39,7 +39,7 @@ def generate_manifest(file_paths: str, editions_order: str):
     storage_client = storage.Client()
     paths = file_paths.strip().split()
 
-    found_editions = {}
+    latest_editions = {}
     # Filename pattern: ukulele-tuesday-songbook-<edition>-<YYYY-MM-DD>.pdf
     filename_re = re.compile(
         r"ukulele-tuesday-songbook-(?P<edition>.*)-(?P<date>\d{4}-\d{2}-\d{2})\.pdf$"
@@ -49,24 +49,32 @@ def generate_manifest(file_paths: str, editions_order: str):
         if not path.startswith("gs://") or not path.endswith(".pdf"):
             continue
 
-        parts = path.replace("gs://", "").split("/", 1)
-        if len(parts) != 2:
-            continue
-        bucket_name, blob_name = parts
-
-        match = filename_re.match(os.path.basename(blob_name))
+        blob_name = os.path.basename(path)
+        match = filename_re.match(blob_name)
         if match:
-            blob = storage.Blob(
-                name=blob_name, bucket=storage_client.bucket(bucket_name)
-            )
-            # The blob needs to be reloaded to get all the metadata
-            blob.reload()
-
             edition_name = match.group("edition")
-            found_editions[edition_name] = {
-                "url": f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
-                "updated_utc": blob.updated.isoformat(),
-            }
+            file_date_str = match.group("date")
+
+            if edition_name not in latest_editions or file_date_str > latest_editions[
+                edition_name
+            ]["date"]:
+                latest_editions[edition_name] = {"date": file_date_str, "path": path}
+
+    # Retrieve metadata only for the latest files
+    found_editions = {}
+    for edition_name, data in latest_editions.items():
+        path = data["path"]
+        parts = path.replace("gs://", "").split("/", 1)
+        bucket_name, blob_name = parts
+        blob = storage.Blob(
+            name=blob_name, bucket=storage_client.bucket(bucket_name)
+        )
+        blob.reload()
+
+        found_editions[edition_name] = {
+            "url": f"https://storage.googleapis.com/{bucket_name}/{blob_name}",
+            "updated_utc": blob.updated.isoformat(),
+        }
 
     # Order editions based on the provided order, appending any found but not specified editions at the end.
     ordered_editions = {}
