@@ -2,9 +2,8 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta
-import click
-from flask import make_response
 from google.cloud import pubsub_v1, firestore
+from loguru import logger
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -51,7 +50,7 @@ def _cors_headers():
 
 def handle_post(req, services):
     with services["tracer"].start_as_current_span("handle_post") as span:
-        click.echo(f"Received POST request with payload: {req.get_data(as_text=True)}")
+        logger.info(f"Received POST request with payload: {req.get_data(as_text=True)}")
         payload = req.get_json(silent=True) or {}
         job_id = uuid.uuid4().hex
 
@@ -68,7 +67,7 @@ def handle_post(req, services):
                 "expire_at": datetime.utcnow() + timedelta(minutes=30),
                 "params": payload,
             }
-            click.echo(f"Creating Firestore job document with ID: {job_id}")
+            logger.info(f"Creating Firestore job document with ID: {job_id}")
             services["db"].collection(services["firestore_collection"]).document(
                 job_id
             ).set(job_doc)
@@ -83,7 +82,9 @@ def handle_post(req, services):
         ) as pubsub_span:
             message = {"job_id": job_id, "params": payload}
             serialized_message = json.dumps(message)
-            click.echo(f"Publishing message to Pub/Sub topic: {services['topic_path']}")
+            logger.info(
+                f"Publishing message to Pub/Sub topic: {services['topic_path']}"
+            )
             future = services["publisher"].publish(
                 services["topic_path"], serialized_message.encode("utf-8")
             )
@@ -94,16 +95,14 @@ def handle_post(req, services):
         # 3) Return job ID
         body = json.dumps({"job_id": job_id, "status": "queued"})
         span.set_attribute("response.status_code", 200)
-        return make_response(
-            (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
-        )
+        return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
 
 
 def handle_get_job(job_id, services):
     with services["tracer"].start_as_current_span("handle_get_job") as span:
         span.set_attribute("job_id", job_id)
 
-        click.echo(f"Fetching Firestore document for job ID: {job_id}")
+        logger.info(f"Fetching Firestore document for job ID: {job_id}")
 
         with services["tracer"].start_as_current_span(
             "fetch_firestore_document"
@@ -120,14 +119,12 @@ def handle_get_job(job_id, services):
             firestore_span.set_attribute("firestore.document_id", job_id)
             firestore_span.set_attribute("firestore.document_exists", snapshot.exists)
 
-        click.echo(f"Firestore document exists: {snapshot.exists}")
+        logger.info(f"Firestore document exists: {snapshot.exists}")
         if not snapshot.exists:
             body = json.dumps({"error": "job not found", "job_id": job_id})
             span.set_attribute("response.status_code", 404)
             span.set_attribute("error", "job not found")
-            return make_response(
-                (body, 404, {**_cors_headers(), "Content-Type": "application/json"})
-            )
+            return (body, 404, {**_cors_headers(), "Content-Type": "application/json"})
 
         data = snapshot.to_dict()
         response = {
@@ -158,9 +155,7 @@ def handle_get_job(job_id, services):
         span.set_attribute("job.status", data.get("status", ""))
         span.set_attribute("response.status_code", 200)
         body = json.dumps(response)
-        return make_response(
-            (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
-        )
+        return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
 
 
 def api_main(req):
@@ -176,28 +171,26 @@ def api_main(req):
 
         # POST to enqueue new job
         if req.method == "POST" and req.path == "/":
-            click.echo("Handling POST request at root path")
+            logger.info("Handling POST request at root path")
             span.set_attribute("request.type", "enqueue_job")
             return handle_post(req, services)
 
         # GET healthcheck at root
         if req.method == "GET" and req.path == "/":
-            click.echo("Handling GET healthcheck at root path")
+            logger.info("Handling GET healthcheck at root path")
             span.set_attribute("request.type", "healthcheck")
-            return make_response(("OK", 200, _cors_headers()))
+            return ("OK", 200, _cors_headers())
 
         # GET job status at /{job_id}
         if req.method == "GET":
             # strip leading slash
             job_id = req.path.lstrip("/")
             if job_id:
-                click.echo(f"Handling GET request for job ID: {job_id}")
+                logger.info(f"Handling GET request for job ID: {job_id}")
                 span.set_attribute("request.type", "get_job_status")
                 return handle_get_job(job_id, services)
 
-        click.echo(
-            f"Unhandled request method: {req.method}, path: {req.path}", err=True
-        )
+        logger.error(f"Unhandled request method: {req.method}, path: {req.path}")
         span.set_attribute("request.type", "unhandled")
         span.set_attribute("error", "method not allowed")
-        return make_response(("Method Not Allowed", 405, _cors_headers()))
+        return ("Method Not Allowed", 405, _cors_headers())
