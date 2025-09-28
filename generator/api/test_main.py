@@ -211,10 +211,10 @@ def test_api_main_post_request():
         patch("generator.api.main.setup_tracing"),
         patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
     ):
-        # Create app with dependency injection and Vellox
+        # Create app with dependency overrides
         app = create_app()
 
-        # Override dependencies in the app itself
+        # Override dependencies
         app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
         app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
         app.dependency_overrides[get_pubsub_publisher] = lambda: mock_publisher
@@ -258,7 +258,7 @@ def test_api_main_get_health_check():
         patch("generator.api.main.setup_tracing"),
         patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
     ):
-        # Create app with dependency injection and Vellox
+        # Create app with Vellox
         app = create_app()
         vellox = Vellox(app=app, lifespan="off")
 

@@ -92,6 +92,7 @@ def create_app() -> FastAPI:
         # If instrumentation fails, continue without it
         pass
 
+    # Register route handlers
     @app.get("/", status_code=200)
     async def health_check():
         """Health check endpoint."""
