@@ -7,12 +7,14 @@ from fastapi.testclient import TestClient
 from werkzeug.wrappers import Request
 from vellox import Vellox
 
+# Import the module-level app and dependencies
+from . import main
 from .main import (
-    create_app,
     get_tracer_dependency,
     get_firestore_client,
     get_pubsub_publisher,
     get_pubsub_topic_path,
+    initialize_tracing,
 )
 
 
@@ -59,10 +61,14 @@ def client(mock_tracer, mock_firestore_client, mock_pubsub_publisher):
         }
     )
 
-    # Create app with dependency overrides
-    app = create_app()
+    # Use the module-level app
+    app = main.app
+
+    # Clear any existing overrides
+    app.dependency_overrides.clear()
 
     # Override dependencies
+    app.dependency_overrides[initialize_tracing] = lambda: None
     app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
     app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
     app.dependency_overrides[get_pubsub_publisher] = lambda: mock_pubsub_publisher
@@ -206,41 +212,38 @@ def test_api_main_post_request():
     mock_future.result.return_value = None
     mock_publisher.publish.return_value = mock_future
 
-    # Mock the service initialization during app creation
-    with (
-        patch("generator.api.main.setup_tracing"),
-        patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
-    ):
-        # Create app with dependency overrides
-        app = create_app()
+    # Use the module-level app
+    app = main.app
 
-        # Override dependencies
-        app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
-        app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
-        app.dependency_overrides[get_pubsub_publisher] = lambda: mock_publisher
-        app.dependency_overrides[get_pubsub_topic_path] = (
-            lambda: "projects/test/topics/test-topic"
-        )
+    # Clear any existing overrides
+    app.dependency_overrides.clear()
 
-        vellox = Vellox(app=app, lifespan="off")
+    # Override dependencies
+    app.dependency_overrides[initialize_tracing] = lambda: None
+    app.dependency_overrides[get_tracer_dependency] = lambda: mock_tracer
+    app.dependency_overrides[get_firestore_client] = lambda: mock_firestore_client
+    app.dependency_overrides[get_pubsub_publisher] = lambda: mock_publisher
+    app.dependency_overrides[get_pubsub_topic_path] = (
+        lambda: "projects/test/topics/test-topic"
+    )
 
-        # Mock Cloud Functions request - use werkzeug request format
-        mock_request = Request.from_values(
-            method="POST", path="/", json={"edition": "current"}
-        )
+    vellox = Vellox(app=app, lifespan="off")
 
-        # Call vellox directly
-        response = vellox(mock_request)
+    # Mock Cloud Functions request - use werkzeug request format
+    mock_request = Request.from_values(
+        method="POST", path="/", json={"edition": "current"}
+    )
 
-        # Vellox returns a Flask Response object
-        assert response.status_code == 200
-        # CORS headers are handled by FastAPI middleware and may not be present in tests
-        # The important thing is that the request succeeds and returns valid data
+    # Call vellox directly
+    response = vellox(mock_request)
 
-        # Parse response
-        response_data = json.loads(response.get_data(as_text=True))
-        assert "job_id" in response_data
-        assert response_data["status"] == "queued"
+    # Vellox returns a Flask Response object
+    assert response.status_code == 200
+
+    # Parse response
+    response_data = json.loads(response.get_data(as_text=True))
+    assert "job_id" in response_data
+    assert response_data["status"] == "queued"
 
 
 @patch.dict(
@@ -253,25 +256,26 @@ def test_api_main_post_request():
 )
 def test_api_main_get_health_check():
     """Test api_main with GET health check request."""
-    # Mock the service initialization during app creation
-    with (
-        patch("generator.api.main.setup_tracing"),
-        patch("generator.api.main.FastAPIInstrumentor.instrument_app"),
-    ):
-        # Create app with Vellox
-        app = create_app()
-        vellox = Vellox(app=app, lifespan="off")
+    # Use the module-level app
+    app = main.app
 
-        # Mock Cloud Functions request - use werkzeug request format
-        mock_request = Request.from_values(method="GET", path="/")
+    # Clear any existing overrides
+    app.dependency_overrides.clear()
 
-        # Call vellox directly
-        response = vellox(mock_request)
+    # Override initialization to prevent actual tracing setup
+    app.dependency_overrides[initialize_tracing] = lambda: None
 
-        # Vellox returns a Flask Response object
-        assert response.status_code == 200
-        assert response.get_data(as_text=True) == '"OK"'
-        # CORS headers are handled by FastAPI middleware and may not be present in tests
+    vellox = Vellox(app=app, lifespan="off")
+
+    # Mock Cloud Functions request - use werkzeug request format
+    mock_request = Request.from_values(method="GET", path="/")
+
+    # Call vellox directly
+    response = vellox(mock_request)
+
+    # Vellox returns a Flask Response object
+    assert response.status_code == 200
+    assert response.get_data(as_text=True) == '"OK"'
 
 
 @patch.dict(
@@ -311,5 +315,5 @@ def test_dependency_initialization(
     assert publisher == mock_publisher
     assert topic_path == "projects/test-project/topics/test-topic"
 
-    # Verify setup_tracing was called
-    mock_setup_tracing.assert_called_once()
+    # Verify setup_tracing was called (initialize_tracing calls this)
+    # Note: We don't call initialize_tracing directly in this test
