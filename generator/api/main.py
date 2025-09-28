@@ -66,11 +66,6 @@ def get_pubsub_topic_path(
     return publisher.topic_path(project_id, pubsub_topic)
 
 
-def get_firestore_collection():
-    """Dependency to get Firestore collection name."""
-    return os.environ["FIRESTORE_COLLECTION"]
-
-
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     app = FastAPI(
@@ -110,7 +105,6 @@ def create_app() -> FastAPI:
         db: Annotated[firestore.Client, Depends(get_firestore_client)],
         publisher: Annotated[pubsub_v1.PublisherClient, Depends(get_pubsub_publisher)],
         topic_path: Annotated[str, Depends(get_pubsub_topic_path)],
-        firestore_collection: Annotated[str, Depends(get_firestore_collection)],
     ):
         """Create a new songbook generation job."""
         with tracer.start_as_current_span("create_job") as span:
@@ -134,6 +128,7 @@ def create_app() -> FastAPI:
                     "params": payload,
                 }
                 logger.info(f"Creating Firestore job document with ID: {job_id}")
+                firestore_collection = os.environ["FIRESTORE_COLLECTION"]
                 db.collection(firestore_collection).document(job_id).set(job_doc)
                 firestore_span.set_attribute(
                     "firestore.collection", firestore_collection
@@ -162,7 +157,6 @@ def create_app() -> FastAPI:
         job_id: str,
         tracer: Annotated[object, Depends(get_tracer_dependency)],
         db: Annotated[firestore.Client, Depends(get_firestore_client)],
-        firestore_collection: Annotated[str, Depends(get_firestore_collection)],
     ):
         """Get the status of a job."""
         with tracer.start_as_current_span("get_job_status") as span:
@@ -172,6 +166,7 @@ def create_app() -> FastAPI:
             with tracer.start_as_current_span(
                 "fetch_firestore_document"
             ) as firestore_span:
+                firestore_collection = os.environ["FIRESTORE_COLLECTION"]
                 doc_ref = db.collection(firestore_collection).document(job_id)
                 snapshot = doc_ref.get()
                 firestore_span.set_attribute(

@@ -13,7 +13,6 @@ from .main import (
     get_firestore_client,
     get_pubsub_publisher,
     get_pubsub_topic_path,
-    get_firestore_collection,
 )
 
 
@@ -70,7 +69,6 @@ def client(mock_tracer, mock_firestore_client, mock_pubsub_publisher):
     app.dependency_overrides[get_pubsub_topic_path] = (
         lambda: "projects/test/topics/test-topic"
     )
-    app.dependency_overrides[get_firestore_collection] = lambda: "test-jobs"
 
     return TestClient(app)
 
@@ -223,7 +221,6 @@ def test_api_main_post_request():
         app.dependency_overrides[get_pubsub_topic_path] = (
             lambda: "projects/test/topics/test-topic"
         )
-        app.dependency_overrides[get_firestore_collection] = lambda: "test-jobs"
 
         vellox = Vellox(app=app, lifespan="off")
 
@@ -308,13 +305,11 @@ def test_dependency_initialization(
     db = get_firestore_client()
     publisher = get_pubsub_publisher()
     topic_path = get_pubsub_topic_path(publisher)
-    collection = get_firestore_collection()
 
     assert tracer == mock_tracer
     assert db == mock_db
     assert publisher == mock_publisher
     assert topic_path == "projects/test-project/topics/test-topic"
-    assert collection == "test-collection"
 
     # Verify setup_tracing was called
     mock_setup_tracing.assert_called_once()
