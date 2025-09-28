@@ -102,12 +102,6 @@ def _create_app() -> FastAPI:
 app = _create_app()
 
 
-@app.get("/")
-async def health_check():
-    """Health check endpoint."""
-    return "OK"
-
-
 @app.post("/", response_model=JobResponse, status_code=200)
 async def create_job(
     job_request: JobRequest,

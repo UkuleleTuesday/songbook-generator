@@ -79,13 +79,6 @@ def client(mock_tracer, mock_firestore_client, mock_pubsub_publisher):
     return TestClient(app)
 
 
-def test_health_check(client):
-    """Test the health check endpoint."""
-    response = client.get("/")
-    assert response.status_code == 200
-    assert response.text == '"OK"'
-
-
 def test_create_job_success(client, mock_firestore_client):
     """Test successful job creation."""
     # Mock Firestore document creation
@@ -175,15 +168,13 @@ def test_get_job_status_not_found(client, mock_firestore_client):
 
 def test_cors_headers(client):
     """Test that CORS headers are properly set."""
-    # FastAPI automatically handles OPTIONS requests, but they may return different status codes
-    # Let's test with a regular GET request instead
-    response = client.get("/")
+    # Test CORS with a POST request instead since GET "/" is no longer available
+    response = client.post("/", json={"source_folders": ["test"]})
+    # We expect this to succeed and have proper CORS handling
     assert response.status_code == 200
 
     # Check that the response includes proper CORS headers (handled by CORS middleware)
     # Since we're using CORSMiddleware, the actual CORS headers handling is done by Starlette
-    # Let's just verify we can make the request successfully
-    assert response.text == '"OK"'
 
 
 @patch.dict(
@@ -244,38 +235,6 @@ def test_api_main_post_request():
     response_data = json.loads(response.get_data(as_text=True))
     assert "job_id" in response_data
     assert response_data["status"] == "queued"
-
-
-@patch.dict(
-    "os.environ",
-    {
-        "GOOGLE_CLOUD_PROJECT": "test-project",
-        "PUBSUB_TOPIC": "test-topic",
-        "FIRESTORE_COLLECTION": "test-jobs",
-    },
-)
-def test_api_main_get_health_check():
-    """Test api_main with GET health check request."""
-    # Use the module-level app
-    app = main.app
-
-    # Clear any existing overrides
-    app.dependency_overrides.clear()
-
-    # Override initialization to prevent actual tracing setup
-    app.dependency_overrides[initialize_tracing] = lambda: None
-
-    vellox = Vellox(app=app, lifespan="off")
-
-    # Mock Cloud Functions request - use werkzeug request format
-    mock_request = Request.from_values(method="GET", path="/")
-
-    # Call vellox directly
-    response = vellox(mock_request)
-
-    # Vellox returns a Flask Response object
-    assert response.status_code == 200
-    assert response.get_data(as_text=True) == '"OK"'
 
 
 @patch.dict(
