@@ -102,7 +102,7 @@ def _create_app() -> FastAPI:
 app = _create_app()
 
 
-@app.get("/", status_code=200)
+@app.get("/")
 async def health_check():
     """Health check endpoint."""
     return "OK"
