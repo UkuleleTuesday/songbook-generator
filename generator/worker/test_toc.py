@@ -8,6 +8,7 @@ from .toc import (
 from .models import File
 from . import toc
 from ..common.config import TocPostfix
+from ..common.filters import PropertyFilter
 
 
 @pytest.mark.parametrize(
@@ -271,7 +272,7 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     # Mock filter logic
-    mock_filter = mocker.MagicMock()
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = True
     postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
     generator.config.postfixes = [postfix_config]
@@ -298,7 +299,7 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     # Mock filter logic
-    mock_filter = mocker.MagicMock()
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = False
     postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
     generator.config.postfixes = [postfix_config]
