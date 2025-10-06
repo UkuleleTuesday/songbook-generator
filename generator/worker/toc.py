@@ -100,7 +100,16 @@ class TocGenerator:
             is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
 
-        full_title = f"{symbol}{shortened_title}"
+        # Add any custom postfixes
+        postfix_str = ""
+        if self.config.postfixes:
+            for postfix_config in self.config.postfixes:
+                for p_filter in postfix_config.filters:
+                    if p_filter.matches(file.properties):
+                        postfix_str += postfix_config.postfix
+                        break  # Stop checking filters for this postfix config
+
+        full_title = f"{symbol}{shortened_title}{postfix_str}"
 
         # Append title
         tw.append(
