@@ -7,6 +7,7 @@ from .toc import (
 )
 from .models import File
 from . import toc
+from ..common.config import TocPostfix
 
 
 @pytest.mark.parametrize(
@@ -272,7 +273,7 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
     # Mock filter logic
     mock_filter = mocker.MagicMock()
     mock_filter.matches.return_value = True
-    postfix_config = toc.TocPostfix(postfix=" 🎃", filters=[mock_filter])
+    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
     generator.config.postfixes = [postfix_config]
 
     file = File(id="1", name="Monster Mash", properties={"tags": "halloween"})
@@ -299,7 +300,7 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
     # Mock filter logic
     mock_filter = mocker.MagicMock()
     mock_filter.matches.return_value = False
-    postfix_config = toc.TocPostfix(postfix=" 🎃", filters=[mock_filter])
+    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
     generator.config.postfixes = [postfix_config]
 
     file = File(id="1", name="Jingle Bells", properties={"tags": "christmas"})
