@@ -48,3 +48,18 @@
     - key: "specialbooks"
       operator: "contains"
       value: "hooley-2025"
+
+- id: "halloween"
+  title: "Ukulele Tuesday - Halloween Songbook"
+  description: "A spooky collection of Halloween-themed songs."
+  filters:
+    - key: "specialbooks"
+      operator: "contains"
+      value: "halloween"
+  table_of_contents:
+    postfixes:
+      - postfix: " 🎃"
+        filters:
+          - key: "tags"
+            operator: "contains"
+            value: "halloween"
