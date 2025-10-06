@@ -94,12 +94,6 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        shortened_title = self._generate_toc_title(
-            file.name,
-            max_length=self.config.max_toc_entry_length,
-            is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
-        )
-
         # Add any custom postfixes
         postfix_str = ""
         if self.config.postfixes:
@@ -108,6 +102,12 @@ class TocGenerator:
                     if p_filter.matches(file.properties):
                         postfix_str += postfix_config.postfix
                         break  # Stop checking filters for this postfix config
+
+        shortened_title = self._generate_toc_title(
+            file.name,
+            max_length=self.config.max_toc_entry_length - len(postfix_str),
+            is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
+        )
 
         full_title = f"{symbol}{shortened_title}{postfix_str}"
 
