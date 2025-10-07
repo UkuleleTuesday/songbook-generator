@@ -256,10 +256,11 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: str, **kwargs)
         click.echo("Error: credential config 'songbook-generator' not found.", err=True)
         raise click.Abort()
 
-    drive, _ = init_services(
+    drive, cache = init_services(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
     source_folders = list(source_folder) if source_folder else []
 
@@ -275,7 +276,7 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: str, **kwargs)
         client_filter = parse_filters(edition_config.filters)
 
     files = collect_and_sort_files(
-        gdrive_client=drive,
+        gdrive_client=gdrive_client,
         source_folders=source_folders,
         client_filter=client_filter,
     )
