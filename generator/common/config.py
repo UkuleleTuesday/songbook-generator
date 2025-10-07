@@ -30,6 +30,13 @@ class Cover(BaseModel):
     file_id: Optional[str] = "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
 
 
+class TocPostfix(BaseModel):
+    """Configuration for a single TOC entry postfix."""
+
+    postfix: str
+    filters: List[Union[FilterGroup, PropertyFilter]]
+
+
 class Toc(BaseModel):
     columns_per_page: int = 2
     column_width: int = 250
@@ -45,9 +52,10 @@ class Toc(BaseModel):
     text_fontsize: float = 10.0
     title_font: str = "RobotoCondensed-Bold.ttf"
     title_fontsize: int = 16
-    max_toc_entry_length: int = 60
+    max_toc_entry_length: int = 52
     include_difficulty: bool = True
     include_wip_marker: bool = True
+    postfixes: Optional[List[TocPostfix]] = None
 
     @field_validator(
         "*",

@@ -7,6 +7,8 @@ from .toc import (
 )
 from .models import File
 from . import toc
+from ..common.config import TocPostfix
+from ..common.filters import PropertyFilter
 
 
 @pytest.mark.parametrize(
@@ -262,6 +264,61 @@ def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     # Check that title is appended with the '*'
     appended_title = mock_tw.append.call_args_list[0].args[1]
     assert "Ready Song*" in appended_title
+
+
+def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
+    """Test that a postfix is added to the TOC entry when filters match."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    # Mock filter logic
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
+    mock_filter.matches.return_value = True
+    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
+    generator.config.postfixes = [postfix_config]
+
+    file = File(id="1", name="Monster Mash", properties={"tags": "halloween"})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    appended_title = mock_tw.append.call_args_list[0].args[1]
+    assert "Monster Mash 🎃" in appended_title
+
+
+def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
+    """Test that a postfix is NOT added to the TOC entry if filters don't match."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    # Mock filter logic
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
+    mock_filter.matches.return_value = False
+    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
+    generator.config.postfixes = [postfix_config]
+
+    file = File(id="1", name="Jingle Bells", properties={"tags": "christmas"})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    appended_title = mock_tw.append.call_args_list[0].args[1]
+    assert "Jingle Bells" in appended_title
+    assert "🎃" not in appended_title
 
 
 def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
