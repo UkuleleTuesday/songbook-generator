@@ -287,7 +287,7 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: str, **kwargs)
 
     click.echo(f"\nFound {len(files)} song(s):")
     for file in files:
-        click.echo(f"  - {file.name} (ID: {file.id})")
+        click.echo(f"  - {file.name}")
 
 
 @cli.command(name="sync-cache")
