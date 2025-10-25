@@ -21,12 +21,6 @@
           - key: "specialbooks"
             operator: "contains"
             value: "halloween"
-      - postfix: " 🎄"
-        filters:
-          - key: "specialbooks"
-            operator: "contains"
-            value: "christmas"
-
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
   description: >
@@ -49,6 +43,11 @@
           - key: "specialbooks"
             operator: "contains"
             value: "halloween"
+      - postfix: " 🎄"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "christmas"
 
 
 - id: "ukulele-hooley-2025"
