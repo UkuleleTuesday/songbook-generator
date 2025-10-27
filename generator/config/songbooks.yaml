@@ -21,6 +21,7 @@
           - key: "specialbooks"
             operator: "contains"
             value: "halloween"
+
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
   description: >
@@ -47,7 +48,7 @@
         filters:
           - key: "specialbooks"
             operator: "contains"
-            value: "christmas"
+            value: "xmas"
 
 
 - id: "ukulele-hooley-2025"
@@ -69,12 +70,3 @@
     - key: "specialbooks"
       operator: "contains"
       value: "hooley-2025"
-
-- id: "halloween"
-  title: "Ukulele Tuesday - Halloween Songbook"
-  description: "A spooky collection of Halloween-themed songs."
-  cover_file_id: "1kHu08P8LWRx5W6zyZTo9JFZgyiq_aTsjrg51rqMZUDI"
-  filters:
-    - key: "specialbooks"
-      operator: "contains"
-      value: "halloween"
