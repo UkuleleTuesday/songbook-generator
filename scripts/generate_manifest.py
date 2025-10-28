@@ -4,6 +4,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #   "click",
+#   "packaging",
 #   "google-cloud-storage",
 # ]
 # ///
