@@ -13,14 +13,6 @@
     - key: "specialbooks"
       operator: "contains"
       value: "regular"
-  table_of_contents:
-    # Include a pumpkin for songs tagged as `halloween`
-    postfixes:
-      - postfix: " 🎃"
-        filters:
-          - key: "specialbooks"
-            operator: "contains"
-            value: "halloween"
 
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
