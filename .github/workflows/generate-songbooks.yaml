@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  SONGBOOK_EDITIONS: "current complete ukulele-hooley-2025"
+  SONGBOOK_EDITIONS: "current complete"
   USE_GHOSTSCRIPT_COMPRESSION: false
 
 jobs:
