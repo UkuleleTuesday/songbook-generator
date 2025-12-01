@@ -84,9 +84,6 @@ def generate_manifest(bucket_name: str, new_file_paths: str, editions_order: str
         if key in editions:
             ordered_editions[key] = editions[key]
 
-    for key in sorted(list(found_keys - set(ordered_edition_keys))):
-        ordered_editions[key] = editions[key]
-
     manifest = {
         "last_updated_utc": datetime.now(timezone.utc).isoformat(),
         "editions": ordered_editions,
