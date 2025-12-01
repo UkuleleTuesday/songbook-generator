@@ -13,6 +13,14 @@
     - key: "specialbooks"
       operator: "contains"
       value: "regular"
+  table_of_contents:
+    # Include a christmas tree after song title for songs tagged as `xmas`
+    postfixes:
+      - postfix: " 🎄"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "xmas"
 
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
