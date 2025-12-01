@@ -6,13 +6,21 @@
 
     We rotate the songs we play on Tuesday sessions frequently,
     so make sure to download the latest version!
-  cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+  cover_file_id: "1M2jVT2dD16jgyBzhxA14Nbs-QN8kKq-pmtXQHGOYSgM" # Christmas cover
   preface_file_ids:
     - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   filters:
     - key: "specialbooks"
       operator: "contains"
       value: "regular"
+  table_of_contents:
+    # Include a christmas tree after song title for songs tagged as `xmas`
+    postfixes:
+      - postfix: " 🎄"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "xmas"
 
 - id: "complete"
   title: "Ukulele Tuesday - Complete Songbook"
