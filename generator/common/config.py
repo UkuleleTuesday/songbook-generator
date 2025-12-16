@@ -80,7 +80,7 @@ class Edition(BaseModel):
 
 class CachingGcs(BaseModel):
     worker_cache_bucket: Optional[str] = Field("songbook-generator-cache-europe-west1")
-    region: Optional[str] = Field(None)
+    region: Optional[str] = Field("europe-west1")
 
 
 class CachingLocal(BaseModel):
