@@ -16,9 +16,6 @@ def init_cache(
     The GCS bucket can be specified via argument or environment variable.
     Can be forced to use GCS or local via `use_gcs` boolean.
     """
-    click.echo(
-        f"[CACHE DEBUG] init_cache called with: use_gcs={use_gcs}, gcs_worker_cache_bucket={gcs_worker_cache_bucket}"
-    )
     settings = get_settings()
     caching_settings = settings.caching
 
@@ -32,15 +29,7 @@ def init_cache(
     final_gcp_region = caching_settings.gcs.region
 
     if should_use_gcs is None:
-        click.echo(
-            "[CACHE DEBUG] should_use_gcs is None, determining from bucket_name and region..."
-        )
         should_use_gcs = bool(bucket_name and final_gcp_region)
-
-    click.echo(f"[CACHE DEBUG] Final decision: should_use_gcs={should_use_gcs}")
-    click.echo(f"[CACHE DEBUG] Bucket name: {bucket_name}")
-    click.echo(f"[CACHE DEBUG] GCS Region: {final_gcp_region}")
-    click.echo(f"[CACHE DEBUG] Local cache dir: {caching_settings.local.dir}")
 
     if should_use_gcs:
         if not bucket_name or not final_gcp_region:
