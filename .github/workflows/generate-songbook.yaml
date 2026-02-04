@@ -1,0 +1,251 @@
+name: Generate Single Songbook
+
+on:
+  workflow_dispatch:
+    inputs:
+      edition:
+        description: "The songbook edition to generate (e.g., 'current')"
+        type: string
+        required: true
+  workflow_call:
+    inputs:
+      edition:
+        description: "The songbook edition to generate"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  USE_GHOSTSCRIPT_COMPRESSION: false
+
+jobs:
+  generate-songbook:
+    name: Generate Songbook (${{ github.event.inputs.edition }})
+    runs-on: ubuntu-latest
+    concurrency:
+      group: generate-songbook-${{ github.event.inputs.edition }}
+      cancel-in-progress: false
+    steps:
+    - name: Checkout repository
+      id: checkout
+      uses: actions/checkout@v4
+
+    - name: Load environment variables
+      id: load-env
+      uses: falti/dotenv-action@v1.1.4
+      with:
+        path: .env
+        export-variables: true
+        keys-case: bypass
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      id: setup-sdk
+      run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Set output PDF name
+      run: echo "OUTPUT_PDF=ukulele-tuesday-songbook-${{ github.event.inputs.edition }}-$(date -u +%Y-%m-%d).pdf" >> $GITHUB_ENV
+
+    - name: Trigger and poll for completion
+      id: trigger-and-poll
+      run: |
+        PAYLOAD=$(jq -n --arg edition "${{ github.event.inputs.edition }}" '{ edition: $edition }')
+        echo "Triggering songbook generation with payload: $PAYLOAD"
+        API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
+
+        RESPONSE=$(curl -s -f -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API_URL")
+        echo "API Response: $RESPONSE"
+        JOB_ID=$(echo "$RESPONSE" | jq -r '.job_id')
+
+        if [[ "$JOB_ID" == "null" || -z "$JOB_ID" ]]; then
+          echo "Failed to create job"
+          exit 1
+        fi
+        echo "Created job with ID: $JOB_ID"
+
+        TIMEOUT=120
+        ELAPSED=0
+        POLL_INTERVAL=1
+        SOURCE_GCS_PATH=""
+
+        while [[ $ELAPSED -lt $TIMEOUT ]]; do
+          sleep $POLL_INTERVAL
+          ELAPSED=$((ELAPSED + POLL_INTERVAL))
+
+          STATUS_RESPONSE=$(curl -s "$API_URL/$JOB_ID")
+          STATUS=$(echo "$STATUS_RESPONSE" | jq -r '.status')
+          PROGRESS=$(echo "$STATUS_RESPONSE" | jq -r '.progress // 0')
+          MESSAGE=$(echo "$STATUS_RESPONSE" | jq -r '.last_message // ""')
+          PROGRESS_PERCENT=$(echo "$PROGRESS * 100" | bc -l | awk '{printf "%.0f", $1 + 0.5}')
+
+          echo "[$ELAPSED/${TIMEOUT}s] Status: $STATUS, Progress: ${PROGRESS_PERCENT}%, Message: $MESSAGE"
+
+          if [[ "$STATUS" == "completed" ]]; then
+            echo "✅ Songbook generation completed successfully!"
+            SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
+            MANIFEST_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/manifest.json"
+            echo "source_gcs_path=${SOURCE_GCS_PATH}" >> $GITHUB_OUTPUT
+            echo "manifest_gcs_path=${MANIFEST_GCS_PATH}" >> $GITHUB_OUTPUT
+            break
+          elif [[ "$STATUS" == "failed" ]]; then
+            echo "❌ Songbook generation failed"
+            echo "Full response: $STATUS_RESPONSE"
+            exit 1
+          fi
+        done
+
+        if [[ -z "$SOURCE_GCS_PATH" ]]; then
+          echo "⏰ Timeout reached after ${TIMEOUT} seconds"
+          exit 1
+        fi
+
+    - name: Install Ghostscript
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
+      id: install-ghostscript
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ghostscript
+
+    - name: Download uncompressed PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'false'
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${{ env.OUTPUT_PDF }}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${{ env.OUTPUT_PDF }}"
+
+    - name: Post-process PDF
+      if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
+      id: post-process
+      run: |
+        SOURCE_GCS_PATH="${{ steps.trigger-and-poll.outputs.source_gcs_path }}"
+        INPUT_PDF="uncompressed.pdf"
+
+        echo "Downloading generated PDF from ${SOURCE_GCS_PATH} to ${INPUT_PDF}"
+        gcloud storage cp "${SOURCE_GCS_PATH}" "${INPUT_PDF}"
+
+        echo "Compressing PDF with Ghostscript..."
+        gs -sDEVICE=pdfwrite \
+          -dCompatibilityLevel=1.4 \
+          -dPDFSETTINGS=/default \
+          -dSubsetFonts=false \
+          -dEmbedAllFonts=true \
+          -dDetectDuplicateImages=true \
+          -dNOPAUSE -dBATCH \
+          -sOutputFile="${{ env.OUTPUT_PDF }}" \
+          "${INPUT_PDF}"
+
+    - name: Download Manifest
+      run: |
+        MANIFEST_GCS_PATH="${{ steps.trigger-and-poll.outputs.manifest_gcs_path }}"
+        MANIFEST_FILE="manifest.json"
+        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH} to ${MANIFEST_FILE}"
+        gcloud storage cp "${MANIFEST_GCS_PATH}" "${MANIFEST_FILE}"
+
+    - name: Validate Generated PDF
+      run: |
+        set -e
+        MANIFEST_FILE="manifest.json"
+
+        echo "Validating generated PDF: ${{ env.OUTPUT_PDF }}"
+        echo "Using manifest file: ${MANIFEST_FILE}"
+
+        # Use enhanced validation with manifest
+        uv run songbook-tools validate-pdf "${{ env.OUTPUT_PDF }}" \
+          --manifest "${MANIFEST_FILE}" \
+          --verbose
+
+        echo "✅ PDF validation passed for ${{ github.event.inputs.edition }} edition"
+
+    - name: Upload Songbook Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: songbook-artifact-${{ github.event.inputs.edition }}
+        path: ${{ env.OUTPUT_PDF }}
+
+  publish-songbooks:
+    name: Publish Songbooks and Manifest
+    runs-on: ubuntu-latest
+    needs: [generate-songbook]
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout repository
+      id: checkout
+      uses: actions/checkout@v4
+    - name: Load environment variables
+      id: load-env
+      uses: falti/dotenv-action@v1.1.4
+      with:
+        path: .env
+        export-variables: true
+        keys-case: bypass
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      id: setup-sdk
+      run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Download songbook artifact
+      uses: actions/download-artifact@v4
+      with:
+        path: ./songbooks
+        pattern: songbook-artifact-*
+        merge-multiple: true
+
+    - name: Upload PDFs to GCS and Collect Paths
+      id: upload-pdfs
+      run: |
+        set -e
+        NEW_FILE_PATHS=""
+        for pdf_file in ./songbooks/*.pdf; do
+          if [ -f "$pdf_file" ]; then
+            filename=$(basename "$pdf_file")
+            dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${filename}"
+            echo "Uploading '$filename' to '$dest_gcs_path'"
+            gcloud storage cp "$pdf_file" "$dest_gcs_path"
+            NEW_FILE_PATHS="${NEW_FILE_PATHS}${dest_gcs_path} "
+          fi
+        done
+        echo "new_file_paths=${NEW_FILE_PATHS}" >> $GITHUB_OUTPUT
+
+    - name: Generate Manifest
+      id: generate-manifest
+      run: |
+        set -e
+        NEW_FILE_PATHS="${{ steps.upload-pdfs.outputs.new_file_paths }}"
+        if [[ -z "$NEW_FILE_PATHS" ]]; then
+          echo "No new files were generated, skipping manifest creation."
+          exit 0
+        fi
+        MANIFEST_JSON=$(./scripts/generate_manifest.py \
+          --bucket-name "${GCS_SONGBOOKS_BUCKET}" \
+          --new-file-paths "$NEW_FILE_PATHS")
+        echo "Generated Manifest:"
+        echo "$MANIFEST_JSON" | jq .
+        echo "$MANIFEST_JSON" > manifest.json
+
+    - name: Upload Manifest to GCS
+      run: |
+        if [ -f "manifest.json" ]; then
+          gcloud storage cp manifest.json "gs://${GCS_SONGBOOKS_BUCKET}/manifest.json" --cache-control="public, max-age=60"
+          echo "✅ Successfully uploaded manifest.json"
+        else
+          echo "manifest.json not found, skipping upload."
+        fi
