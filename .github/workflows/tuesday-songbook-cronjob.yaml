@@ -1,0 +1,15 @@
+name: Tuesday Songbook Cronjob
+
+on:
+  schedule:
+    # Run at 6am UTC every Tuesday
+    - cron: "0 6 * * 2"
+  workflow_dispatch: {} # For manual runs
+
+jobs:
+  generate-tuesday-songbook:
+    name: Generate Tuesday Songbook
+    uses: ./.github/workflows/generate-songbook.yaml
+    with:
+      edition: "current"
+    secrets: inherit
