@@ -43,12 +43,12 @@
             value: "xmas"
 
 
-- id: "ukulele-hooley-2025"
-  title: "Ukulele Hooley 2025"
-  description: "The official songbook for the 2025 Ukulele Hooley Friday jam."
-  cover_file_id: "1jpZvqrpNF7HjX5_gpjH8FG8DLHKP63JjRU1gWbVpSg8"
+- id: "wexford-2026"
+  title: "Wexford 2026"
+  description: "Ukulele Tuesday's 2026 Wexford pocket songbook"
+  cover_file_id: "1YOAi8XpZ-4clFLZwqHjHSrSnRfBDHBEjJoNIGOctXq4"
   preface_file_ids:
-    - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"
+    # - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"
   table_of_contents:
     include_difficulty: false
     include_wip_marker: false

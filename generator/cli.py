@@ -379,6 +379,9 @@ def sync_cache_command(
         if local:
             click.echo("Using local cache.")
             services["cache"] = init_cache(use_gcs=False)
+        else:
+            click.echo("Using GCS cache.")
+            services["cache"] = init_cache(use_gcs=True)
 
         click.echo(f"Syncing folders: {source_folders}")
         sync_cache(
