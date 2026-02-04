@@ -170,10 +170,12 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: songbook-artifact-${{ github.event.inputs.edition }}
-        path: ${{ env.OUTPUT_PDF }}
+        path: |
+          ${{ env.OUTPUT_PDF }}
+          manifest.json
 
   publish-songbooks:
-    name: Publish Songbooks and Manifest
+    name: Publish Songbook and Manifest
     runs-on: ubuntu-latest
     needs: [generate-songbook]
     if: github.ref == 'refs/heads/main'
@@ -209,42 +211,30 @@ jobs:
         pattern: songbook-artifact-*
         merge-multiple: true
 
-    - name: Upload PDFs to GCS and Collect Paths
-      id: upload-pdfs
+    - name: Upload PDF to GCS
+      id: upload-pdf
       run: |
         set -e
-        NEW_FILE_PATHS=""
-        for pdf_file in ./songbooks/*.pdf; do
-          if [ -f "$pdf_file" ]; then
-            filename=$(basename "$pdf_file")
-            dest_gcs_path="gs://${GCS_SONGBOOKS_BUCKET}/${filename}"
-            echo "Uploading '$filename' to '$dest_gcs_path'"
-            gcloud storage cp "$pdf_file" "$dest_gcs_path"
-            NEW_FILE_PATHS="${NEW_FILE_PATHS}${dest_gcs_path} "
-          fi
-        done
-        echo "new_file_paths=${NEW_FILE_PATHS}" >> $GITHUB_OUTPUT
-
-    - name: Generate Manifest
-      id: generate-manifest
-      run: |
-        set -e
-        NEW_FILE_PATHS="${{ steps.upload-pdfs.outputs.new_file_paths }}"
-        if [[ -z "$NEW_FILE_PATHS" ]]; then
-          echo "No new files were generated, skipping manifest creation."
-          exit 0
+        EDITION="${{ github.event.inputs.edition }}"
+        PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
+        if [ -f "$PDF_FILE" ]; then
+          FILENAME=$(basename "$PDF_FILE")
+          DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${FILENAME}"
+          echo "Uploading '$FILENAME' to '$DEST_GCS_PATH'"
+          gcloud storage cp "$PDF_FILE" "$DEST_GCS_PATH"
+        else
+          echo "No PDF file found in artifact."
+          exit 1
         fi
-        MANIFEST_JSON=$(./scripts/generate_manifest.py \
-          --bucket-name "${GCS_SONGBOOKS_BUCKET}" \
-          --new-file-paths "$NEW_FILE_PATHS")
-        echo "Generated Manifest:"
-        echo "$MANIFEST_JSON" | jq .
-        echo "$MANIFEST_JSON" > manifest.json
 
     - name: Upload Manifest to GCS
       run: |
-        if [ -f "manifest.json" ]; then
-          gcloud storage cp manifest.json "gs://${GCS_SONGBOOKS_BUCKET}/manifest.json" --cache-control="public, max-age=60"
+        set -e
+        EDITION="${{ github.event.inputs.edition }}"
+        if [ -f "./songbooks/manifest.json" ]; then
+          DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/manifest.json"
+          echo "Uploading manifest.json to ${DEST_GCS_PATH}"
+          gcloud storage cp ./songbooks/manifest.json "$DEST_GCS_PATH" --cache-control="public, max-age=60"
           echo "✅ Successfully uploaded manifest.json"
         else
           echo "manifest.json not found, skipping upload."
