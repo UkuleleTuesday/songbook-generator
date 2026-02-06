@@ -54,7 +54,10 @@ jobs:
       uses: astral-sh/setup-uv@v5
 
     - name: Set output PDF name
-      run: echo "OUTPUT_PDF=ukulele-tuesday-songbook-${{ github.event.inputs.edition }}-$(date -u +%Y-%m-%d).pdf" >> $GITHUB_ENV
+      run: |
+        PDF_BASENAME="ukulele-tuesday-songbook-${{ github.event.inputs.edition }}-$(date -u +%Y-%m-%d)"
+        echo "OUTPUT_PDF=${PDF_BASENAME}.pdf" >> $GITHUB_ENV
+        echo "OUTPUT_MANIFEST=${PDF_BASENAME}.manifest.json" >> $GITHUB_ENV
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
@@ -147,21 +150,18 @@ jobs:
     - name: Download Manifest
       run: |
         MANIFEST_GCS_PATH="${{ steps.trigger-and-poll.outputs.manifest_gcs_path }}"
-        MANIFEST_FILE="manifest.json"
-        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH} to ${MANIFEST_FILE}"
-        gcloud storage cp "${MANIFEST_GCS_PATH}" "${MANIFEST_FILE}"
+        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH} to ${{ env.OUTPUT_MANIFEST }}"
+        gcloud storage cp "${MANIFEST_GCS_PATH}" "${{ env.OUTPUT_MANIFEST }}"
 
     - name: Validate Generated PDF
       run: |
         set -e
-        MANIFEST_FILE="manifest.json"
-
         echo "Validating generated PDF: ${{ env.OUTPUT_PDF }}"
-        echo "Using manifest file: ${MANIFEST_FILE}"
+        echo "Using manifest file: ${{ env.OUTPUT_MANIFEST }}"
 
         # Use enhanced validation with manifest
         uv run songbook-tools validate-pdf "${{ env.OUTPUT_PDF }}" \
-          --manifest "${MANIFEST_FILE}" \
+          --manifest "${{ env.OUTPUT_MANIFEST }}" \
           --verbose
 
         echo "✅ PDF validation passed for ${{ github.event.inputs.edition }} edition"
@@ -172,7 +172,7 @@ jobs:
         name: songbook-artifact-${{ github.event.inputs.edition }}
         path: |
           ${{ env.OUTPUT_PDF }}
-          manifest.json
+          ${{ env.OUTPUT_MANIFEST }}
 
   publish-songbooks:
     name: Publish Songbook and Manifest
@@ -227,15 +227,36 @@ jobs:
           exit 1
         fi
 
-    - name: Upload Manifest to GCS
+    - name: Upload Manifest to GCS and create latest.json
       run: |
         set -e
         EDITION="${{ github.event.inputs.edition }}"
-        if [ -f "./songbooks/manifest.json" ]; then
-          DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/manifest.json"
-          echo "Uploading manifest.json to ${DEST_GCS_PATH}"
-          gcloud storage cp ./songbooks/manifest.json "$DEST_GCS_PATH" --cache-control="public, max-age=60"
-          echo "✅ Successfully uploaded manifest.json"
+        PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
+        PDF_FILENAME=$(basename "$PDF_FILE")
+        MANIFEST_FILE=$(find ./songbooks -name '*.manifest.json' -print -quit)
+        MANIFEST_FILENAME=$(basename "$MANIFEST_FILE")
+
+        if [ -f "$MANIFEST_FILE" ]; then
+          DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${MANIFEST_FILENAME}"
+          echo "Uploading '${MANIFEST_FILENAME}' to '${DEST_GCS_PATH}'"
+          gcloud storage cp "$MANIFEST_FILE" "$DEST_GCS_PATH" --cache-control="public, max-age=600"
+          echo "✅ Successfully uploaded manifest"
+
+          echo "Generating latest.json"
+          LATEST_JSON_FILE="latest.json"
+          jq -n \
+            --arg pdf_filename "$PDF_FILENAME" \
+            --arg manifest_filename "$MANIFEST_FILENAME" \
+            --arg generated_at "$(date -u --iso-8601=seconds)" \
+            '{pdf_filename: $pdf_filename, manifest_filename: $manifest_filename, generated_at: $generated_at}' \
+            > "$LATEST_JSON_FILE"
+
+          cat "$LATEST_JSON_FILE"
+          DEST_LATEST_JSON_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json"
+          echo "Uploading latest.json to ${DEST_LATEST_JSON_PATH}"
+          gcloud storage cp "$LATEST_JSON_FILE" "$DEST_LATEST_JSON_PATH" --cache-control="public, max-age=60"
+          echo "✅ Successfully uploaded latest.json"
         else
-          echo "manifest.json not found, skipping upload."
+          echo "Manifest file not found, skipping upload."
+          exit 1
         fi
