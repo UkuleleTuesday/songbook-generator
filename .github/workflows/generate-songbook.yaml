@@ -1,4 +1,4 @@
-name: Generate Single Songbook
+name: Generate Songbook
 
 on:
   workflow_dispatch:
