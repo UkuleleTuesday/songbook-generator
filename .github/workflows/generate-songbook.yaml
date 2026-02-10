@@ -22,10 +22,10 @@ env:
 
 jobs:
   generate-songbook:
-    name: Generate Songbook (${{ github.event.inputs.edition }})
+    name: Generate Songbook (${{ inputs.edition }})
     runs-on: ubuntu-latest
     concurrency:
-      group: generate-songbook-${{ github.event.inputs.edition }}
+      group: generate-songbook-${{ inputs.edition }}
       cancel-in-progress: false
     steps:
     - name: Checkout repository
@@ -55,14 +55,14 @@ jobs:
 
     - name: Set output PDF name
       run: |
-        PDF_BASENAME="ukulele-tuesday-songbook-${{ github.event.inputs.edition }}-$(date -u +%Y-%m-%d)"
+        PDF_BASENAME="ukulele-tuesday-songbook-${{ inputs.edition }}-$(date -u +%Y-%m-%d)"
         echo "OUTPUT_PDF=${PDF_BASENAME}.pdf" >> $GITHUB_ENV
         echo "OUTPUT_MANIFEST=${PDF_BASENAME}.manifest.json" >> $GITHUB_ENV
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
       run: |
-        PAYLOAD=$(jq -n --arg edition "${{ github.event.inputs.edition }}" '{ edition: $edition }')
+        PAYLOAD=$(jq -n --arg edition "${{ inputs.edition }}" '{ edition: $edition }')
         echo "Triggering songbook generation with payload: $PAYLOAD"
         API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
 
@@ -164,12 +164,12 @@ jobs:
           --manifest "${{ env.OUTPUT_MANIFEST }}" \
           --verbose
 
-        echo "✅ PDF validation passed for ${{ github.event.inputs.edition }} edition"
+        echo "✅ PDF validation passed for ${{ inputs.edition }} edition"
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: songbook-artifact-${{ github.event.inputs.edition }}
+        name: songbook-artifact-${{ inputs.edition }}
         path: |
           ${{ env.OUTPUT_PDF }}
           ${{ env.OUTPUT_MANIFEST }}
@@ -215,7 +215,7 @@ jobs:
       id: upload-pdf
       run: |
         set -e
-        EDITION="${{ github.event.inputs.edition }}"
+        EDITION="${{ inputs.edition }}"
         PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
         if [ -f "$PDF_FILE" ]; then
           FILENAME=$(basename "$PDF_FILE")
@@ -230,7 +230,7 @@ jobs:
     - name: Upload Manifest to GCS and create latest.json
       run: |
         set -e
-        EDITION="${{ github.event.inputs.edition }}"
+        EDITION="${{ inputs.edition }}"
         PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
         PDF_FILENAME=$(basename "$PDF_FILE")
         MANIFEST_FILE=$(find ./songbooks -name '*.manifest.json' -print -quit)
