@@ -1,0 +1,42 @@
+body {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  color: #333;
+  text-align: center;
+}
+
+.mdl-layout__content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.mdl-card {
+  width: 100%;
+  max-width: 500px;
+  margin: 1rem;
+  overflow: visible;
+}
+
+.mdl-card__supporting-text {
+  width: auto;
+  padding: 1rem;
+}
+
+.mdl-card__actions {
+  padding: 1rem;
+}
+
+.mdl-card__title {
+  display: block;
+}
+
+.mdl-textfield {
+  width: 100%;
+}
+
+#historyList {
+  list-style-type: none;
+  padding: 0;
+}
