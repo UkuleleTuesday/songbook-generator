@@ -48,6 +48,11 @@
           - key: "specialbooks"
             operator: "contains"
             value: "xmas"
+      - postfix: " ☘"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "ireland"
 
 
 - id: "wexford-2026"
