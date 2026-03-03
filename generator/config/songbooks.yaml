@@ -9,6 +9,13 @@
   cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface_file_ids:
     - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
+  table_of_contents:
+    postfixes:
+      - postfix: " ☘"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "ireland"
   filters:
     - key: "specialbooks"
       operator: "contains"
@@ -41,6 +48,11 @@
           - key: "specialbooks"
             operator: "contains"
             value: "xmas"
+      - postfix: " ☘"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "ireland"
 
 
 - id: "wexford-2026"
