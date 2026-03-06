@@ -118,13 +118,13 @@ class FilterParser:
 
 
 def parse_filters(
-    filters_param: Union[str, list, dict, None],
+    filters_param: Union[str, list, dict, PropertyFilter, FilterGroup, None],
 ) -> Optional[Union[PropertyFilter, FilterGroup]]:
     """
     Parse the filters parameter from the API request into filter objects.
 
     Args:
-        filters_param: Can be a string, list of strings, or dict representing filters
+        filters_param: Can be a string, list of strings, dict, PropertyFilter, FilterGroup, or None
 
     Returns:
         PropertyFilter, FilterGroup, or None if no filters
@@ -132,17 +132,24 @@ def parse_filters(
     if not filters_param:
         return None
 
+    # Already parsed objects from YAML
+    if isinstance(filters_param, (PropertyFilter, FilterGroup)):
+        return filters_param
+
     if isinstance(filters_param, str):
         # Single filter string
         return FilterParser.parse_simple_filter(filters_param)
 
     if isinstance(filters_param, list):
-        # List of filter strings - combine with AND logic
+        # List of filter strings or objects - combine with AND logic
         if not filters_param:
             return None
-        parsed_filters = [
-            FilterParser.parse_simple_filter(filter_str) for filter_str in filters_param
-        ]
+        parsed_filters = []
+        for f in filters_param:
+            if isinstance(f, (PropertyFilter, FilterGroup)):
+                parsed_filters.append(f)
+            elif isinstance(f, str):
+                parsed_filters.append(FilterParser.parse_simple_filter(f))
 
         if len(parsed_filters) == 1:
             return parsed_filters[0]
@@ -157,9 +164,10 @@ def parse_filters(
 
             parsed_filters = []
             for f in filter_list:
-                if isinstance(f, str):
+                if isinstance(f, (PropertyFilter, FilterGroup)):
+                    parsed_filters.append(f)
+                elif isinstance(f, str):
                     parsed_filters.append(FilterParser.parse_simple_filter(f))
-                # Future: could handle nested filter objects here
 
             if not parsed_filters:
                 return None
