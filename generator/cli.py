@@ -1,3 +1,8 @@
+import warnings
+
+# Suppress deprecation warning from google package about pkg_resources
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+
 import traceback
 import os
 import functools
@@ -7,7 +12,6 @@ from typing import Optional
 import click
 import fitz
 from pathlib import Path
-
 
 from .common.config import get_settings
 from .cache_updater.main import fetch_and_merge_pdfs
