@@ -9,6 +9,7 @@ from pydantic import BaseModel
 class FilterOperator(Enum):
     EQUALS = "equals"
     CONTAINS = "contains"
+    NOT_CONTAINS = "not_contains"
     GREATER_THAN = "gt"
     GREATER_EQUAL = "gte"
     LESS_THAN = "lt"
@@ -34,6 +35,8 @@ class PropertyFilter(BaseModel):
             return str(prop_value) == str(self.value)
         elif self.operator == FilterOperator.CONTAINS:
             return str(self.value).lower() in str(prop_value).lower()
+        elif self.operator == FilterOperator.NOT_CONTAINS:
+            return str(self.value).lower() not in str(prop_value).lower()
         elif self.operator == FilterOperator.GREATER_THAN:
             try:
                 return float(prop_value) > float(self.value)

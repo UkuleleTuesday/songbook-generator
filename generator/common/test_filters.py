@@ -82,3 +82,54 @@ def test_parse_filters_empty_dict():
 def test_parse_filters_dict_with_empty_filters_list():
     """Test that a dict with an empty filters list returns None."""
     assert parse_filters({"operator": "AND", "filters": []}) is None
+
+
+def test_not_contains_operator_parsing():
+    """Test parsing a filter string with not_contains operator."""
+    result = parse_filters("specialbooks:not_contains:regular")
+    assert isinstance(result, PropertyFilter)
+    assert result.key == "specialbooks"
+    assert result.operator == FilterOperator.NOT_CONTAINS
+    assert result.value == "regular"
+
+
+def test_not_contains_operator_matches_when_value_not_in_property():
+    """Test that not_contains matches when the value is NOT in the property."""
+    filter_obj = PropertyFilter(
+        key="specialbooks",
+        operator=FilterOperator.NOT_CONTAINS,
+        value="regular",
+    )
+    # Property doesn't contain "regular"
+    assert filter_obj.matches({"specialbooks": "womens,pride"})
+
+
+def test_not_contains_operator_does_not_match_when_value_in_property():
+    """Test that not_contains doesn't match when the value IS in the property."""
+    filter_obj = PropertyFilter(
+        key="specialbooks",
+        operator=FilterOperator.NOT_CONTAINS,
+        value="regular",
+    )
+    # Property contains "regular"
+    assert not filter_obj.matches({"specialbooks": "regular,womens,pride"})
+
+
+def test_not_contains_operator_with_multiple_filters():
+    """Test parsing multiple filters including not_contains with AND logic."""
+    result = parse_filters(
+        ["gender:equals:female", "specialbooks:not_contains:regular"]
+    )
+    assert isinstance(result, FilterGroup)
+    assert result.operator == "AND"
+    assert len(result.filters) == 2
+    assert result.filters[0].operator == FilterOperator.EQUALS
+    assert result.filters[1].operator == FilterOperator.NOT_CONTAINS
+
+    # Test matching with both filters
+    properties = {"gender": "female", "specialbooks": "womens,pride"}
+    assert result.matches(properties)
+
+    # Should not match if contains "regular"
+    properties_with_regular = {"gender": "female", "specialbooks": "regular,womens"}
+    assert not result.matches(properties_with_regular)

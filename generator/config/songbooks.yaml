@@ -74,3 +74,40 @@
     - key: "specialbooks"
       operator: "contains"
       value: "hooley-2025"
+
+- id: "womens-in-regular"
+  title: "Women Artists in Regular Songbook"
+  description: >
+    A collection of songs by female-identified artists
+    that are currently included in the regular Ukulele Tuesday songbook.
+  cover_file_id: null
+  table_of_contents:
+    postfixes: []
+  filters:
+    - operator: "AND"
+      filters:
+        - key: "gender"
+          operator: "equals"
+          value: "female"
+        - key: "specialbooks"
+          operator: "contains"
+          value: "regular"
+
+- id: "potential-new-womens-songs"
+  title: "Potential New Women's Songs"
+  description: >
+    A collection of songs by female-identified artists,
+    featuring songs NOT included in the regular Ukulele Tuesday songbook.
+    This edition celebrates women in music and potential new additions to our repertoire!
+  cover_file_id: null
+  table_of_contents:
+    postfixes: []
+  filters:
+    - operator: "AND"
+      filters:
+        - key: "gender"
+          operator: "equals"
+          value: "female"
+        - key: "specialbooks"
+          operator: "not_contains"
+          value: "regular"
