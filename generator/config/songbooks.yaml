@@ -74,3 +74,16 @@
     - key: "specialbooks"
       operator: "contains"
       value: "hooley-2025"
+
+- id: "womens-2026"
+  title: "Women's Songbook 2026"
+  description: >
+    A curated collection of songs by female-identified artists
+    for the 2026 women's edition.
+  cover_file_id: null
+  table_of_contents:
+    postfixes: []
+  filters:
+    - key: "specialbooks"
+      operator: "contains"
+      value: "womens-2026"

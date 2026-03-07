@@ -1,3 +1,8 @@
+import warnings
+
+# Suppress deprecation warning from google package about pkg_resources
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+
 import traceback
 import os
 import functools
@@ -7,7 +12,6 @@ from typing import Optional
 import click
 import fitz
 from pathlib import Path
-
 
 from .common.config import get_settings
 from .cache_updater.main import fetch_and_merge_pdfs
@@ -241,9 +245,10 @@ def generate(
     "--filter",
     "-f",
     "filter_str",
-    help="Filter files using property syntax.",
+    multiple=True,
+    help="Filter files using property syntax (can be passed multiple times for AND logic).",
 )
-def list_songs(ctx, source_folder: str, edition: str, filter_str: str, **kwargs):
+def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwargs):
     """List songs matching a given filter expression or edition."""
     if not edition and not filter_str:
         raise click.UsageError("Either --edition or --filter must be provided.")
@@ -266,8 +271,9 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: str, **kwargs)
 
     client_filter = None
     if filter_str:
-        click.echo(f"Fetching files matching filter: {filter_str}")
-        client_filter = parse_filters(filter_str)
+        filter_list = list(filter_str) if filter_str else None
+        click.echo(f"Fetching files matching filter: {filter_list}")
+        client_filter = parse_filters(filter_list)
     elif edition:
         click.echo(f"Fetching files for edition: '{edition}'")
         edition_config = next((e for e in settings.editions if e.id == edition), None)
