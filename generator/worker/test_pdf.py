@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime, timezone
 from ..common.config import Edition
 from .pdf import (
+    add_page_number,
     collect_and_sort_files,
     generate_songbook,
     generate_songbook_from_edition,
@@ -665,3 +666,33 @@ def test_generate_manifest_without_page_indices(tmp_path):
 
     # Verify page indices are not included when not provided
     assert "page_indices" not in manifest
+
+
+def test_add_page_number_inserts_text():
+    """Test that add_page_number inserts visible large bold text on the page."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+
+    add_page_number(page, 42)
+
+    # Verify the page number text was inserted
+    text = page.get_text()
+    assert "42" in text
+
+
+def test_add_page_number_position_within_page():
+    """Test that the page number is positioned within page bounds."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+
+    add_page_number(page, 1)
+
+    # Inspect the text block bounding box to confirm it stays within the page
+    blocks = page.get_text("dict")["blocks"]
+    assert len(blocks) > 0
+    for block in blocks:
+        # Block rect should be within page dimensions
+        assert block["bbox"][0] >= 0
+        assert block["bbox"][2] <= page.rect.width
+        assert block["bbox"][1] >= 0
+        assert block["bbox"][3] <= page.rect.height

@@ -713,6 +713,6 @@ def generate_manifest(
 
 def add_page_number(page, page_index):
     text = str(page_index)
-    x = page.rect.width - 40
+    x = page.rect.width - 45
     y = 30
-    page.insert_text((x, y), text, fontsize=9, color=(0, 0, 0))
+    page.insert_text((x, y), text, fontsize=14, fontname="hebo", color=(0, 0, 0))
