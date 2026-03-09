@@ -101,6 +101,8 @@
     A curated collection of songs by female-identified artists
     for the 2026 women's edition.
   cover_file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"
+  preface_file_ids:
+    - "1TCzHDdBMwlKm1tA82r_jsqS35VWS8sBX3shdnrUZ3y4"
   table_of_contents:
     columns_per_page: 1
     column_width: 360
