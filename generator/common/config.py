@@ -161,20 +161,14 @@ class Settings(BaseSettings):
 
     @model_validator(mode="before")
     def load_editions_from_yaml(cls, values):
-        config_dir = os.path.join(
-            os.path.dirname(__file__), "..", "config", "songbooks"
+        config_path = os.path.join(
+            os.path.dirname(__file__), "..", "config", "songbooks.yaml"
         )
-        if os.path.isdir(config_dir):
-            editions_data = []
-            for filename in sorted(os.listdir(config_dir)):
-                if filename.endswith(".yaml") or filename.endswith(".yml"):
-                    filepath = os.path.join(config_dir, filename)
-                    with open(filepath, "r") as f:
-                        edition = yaml.safe_load(f)
-                        if edition:
-                            editions_data.append(edition)
-            if editions_data:
-                values["editions"] = editions_data
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                editions_data = yaml.safe_load(f)
+                if editions_data:
+                    values["editions"] = editions_data
         return values
 
     @model_validator(mode="after")
