@@ -1,0 +1,49 @@
+name: Regenerate Songbooks on Config Change
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'generator/config/songbooks/**'
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect Changed Editions
+    runs-on: ubuntu-latest
+    outputs:
+      editions: ${{ steps.get-editions.outputs.editions }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get changed editions
+        id: get-editions
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- generator/config/songbooks/)
+          echo "Changed files: $CHANGED"
+          EDITIONS=$(echo "$CHANGED" \
+            | grep -oP 'generator/config/songbooks/\K[^.]+(?=\.ya?ml)' \
+            | jq -R . | jq -s . | jq -c .)
+          echo "Changed editions: $EDITIONS"
+          echo "editions=$EDITIONS" >> $GITHUB_OUTPUT
+
+  generate:
+    name: Generate (${{ matrix.edition }})
+    needs: detect-changes
+    if: >-
+      needs.detect-changes.outputs.editions != '[]' &&
+      needs.detect-changes.outputs.editions != ''
+    strategy:
+      matrix:
+        edition: ${{ fromJSON(needs.detect-changes.outputs.editions) }}
+      fail-fast: false
+    uses: ./.github/workflows/generate-songbook.yaml
+    with:
+      edition: ${{ matrix.edition }}
+    secrets: inherit
