@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Songbook Chef</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
-  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.css">
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -76,8 +76,8 @@
       </div>
     </main>
   </div>
-  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.js"></script>
   <script>
     function getApiBase() {
       const currentPath = window.location.pathname;
@@ -317,7 +317,9 @@
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
       // Manually upgrade any dynamically added MDL components if needed
-      componentHandler.upgradeDom();
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeDom();
+      }
     });
   </script>
 </body>
