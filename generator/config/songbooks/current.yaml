@@ -1,0 +1,22 @@
+id: "current"
+title: "Ukulele Tuesday - Current Songbook"
+description: >
+  The current edition of the Ukulele Tuesday songbook,
+  containing the songs used during our Tuesday sessions.
+
+  We rotate the songs we play on Tuesday sessions frequently,
+  so make sure to download the latest version!
+cover_file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+preface_file_ids:
+  - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
+table_of_contents:
+  postfixes:
+    - postfix: " ☘"
+      filters:
+        - key: "specialbooks"
+          operator: "contains"
+          value: "ireland"
+filters:
+  - key: "specialbooks"
+    operator: "contains"
+    value: "regular"
