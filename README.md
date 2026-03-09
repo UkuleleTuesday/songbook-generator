@@ -398,53 +398,19 @@ The application is deployed via GitHub Actions on pushes to main and pull reques
 
 ### Songbook Editions
 
-Each songbook edition is defined by a YAML file in `generator/config/songbooks/`. The filename (without extension) is the edition ID used everywhere else (workflows, CLI, API).
+Each songbook edition is defined by a single YAML file in `generator/config/songbooks/`. The filename (without extension) is the edition ID used everywhere else in the system (API, CLI, workflows). All `.yaml` files in that directory are loaded automatically — no code changes are needed to add or remove an edition.
 
-**File structure**
+Each config file describes what songs to include (via tag-based filters), which Google Drive files to use for the cover and any preface pages, and optional table of contents customisations. See the existing files in `generator/config/songbooks/` for concrete examples.
 
-```
-generator/config/songbooks/
-├── current.yaml           # The regular Tuesday session songbook
-├── complete.yaml          # Every ready/approved song
-├── ukulele-hooley-2025.yaml
-├── wexford-2026.yaml
-└── womens-2026.yaml
-```
+**Adding or updating an edition**
 
-**Edition schema**
-
-```yaml
-id: "current"                          # Must match the filename (without .yaml)
-title: "Ukulele Tuesday - Current Songbook"
-description: >
-  A human-readable description shown in the UI.
-cover_file_id: "<Google Doc file ID>" # Cover page template in Google Drive
-preface_file_ids:                      # Optional preface pages (in order)
-  - "<Google Doc file ID>"
-filters:                               # Which songs to include
-  - key: "specialbooks"
-    operator: "contains"
-    value: "regular"
-table_of_contents:                     # Optional TOC customisations
-  postfixes:                           # Emoji/text appended to song titles
-    - postfix: " ☘"
-      filters:
-        - key: "specialbooks"
-          operator: "contains"
-          value: "ireland"
-```
-
-Filters support `equals`, `contains`, and boolean `OR`/`AND` operators (see existing configs for examples).
-
-**Adding a new edition**
-
-1. Create `generator/config/songbooks/<edition-id>.yaml` with the schema above.
-2. Open a pull request — the CI will automatically generate a preview PDF and post a download link in the PR comments.
-3. Merge the PR — the edition is immediately available via the API and CLI, and the PDF is generated and published to GCS.
+1. Add or edit a file in `generator/config/songbooks/`.
+2. Open a pull request — CI will automatically generate a preview PDF for the affected edition(s) and post a download link in the PR comments.
+3. Merge the PR — the updated PDF is published to GCS and the edition is immediately available.
 
 **Removing an edition**
 
-Delete its YAML file and open a pull request. No other code changes are needed.
+Delete its YAML file and open a pull request. No other changes are needed.
 
 ### Automated Songbook Generation
 
