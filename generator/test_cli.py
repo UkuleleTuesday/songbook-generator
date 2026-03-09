@@ -31,9 +31,7 @@ def test_generate_command_with_invalid_edition(runner, mocker):
 
     assert result.exit_code != 0
     assert "Error: Edition 'nonexistent' not found." in result.output
-    assert "Available editions:" in result.output
-    assert "current" in result.output
-    assert "complete" in result.output
+    assert "Available editions: current, complete" in result.output
 
 
 def test_generate_command_with_conflicting_flags(runner, mocker):
