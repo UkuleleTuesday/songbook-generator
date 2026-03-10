@@ -713,12 +713,6 @@ def generate_manifest(
 
 def add_page_number(page, page_index):
     text = str(page_index)
-    x = page.rect.width - 45
+    x = page.rect.width - 25
     y = 30
-    # Draw a white background so the page number stays readable even when
-    # running-header titles in the source PDF extend into this zone.
-    # Padding: 14pt above baseline (cap-height ~10pt + 4pt margin),
-    # 4pt below (descender ~3pt + 1pt margin), 6pt to the left of the digit.
-    bg_rect = fitz.Rect(x - 6, y - 14, page.rect.width, y + 4)
-    page.draw_rect(bg_rect, color=None, fill=(1, 1, 1))
-    page.insert_text((x, y), text, fontsize=14, fontname="hebo", color=(0, 0, 0))
+    page.insert_text((x, y), text, fontsize=11, color=(0, 0, 0))

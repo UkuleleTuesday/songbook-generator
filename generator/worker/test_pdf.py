@@ -672,7 +672,7 @@ def test_generate_manifest_without_page_indices(tmp_path):
 
 
 def test_add_page_number_inserts_text():
-    """Test that add_page_number inserts visible large bold text on the page."""
+    """Test that add_page_number inserts text on the page."""
     doc = fitz.open()
     page = doc.new_page(width=595, height=842)
 
@@ -702,17 +702,13 @@ def test_add_page_number_position_within_page():
 
 
 def test_add_page_number_no_overlap_with_running_headers():
-    """Integration test: page numbers don't visually clash with song title
-    running headers in real exported song sheets.
+    """Integration test: page numbers stay within bounds on real song sheets.
 
     The fixture includes pages with long titles that extend close to the right
-    margin, previously identified as overlap candidates:
+    margin, previously identified as potential overlap candidates:
       - "Jolene - Dolly Parton"
       - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
       - "You're The One That I Want - John Travolta, Olivia Newton-John"
-
-    The white background drawn behind each page number ensures the number
-    is always readable regardless of how far the title extends.
     """
     fixture_path = TEST_DATA_DIR / "sample_songbook.pdf"
     assert fixture_path.exists(), f"Test fixture not found: {fixture_path}"
@@ -750,23 +746,5 @@ def test_add_page_number_no_overlap_with_running_headers():
         assert x2 <= page.rect.width
         assert y1 >= 0
         assert y2 <= page.rect.height
-
-        # A white background rectangle must have been drawn in the
-        # top-right area to prevent overlap with running header titles.
-        drawings = page.get_drawings()
-        page_num_x = page.rect.width - 45
-        white_bg_rects = [
-            d
-            for d in drawings
-            if d.get("fill") == (1.0, 1.0, 1.0)
-            and d.get("type") == "f"
-            # Small rect in the top-right header zone (not the full page bg)
-            and d.get("rect", fitz.Rect()).x0 > page_num_x - 20
-            and d.get("rect", fitz.Rect()).y1 < 50
-        ]
-        assert white_bg_rects, (
-            f"Expected a white background rect in top-right on page {i + 1} "
-            f"but found none"
-        )
 
     doc.close()
