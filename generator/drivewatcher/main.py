@@ -1,67 +1,62 @@
 """
-Google Drive change detection service.
+Google Drive change detection service (push-based consumer).
 
-This module provides functionality to monitor Google Drive folders for changes
-and publish notifications to a Pub/Sub topic when changes are detected.
+This module processes Drive push notifications published by the
+drivewebhook HTTP function.  On each Pub/Sub message it calls
+changes.list to resolve the actual file changes, filters them to
+the configured watched folders, and publishes the results to the
+existing DRIVE_CHANGES_PUBSUB_TOPIC so that downstream consumers
+(e.g. tagupdater) require no changes.
 """
 
-import os
 import json
-from datetime import datetime, timedelta
+import os
+from datetime import datetime, timezone
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
 from cloudevents.http import CloudEvent
-from google.api_core.exceptions import NotFound
 from google.auth import default
 from google.cloud import pubsub_v1, storage
 from googleapiclient.discovery import build
 
 from ..common.config import get_settings
-from ..common.gdrive import GoogleDriveClient
-from ..common.caching import init_cache
 from ..common.tracing import get_tracer, setup_tracing
 from ..worker.gcp import get_credentials
+from .watch import get_page_token, save_page_token
 
 
 @lru_cache(maxsize=1)
-def _get_services():
-    """Initialize services for the drive watcher."""
+def _get_services() -> dict:
+    """Initialize services for the drive watcher consumer."""
     settings = get_settings()
 
-    # Determine project ID from default credentials
     _, project_id = default()
     if project_id:
         os.environ["GCP_PROJECT_ID"] = project_id
         if "GOOGLE_CLOUD_PROJECT" not in os.environ:
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
-    # Get credentials for Google Drive access
-    cache_updater_credential_config = settings.google_cloud.credentials.get(
+    cache_updater_creds_config = settings.google_cloud.credentials.get(
         "songbook-cache-updater"
     )
-    if not cache_updater_credential_config:
-        raise click.Abort("Credential config 'songbook-cache-updater' not found.")
+    if not cache_updater_creds_config:
+        raise RuntimeError("Credential config 'songbook-cache-updater' not found.")
 
-    cache_updater_creds = get_credentials(
-        scopes=cache_updater_credential_config.scopes,
-        target_principal=cache_updater_credential_config.principal,
+    creds = get_credentials(
+        scopes=cache_updater_creds_config.scopes,
+        target_principal=cache_updater_creds_config.principal,
     )
 
-    # Setup tracing
     service_name = os.environ.get("K_SERVICE", "songbook-generator-drivewatcher")
     setup_tracing(service_name)
     tracer = get_tracer(__name__)
 
-    # Initialize Google services
-    drive_service = build("drive", "v3", credentials=cache_updater_creds)
+    drive_service = build("drive", "v3", credentials=creds)
     storage_client = storage.Client(project=project_id)
 
-    # Initialize Pub/Sub publisher
     publisher = pubsub_v1.PublisherClient()
-
-    # Get topic path for drive change notifications
     drive_changes_topic = os.environ.get(
         "DRIVE_CHANGES_PUBSUB_TOPIC", "songbook-drive-changes"
     )
@@ -77,222 +72,177 @@ def _get_services():
     }
 
 
-def _get_last_check_time(services) -> Optional[datetime]:
-    """
-    Get the last time we checked for drive changes.
-
-    This is stored as metadata in a JSON blob in GCS to persist
-    between function invocations.
-    """
-    import json
-
-    try:
-        settings = get_settings()
-        bucket_name = settings.caching.gcs.worker_cache_bucket
-        bucket = services["storage_client"].bucket(bucket_name)
-
-        # Use a JSON metadata file to track last check time
-        blob = bucket.get_blob("drivewatcher/metadata.json")
-        if not blob:
-            click.echo("No previous check time found. Checking last hour.")
-            return datetime.utcnow() - timedelta(hours=1)
-
-        # Read and parse the JSON metadata
-        metadata_str = blob.download_as_text().strip()
-        metadata = json.loads(metadata_str)
-        last_check_time = datetime.fromisoformat(metadata["last_check_time"])
-        click.echo(f"Last check was at {last_check_time}")
-        return last_check_time
-
-    except (
-        FileNotFoundError,
-        ValueError,
-        KeyError,
-        json.JSONDecodeError,
-        NotFound,
-    ) as e:
-        click.echo(f"Error reading last check time: {e}")
-        # Default to checking last hour if we can't read the timestamp
-        return datetime.utcnow() - timedelta(hours=1)
-
-
-def _save_check_time(services, check_time: datetime):
-    """Save the current check time for the next run."""
-    import json
-
-    try:
-        settings = get_settings()
-        bucket_name = settings.caching.gcs.worker_cache_bucket
-        bucket = services["storage_client"].bucket(bucket_name)
-
-        # Save as JSON metadata
-        metadata = {"last_check_time": check_time.isoformat()}
-        blob = bucket.blob("drivewatcher/metadata.json")
-        blob.upload_from_string(
-            json.dumps(metadata, indent=2), content_type="application/json"
-        )
-        click.echo(f"Saved check time: {check_time}")
-
-    except (OSError, ValueError) as e:
-        click.echo(f"Error saving check time: {e}", err=True)
-
-
 def _get_watched_folders() -> List[str]:
-    """Get the list of folder IDs to watch for changes."""
-    # Environment variable takes precedence for configuration
+    """Return the list of folder IDs to watch for changes."""
     folder_ids_env = os.environ.get("DRIVE_WATCHED_FOLDERS")
     if folder_ids_env:
         return [f.strip() for f in folder_ids_env.split(",") if f.strip()]
-
-    # Fall back to the same folders used by the cache updater
     settings = get_settings()
     return settings.song_sheets.folder_ids
 
 
-def _detect_changes(
-    services, watched_folders: List[str], since: datetime
+def _fetch_changes(services: dict, page_token: str) -> Tuple[List[dict], str]:
+    """
+    Fetch all pending changes from the Drive changes.list API.
+
+    Paginates until a newStartPageToken is returned, then yields
+    that token as the updated cursor.  Returns (changes, new_token).
+    """
+    all_changes: List[dict] = []
+    current_token: Optional[str] = page_token
+
+    while current_token:
+        response = (
+            services["drive"]
+            .changes()
+            .list(
+                pageToken=current_token,
+                fields=(
+                    "nextPageToken,newStartPageToken,"
+                    "changes("
+                    "changeType,removed,fileId,"
+                    "file(id,name,parents,trashed,mimeType,properties)"
+                    ")"
+                ),
+                includeItemsFromAllDrives=True,
+                supportsAllDrives=True,
+                spaces="drive",
+            )
+            .execute()
+        )
+
+        all_changes.extend(response.get("changes", []))
+
+        if "nextPageToken" in response:
+            current_token = response["nextPageToken"]
+        elif "newStartPageToken" in response:
+            return all_changes, response["newStartPageToken"]
+        else:
+            break
+
+    return all_changes, page_token
+
+
+def _filter_changes_by_folders(
+    changes: List[dict], watched_folders: List[str]
 ) -> List[dict]:
     """
-    Detect changes in Google Drive folders since the given timestamp.
+    Filter Drive changes to files whose direct parent is a watched folder.
 
-    Returns a list of changed file information dictionaries.
+    Returns a list of file-info dicts that match the existing Pub/Sub
+    message format expected by downstream consumers (e.g. tagupdater).
     """
-    with services["tracer"].start_as_current_span("detect_drive_changes") as span:
-        cache = init_cache()
-        gdrive_client = GoogleDriveClient(cache=cache, drive=services["drive"])
-        all_changed_files = []
+    filtered: List[dict] = []
 
-        click.echo(f"Checking folders {watched_folders} for changes since {since}")
-        try:
-            # Query for files modified after the since timestamp
-            files = gdrive_client.query_drive_files(
-                watched_folders, modified_after=since
-            )
+    for change in changes:
+        if change.get("changeType") != "file":
+            continue
 
-            for file in files:
-                # Find which of the watched folders this file belongs to.
-                # A file can have multiple parents; we care about the one we are watching.
-                parent_folder = next(
-                    (p for p in file.parents if p in watched_folders), None
-                )
+        file_data = change.get("file")
+        if not file_data:
+            continue
 
-                file_info = {
-                    "id": file.id,
-                    "name": file.name,
-                    "folder_id": parent_folder,
-                    "mime_type": file.mimeType,
-                    "parents": file.parents,
-                    "properties": file.properties,
-                }
-                all_changed_files.append(file_info)
-                click.echo(f"  CHANGED: {file.name} (ID: {file.id})")
+        if file_data.get("trashed"):
+            continue
 
-        except (OSError, ValueError) as e:
-            click.echo(f"Error checking folders {watched_folders}: {e}", err=True)
-            span.set_attribute(f"error_folders_{watched_folders}", str(e))
+        parents = file_data.get("parents", [])
+        parent_folder = next((p for p in parents if p in watched_folders), None)
+        if parent_folder is None:
+            continue
 
-        span.set_attribute("changed_files_count", len(all_changed_files))
-        span.set_attribute("watched_folders", ",".join(watched_folders))
+        filtered.append(
+            {
+                "id": file_data["id"],
+                "name": file_data.get("name", ""),
+                "folder_id": parent_folder,
+                "mime_type": file_data.get("mimeType"),
+                "parents": parents,
+                "properties": file_data.get("properties", {}),
+            }
+        )
 
-        if all_changed_files:
-            click.echo(f"Found {len(all_changed_files)} changed files")
-        else:
-            click.echo("No changes detected")
-
-        return all_changed_files
+    return filtered
 
 
-def _publish_changes(services, changed_files: List[dict], check_time: datetime):
-    """Publish change notifications to Pub/Sub topic."""
+def _publish_changes(
+    services: dict, changed_files: List[dict], check_time: datetime
+) -> None:
+    """Publish change notifications to the Pub/Sub topic."""
     if not changed_files:
         return
 
     with services["tracer"].start_as_current_span(
         "publish_change_notifications"
     ) as span:
-        try:
-            # Create a message with all the changes
-            message_data = {
-                "check_time": check_time.isoformat(),
-                "changed_files": changed_files,
-                "file_count": len(changed_files),
-                "folders_checked": _get_watched_folders(),
-            }
+        message_data = {
+            "check_time": check_time.isoformat(),
+            "changed_files": changed_files,
+            "file_count": len(changed_files),
+            "folders_checked": _get_watched_folders(),
+        }
 
-            # Serialize the message
-            serialized_message = json.dumps(message_data)
+        serialized_message = json.dumps(message_data)
 
-            # Publish to Pub/Sub
-            click.echo(f"Publishing change notification to {services['topic_path']}")
-            future = services["publisher"].publish(
-                services["topic_path"],
-                serialized_message.encode("utf-8"),
-                source="drivewatcher",
-                change_count=str(len(changed_files)),
-            )
+        click.echo(f"Publishing change notification to {services['topic_path']}")
+        future = services["publisher"].publish(
+            services["topic_path"],
+            serialized_message.encode("utf-8"),
+            source="drivewatcher",
+            change_count=str(len(changed_files)),
+        )
+        future.result()
 
-            # Wait for the publish to complete
-            future.result()
+        span.set_attribute("message_size", len(serialized_message))
+        span.set_attribute("published_files_count", len(changed_files))
 
-            span.set_attribute("message_size", len(serialized_message))
-            span.set_attribute("published_files_count", len(changed_files))
-
-            click.echo(
-                f"Successfully published notification for {len(changed_files)} changed files"
-            )
-
-        except Exception as e:
-            click.echo(f"Error publishing changes: {e}", err=True)
-            span.set_attribute("publish_error", str(e))
-            raise
+        click.echo(
+            f"Successfully published notification for "
+            f"{len(changed_files)} changed files"
+        )
 
 
-def drivewatcher_main(cloud_event: CloudEvent):
+def drivewatcher_main(cloud_event: CloudEvent) -> None:
     """
-    Cloud Function entry point for Google Drive change detection.
+    Cloud Function entry point for Drive change processing.
 
-    This function is triggered by Cloud Scheduler every 5 minutes to check
-    for changes in configured Google Drive folders.
+    Triggered by Pub/Sub messages from the drivewebhook HTTP function.
+    Calls changes.list to resolve actual file changes, filters them to
+    the configured folder IDs, and publishes to DRIVE_CHANGES_PUBSUB_TOPIC.
     """
     services = _get_services()
 
     with services["tracer"].start_as_current_span("drivewatcher_main") as main_span:
-        try:
-            current_time = datetime.utcnow()
-            main_span.set_attribute("check_time", current_time.isoformat())
+        current_time = datetime.now(timezone.utc)
+        main_span.set_attribute("check_time", current_time.isoformat())
 
-            # Get watched folders
-            watched_folders = _get_watched_folders()
-            if not watched_folders:
-                click.echo("No folders configured to watch", err=True)
-                main_span.set_attribute("status", "failed_no_folders")
-                return
+        watched_folders = _get_watched_folders()
+        if not watched_folders:
+            click.echo("No folders configured to watch", err=True)
+            main_span.set_attribute("status", "failed_no_folders")
+            return
 
-            main_span.set_attribute("watched_folders", ",".join(watched_folders))
-            click.echo(f"Watching folders: {watched_folders}")
+        main_span.set_attribute("watched_folders", ",".join(watched_folders))
 
-            # Get last check time
-            last_check_time = _get_last_check_time(services)
-            main_span.set_attribute("last_check_time", str(last_check_time))
+        page_token = get_page_token(services)
+        if not page_token:
+            click.echo(
+                "No page token stored; skipping (watch not initialized)",
+                err=True,
+            )
+            main_span.set_attribute("status", "no_page_token")
+            return
 
-            # Detect changes since last check
-            changed_files = _detect_changes(services, watched_folders, last_check_time)
+        raw_changes, new_page_token = _fetch_changes(services, page_token)
+        changed_files = _filter_changes_by_folders(raw_changes, watched_folders)
 
-            # Publish changes if any found
-            if changed_files:
-                _publish_changes(services, changed_files, current_time)
-                main_span.set_attribute("status", "published_changes")
-            else:
-                main_span.set_attribute("status", "no_changes")
+        main_span.set_attribute("raw_changes_count", len(raw_changes))
+        main_span.set_attribute("filtered_changes_count", len(changed_files))
 
-            # Save current check time for next run
-            _save_check_time(services, current_time)
+        if changed_files:
+            _publish_changes(services, changed_files, current_time)
+            main_span.set_attribute("status", "published_changes")
+        else:
+            main_span.set_attribute("status", "no_relevant_changes")
 
-            main_span.set_attribute("files_changed", len(changed_files))
-            click.echo("Drive watcher completed successfully")
-
-        except Exception as e:
-            click.echo(f"Error in drive watcher: {e}", err=True)
-            main_span.set_attribute("status", "error")
-            main_span.set_attribute("error", str(e))
-            raise
+        save_page_token(services, new_page_token)
+        click.echo("Drive watcher completed successfully")
