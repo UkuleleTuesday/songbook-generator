@@ -1,8 +1,10 @@
 import fitz
 import pytest
 from datetime import datetime, timezone
+from pathlib import Path
 from ..common.config import Edition
 from .pdf import (
+    add_page_number,
     collect_and_sort_files,
     generate_songbook,
     generate_songbook_from_edition,
@@ -11,6 +13,8 @@ from .pdf import (
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
 from ..common.gdrive import GoogleDriveClient
+
+TEST_DATA_DIR = Path(__file__).parent / "test_data"
 
 
 @pytest.fixture
@@ -665,3 +669,82 @@ def test_generate_manifest_without_page_indices(tmp_path):
 
     # Verify page indices are not included when not provided
     assert "page_indices" not in manifest
+
+
+def test_add_page_number_inserts_text():
+    """Test that add_page_number inserts text on the page."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+
+    add_page_number(page, 42)
+
+    # Verify the page number text was inserted
+    text = page.get_text()
+    assert "42" in text
+
+
+def test_add_page_number_position_within_page():
+    """Test that the page number is positioned within page bounds."""
+    doc = fitz.open()
+    page = doc.new_page(width=595, height=842)
+
+    add_page_number(page, 1)
+
+    # Inspect the text block bounding box to confirm it stays within the page
+    blocks = page.get_text("dict")["blocks"]
+    assert len(blocks) > 0
+    for block in blocks:
+        # Block rect should be within page dimensions
+        assert block["bbox"][0] >= 0
+        assert block["bbox"][2] <= page.rect.width
+        assert block["bbox"][1] >= 0
+        assert block["bbox"][3] <= page.rect.height
+
+
+def test_add_page_number_no_overlap_with_running_headers():
+    """Integration test: page numbers stay within bounds on real song sheets.
+
+    The fixture includes pages with long titles that extend close to the right
+    margin, previously identified as potential overlap candidates:
+      - "Jolene - Dolly Parton"
+      - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
+      - "You're The One That I Want - John Travolta, Olivia Newton-John"
+    """
+    fixture_path = TEST_DATA_DIR / "sample_songbook.pdf"
+    assert fixture_path.exists(), f"Test fixture not found: {fixture_path}"
+    doc = fitz.open(str(fixture_path))
+
+    for i, page in enumerate(doc):
+        add_page_number(page, i + 1)
+
+    for i, page in enumerate(doc):
+        expected_num = str(i + 1)
+
+        # Page number text must be present
+        assert expected_num in page.get_text(), (
+            f"Page number {expected_num} not found on page {i + 1}"
+        )
+
+        # Locate the page number text block and verify it stays within bounds
+        num_blocks = [
+            b
+            for b in page.get_text("dict")["blocks"]
+            if b["type"] == 0
+            and "".join(
+                s.get("text", "")
+                for line in b.get("lines", [])
+                for s in line.get("spans", [])
+            ).strip()
+            == expected_num
+        ]
+        assert len(num_blocks) == 1, (
+            f"Expected exactly 1 page number block on page {i + 1}, "
+            f"got {len(num_blocks)}"
+        )
+        x1, y1, x2, y2 = num_blocks[0]["bbox"]
+        assert x1 >= 0
+        assert x2 <= page.rect.width
+        assert y1 >= 0
+        assert y2 <= page.rect.height
+
+    doc.close()
