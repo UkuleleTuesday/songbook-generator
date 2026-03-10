@@ -715,4 +715,4 @@ def add_page_number(page, page_index):
     text = str(page_index)
     x = page.rect.width - 25
     y = 30
-    page.insert_text((x, y), text, fontsize=11, color=(0, 0, 0))
+    page.insert_text((x, y), text, fontsize=12, color=(0, 0, 0))
