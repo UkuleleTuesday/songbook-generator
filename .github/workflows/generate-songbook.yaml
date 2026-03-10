@@ -208,8 +208,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./songbooks
-        pattern: songbook-artifact-*
-        merge-multiple: true
+        name: songbook-artifact-${{ inputs.edition }}
 
     - name: Upload PDF to GCS
       id: upload-pdf

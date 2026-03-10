@@ -100,3 +100,22 @@ def test_google_drive_api_retries_invalid_override(monkeypatch):
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.google_cloud.drive_client.api_retries == 3  # Default value
+
+
+def test_editions_loaded_from_songbooks_directory():
+    """Test that editions are loaded from the songbooks/ directory."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert len(settings.editions) > 0
+    edition_ids = [e.id for e in settings.editions]
+    assert "current" in edition_ids
+    assert "complete" in edition_ids
+
+
+def test_each_edition_file_loads_as_single_edition():
+    """Test that each file in the songbooks/ directory loads as one edition."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    ids = [e.id for e in settings.editions]
+    # No duplicate IDs should exist
+    assert len(ids) == len(set(ids))
