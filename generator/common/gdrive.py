@@ -387,7 +387,13 @@ class GoogleDriveClient:
             List of File objects sorted by name.  Shortcuts are returned as
             the target file with the shortcut's name.
         """
-        query = f"'{folder_id}' in parents and trashed = false"
+        folder_mime = "application/vnd.google-apps.folder"
+        # Exclude sub-folders so they are never treated as song files.
+        query = (
+            f"'{folder_id}' in parents"
+            f" and trashed = false"
+            f" and mimeType != '{folder_mime}'"
+        )
         files = []
         page_token = None
 
@@ -425,6 +431,13 @@ class GoogleDriveClient:
                         click.echo(
                             f"Warning: shortcut '{f['name']}' has no "
                             "target ID, skipping.",
+                            err=True,
+                        )
+                        continue
+                    if target_mime == folder_mime:
+                        click.echo(
+                            f"Warning: shortcut '{f['name']}' points to a "
+                            "folder, skipping.",
                             err=True,
                         )
                         continue

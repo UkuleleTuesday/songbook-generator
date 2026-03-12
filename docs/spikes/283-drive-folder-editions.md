@@ -161,6 +161,56 @@ uv run songbook-tools generate-from-folder <FOLDER_ID> \
   is the shortcut's display name.  If a user renames a shortcut, the lookup will
   fail until the cache is rebuilt.
 
+### Option A2 – YAML edition referencing a Drive folder
+
+**How it works**: Keep the YAML-based edition model but add a single
+`folder_id` field.  At generation time the generator lists the folder contents
+(resolving shortcuts), categorises files using the same `_cover` / `_preface` /
+`_postface` convention, and then generates the songbook — no `filters`, no
+individual Drive file IDs needed in the YAML.
+
+**Example YAML**:
+```yaml
+id: "my-edition"
+title: "My Special Songbook"
+description: "Songs for the summer session."
+folder_id: "1XyZ_abc123"   # ← new field; replaces filters + individual file IDs
+table_of_contents:
+  columns_per_page: 2
+```
+
+**Comparison with Option A**:
+
+| Dimension | Option A (folder-only) | Option A2 (YAML + folder) |
+|---|---|---|
+| Technical barrier | None – user only needs the folder ID and the CLI | Requires editing a YAML file in the repo |
+| Metadata (title, description) | Passed via CLI flag or derived from folder name | Declared in the YAML; version-controlled |
+| TOC configuration | Not yet supported (future: `_config.toml` in folder) | Fully supported via existing `table_of_contents` block |
+| Automation | One-off CLI invocation; not yet integrated into the pipeline scheduler | Editions in YAML are auto-scheduled for regeneration |
+| Version control | Folder contents can change silently; no audit trail | YAML changes are reviewed via PR; history preserved |
+| Discoverability | Folder ID must be communicated out-of-band | Edition IDs are listed in the YAML directory; auto-published in the manifest |
+| Song ordering | Drive folder order + naming convention | Same (Drive folder order + naming convention) |
+| Cover / preface / postface | Naming convention in the folder | Naming convention in the folder |
+
+**When to prefer Option A2**:
+- When the edition must be scheduled for automatic regeneration via the existing
+  pipeline (which currently iterates over YAML-defined editions).
+- When edition metadata (title, description, TOC layout) needs to be
+  version-controlled and reviewed.
+- When the edition lifecycle (creation, modification, retirement) should be
+  tracked in git.
+
+**When to prefer Option A**:
+- For ad-hoc or experimental editions where the overhead of a PR is not
+  justified.
+- For power users / operators who are comfortable with the CLI.
+
+**Implementation path**: Option A2 is a natural follow-on to Option A.
+`folder_id` can be added as an optional field on the `Edition` model; the
+generation pipeline would detect its presence and call
+`generate_songbook_from_drive_folder` instead of the filter-based query,
+reusing all the code already written for Option A.
+
 ### Option B – Folder-triggered YAML generation
 
 **How it works**: A background service watches a designated "edition config"
@@ -188,14 +238,25 @@ explicit IDs or a separate filter; no support for shortcuts.
 
 ## Recommendation
 
-**Option A is a good starting point** and has been implemented as part of this
-spike.  It delivers the core hypothesis (Drive-only configuration, no code
-changes needed to create an edition) with minimal complexity.
+**Option A** has been implemented as part of this spike.  It delivers the core
+hypothesis (Drive-only configuration, no code changes needed to create an
+edition) with minimal complexity and serves well for ad-hoc or experimental
+editions.
+
+**Option A2** is the recommended path for full pipeline integration.  It
+extends the existing YAML-based model with a single `folder_id` field, enabling
+the Drive-folder workflow while preserving version control, automatic
+scheduling, and TOC configuration.
 
 The natural next steps are:
 
-1. Auto-derive the edition title from the Drive folder name.
-2. Support an optional `_config.toml` in the folder for TOC overrides.
-3. Explore surfacing `generate-from-folder` as an API/worker job so non-CLI
+1. Add `folder_id` to the `Edition` model; detect its presence in the worker to
+   call `generate_songbook_from_drive_folder` instead of the filter-based path
+   (Option A2).
+2. Auto-derive the edition title from the Drive folder name when `--title` is
+   not supplied.
+3. Support an optional `_config.toml` in the folder for TOC overrides (useful
+   for Option A where no YAML is present).
+4. Explore surfacing `generate-from-folder` as an API/worker job so non-CLI
    users can trigger generation from the UI.
-4. Handle the cache-miss case by triggering a targeted sync before generation.
+5. Handle the cache-miss case by triggering a targeted sync before generation.

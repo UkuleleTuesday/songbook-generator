@@ -716,7 +716,9 @@ def generate_songbook_from_drive_folder(
 
     Returns:
         Generation information dict (same as :func:`generate_songbook`), or
-        ``None`` if the folder is empty.
+        ``None`` if no song files are found in the folder (i.e. every file
+        matched a special ``_cover``, ``_preface``, or ``_postface`` prefix,
+        or the folder contained no files at all).
     """
     with tracer.start_as_current_span("generate_songbook_from_drive_folder") as span:
         span.set_attribute("folder_id", folder_id)
@@ -740,7 +742,12 @@ def generate_songbook_from_drive_folder(
         span.set_attribute("songs_count", len(song_files))
         span.set_attribute("postface_count", len(postface_files))
 
-        click.echo(f"  Cover:    {'found' if cover_file else 'not found'}")
+        cover_msg = (
+            "found"
+            if cover_file
+            else "not found – global default cover will be used if configured"
+        )
+        click.echo(f"  Cover:    {cover_msg}")
         click.echo(f"  Preface:  {len(preface_files)} file(s)")
         click.echo(f"  Songs:    {len(song_files)} file(s)")
         click.echo(f"  Postface: {len(postface_files)} file(s)")

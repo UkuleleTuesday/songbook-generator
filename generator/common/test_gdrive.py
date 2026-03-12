@@ -341,15 +341,59 @@ def test_list_folder_contents_regular_files(mock_drive_client):
     assert result[1].id == "file2"
     assert result[1].name == "Song B.pdf"
 
-    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
-        q="'folder123' in parents and trashed = false",
-        pageSize=1000,
-        fields=(
-            "nextPageToken, files(id,name,mimeType,parents,properties,shortcutDetails)"
-        ),
-        orderBy="name",
-        pageToken=None,
-    )
+    # The query must exclude sub-folders
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "'folder123' in parents" in called_query
+    assert "trashed = false" in called_query
+    assert "application/vnd.google-apps.folder" in called_query
+
+
+def test_list_folder_contents_subfolders_excluded(mock_drive_client):
+    """Sub-folders in the Drive folder are excluded from results."""
+    # Drive won't return folders because the query already excludes them,
+    # so the mock returns only non-folder items even though the folder
+    # contained a subfolder.  What we're really verifying is that the API
+    # query string contains the folder-exclusion clause.
+    mock_response = {
+        "files": [
+            {"id": "file1", "name": "Song A.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    mock_drive_client.list_folder_contents("folder123")
+
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "mimeType != 'application/vnd.google-apps.folder'" in called_query
+
+
+def test_list_folder_contents_shortcut_to_folder_skipped(mock_drive_client):
+    """Shortcuts whose target is a folder are silently skipped."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    folder_mime = "application/vnd.google-apps.folder"
+    mock_response = {
+        "files": [
+            {
+                "id": "sc1",
+                "name": "Sub-edition folder",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "subfolder_id",
+                    "targetMimeType": folder_mime,
+                },
+            },
+            {"id": "file2", "name": "Good Song.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    assert len(result) == 1
+    assert result[0].id == "file2"
 
 
 def test_list_folder_contents_shortcut_resolved(mock_drive_client):
