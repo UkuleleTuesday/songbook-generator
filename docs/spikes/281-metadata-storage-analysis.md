@@ -373,83 +373,132 @@ managed properties stay on Drive.
 
 ---
 
-## 7. GCS Metadata Filtering (preview) — "Object Contexts"
+## 7. GCS Object Contexts (preview)
 
-Google Cloud Storage has a **Metadata Filtering** capability in preview that
-allows server-side filtering of objects by their custom metadata fields. This
-directly addresses the main weakness of Option A (no server-side filtering).
+**Object Contexts** is a preview GCS feature that lets you attach key-value
+pairs to objects in a dedicated `contexts` field — distinct from the existing
+flat custom-metadata (`x-goog-meta-*`) map. Each context entry carries its own
+`createTime`, `updateTime`, and `type` fields, and contexts can be queried
+server-side when listing objects.
 
-### What it is
+Reference:
+<https://cloud.google.com/storage/docs/listing-objects#filter-by-object-contexts>
 
-Standard GCS custom metadata (`x-goog-meta-*` headers) is a flat string→string
-map that is attached to every object. Historically, the only way to filter
-objects by metadata values was to list all objects and post-process the results
-client-side.
+### How it differs from custom metadata
 
-The Metadata Filtering preview adds an AIP-160 `filter` query parameter to the
-`Objects.list` API, letting callers express predicates such as:
+| Aspect | Custom metadata (`x-goog-meta-*`) | Object Contexts |
+|---|---|---|
+| Storage field | `metadata` (flat string→string map) | `contexts.custom` (structured per-key) |
+| Per-entry audit trail | No | `createTime` + `updateTime` per key |
+| Server-side listing filter | No (client-side only) | Yes — `contexts."KEY"="VALUE"` |
+| IAM control over writes | Object-level `storage.objects.update` | Fine-grained: `createContext` / `updateContext` / `deleteContext` |
+| Lifecycle persistence | Not automatically propagated | Preserved on copy / rewrite / compose / restore |
+| Pricing | Included | Free during preview; pricing TBD at GA |
 
+### Data model
+
+Each context key-value pair is stored under `contexts.custom`:
+
+```json
+{
+  "contexts": {
+    "custom": {
+      "specialbooks": { "value": "regular,complete" },
+      "status":       { "value": "approved" },
+      "chords":       { "value": "G,C,Am,F" }
+    }
+  }
+}
 ```
-metadata.specialbooks="regular"
-metadata.status="approved"
+
+### Writing contexts
+
+Via the JSON API (`PATCH` the object):
+
+```bash
+curl -X PATCH \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  -H "Content-Type: application/json" \
+  --data '{"contexts":{"custom":{"specialbooks":{"value":"regular"}}}}' \
+  "https://storage.googleapis.com/storage/v1/b/BUCKET/o/OBJECT_NAME"
 ```
 
-The GCS back-end evaluates the filter before returning results, avoiding the
-need to pull every blob's metadata to the client.
+Via the `gcloud alpha` CLI:
 
-### How it surfaces in the API
-
-The feature is exposed via the JSON `Objects.list` API's `filter` query
-parameter. The Python `google-cloud-storage` library (≥ 3.x) surfaces it as a
-`filter` keyword argument to `Client.list_blobs()`:
-
-```python
-blobs = client.list_blobs(
-    bucket,
-    prefix="song-sheets/",
-    filter='metadata.specialbooks="regular"',
-)
+```bash
+gcloud alpha storage objects update gs://BUCKET/song-sheets/abc123.pdf \
+    --update-custom-contexts=specialbooks=regular
 ```
 
-> **Status:** Public preview as of early 2025. Check the GCS release notes for
-> GA status. SDK support requires `google-cloud-storage >= 2.17` (approximately;
-> verify against the official changelog before upgrading).
+### Filtering when listing objects
 
-### Constraints and caveats
+Objects can be filtered by context at list time using the
+`filter` query parameter:
 
-| Constraint | Detail |
+```bash
+# JSON API
+curl -X GET \
+  -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+  'https://storage.googleapis.com/storage/v1/b/BUCKET/o/?filter=contexts."specialbooks"%3D"regular"'
+
+# gcloud alpha
+gcloud alpha storage objects list gs://BUCKET/song-sheets/ \
+    --metadata-filter='contexts."specialbooks"="regular"'
+```
+
+Supported filter predicates:
+
+| Predicate | Meaning |
 |---|---|
-| Flat strings only | The `filter` parameter operates on string equality; no range queries or multi-valued contains support in the initial preview |
-| Preview SLA | Preview features carry no SLA and may change |
-| Bucket enablement | Metadata filtering must be enabled at the bucket level (contact Google support while in preview) |
-| No `OR` across fields | Compound predicates with `OR` across different metadata keys may not be supported in the initial release |
+| `contexts."KEY":*` | Object has this context key (any value) |
+| `contexts."KEY"="VALUE"` | Object has this exact key+value |
+| `NOT contexts."KEY":*` | Object does not have this key |
+| `NOT contexts."KEY"="VALUE"` | Object does not have this key+value |
+
+### IAM permissions required
+
+| Operation | Permission |
+|---|---|
+| Create object with contexts | `storage.objects.create` + `storage.objects.createContext` |
+| Attach / update / delete contexts | `storage.objects.update` + `createContext` / `updateContext` / `deleteContext` |
+| Read contexts | `storage.objects.get` or `storage.objects.list` |
+
+### Status and constraints
+
+- **Public preview** — no SLA; subject to change before GA.
+- **Python SDK**: as of March 2026, Object Contexts are only exposed via the
+  JSON API and `gcloud alpha`; the `google-cloud-storage` Python library does
+  not yet have first-class helpers. Use `blob._patch_with_retries()` or a raw
+  `requests` call against the JSON API until the SDK is updated.
+- **Filter syntax**: equality and key-existence only; no `OR` across different
+  context keys, no range predicates.
+- **No predefinition required**: context keys are free-form strings.
 
 ### Relevance to this issue
 
-Metadata Filtering removes the biggest objection to **Option A** (extend GCS
-object metadata): the assumption that all filtering would have to become
-client-side. If the feature is available on the project's GCS bucket, the
-edition-selection path (`specialbooks` filter) could move from the Drive API to
-a GCS `list_blobs(filter=…)` call, and the tag updater could stop writing to
-Drive entirely.
+Object Contexts directly address the two weaknesses that affect the other
+options:
 
-Combined with Option A, the implementation path would be:
+1. **Server-side filtering** (the gap in Option A): the edition-selection path
+   currently uses a Drive `properties has { key='specialbooks' and value='…' }`
+   server query. With Object Contexts, the equivalent GCS filter
+   `contexts."specialbooks"="regular"` avoids pulling every blob to the client.
 
-1. **Tag Updater**: write computed properties (`chords`, `bpm`, `status`, …) to
-   GCS blob metadata via `blob.patch()` instead of `files().update()`.
-2. **Cache Updater sync**: mirror `specialbooks` (and other human-set
-   properties) from Drive into GCS blob metadata during the nightly/on-change
-   sync pass (same `_sync_gcs_metadata_from_drive` extension as Option A).
-3. **Worker / file selection**: replace the Drive `properties has {…}` server
-   query with `client.list_blobs(filter='metadata.specialbooks="regular"')`.
+2. **Audit trail**: each context key records its own `createTime` and
+   `updateTime`, so it is possible to tell when a computed tag last changed
+   independently of when the PDF content changed — a cleaner separation of
+   concerns than overloading Drive's `modifiedTime`.
 
-This would eliminate all automated writes to Drive, resolving the
-`modifiedTime` / `lastModifyingUser` issue, while retaining server-side
-filtering performance.
+Combined with the Option A or Option D approach, the tag updater would:
 
-### Links
+1. Stop calling `files().update()` on Drive entirely.
+2. Write computed tags (`chords`, `bpm`, `status`, `artist`, …) as object
+   contexts on the corresponding GCS blob via a `PATCH` request.
+3. Mirror human-managed properties (`specialbooks`) from Drive into object
+   contexts during the cache-sync pass.
+4. Replace the Drive server-side `properties has {…}` query in the worker
+   with `gcloud alpha` / JSON API `filter=contexts."specialbooks"="VALUE"`.
 
-- GCS release notes: <https://cloud.google.com/storage/docs/release-notes>
-- AIP-160 filtering syntax: <https://aip.dev/160>
-- `Objects.list` API reference:
-  <https://cloud.google.com/storage/docs/json_api/v1/objects/list>
+This eliminates all automated writes to Drive and resolves the
+`modifiedTime` / `lastModifyingUser` corruption, while preserving
+server-side filtering performance once the feature reaches GA.
