@@ -5,7 +5,7 @@ committing to an implementation approach.
 
 ## When to write a spike
 
-Write a spike when the team needs to reduce uncertainty about a design decision,
+Write a spike when you need to reduce uncertainty about a design decision,
 an unfamiliar API, or a significant refactor before writing production code.
 
 ## File naming convention
