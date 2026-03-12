@@ -5,8 +5,10 @@ from pathlib import Path
 from ..common.config import Edition
 from .pdf import (
     add_page_number,
+    categorize_folder_files,
     collect_and_sort_files,
     generate_songbook,
+    generate_songbook_from_drive_folder,
     generate_songbook_from_edition,
     generate_manifest,
 )
@@ -748,3 +750,230 @@ def test_add_page_number_no_overlap_with_running_headers():
         assert y2 <= page.rect.height
 
     doc.close()
+
+
+# ---------------------------------------------------------------------------
+# categorize_folder_files tests
+# ---------------------------------------------------------------------------
+
+
+def _make_file(name, file_id=None):
+    return File(name=name, id=file_id or name)
+
+
+def test_categorize_cover_identified():
+    files = [_make_file("_cover.gdoc"), _make_file("Song A.pdf")]
+    result = categorize_folder_files(files)
+    assert result["cover"] is not None
+    assert result["cover"].name == "_cover.gdoc"
+    assert len(result["songs"]) == 1
+
+
+def test_categorize_cover_case_insensitive():
+    files = [_make_file("_Cover - My Edition.gdoc"), _make_file("Song A.pdf")]
+    result = categorize_folder_files(files)
+    assert result["cover"] is not None
+
+
+def test_categorize_preface_identified():
+    files = [
+        _make_file("_preface1 - Welcome.gdoc"),
+        _make_file("_preface2 - Rules.gdoc"),
+        _make_file("Song A.pdf"),
+    ]
+    result = categorize_folder_files(files)
+    assert len(result["preface"]) == 2
+    assert len(result["songs"]) == 1
+
+
+def test_categorize_postface_identified():
+    files = [
+        _make_file("Song A.pdf"),
+        _make_file("_postface - Thanks.gdoc"),
+    ]
+    result = categorize_folder_files(files)
+    assert len(result["postface"]) == 1
+    assert len(result["songs"]) == 1
+
+
+def test_categorize_songs_sorted_by_title():
+    files = [
+        _make_file("Zebra Song - Artist Z.pdf"),
+        _make_file("Apple Song - Artist A.pdf"),
+        _make_file("Mango Song - Artist M.pdf"),
+    ]
+    result = categorize_folder_files(files)
+    names = [f.name for f in result["songs"]]
+    assert names == [
+        "Apple Song - Artist A.pdf",
+        "Mango Song - Artist M.pdf",
+        "Zebra Song - Artist Z.pdf",
+    ]
+
+
+def test_categorize_cover_first_alphabetically_used():
+    """When multiple _cover files exist, the first alphabetically is chosen."""
+    files = [
+        _make_file("_cover-b.gdoc"),
+        _make_file("_cover-a.gdoc"),
+    ]
+    result = categorize_folder_files(files)
+    assert result["cover"].name == "_cover-a.gdoc"
+
+
+def test_categorize_all_categories():
+    files = [
+        _make_file("_cover.gdoc"),
+        _make_file("_preface - Intro.gdoc"),
+        _make_file("_postface - Goodbye.gdoc"),
+        _make_file("Song A.pdf"),
+        _make_file("Song B.pdf"),
+    ]
+    result = categorize_folder_files(files)
+    assert result["cover"].name == "_cover.gdoc"
+    assert len(result["preface"]) == 1
+    assert len(result["songs"]) == 2
+    assert len(result["postface"]) == 1
+
+
+def test_categorize_empty_list():
+    result = categorize_folder_files([])
+    assert result["cover"] is None
+    assert result["preface"] == []
+    assert result["songs"] == []
+    assert result["postface"] == []
+
+
+# ---------------------------------------------------------------------------
+# generate_songbook_from_drive_folder tests
+# ---------------------------------------------------------------------------
+
+
+def test_generate_from_drive_folder_basic(mocker):
+    """generate_songbook is called with categorised files from the folder."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+
+    folder_files = [
+        File(
+            id="cover_id",
+            name="_cover.gdoc",
+            mimeType="application/vnd.google-apps.document",
+        ),
+        File(
+            id="preface_id",
+            name="_preface.gdoc",
+            mimeType="application/vnd.google-apps.document",
+        ),
+        File(id="song1_id", name="Song A.pdf", mimeType="application/pdf"),
+        File(id="song2_id", name="Song B.pdf", mimeType="application/pdf"),
+        File(
+            id="postface_id",
+            name="_postface.gdoc",
+            mimeType="application/vnd.google-apps.document",
+        ),
+    ]
+
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.list_folder_contents",
+        return_value=folder_files,
+    )
+    mock_gen = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    generate_songbook_from_drive_folder(
+        drive=mock_drive,
+        cache=mock_cache,
+        folder_id="folder123",
+        destination_path=Path("out/test.pdf"),
+        title="Test Songbook",
+    )
+
+    mock_gen.assert_called_once()
+    kwargs = mock_gen.call_args[1]
+    assert kwargs["cover_file_id"] == "cover_id"
+    assert kwargs["preface_file_ids"] == ["preface_id"]
+    assert kwargs["postface_file_ids"] == ["postface_id"]
+    assert len(kwargs["files"]) == 2
+    assert kwargs["files"][0].id == "song1_id"
+    assert kwargs["title"] == "Test Songbook"
+    assert kwargs["limit"] is None
+
+
+def test_generate_from_drive_folder_no_songs_returns_none(mocker):
+    """Returns None when the folder contains no song files."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.list_folder_contents",
+        return_value=[
+            File(id="c", name="_cover.gdoc"),
+        ],
+    )
+    mock_gen = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    result = generate_songbook_from_drive_folder(
+        drive=mock_drive,
+        cache=mock_cache,
+        folder_id="folder123",
+        destination_path=Path("out/test.pdf"),
+    )
+
+    assert result is None
+    mock_gen.assert_not_called()
+
+
+def test_generate_from_drive_folder_limit_applied(mocker):
+    """The limit parameter caps the number of song files passed to generate_songbook."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+
+    folder_files = [File(id=f"s{i}", name=f"Song {i}.pdf") for i in range(5)]
+
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.list_folder_contents",
+        return_value=folder_files,
+    )
+    mock_gen = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    generate_songbook_from_drive_folder(
+        drive=mock_drive,
+        cache=mock_cache,
+        folder_id="folder123",
+        destination_path=Path("out/test.pdf"),
+        limit=2,
+    )
+
+    mock_gen.assert_called_once()
+    assert len(mock_gen.call_args[1]["files"]) == 2
+
+
+def test_generate_from_drive_folder_no_cover_or_preface(mocker):
+    """Folder with only songs (no cover/preface/postface) works correctly."""
+    mock_drive = mocker.Mock()
+    mock_cache = mocker.Mock()
+
+    folder_files = [
+        File(id="s1", name="Song A.pdf"),
+        File(id="s2", name="Song B.pdf"),
+    ]
+
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.list_folder_contents",
+        return_value=folder_files,
+    )
+    mock_gen = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    generate_songbook_from_drive_folder(
+        drive=mock_drive,
+        cache=mock_cache,
+        folder_id="folder123",
+        destination_path=Path("out/test.pdf"),
+    )
+
+    mock_gen.assert_called_once()
+    kwargs = mock_gen.call_args[1]
+    assert kwargs["cover_file_id"] is None
+    assert kwargs["preface_file_ids"] is None
+    assert kwargs["postface_file_ids"] is None
+    assert len(kwargs["files"]) == 2
