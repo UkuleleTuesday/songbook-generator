@@ -370,3 +370,86 @@ managed properties stay on Drive.
 **Cons:**
 - Two sources of truth for metadata: Drive (human) + GCS (computed).
 - Read path must merge properties from both sources.
+
+---
+
+## 7. GCS Metadata Filtering (preview) — "Object Contexts"
+
+Google Cloud Storage has a **Metadata Filtering** capability in preview that
+allows server-side filtering of objects by their custom metadata fields. This
+directly addresses the main weakness of Option A (no server-side filtering).
+
+### What it is
+
+Standard GCS custom metadata (`x-goog-meta-*` headers) is a flat string→string
+map that is attached to every object. Historically, the only way to filter
+objects by metadata values was to list all objects and post-process the results
+client-side.
+
+The Metadata Filtering preview adds an AIP-160 `filter` query parameter to the
+`Objects.list` API, letting callers express predicates such as:
+
+```
+metadata.specialbooks="regular"
+metadata.status="approved"
+```
+
+The GCS back-end evaluates the filter before returning results, avoiding the
+need to pull every blob's metadata to the client.
+
+### How it surfaces in the API
+
+The feature is exposed via the JSON `Objects.list` API's `filter` query
+parameter. The Python `google-cloud-storage` library (≥ 3.x) surfaces it as a
+`filter` keyword argument to `Client.list_blobs()`:
+
+```python
+blobs = client.list_blobs(
+    bucket,
+    prefix="song-sheets/",
+    filter='metadata.specialbooks="regular"',
+)
+```
+
+> **Status:** Public preview as of early 2025. Check the GCS release notes for
+> GA status. SDK support requires `google-cloud-storage >= 2.17` (approximately;
+> verify against the official changelog before upgrading).
+
+### Constraints and caveats
+
+| Constraint | Detail |
+|---|---|
+| Flat strings only | The `filter` parameter operates on string equality; no range queries or multi-valued contains support in the initial preview |
+| Preview SLA | Preview features carry no SLA and may change |
+| Bucket enablement | Metadata filtering must be enabled at the bucket level (contact Google support while in preview) |
+| No `OR` across fields | Compound predicates with `OR` across different metadata keys may not be supported in the initial release |
+
+### Relevance to this issue
+
+Metadata Filtering removes the biggest objection to **Option A** (extend GCS
+object metadata): the assumption that all filtering would have to become
+client-side. If the feature is available on the project's GCS bucket, the
+edition-selection path (`specialbooks` filter) could move from the Drive API to
+a GCS `list_blobs(filter=…)` call, and the tag updater could stop writing to
+Drive entirely.
+
+Combined with Option A, the implementation path would be:
+
+1. **Tag Updater**: write computed properties (`chords`, `bpm`, `status`, …) to
+   GCS blob metadata via `blob.patch()` instead of `files().update()`.
+2. **Cache Updater sync**: mirror `specialbooks` (and other human-set
+   properties) from Drive into GCS blob metadata during the nightly/on-change
+   sync pass (same `_sync_gcs_metadata_from_drive` extension as Option A).
+3. **Worker / file selection**: replace the Drive `properties has {…}` server
+   query with `client.list_blobs(filter='metadata.specialbooks="regular"')`.
+
+This would eliminate all automated writes to Drive, resolving the
+`modifiedTime` / `lastModifyingUser` issue, while retaining server-side
+filtering performance.
+
+### Links
+
+- GCS release notes: <https://cloud.google.com/storage/docs/release-notes>
+- AIP-160 filtering syntax: <https://aip.dev/160>
+- `Objects.list` API reference:
+  <https://cloud.google.com/storage/docs/json_api/v1/objects/list>
