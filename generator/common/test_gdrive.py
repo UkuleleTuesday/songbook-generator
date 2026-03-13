@@ -478,3 +478,84 @@ def test_list_folder_contents_pagination(mock_drive_client):
     calls = mock_drive_client.drive.files.return_value.list.call_args_list
     assert calls[0].kwargs["pageToken"] is None
     assert calls[1].kwargs["pageToken"] == "tok1"
+
+
+def test_find_file_in_folder_found(mock_drive_client):
+    """find_file_in_folder returns a File when the file exists."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [
+            {
+                "id": "yaml-id",
+                "name": ".songbook.yaml",
+                "mimeType": "text/x-yaml",
+                "parents": ["folder123"],
+                "properties": {},
+            }
+        ]
+    }
+
+    result = mock_drive_client.find_file_in_folder("folder123", ".songbook.yaml")
+
+    assert result is not None
+    assert result.id == "yaml-id"
+    assert result.name == ".songbook.yaml"
+    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
+        q="'folder123' in parents and name = '.songbook.yaml' and trashed = false",
+        pageSize=1,
+        fields="files(id,name,mimeType,parents,properties)",
+    )
+
+
+def test_find_file_in_folder_not_found(mock_drive_client):
+    """find_file_in_folder returns None when the file does not exist."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
+
+    result = mock_drive_client.find_file_in_folder("folder123", ".songbook.yaml")
+
+    assert result is None
+
+
+def test_find_file_in_folder_escapes_quotes(mock_drive_client):
+    """find_file_in_folder escapes single quotes in the filename."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
+
+    mock_drive_client.find_file_in_folder("folder123", "it's a test.yaml")
+
+    call_kwargs = mock_drive_client.drive.files.return_value.list.call_args.kwargs
+    assert "it\\'s a test.yaml" in call_kwargs["q"]
+
+
+def test_download_raw_bytes(mock_drive_client):
+    """download_raw_bytes fetches raw content from Drive."""
+    from unittest.mock import patch, MagicMock
+
+    expected_content = b"id: test\ntitle: Test\n"
+
+    def fake_next_chunk(_):
+        return None, True
+
+    mock_request = MagicMock()
+    mock_drive_client.drive.files.return_value.get_media.return_value = mock_request
+
+    with patch("generator.common.gdrive.MediaIoBaseDownload") as mock_downloader_cls:
+        mock_downloader = MagicMock()
+        mock_downloader.next_chunk.return_value = (None, True)
+        mock_downloader_cls.return_value = mock_downloader
+
+        # Patch the buffer write via side_effect on the constructor
+        def make_downloader(buf, req):
+            buf.write(expected_content)
+            return mock_downloader
+
+        mock_downloader_cls.side_effect = make_downloader
+
+        result = mock_drive_client.download_raw_bytes("file-id-123")
+
+    assert result == expected_content
+    mock_drive_client.drive.files.return_value.get_media.assert_called_once_with(
+        fileId="file-id-123"
+    )

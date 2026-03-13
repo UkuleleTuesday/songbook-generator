@@ -12,10 +12,12 @@ from ..common.filters import parse_filters
 from .pdf import (
     generate_songbook,
     generate_songbook_from_edition,
+    load_edition_from_drive_folder,
     init_services,
     generate_manifest,
 )
 from ..common.config import get_settings
+from ..common.gdrive import GoogleDriveClient
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
@@ -146,7 +148,20 @@ def worker_main(cloud_event):
                         (e for e in settings.editions if e.id == edition_id), None
                     )
                     if not selected_edition:
-                        raise ValueError(f"Edition '{edition_id}' not found.")
+                        logger.info(
+                            f"Edition '{edition_id}' not found in configuration, "
+                            "trying as Drive folder ID..."
+                        )
+                        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+                        try:
+                            selected_edition = load_edition_from_drive_folder(
+                                gdrive_client, edition_id
+                            )
+                        except ValueError as e:
+                            raise ValueError(
+                                f"Edition '{edition_id}' not found in configuration "
+                                f"and could not be loaded from Drive: {e}"
+                            ) from e
 
                     logger.info(
                         f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"

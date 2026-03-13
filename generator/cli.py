@@ -30,6 +30,7 @@ from .worker.pdf import (
     generate_songbook,
     generate_songbook_from_edition,
     generate_songbook_from_drive_folder,
+    load_edition_from_drive_folder,
     init_services,
     collect_and_sort_files,
 )
@@ -78,7 +79,11 @@ def cli(ctx, log_level: str):
 @click.option(
     "--edition",
     "-e",
-    help="The ID of the songbook edition to generate (from songbooks.yaml).",
+    help=(
+        "Songbook edition to generate. Accepts either a configured edition ID "
+        "(from songbooks.yaml) or a Google Drive folder ID containing a "
+        ".songbook.yaml config file."
+    ),
 )
 @click.option(
     "--source-folder",
@@ -178,12 +183,22 @@ def generate(
             )
             raise click.Abort()
 
+        # Try configured editions first, fall back to treating the value as a
+        # Drive folder ID containing a .songbook.yaml.
         selected_edition = next((e for e in settings.editions if e.id == edition), None)
         if not selected_edition:
-            available = ", ".join([e.id for e in settings.editions])
-            click.echo(f"Error: Edition '{edition}' not found.", err=True)
-            click.echo(f"Available editions: {available}", err=True)
-            raise click.Abort()
+            click.echo(
+                f"Edition '{edition}' not found in configuration, "
+                "trying as Drive folder ID..."
+            )
+            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+            try:
+                selected_edition = load_edition_from_drive_folder(
+                    gdrive_client, edition
+                )
+            except ValueError as e:
+                click.echo(f"Error: {e}", err=True)
+                raise click.Abort()
 
         click.echo(
             f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
