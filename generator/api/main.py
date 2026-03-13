@@ -194,28 +194,44 @@ def handle_get_editions(services):
             for e in settings.editions
         ]
         span.set_attribute("config_editions_count", len(editions))
+        logger.info(f"Loaded {len(editions)} edition(s) from static config")
 
         # Attempt to augment with Drive-detected editions
         drive_editions_count = 0
         drive_error = None
-        try:
-            gdrive_client = _get_drive_client()
-            for folder_id, edition in scan_drive_editions(gdrive_client):
-                editions.append(
-                    {
-                        "id": folder_id,
-                        "title": edition.title,
-                        "description": edition.description,
-                        "source": "drive",
-                        "folder_id": folder_id,
-                    }
+        with services["tracer"].start_as_current_span(
+            "scan_drive_editions_api"
+        ) as drive_span:
+            try:
+                gdrive_client = _get_drive_client()
+                drive_scan_results = scan_drive_editions(gdrive_client)
+                for folder_id, edition in drive_scan_results:
+                    editions.append(
+                        {
+                            "id": folder_id,
+                            "title": edition.title,
+                            "description": edition.description,
+                            "source": "drive",
+                            "folder_id": folder_id,
+                        }
+                    )
+                    drive_editions_count += 1
+                drive_span.set_attribute(
+                    "drive.scan.editions_found", drive_editions_count
                 )
-                drive_editions_count += 1
-        except HttpError as e:
-            drive_error = f"Drive API error: {e}"
-            logger.warning(f"Could not scan Drive for editions: {e}")
+                drive_span.set_attribute("drive.scan.available", True)
+                logger.info(
+                    f"Drive scan found {drive_editions_count} additional edition(s)"
+                )
+            except HttpError as e:
+                drive_error = f"Drive API error: {e}"
+                drive_span.set_attribute("drive.scan.available", False)
+                drive_span.set_attribute("drive.scan.error", drive_error)
+                logger.warning(f"Could not scan Drive for editions: {e}")
 
         span.set_attribute("drive_editions_count", drive_editions_count)
+        span.set_attribute("total_editions_count", len(editions))
+        span.set_attribute("drive.scan.available", drive_error is None)
 
         response: dict = {"editions": editions}
         if drive_error:

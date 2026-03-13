@@ -352,44 +352,56 @@ def scan_drive_editions(
         contains the file and can be used directly as an edition identifier
         when submitting a generation job.
     """
-    songbook_files = gdrive_client.find_all_files_named(".songbook.yaml")
-    editions: List[Tuple[str, config.Edition]] = []
+    with tracer.start_as_current_span("scan_drive_editions") as span:
+        songbook_files = gdrive_client.find_all_files_named(".songbook.yaml")
+        span.set_attribute("scan.files_found", len(songbook_files))
 
-    for f in songbook_files:
-        # Drive files can technically have multiple parents, but edition folders
-        # are expected to have exactly one.  We use the first parent listed.
-        folder_id = f.parents[0] if f.parents else None
-        if not folder_id:
-            click.echo(
-                f"Warning: .songbook.yaml '{f.id}' has no parent folder, skipping.",
-                err=True,
-            )
-            continue
+        editions: List[Tuple[str, config.Edition]] = []
+        skipped_no_parent = 0
+        skipped_errors = 0
 
-        try:
-            raw = gdrive_client.download_raw_bytes(f.id)
-            data = yaml.safe_load(raw.decode("utf-8"))
-            edition = config.Edition.model_validate(data)
-            editions.append((folder_id, edition))
-        except HttpError as e:
-            click.echo(
-                f"Warning: could not download .songbook.yaml from folder "
-                f"'{folder_id}': {e}",
-                err=True,
-            )
-        except (yaml.YAMLError, UnicodeDecodeError) as e:
-            click.echo(
-                f"Warning: could not parse .songbook.yaml in folder '{folder_id}': {e}",
-                err=True,
-            )
-        except ValidationError as e:
-            click.echo(
-                f"Warning: .songbook.yaml in folder '{folder_id}' does not "
-                f"match the Edition schema: {e}",
-                err=True,
-            )
+        for f in songbook_files:
+            # Drive files can technically have multiple parents, but edition folders
+            # are expected to have exactly one.  We use the first parent listed.
+            folder_id = f.parents[0] if f.parents else None
+            if not folder_id:
+                skipped_no_parent += 1
+                click.echo(
+                    f"Warning: .songbook.yaml '{f.id}' has no parent folder, skipping.",
+                    err=True,
+                )
+                continue
 
-    return editions
+            try:
+                raw = gdrive_client.download_raw_bytes(f.id)
+                data = yaml.safe_load(raw.decode("utf-8"))
+                edition = config.Edition.model_validate(data)
+                editions.append((folder_id, edition))
+            except HttpError as e:
+                skipped_errors += 1
+                click.echo(
+                    f"Warning: could not download .songbook.yaml from folder "
+                    f"'{folder_id}': {e}",
+                    err=True,
+                )
+            except (yaml.YAMLError, UnicodeDecodeError) as e:
+                skipped_errors += 1
+                click.echo(
+                    f"Warning: could not parse .songbook.yaml in folder '{folder_id}': {e}",
+                    err=True,
+                )
+            except ValidationError as e:
+                skipped_errors += 1
+                click.echo(
+                    f"Warning: .songbook.yaml in folder '{folder_id}' does not "
+                    f"match the Edition schema: {e}",
+                    err=True,
+                )
+
+        span.set_attribute("scan.editions_valid", len(editions))
+        span.set_attribute("scan.skipped_no_parent", skipped_no_parent)
+        span.set_attribute("scan.skipped_errors", skipped_errors)
+        return editions
 
 
 def generate_songbook_from_edition(

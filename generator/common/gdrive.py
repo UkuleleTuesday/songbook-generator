@@ -10,9 +10,12 @@ from googleapiclient.discovery import build
 from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
 from .config import get_settings, GoogleDriveClientConfig
+from .tracing import get_tracer
 from google.auth import credentials
 
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
+
+tracer = get_tracer(__name__)
 
 
 def client(credentials: credentials.Credentials):
@@ -528,53 +531,68 @@ class GoogleDriveClient:
         Returns:
             List of matching File objects (may be empty).
         """
-        escaped_name = filename.replace("'", "\\'")
-        query = f"name = '{escaped_name}' and trashed = false"
-        if source_folders:
-            parent_queries = [f"'{fid}' in parents" for fid in source_folders]
-            query += f" and ({' or '.join(parent_queries)})"
+        with tracer.start_as_current_span("find_all_files_named") as span:
+            span.set_attribute("gdrive.query_filename", filename)
+            span.set_attribute(
+                "gdrive.source_folders_count",
+                len(source_folders) if source_folders else 0,
+            )
+            span.set_attribute("gdrive.search_scoped", bool(source_folders))
 
-        files: List[File] = []
-        page_token = None
+            escaped_name = filename.replace("'", "\\'")
+            query = f"name = '{escaped_name}' and trashed = false"
+            if source_folders:
+                parent_queries = [f"'{fid}' in parents" for fid in source_folders]
+                query += f" and ({' or '.join(parent_queries)})"
 
-        while True:
-            try:
-                resp = (
-                    self.drive.files()
-                    .list(
-                        q=query,
-                        pageSize=100,
-                        fields=(
-                            "nextPageToken, files(id,name,mimeType,parents,properties)"
-                        ),
-                        pageToken=page_token,
+            files: List[File] = []
+            page_token = None
+            pages_fetched = 0
+
+            while True:
+                try:
+                    resp = (
+                        self.drive.files()
+                        .list(
+                            q=query,
+                            pageSize=100,
+                            fields=(
+                                "nextPageToken, "
+                                "files(id,name,mimeType,parents,properties)"
+                            ),
+                            pageToken=page_token,
+                        )
+                        .execute(num_retries=self.config.api_retries)
                     )
-                    .execute(num_retries=self.config.api_retries)
-                )
-            except HttpError as e:
-                error_code = e.resp.status if e.resp else "unknown"
-                click.echo(
-                    f"Error searching for '{filename}' (HTTP {error_code}): {e}",
-                    err=True,
-                )
-                break
-
-            for f in resp.get("files", []):
-                files.append(
-                    File(
-                        id=f["id"],
-                        name=f["name"],
-                        mimeType=f.get("mimeType"),
-                        properties=f.get("properties") or {},
-                        parents=f.get("parents") or [],
+                except HttpError as e:
+                    error_code = e.resp.status if e.resp else "unknown"
+                    click.echo(
+                        f"Error searching for '{filename}' (HTTP {error_code}): {e}",
+                        err=True,
                     )
-                )
+                    span.set_attribute("gdrive.error_code", str(error_code))
+                    span.set_attribute("gdrive.error", str(e))
+                    break
 
-            page_token = resp.get("nextPageToken")
-            if not page_token:
-                break
+                pages_fetched += 1
+                for f in resp.get("files", []):
+                    files.append(
+                        File(
+                            id=f["id"],
+                            name=f["name"],
+                            mimeType=f.get("mimeType"),
+                            properties=f.get("properties") or {},
+                            parents=f.get("parents") or [],
+                        )
+                    )
 
-        return files
+                page_token = resp.get("nextPageToken")
+                if not page_token:
+                    break
+
+            span.set_attribute("gdrive.files_found", len(files))
+            span.set_attribute("gdrive.pages_fetched", pages_fetched)
+            return files
 
     def download_raw_bytes(self, file_id: str) -> bytes:
         """
