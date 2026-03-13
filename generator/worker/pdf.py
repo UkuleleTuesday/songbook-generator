@@ -1,10 +1,12 @@
 import fitz
 import click
 import os
+import yaml
 from datetime import datetime, timezone
 from opentelemetry import trace
 from pathlib import Path
 from typing import List, Optional, Union, Dict, Any
+from pydantic import ValidationError
 from . import progress
 from . import toc
 from . import cover
@@ -292,6 +294,42 @@ def copy_pdfs(
 
             span.set_attribute("copied_pages", copied_pages)
             span.set_attribute("final_page_count", current_page)
+
+
+def load_edition_from_drive_folder(
+    gdrive_client: GoogleDriveClient,
+    folder_id: str,
+) -> config.Edition:
+    """
+    Load an Edition configuration from a .songbook.yaml file in a
+    Google Drive folder.
+
+    Args:
+        gdrive_client: An authenticated GoogleDriveClient instance.
+        folder_id: The Drive folder ID to search for .songbook.yaml.
+
+    Returns:
+        A validated Edition object parsed from the YAML file.
+
+    Raises:
+        ValueError: If the file is missing, unreadable, or invalid.
+    """
+    songbook_file = gdrive_client.find_file_in_folder(folder_id, ".songbook.yaml")
+    if not songbook_file:
+        raise ValueError(f"No .songbook.yaml found in Drive folder '{folder_id}'.")
+
+    raw = gdrive_client.download_raw_bytes(songbook_file.id)
+    try:
+        data = yaml.safe_load(raw.decode("utf-8"))
+    except (yaml.YAMLError, UnicodeDecodeError) as e:
+        raise ValueError(f"Failed to parse .songbook.yaml: {e}") from e
+
+    try:
+        return config.Edition.model_validate(data)
+    except ValidationError as e:
+        raise ValueError(
+            f".songbook.yaml does not match the Edition schema: {e}"
+        ) from e
 
 
 def generate_songbook_from_edition(

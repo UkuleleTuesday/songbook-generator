@@ -24,17 +24,20 @@ def test_generate_command_with_edition(runner, mocker):
 
 
 def test_generate_command_with_invalid_edition(runner, mocker):
-    """Test the generate command with an invalid edition."""
+    """Test the generate command with an unknown edition falls back to Drive."""
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
+    mocker.patch(
+        "generator.cli.GoogleDriveClient.find_file_in_folder",
+        return_value=None,
+    )
+
     result = runner.invoke(cli, ["generate", "--edition", "nonexistent"])
 
     assert result.exit_code != 0
-    assert "Error: Edition 'nonexistent' not found." in result.output
-    assert "Available editions:" in result.output
-    assert "current" in result.output
-    assert "complete" in result.output
+    assert "not found in configuration" in result.output
+    assert "No .songbook.yaml found" in result.output
 
 
 def test_generate_command_with_conflicting_flags(runner, mocker):
@@ -76,8 +79,8 @@ def _make_edition_yaml(**overrides):
     return yaml.dump(data).encode("utf-8")
 
 
-def test_generate_command_with_folder_id(runner, mocker):
-    """generate --folder-id reads .songbook.yaml and generates the songbook."""
+def test_generate_command_with_edition_as_folder_id(runner, mocker):
+    """--edition with a Drive folder ID reads .songbook.yaml and generates."""
     mock_drive = mocker.Mock()
     mock_cache = mocker.Mock()
     mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
@@ -93,10 +96,9 @@ def test_generate_command_with_folder_id(runner, mocker):
         return_value=_make_edition_yaml(),
     )
 
-    result = runner.invoke(cli, ["generate", "--folder-id", "folder-abc123"])
+    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
 
     assert result.exit_code == 0, result.output
-    assert "folder-abc123" in result.output
     assert "drive-edition" in result.output
     mock_generate.assert_called_once()
     call_kwargs = mock_generate.call_args.kwargs
@@ -107,8 +109,8 @@ def test_generate_command_with_folder_id(runner, mocker):
     assert edition_arg.title == "Drive Edition"
 
 
-def test_generate_command_folder_id_missing_yaml(runner, mocker):
-    """generate --folder-id aborts when .songbook.yaml is not in the folder."""
+def test_generate_command_edition_as_folder_id_missing_yaml(runner, mocker):
+    """--edition with Drive folder ID aborts when .songbook.yaml is missing."""
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -117,14 +119,14 @@ def test_generate_command_folder_id_missing_yaml(runner, mocker):
         return_value=None,
     )
 
-    result = runner.invoke(cli, ["generate", "--folder-id", "folder-abc123"])
+    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
 
     assert result.exit_code != 0
     assert "No .songbook.yaml found" in result.output
 
 
-def test_generate_command_folder_id_invalid_yaml(runner, mocker):
-    """generate --folder-id aborts when .songbook.yaml contains invalid YAML."""
+def test_generate_command_edition_as_folder_id_invalid_yaml(runner, mocker):
+    """--edition with Drive folder ID aborts when .songbook.yaml is invalid YAML."""
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -139,14 +141,14 @@ def test_generate_command_folder_id_invalid_yaml(runner, mocker):
         return_value=b": invalid: yaml: {{{",
     )
 
-    result = runner.invoke(cli, ["generate", "--folder-id", "folder-abc123"])
+    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
 
     assert result.exit_code != 0
     assert "Failed to parse .songbook.yaml" in result.output
 
 
-def test_generate_command_folder_id_invalid_edition_schema(runner, mocker):
-    """generate --folder-id aborts when .songbook.yaml has wrong Edition schema."""
+def test_generate_command_edition_as_folder_id_invalid_schema(runner, mocker):
+    """--edition with Drive folder ID aborts when .songbook.yaml has wrong schema."""
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -162,29 +164,14 @@ def test_generate_command_folder_id_invalid_edition_schema(runner, mocker):
         return_value=b"just_a_string: true",
     )
 
-    result = runner.invoke(cli, ["generate", "--folder-id", "folder-abc123"])
+    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
 
     assert result.exit_code != 0
     assert "does not match the Edition schema" in result.output
 
 
-def test_generate_command_folder_id_and_edition_mutually_exclusive(runner, mocker):
-    """generate --folder-id and --edition cannot be used together."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-
-    result = runner.invoke(
-        cli,
-        ["generate", "--folder-id", "folder-abc123", "--edition", "current"],
-    )
-
-    assert result.exit_code != 0
-    assert "Cannot use --folder-id together with --edition" in result.output
-
-
-def test_generate_command_folder_id_conflicting_flags(runner, mocker):
-    """generate --folder-id rejects --filter and other conflicting flags."""
+def test_generate_command_edition_as_folder_id_conflicting_flags(runner, mocker):
+    """--edition as Drive folder ID still rejects --filter and related flags."""
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -193,7 +180,7 @@ def test_generate_command_folder_id_conflicting_flags(runner, mocker):
         cli,
         [
             "generate",
-            "--folder-id",
+            "--edition",
             "folder-abc123",
             "--filter",
             "artist:equals:Test",
@@ -201,4 +188,4 @@ def test_generate_command_folder_id_conflicting_flags(runner, mocker):
     )
 
     assert result.exit_code != 0
-    assert "Cannot use --filter with --folder-id" in result.output
+    assert "Cannot use --filter with --edition" in result.output
