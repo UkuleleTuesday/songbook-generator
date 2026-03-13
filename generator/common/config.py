@@ -143,6 +143,10 @@ class GoogleCloud(BaseModel):
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
             scopes=["https://www.googleapis.com/auth/drive.readonly"],
         ),
+        "api": GoogleCloudCredentials(
+            principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        ),
     }
 
 
