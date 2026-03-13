@@ -510,6 +510,72 @@ class GoogleDriveClient:
             )
             return None
 
+    def find_all_files_named(
+        self,
+        filename: str,
+        source_folders: Optional[List[str]] = None,
+    ) -> List[File]:
+        """
+        Find all files with the given exact name across accessible Drive.
+
+        Args:
+            filename: The exact file name to search for.
+            source_folders: Optional list of folder IDs to restrict the
+                search to direct children of those folders.  When ``None``
+                or empty the search is performed across all Drive files
+                accessible to the current credentials.
+
+        Returns:
+            List of matching File objects (may be empty).
+        """
+        escaped_name = filename.replace("'", "\\'")
+        query = f"name = '{escaped_name}' and trashed = false"
+        if source_folders:
+            parent_queries = [f"'{fid}' in parents" for fid in source_folders]
+            query += f" and ({' or '.join(parent_queries)})"
+
+        files: List[File] = []
+        page_token = None
+
+        while True:
+            try:
+                resp = (
+                    self.drive.files()
+                    .list(
+                        q=query,
+                        pageSize=100,
+                        fields=(
+                            "nextPageToken, files(id,name,mimeType,parents,properties)"
+                        ),
+                        pageToken=page_token,
+                    )
+                    .execute(num_retries=self.config.api_retries)
+                )
+            except HttpError as e:
+                error_code = e.resp.status if e.resp else "unknown"
+                click.echo(
+                    f"Error searching for '{filename}' (HTTP {error_code}): {e}",
+                    err=True,
+                )
+                break
+
+            for f in resp.get("files", []):
+                files.append(
+                    File(
+                        id=f["id"],
+                        name=f["name"],
+                        mimeType=f.get("mimeType"),
+                        properties=f.get("properties") or {},
+                        parents=f.get("parents") or [],
+                    )
+                )
+
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+
+        return files
+
     def download_raw_bytes(self, file_id: str) -> bytes:
         """
         Download the raw content of a Drive file without caching or

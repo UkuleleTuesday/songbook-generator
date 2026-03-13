@@ -3,13 +3,19 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from google.cloud import pubsub_v1, firestore
+from googleapiclient.errors import HttpError
 from loguru import logger
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
+from ..common.config import get_settings
+from ..common.gdrive import GoogleDriveClient, client as build_drive_client
+from ..worker.gcp import get_credentials
+from ..worker.pdf import scan_drive_editions
 
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
+_drive_client = None
 
 
 def _get_services():
@@ -38,6 +44,18 @@ def _get_services():
         "firestore_collection": firestore_collection,
     }
     return _services
+
+
+def _get_drive_client():
+    """Lazily initializes and returns a GoogleDriveClient for Drive scanning."""
+    global _drive_client
+    if _drive_client is not None:
+        return _drive_client
+
+    creds = get_credentials(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    drive = build_drive_client(credentials=creds)
+    _drive_client = GoogleDriveClient(cache=None, drive=drive)
+    return _drive_client
 
 
 def _cors_headers():
@@ -158,6 +176,54 @@ def handle_get_job(job_id, services):
         return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
 
 
+def handle_get_editions(services):
+    """Return all available songbook editions (static config + Drive-detected)."""
+    with services["tracer"].start_as_current_span("handle_get_editions") as span:
+        settings = get_settings()
+
+        # Always include statically-configured editions
+        editions = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "description": e.description,
+                "source": "config",
+            }
+            for e in settings.editions
+        ]
+        span.set_attribute("config_editions_count", len(editions))
+
+        # Attempt to augment with Drive-detected editions
+        drive_editions_count = 0
+        drive_error = None
+        try:
+            gdrive_client = _get_drive_client()
+            for folder_id, edition in scan_drive_editions(gdrive_client):
+                editions.append(
+                    {
+                        "id": folder_id,
+                        "title": edition.title,
+                        "description": edition.description,
+                        "source": "drive",
+                        "folder_id": folder_id,
+                    }
+                )
+                drive_editions_count += 1
+        except HttpError as e:
+            drive_error = f"Drive API error: {e}"
+            logger.warning(f"Could not scan Drive for editions: {e}")
+
+        span.set_attribute("drive_editions_count", drive_editions_count)
+
+        response: dict = {"editions": editions}
+        if drive_error:
+            response["drive_error"] = drive_error
+
+        body = json.dumps(response)
+        span.set_attribute("response.status_code", 200)
+        return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
+
+
 def api_main(req):
     services = _get_services()
     with services["tracer"].start_as_current_span("api_main") as span:
@@ -180,6 +246,12 @@ def api_main(req):
             logger.info("Handling GET healthcheck at root path")
             span.set_attribute("request.type", "healthcheck")
             return ("OK", 200, _cors_headers())
+
+        # GET all available editions
+        if req.method == "GET" and req.path == "/editions":
+            logger.info("Handling GET request for editions")
+            span.set_attribute("request.type", "get_editions")
+            return handle_get_editions(services)
 
         # GET job status at /{job_id}
         if req.method == "GET":

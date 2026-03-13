@@ -5,7 +5,7 @@ import yaml
 from datetime import datetime, timezone
 from opentelemetry import trace
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Any
+from typing import List, Optional, Union, Dict, Any, Tuple
 from pydantic import ValidationError
 from . import progress
 from . import toc
@@ -330,6 +330,64 @@ def load_edition_from_drive_folder(
         raise ValueError(
             f".songbook.yaml does not match the Edition schema: {e}"
         ) from e
+
+
+def scan_drive_editions(
+    gdrive_client: GoogleDriveClient,
+) -> List[Tuple[str, config.Edition]]:
+    """
+    Scan Google Drive for ``.songbook.yaml`` files and return valid editions.
+
+    Each ``.songbook.yaml`` file found in Drive is downloaded, parsed and
+    validated against the :class:`~generator.common.config.Edition` schema.
+    Files that are missing, unreadable or invalid are skipped with a
+    warning; they do not cause the entire scan to fail.
+
+    Args:
+        gdrive_client: An authenticated :class:`~generator.common.gdrive.GoogleDriveClient`.
+
+    Returns:
+        A list of ``(folder_id, Edition)`` tuples – one entry per valid
+        ``.songbook.yaml`` found.  The *folder_id* is the Drive folder that
+        contains the file and can be used directly as an edition identifier
+        when submitting a generation job.
+    """
+    songbook_files = gdrive_client.find_all_files_named(".songbook.yaml")
+    editions: List[Tuple[str, config.Edition]] = []
+
+    for f in songbook_files:
+        folder_id = f.parents[0] if f.parents else None
+        if not folder_id:
+            click.echo(
+                f"Warning: .songbook.yaml '{f.id}' has no parent folder, skipping.",
+                err=True,
+            )
+            continue
+
+        try:
+            raw = gdrive_client.download_raw_bytes(f.id)
+            data = yaml.safe_load(raw.decode("utf-8"))
+            edition = config.Edition.model_validate(data)
+            editions.append((folder_id, edition))
+        except HttpError as e:
+            click.echo(
+                f"Warning: could not download .songbook.yaml from folder "
+                f"'{folder_id}': {e}",
+                err=True,
+            )
+        except (yaml.YAMLError, UnicodeDecodeError) as e:
+            click.echo(
+                f"Warning: could not parse .songbook.yaml in folder '{folder_id}': {e}",
+                err=True,
+            )
+        except ValidationError as e:
+            click.echo(
+                f"Warning: .songbook.yaml in folder '{folder_id}' does not "
+                f"match the Edition schema: {e}",
+                err=True,
+            )
+
+    return editions
 
 
 def generate_songbook_from_edition(

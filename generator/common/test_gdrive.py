@@ -559,3 +559,134 @@ def test_download_raw_bytes(mock_drive_client):
     mock_drive_client.drive.files.return_value.get_media.assert_called_once_with(
         fileId="file-id-123"
     )
+
+
+# ---------------------------------------------------------------------------
+# find_all_files_named tests
+# ---------------------------------------------------------------------------
+
+
+def test_find_all_files_named_returns_matching_files(mock_drive_client):
+    """Returns all files whose name matches exactly."""
+    mock_response = {
+        "files": [
+            {
+                "id": "cfg1",
+                "name": ".songbook.yaml",
+                "mimeType": "text/plain",
+                "parents": ["folder_a"],
+                "properties": {},
+            },
+            {
+                "id": "cfg2",
+                "name": ".songbook.yaml",
+                "mimeType": "text/plain",
+                "parents": ["folder_b"],
+                "properties": {},
+            },
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.find_all_files_named(".songbook.yaml")
+
+    assert len(result) == 2
+    assert result[0].id == "cfg1"
+    assert result[1].id == "cfg2"
+
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "name = '.songbook.yaml'" in called_query
+    assert "trashed = false" in called_query
+    # No parent restriction when source_folders is omitted
+    assert "in parents" not in called_query
+
+
+def test_find_all_files_named_with_source_folders(mock_drive_client):
+    """When source_folders is provided, the query restricts to those parents."""
+    mock_response = {
+        "files": [
+            {
+                "id": "cfg1",
+                "name": ".songbook.yaml",
+                "mimeType": "text/plain",
+                "parents": ["folder_a"],
+                "properties": {},
+            }
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.find_all_files_named(
+        ".songbook.yaml", source_folders=["folder_a", "folder_b"]
+    )
+
+    assert len(result) == 1
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "'folder_a' in parents" in called_query
+    assert "'folder_b' in parents" in called_query
+
+
+def test_find_all_files_named_empty_result(mock_drive_client):
+    """Returns an empty list when no files match."""
+    mock_response = {"files": [], "nextPageToken": None}
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.find_all_files_named(".songbook.yaml")
+
+    assert result == []
+
+
+def test_find_all_files_named_pagination(mock_drive_client):
+    """Collects results across multiple pages."""
+    first_response = {
+        "files": [
+            {
+                "id": "cfg1",
+                "name": ".songbook.yaml",
+                "parents": ["folder_a"],
+                "properties": {},
+            }
+        ],
+        "nextPageToken": "tok",
+    }
+    second_response = {
+        "files": [
+            {
+                "id": "cfg2",
+                "name": ".songbook.yaml",
+                "parents": ["folder_b"],
+                "properties": {},
+            }
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        first_response,
+        second_response,
+    ]
+
+    result = mock_drive_client.find_all_files_named(".songbook.yaml")
+
+    assert len(result) == 2
+    assert result[0].id == "cfg1"
+    assert result[1].id == "cfg2"
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_all_files_named_http_error_returns_partial(mock_echo, mock_drive_client):
+    """On an HttpError the method returns whatever was collected so far."""
+    from googleapiclient.errors import HttpError
+    from unittest.mock import MagicMock
+
+    http_err = HttpError(resp=MagicMock(status=403), content=b"Forbidden")
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = (
+        http_err
+    )
+
+    result = mock_drive_client.find_all_files_named(".songbook.yaml")
+
+    assert result == []
+    mock_echo.assert_called_once()
+    assert "403" in mock_echo.call_args[0][0]
