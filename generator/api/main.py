@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta
+from google.auth.exceptions import GoogleAuthError
 from google.cloud import pubsub_v1, firestore
 from googleapiclient.errors import HttpError
 from loguru import logger
@@ -56,6 +57,7 @@ def _get_drive_client():
     """
     global _drive_client
     if _drive_client is not None:
+        logger.debug("_get_drive_client: returning cached Drive client")
         return _drive_client
 
     tracer = get_tracer(__name__)
@@ -63,6 +65,11 @@ def _get_drive_client():
         settings = get_settings()
         credential_config = settings.google_cloud.credentials.get("api")
         if credential_config:
+            logger.info(
+                f"_get_drive_client: using config:api credentials; "
+                f"principal={credential_config.principal!r} "
+                f"scopes={credential_config.scopes!r}"
+            )
             span.set_attribute("credentials.principal", credential_config.principal)
             span.set_attribute("credentials.scopes", ",".join(credential_config.scopes))
             span.set_attribute("credentials.source", "config:api")
@@ -79,8 +86,10 @@ def _get_drive_client():
             span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
             creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
 
+        logger.debug("_get_drive_client: credentials obtained, building Drive client")
         drive = build_drive_client(credentials=creds)
         _drive_client = GoogleDriveClient(cache=None, drive=drive)
+        logger.info("_get_drive_client: Drive client initialised successfully")
     return _drive_client
 
 
@@ -220,10 +229,20 @@ def handle_get_editions(services):
         span.set_attribute("config_editions_count", len(editions))
         logger.info(f"Loaded {len(editions)} edition(s) from static config")
 
+        # Log Drive scan configuration for debuggability
+        credential_config = settings.google_cloud.credentials.get("api")
+        folder_ids = settings.songbook_editions.folder_ids
+        logger.info(
+            f"handle_get_editions: Drive scan config — "
+            f"credential_config_present={credential_config is not None} "
+            f"principal={credential_config.principal if credential_config else 'n/a'} "
+            f"scopes={credential_config.scopes if credential_config else 'n/a'} "
+            f"folder_ids={folder_ids!r}"
+        )
+
         # Attempt to augment with Drive-detected editions
         drive_editions_count = 0
         drive_error = None
-        credential_config = settings.google_cloud.credentials.get("api")
         with services["tracer"].start_as_current_span(
             "scan_drive_editions_api"
         ) as drive_span:
@@ -240,7 +259,9 @@ def handle_get_editions(services):
                 drive_span.set_attribute("credentials.source", "ambient")
                 drive_span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
             try:
+                logger.debug("handle_get_editions: initialising Drive client")
                 gdrive_client = _get_drive_client()
+                logger.debug("handle_get_editions: Drive client ready, starting scan")
                 drive_scan_results = scan_drive_editions(gdrive_client)
                 for folder_id, edition in drive_scan_results:
                     editions.append(
@@ -264,7 +285,18 @@ def handle_get_editions(services):
                 drive_error = f"Drive API error: {e}"
                 drive_span.set_attribute("drive.scan.available", False)
                 drive_span.set_attribute("drive.scan.error", drive_error)
-                logger.warning(f"Could not scan Drive for editions: {e}")
+                logger.error(
+                    f"handle_get_editions: Drive API error scanning for editions "
+                    f"(HTTP {e.resp.status if e.resp else 'unknown'}): {e}"
+                )
+            except GoogleAuthError as e:
+                drive_error = f"Drive auth error ({type(e).__name__}): {e}"
+                drive_span.set_attribute("drive.scan.available", False)
+                drive_span.set_attribute("drive.scan.error", drive_error)
+                logger.error(
+                    f"handle_get_editions: auth error scanning Drive for editions "
+                    f"({type(e).__name__}): {e}"
+                )
 
         span.set_attribute("drive_editions_count", drive_editions_count)
         span.set_attribute("total_editions_count", len(editions))

@@ -4,6 +4,7 @@ import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
+from loguru import logger
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
@@ -545,6 +546,11 @@ class GoogleDriveClient:
                 parent_queries = [f"'{fid}' in parents" for fid in source_folders]
                 query += f" and ({' or '.join(parent_queries)})"
 
+            logger.debug(
+                f"find_all_files_named: filename={filename!r} "
+                f"source_folders={source_folders!r} query={query!r}"
+            )
+
             files: List[File] = []
             page_token = None
             pages_fetched = 0
@@ -566,6 +572,10 @@ class GoogleDriveClient:
                     )
                 except HttpError as e:
                     error_code = e.resp.status if e.resp else "unknown"
+                    logger.error(
+                        f"Drive API error searching for {filename!r} "
+                        f"(HTTP {error_code}): {e}"
+                    )
                     click.echo(
                         f"Error searching for '{filename}' (HTTP {error_code}): {e}",
                         err=True,
@@ -575,7 +585,13 @@ class GoogleDriveClient:
                     break
 
                 pages_fetched += 1
-                for f in resp.get("files", []):
+                page_results = resp.get("files", [])
+                logger.debug(
+                    f"find_all_files_named: page {pages_fetched} returned "
+                    f"{len(page_results)} file(s); "
+                    f"has_next_page={bool(resp.get('nextPageToken'))}"
+                )
+                for f in page_results:
                     files.append(
                         File(
                             id=f["id"],
@@ -590,6 +606,10 @@ class GoogleDriveClient:
                 if not page_token:
                     break
 
+            logger.debug(
+                f"find_all_files_named: completed; total files={len(files)} "
+                f"pages_fetched={pages_fetched}"
+            )
             span.set_attribute("gdrive.files_found", len(files))
             span.set_attribute("gdrive.pages_fetched", pages_fetched)
             return files
