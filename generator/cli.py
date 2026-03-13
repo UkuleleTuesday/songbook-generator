@@ -29,6 +29,7 @@ from .worker.gcp import get_credentials
 from .worker.pdf import (
     generate_songbook,
     generate_songbook_from_edition,
+    generate_songbook_from_drive_folder,
     init_services,
     collect_and_sort_files,
 )
@@ -224,6 +225,88 @@ def generate(
             postface_file_ids,
             on_progress=progress_callback,
         )
+
+    if open_generated_pdf:
+        click.echo(f"Opening generated songbook: {destination_path}")
+        click.launch(str(destination_path))
+
+
+@cli.command("generate-from-folder")
+@global_options
+@click.pass_context
+@click.argument("folder_id")
+@click.option(
+    "--destination-path",
+    "-d",
+    type=click.Path(path_type=Path),
+    default="out/songbook.pdf",
+    help="Where to save the generated PDF",
+)
+@click.option(
+    "--title",
+    "-t",
+    default=None,
+    help="Title to embed in the PDF metadata",
+)
+@click.option(
+    "--limit",
+    "-l",
+    type=int,
+    default=None,
+    help="Limit the number of song files to include (no limit by default)",
+)
+@click.option(
+    "--open-generated-pdf",
+    is_flag=True,
+    help="Open the generated PDF when done",
+)
+def generate_from_folder(
+    ctx,
+    folder_id: str,
+    destination_path: Path,
+    title: Optional[str],
+    limit: Optional[int],
+    open_generated_pdf: bool,
+    **kwargs,
+):
+    """Generate a songbook from a Drive folder.
+
+    FOLDER_ID is the Google Drive folder ID whose contents define the songbook.
+
+    Files in the folder are categorised by naming convention:
+
+    \b
+      _cover…    – cover page (first alphabetically)
+      _preface…  – preface page(s), sorted alphabetically
+      _postface… – postface page(s), sorted alphabetically
+      (anything else) – song body files
+
+    Song files may be PDFs, Google Docs, or Drive shortcuts to files in
+    other folders.  Shortcuts let you reuse a tab in multiple editions
+    without duplicating it.
+    """
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
+
+    progress_callback = make_cli_progress_callback()
+
+    generate_songbook_from_drive_folder(
+        drive=drive,
+        cache=cache,
+        folder_id=folder_id,
+        destination_path=destination_path,
+        limit=limit,
+        on_progress=progress_callback,
+        title=title,
+    )
 
     if open_generated_pdf:
         click.echo(f"Opening generated songbook: {destination_path}")

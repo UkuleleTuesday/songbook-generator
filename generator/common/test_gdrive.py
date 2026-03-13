@@ -310,3 +310,171 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
     assert result[0] == mock_files[0]
     mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
     assert client_filter.matches.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# list_folder_contents tests
+# ---------------------------------------------------------------------------
+
+
+def test_list_folder_contents_regular_files(mock_drive_client):
+    """Regular (non-shortcut) files are returned as-is."""
+    mock_response = {
+        "files": [
+            {"id": "file1", "name": "Song A.pdf", "mimeType": "application/pdf"},
+            {
+                "id": "file2",
+                "name": "Song B.pdf",
+                "mimeType": "application/vnd.google-apps.document",
+            },
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    assert len(result) == 2
+    assert result[0].id == "file1"
+    assert result[0].name == "Song A.pdf"
+    assert result[0].mimeType == "application/pdf"
+    assert result[1].id == "file2"
+    assert result[1].name == "Song B.pdf"
+
+    # The query must exclude sub-folders
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "'folder123' in parents" in called_query
+    assert "trashed = false" in called_query
+    assert "application/vnd.google-apps.folder" in called_query
+
+
+def test_list_folder_contents_subfolders_excluded(mock_drive_client):
+    """Sub-folders in the Drive folder are excluded from results."""
+    # Drive won't return folders because the query already excludes them,
+    # so the mock returns only non-folder items even though the folder
+    # contained a subfolder.  What we're really verifying is that the API
+    # query string contains the folder-exclusion clause.
+    mock_response = {
+        "files": [
+            {"id": "file1", "name": "Song A.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    mock_drive_client.list_folder_contents("folder123")
+
+    called_query = mock_drive_client.drive.files.return_value.list.call_args.kwargs["q"]
+    assert "mimeType != 'application/vnd.google-apps.folder'" in called_query
+
+
+def test_list_folder_contents_shortcut_to_folder_skipped(mock_drive_client):
+    """Shortcuts whose target is a folder are silently skipped."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    folder_mime = "application/vnd.google-apps.folder"
+    mock_response = {
+        "files": [
+            {
+                "id": "sc1",
+                "name": "Sub-edition folder",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "subfolder_id",
+                    "targetMimeType": folder_mime,
+                },
+            },
+            {"id": "file2", "name": "Good Song.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    assert len(result) == 1
+    assert result[0].id == "file2"
+
+
+def test_list_folder_contents_shortcut_resolved(mock_drive_client):
+    """Shortcuts are resolved: target ID/mimeType used, shortcut name retained."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    mock_response = {
+        "files": [
+            {
+                "id": "shortcut1",
+                "name": "My Song Shortcut",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "target_file_id",
+                    "targetMimeType": "application/pdf",
+                },
+            }
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    assert len(result) == 1
+    file = result[0]
+    # Uses the target file's ID
+    assert file.id == "target_file_id"
+    # Retains the shortcut display name
+    assert file.name == "My Song Shortcut"
+    # Uses the target file's MIME type
+    assert file.mimeType == "application/pdf"
+
+
+def test_list_folder_contents_shortcut_missing_target_skipped(
+    mock_drive_client, capsys
+):
+    """Shortcuts without a targetId are skipped with a warning."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    mock_response = {
+        "files": [
+            {
+                "id": "shortcut1",
+                "name": "Broken Shortcut",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {},  # no targetId
+            },
+            {"id": "file2", "name": "Good Song.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    # Only the non-broken file should be returned
+    assert len(result) == 1
+    assert result[0].id == "file2"
+
+
+def test_list_folder_contents_pagination(mock_drive_client):
+    """list_folder_contents handles pagination correctly."""
+    page1 = {
+        "files": [{"id": "a", "name": "A.pdf", "mimeType": "application/pdf"}],
+        "nextPageToken": "tok1",
+    }
+    page2 = {
+        "files": [{"id": "b", "name": "B.pdf", "mimeType": "application/pdf"}],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        page1,
+        page2,
+    ]
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    assert len(result) == 2
+    assert result[0].id == "a"
+    assert result[1].id == "b"
+    calls = mock_drive_client.drive.files.return_value.list.call_args_list
+    assert calls[0].kwargs["pageToken"] is None
+    assert calls[1].kwargs["pageToken"] == "tok1"

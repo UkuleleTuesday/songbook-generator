@@ -12,6 +12,8 @@ from ..worker.models import File
 from .config import get_settings, GoogleDriveClientConfig
 from google.auth import credentials
 
+SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
+
 
 def client(credentials: credentials.Credentials):
     """Build a Google Drive API client from credentials."""
@@ -369,6 +371,101 @@ class GoogleDriveClient:
         """
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
+
+    def list_folder_contents(self, folder_id: str) -> List[File]:
+        """
+        List all files in a Drive folder, resolving shortcuts to their targets.
+
+        Shortcuts are resolved so callers receive the target file's ID and
+        MIME type while retaining the shortcut's display name (as it appears
+        in the folder) for ordering and categorisation purposes.
+
+        Args:
+            folder_id: The Google Drive folder ID to list.
+
+        Returns:
+            List of File objects sorted by name.  Shortcuts are returned as
+            the target file with the shortcut's name.
+        """
+        folder_mime = "application/vnd.google-apps.folder"
+        # Exclude sub-folders so they are never treated as song files.
+        query = (
+            f"'{folder_id}' in parents"
+            f" and trashed = false"
+            f" and mimeType != '{folder_mime}'"
+        )
+        files = []
+        page_token = None
+
+        while True:
+            try:
+                resp = (
+                    self.drive.files()
+                    .list(
+                        q=query,
+                        pageSize=1000,
+                        fields=(
+                            "nextPageToken, "
+                            "files(id,name,mimeType,parents,properties,"
+                            "shortcutDetails)"
+                        ),
+                        orderBy="name",
+                        pageToken=page_token,
+                    )
+                    .execute(num_retries=self.config.api_retries)
+                )
+            except HttpError as e:
+                error_code = e.resp.status if e.resp else "unknown"
+                click.echo(
+                    f"Error listing folder {folder_id} (HTTP {error_code}): {e}",
+                    err=True,
+                )
+                break
+
+            for f in resp.get("files", []):
+                if f.get("mimeType") == SHORTCUT_MIME_TYPE:
+                    shortcut_details = f.get("shortcutDetails") or {}
+                    target_id = shortcut_details.get("targetId")
+                    target_mime = shortcut_details.get("targetMimeType")
+                    if not target_id:
+                        click.echo(
+                            f"Warning: shortcut '{f['name']}' has no "
+                            "target ID, skipping.",
+                            err=True,
+                        )
+                        continue
+                    if target_mime == folder_mime:
+                        click.echo(
+                            f"Warning: shortcut '{f['name']}' points to a "
+                            "folder, skipping.",
+                            err=True,
+                        )
+                        continue
+                    files.append(
+                        File(
+                            id=target_id,
+                            name=f["name"],
+                            mimeType=target_mime,
+                            properties=f.get("properties") or {},
+                            parents=f.get("parents") or [],
+                        )
+                    )
+                else:
+                    files.append(
+                        File(
+                            id=f["id"],
+                            name=f["name"],
+                            mimeType=f.get("mimeType"),
+                            properties=f.get("properties") or {},
+                            parents=f.get("parents") or [],
+                        )
+                    )
+
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+
+        return files
 
     def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
         """

@@ -116,6 +116,58 @@ def collect_and_sort_files(
         return sorted_files
 
 
+_COVER_PREFIX = "_cover"
+_PREFACE_PREFIX = "_preface"
+_POSTFACE_PREFIX = "_postface"
+
+
+def categorize_folder_files(files: List[File]) -> Dict[str, Any]:
+    """
+    Categorize files in a Drive folder into cover, preface, songs, and postface.
+
+    Naming convention (case-insensitive):
+    - ``_cover…``   → cover page (the first one alphabetically is used)
+    - ``_preface…`` → preface pages (sorted alphabetically)
+    - ``_postface…``→ postface pages (sorted alphabetically)
+    - everything else → song files (sorted using the standard song sort key)
+
+    Args:
+        files: Files as returned by
+            :meth:`~generator.common.gdrive.GoogleDriveClient.list_folder_contents`.
+
+    Returns:
+        Dict with keys ``cover`` (a single :class:`~generator.worker.models.File`
+        or ``None``), ``preface`` (list), ``songs`` (list), ``postface`` (list).
+    """
+    cover_files: List[File] = []
+    preface_files: List[File] = []
+    postface_files: List[File] = []
+    song_files: List[File] = []
+
+    for f in files:
+        name_lower = f.name.lower()
+        if name_lower.startswith(_COVER_PREFIX):
+            cover_files.append(f)
+        elif name_lower.startswith(_PREFACE_PREFIX):
+            preface_files.append(f)
+        elif name_lower.startswith(_POSTFACE_PREFIX):
+            postface_files.append(f)
+        else:
+            song_files.append(f)
+
+    cover_files.sort(key=lambda f: f.name.lower())
+    preface_files.sort(key=lambda f: f.name.lower())
+    postface_files.sort(key=lambda f: f.name.lower())
+    song_files = _sort_titles(song_files)
+
+    return {
+        "cover": cover_files[0] if cover_files else None,
+        "preface": preface_files,
+        "songs": song_files,
+        "postface": postface_files,
+    }
+
+
 def copy_pdfs(
     destination_pdf,
     files: List[File],
@@ -303,6 +355,7 @@ def generate_songbook(
     title: Optional[str] = None,
     subject: Optional[str] = None,
     edition_toc_config: Optional[config.Toc] = None,
+    files: Optional[List[File]] = None,
 ):
     with tracer.start_as_current_span("generate_songbook") as span:
         span.set_attribute("source_folders_count", len(source_folders))
@@ -322,32 +375,39 @@ def generate_songbook(
 
         reporter = progress.ProgressReporter(on_progress)
 
-        with reporter.step(1, "Querying files...") as step:
-            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-            files = collect_and_sort_files(
-                gdrive_client, source_folders, client_filter, step
-            )
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
-            # Apply limit after collecting files from all folders
-            if limit and len(files) > limit:
-                click.echo(
-                    f"Limiting to {limit} files out of {len(files)} total files found"
+        if files is None:
+            with reporter.step(1, "Querying files...") as step:
+                files = collect_and_sort_files(
+                    gdrive_client, source_folders, client_filter, step
                 )
-                files = files[:limit]
 
-            if not files:
-                if client_filter:
+                # Apply limit after collecting files from all folders
+                if limit and len(files) > limit:
                     click.echo(
-                        f"No files found in folders {source_folders} matching client-side filter."
+                        f"Limiting to {limit} files out of {len(files)} total files found"
                     )
-                else:
-                    click.echo(f"No files found in folders {source_folders}.")
-                return
+                    files = files[:limit]
 
-            filter_msg = " (with client-side filter)" if client_filter else ""
-            limit_msg = f" (limited to {limit})" if limit else ""
+                if not files:
+                    if client_filter:
+                        click.echo(
+                            f"No files found in folders {source_folders} matching client-side filter."
+                        )
+                    else:
+                        click.echo(f"No files found in folders {source_folders}.")
+                    return
+
+                filter_msg = " (with client-side filter)" if client_filter else ""
+                limit_msg = f" (limited to {limit})" if limit else ""
+                click.echo(
+                    f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting generation..."
+                )
+        else:
+            span.set_attribute("files_pre_supplied", True)
             click.echo(
-                f"Found {len(files)} files in the source folder{filter_msg}{limit_msg}. Starting generation..."
+                f"Using {len(files)} pre-supplied song files. Starting generation..."
             )
 
         span.set_attribute("final_files_count", len(files))
@@ -609,6 +669,117 @@ def generate_songbook(
             "subject": subject,
             "page_indices": page_indices,
         }
+
+
+def generate_songbook_from_drive_folder(
+    drive,
+    cache,
+    folder_id: str,
+    destination_path: Path,
+    limit: Optional[int] = None,
+    on_progress=None,
+    title: Optional[str] = None,
+    subject: Optional[str] = None,
+    edition_toc_config: Optional[config.Toc] = None,
+):
+    """
+    Generate a songbook from the contents of a single Google Drive folder.
+
+    The folder may contain song PDFs, Google Docs, or **shortcuts** to files
+    in other folders (shortcuts let you reuse a tab in multiple editions
+    without duplicating the file).
+
+    Special files are identified by their name prefix (case-insensitive):
+
+    ==================  =======================================================
+    Prefix              Role
+    ==================  =======================================================
+    ``_cover…``         Cover page – the first matching file is used.
+    ``_preface…``       Preface page(s) – inserted after cover, before TOC,
+                        sorted alphabetically.
+    ``_postface…``      Postface page(s) – appended at the end, sorted
+                        alphabetically.
+    *(anything else)*   Song file – included as songbook body content, sorted
+                        with the standard song sort key.
+    ==================  =======================================================
+
+    Args:
+        drive: Authenticated Google Drive service object.
+        cache: Cache instance (local or GCS).
+        folder_id: The Google Drive folder ID to build the songbook from.
+        destination_path: Where to save the generated PDF.
+        limit: Maximum number of song files to include (``None`` = no limit).
+        on_progress: Optional progress callback.
+        title: PDF title metadata.
+        subject: PDF subject metadata.
+        edition_toc_config: Optional TOC configuration overrides.
+
+    Returns:
+        Generation information dict (same as :func:`generate_songbook`), or
+        ``None`` if no song files are found in the folder (i.e. every file
+        matched a special ``_cover``, ``_preface``, or ``_postface`` prefix,
+        or the folder contained no files at all).
+    """
+    with tracer.start_as_current_span("generate_songbook_from_drive_folder") as span:
+        span.set_attribute("folder_id", folder_id)
+
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+        click.echo(f"Listing contents of Drive folder: {folder_id}")
+        all_files = gdrive_client.list_folder_contents(folder_id)
+        click.echo(f"Found {len(all_files)} item(s) in folder")
+        span.set_attribute("folder_total_items", len(all_files))
+
+        categorized = categorize_folder_files(all_files)
+
+        cover_file = categorized["cover"]
+        preface_files: List[File] = categorized["preface"]
+        song_files: List[File] = categorized["songs"]
+        postface_files: List[File] = categorized["postface"]
+
+        span.set_attribute("cover_found", cover_file is not None)
+        span.set_attribute("preface_count", len(preface_files))
+        span.set_attribute("songs_count", len(song_files))
+        span.set_attribute("postface_count", len(postface_files))
+
+        cover_msg = (
+            "found"
+            if cover_file
+            else "not found – global default cover will be used if configured"
+        )
+        click.echo(f"  Cover:    {cover_msg}")
+        click.echo(f"  Preface:  {len(preface_files)} file(s)")
+        click.echo(f"  Songs:    {len(song_files)} file(s)")
+        click.echo(f"  Postface: {len(postface_files)} file(s)")
+
+        if not song_files:
+            click.echo(
+                "No song files found in folder.  "
+                "Make sure song files do not start with '_cover', "
+                "'_preface', or '_postface'."
+            )
+            return None
+
+        if limit and len(song_files) > limit:
+            click.echo(f"Limiting to {limit} songs out of {len(song_files)} total")
+            song_files = song_files[:limit]
+
+        return generate_songbook(
+            drive=drive,
+            cache=cache,
+            source_folders=[folder_id],
+            destination_path=destination_path,
+            limit=None,  # limit already applied above
+            cover_file_id=cover_file.id if cover_file else None,
+            client_filter=None,
+            preface_file_ids=[f.id for f in preface_files] or None,
+            postface_file_ids=[f.id for f in postface_files] or None,
+            on_progress=on_progress,
+            title=title,
+            subject=subject,
+            edition_toc_config=edition_toc_config,
+            files=song_files,
+        )
 
 
 def generate_manifest(
