@@ -2,6 +2,9 @@ from click.testing import CliRunner
 from .cli import cli
 import pytest
 import yaml
+from unittest.mock import MagicMock
+from googleapiclient.errors import HttpError
+from .common.config import Edition
 
 
 @pytest.fixture
@@ -189,3 +192,144 @@ def test_generate_command_edition_as_folder_id_conflicting_flags(runner, mocker)
 
     assert result.exit_code != 0
     assert "Cannot use --filter with --edition" in result.output
+
+
+# ---------------------------------------------------------------------------
+# editions list tests
+# ---------------------------------------------------------------------------
+
+
+_EDITION_FILTERS = [{"key": "specialbooks", "operator": "contains", "value": "current"}]
+_EDITION_DESCRIPTION = "Test edition"
+
+
+def test_editions_list_shows_config_and_drive_editions(runner, mocker):
+    """editions list shows both config and drive-detected editions."""
+    config_edition = Edition(
+        id="current",
+        title="Current Songbook",
+        description=_EDITION_DESCRIPTION,
+        filters=_EDITION_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+        editions=[config_edition],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
+    drive_edition = Edition(
+        id="drive-ed",
+        title="Drive Songbook",
+        description=_EDITION_DESCRIPTION,
+        filters=_EDITION_FILTERS,
+    )
+    mocker.patch(
+        "generator.cli.scan_drive_editions",
+        return_value=[("folder_abc", drive_edition)],
+    )
+
+    result = runner.invoke(cli, ["editions", "list"])
+
+    assert result.exit_code == 0
+    assert "Config editions:" in result.output
+    assert "[current] Current Songbook" in result.output
+    assert "Drive editions:" in result.output
+    assert "[folder_abc] Drive Songbook" in result.output
+
+
+def test_editions_list_no_drive_editions(runner, mocker):
+    """editions list reports when no drive editions are found."""
+    config_edition = Edition(
+        id="current",
+        title="Current Songbook",
+        description=_EDITION_DESCRIPTION,
+        filters=_EDITION_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+        editions=[config_edition],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
+    mocker.patch("generator.cli.scan_drive_editions", return_value=[])
+
+    result = runner.invoke(cli, ["editions", "list"])
+
+    assert result.exit_code == 0
+    assert "Config editions:" in result.output
+    assert "No drive editions found." in result.output
+
+
+def test_editions_list_drive_scan_http_error(runner, mocker):
+    """editions list degrades gracefully when Drive scan raises HttpError."""
+    config_edition = Edition(
+        id="current",
+        title="Current Songbook",
+        description=_EDITION_DESCRIPTION,
+        filters=_EDITION_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+        editions=[config_edition],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        side_effect=HttpError(resp=MagicMock(status=403), content=b"Forbidden"),
+    )
+
+    result = runner.invoke(cli, ["editions", "list"])
+
+    assert result.exit_code == 0
+    assert "Config editions:" in result.output
+    assert "Drive scan failed" in result.output
+
+
+def test_editions_list_no_config_editions(runner, mocker):
+    """editions list reports when no config editions exist."""
+    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+        editions=[],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+    mocker.patch(
+        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+    )
+    mocker.patch("generator.cli.scan_drive_editions", return_value=[])
+
+    result = runner.invoke(cli, ["editions", "list"])
+
+    assert result.exit_code == 0
+    assert "No config editions found." in result.output
