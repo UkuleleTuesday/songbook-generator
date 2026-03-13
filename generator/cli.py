@@ -11,9 +11,11 @@ import sys
 from typing import Optional
 import click
 import fitz
+import yaml
 from pathlib import Path
+from pydantic import ValidationError
 
-from .common.config import get_settings
+from .common.config import get_settings, Edition
 from .cache_updater.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import (
@@ -72,6 +74,50 @@ def cli(ctx, log_level: str):
     ctx.ensure_object(dict)
 
 
+def _load_edition_from_drive_folder(
+    gdrive_client: GoogleDriveClient,
+    folder_id: str,
+) -> Edition:
+    """
+    Load an Edition configuration from a .songbook.yaml file in a
+    Google Drive folder.
+
+    Args:
+        gdrive_client: An authenticated GoogleDriveClient instance.
+        folder_id: The Drive folder ID to search for .songbook.yaml.
+
+    Returns:
+        A validated Edition object parsed from the YAML file.
+
+    Raises:
+        click.Abort: If the file is missing, unreadable, or invalid.
+    """
+    songbook_file = gdrive_client.find_file_in_folder(folder_id, ".songbook.yaml")
+    if not songbook_file:
+        click.echo(
+            f"Error: No .songbook.yaml found in Drive folder '{folder_id}'.",
+            err=True,
+        )
+        raise click.Abort()
+
+    click.echo(f"Found .songbook.yaml (ID: {songbook_file.id}) in folder '{folder_id}'")
+    raw = gdrive_client.download_raw_bytes(songbook_file.id)
+    try:
+        data = yaml.safe_load(raw.decode("utf-8"))
+    except (yaml.YAMLError, UnicodeDecodeError) as e:
+        click.echo(f"Error: Failed to parse .songbook.yaml: {e}", err=True)
+        raise click.Abort()
+
+    try:
+        return Edition.model_validate(data)
+    except ValidationError as e:
+        click.echo(
+            f"Error: .songbook.yaml does not match the Edition schema: {e}",
+            err=True,
+        )
+        raise click.Abort()
+
+
 @cli.command()
 @global_options
 @click.pass_context
@@ -127,6 +173,13 @@ def cli(ctx, log_level: str):
     multiple=True,
     help="Google Drive file IDs for postface pages (at the very end). Can be specified multiple times.",
 )
+@click.option(
+    "--folder-id",
+    help=(
+        "Google Drive folder ID containing a .songbook.yaml config file. "
+        "Cannot be used together with --edition."
+    ),
+)
 def generate(
     ctx,
     edition: str,
@@ -138,6 +191,7 @@ def generate(
     filter,
     preface_file_id,
     postface_file_id,
+    folder_id: Optional[str],
     **kwargs,
 ):
     """Generates a songbook PDF from Google Drive files."""
@@ -160,7 +214,47 @@ def generate(
 
     progress_callback = make_cli_progress_callback()
 
-    if edition:
+    if edition and folder_id:
+        click.echo(
+            "Error: Cannot use --folder-id together with --edition.",
+            err=True,
+        )
+        raise click.Abort()
+
+    if folder_id:
+        # Drive-folder mode: load .songbook.yaml from the specified folder.
+        conflicting_flags = {
+            "--filter": filter,
+            "--cover-file-id": cover_file_id != get_settings().cover.file_id,
+            "--preface-file-id": preface_file_ids,
+            "--postface-file-id": postface_file_ids,
+        }
+        used_conflicting = [
+            flag for flag, present in conflicting_flags.items() if present
+        ]
+        if used_conflicting:
+            click.echo(
+                f"Error: Cannot use {', '.join(used_conflicting)} with --folder-id.",
+                err=True,
+            )
+            raise click.Abort()
+
+        gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+        selected_edition = _load_edition_from_drive_folder(gdrive_client, folder_id)
+        click.echo(
+            f"Generating songbook from Drive folder: {folder_id} "
+            f"({selected_edition.id} - {selected_edition.description})"
+        )
+        generate_songbook_from_edition(
+            drive=drive,
+            cache=cache,
+            source_folders=source_folders,
+            destination_path=destination_path,
+            edition=selected_edition,
+            limit=limit,
+            on_progress=progress_callback,
+        )
+    elif edition:
         # When using an edition, certain CLI flags are disallowed.
         conflicting_flags = {
             "--filter": filter,

@@ -467,6 +467,68 @@ class GoogleDriveClient:
 
         return files
 
+    def find_file_in_folder(self, folder_id: str, filename: str) -> Optional[File]:
+        """
+        Find a file by exact name in a Drive folder.
+
+        Args:
+            folder_id: The Google Drive folder ID to search in.
+            filename: The exact file name to look for.
+
+        Returns:
+            The matching File object, or None if not found.
+        """
+        escaped_name = filename.replace("'", "\\'")
+        query = (
+            f"'{folder_id}' in parents and name = '{escaped_name}' and trashed = false"
+        )
+        try:
+            resp = (
+                self.drive.files()
+                .list(
+                    q=query,
+                    pageSize=1,
+                    fields="files(id,name,mimeType,parents,properties)",
+                )
+                .execute(num_retries=self.config.api_retries)
+            )
+            files = resp.get("files", [])
+            if not files:
+                return None
+            f = files[0]
+            return File(
+                id=f["id"],
+                name=f["name"],
+                mimeType=f.get("mimeType"),
+                properties=f.get("properties") or {},
+                parents=f.get("parents") or [],
+            )
+        except HttpError as e:
+            click.echo(
+                f"Error searching for '{filename}' in folder {folder_id}: {e}",
+                err=True,
+            )
+            return None
+
+    def download_raw_bytes(self, file_id: str) -> bytes:
+        """
+        Download the raw content of a Drive file without caching or
+        PDF export.
+
+        Args:
+            file_id: The Google Drive file ID to download.
+
+        Returns:
+            Raw file content as bytes.
+        """
+        request = self.drive.files().get_media(fileId=file_id)
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        return buffer.getvalue()
+
     def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
         """
         Get custom properties for a given Google Drive file.
