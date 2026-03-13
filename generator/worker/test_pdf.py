@@ -1088,3 +1088,45 @@ def test_scan_drive_editions_empty_drive(mocker):
 
     assert result == []
     mock_client.download_raw_bytes.assert_not_called()
+
+
+def test_scan_drive_editions_uses_unscoped_search_by_default(mocker):
+    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is unset, search is not scoped."""
+    mocker.patch.dict("os.environ", {}, clear=False)
+    # Ensure the env var is absent
+    mocker.patch.dict(
+        "os.environ", {"GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS": ""}, clear=False
+    )
+    from ..common import config as cfg
+
+    cfg.get_settings.cache_clear()
+    mock_client = mocker.Mock(spec=GoogleDriveClient)
+    mock_client.find_all_files_named.return_value = []
+
+    scan_drive_editions(mock_client)
+
+    mock_client.find_all_files_named.assert_called_once_with(
+        ".songbook.yaml", source_folders=None
+    )
+    cfg.get_settings.cache_clear()
+
+
+def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
+    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is set, search is restricted to those folders."""
+    mocker.patch.dict(
+        "os.environ",
+        {"GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS": "folder_x,folder_y"},
+        clear=False,
+    )
+    from ..common import config as cfg
+
+    cfg.get_settings.cache_clear()
+    mock_client = mocker.Mock(spec=GoogleDriveClient)
+    mock_client.find_all_files_named.return_value = []
+
+    scan_drive_editions(mock_client)
+
+    mock_client.find_all_files_named.assert_called_once_with(
+        ".songbook.yaml", source_folders=["folder_x", "folder_y"]
+    )
+    cfg.get_settings.cache_clear()

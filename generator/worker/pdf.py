@@ -343,6 +343,10 @@ def scan_drive_editions(
     Files that are missing, unreadable or invalid are skipped with a
     warning; they do not cause the entire scan to fail.
 
+    The search can be restricted to specific Drive folders by setting
+    ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).  When the
+    setting is empty the search is performed across all of Drive.
+
     Args:
         gdrive_client: An authenticated :class:`~generator.common.gdrive.GoogleDriveClient`.
 
@@ -353,7 +357,17 @@ def scan_drive_editions(
         when submitting a generation job.
     """
     with tracer.start_as_current_span("scan_drive_editions") as span:
-        songbook_files = gdrive_client.find_all_files_named(".songbook.yaml")
+        settings = config.get_settings()
+        source_folders = settings.songbook_editions.folder_ids or None
+        span.set_attribute(
+            "scan.source_folders_count",
+            len(source_folders) if source_folders else 0,
+        )
+        span.set_attribute("scan.search_scoped", bool(source_folders))
+
+        songbook_files = gdrive_client.find_all_files_named(
+            ".songbook.yaml", source_folders=source_folders
+        )
         span.set_attribute("scan.files_found", len(songbook_files))
 
         editions: List[Tuple[str, config.Edition]] = []
