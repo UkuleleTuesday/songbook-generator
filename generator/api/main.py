@@ -58,22 +58,29 @@ def _get_drive_client():
     if _drive_client is not None:
         return _drive_client
 
-    settings = get_settings()
-    credential_config = settings.google_cloud.credentials.get("api")
-    if credential_config:
-        creds = get_credentials(
-            scopes=credential_config.scopes,
-            target_principal=credential_config.principal,
-        )
-    else:
-        logger.warning(
-            "Credential config 'api' not found; "
-            "falling back to ambient credentials for Drive scan."
-        )
-        creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
+    tracer = get_tracer(__name__)
+    with tracer.start_as_current_span("init_drive_client") as span:
+        settings = get_settings()
+        credential_config = settings.google_cloud.credentials.get("api")
+        if credential_config:
+            span.set_attribute("credentials.principal", credential_config.principal)
+            span.set_attribute("credentials.scopes", ",".join(credential_config.scopes))
+            span.set_attribute("credentials.source", "config:api")
+            creds = get_credentials(
+                scopes=credential_config.scopes,
+                target_principal=credential_config.principal,
+            )
+        else:
+            logger.warning(
+                "Credential config 'api' not found; "
+                "falling back to ambient credentials for Drive scan."
+            )
+            span.set_attribute("credentials.source", "ambient")
+            span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
+            creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
 
-    drive = build_drive_client(credentials=creds)
-    _drive_client = GoogleDriveClient(cache=None, drive=drive)
+        drive = build_drive_client(credentials=creds)
+        _drive_client = GoogleDriveClient(cache=None, drive=drive)
     return _drive_client
 
 
@@ -216,9 +223,22 @@ def handle_get_editions(services):
         # Attempt to augment with Drive-detected editions
         drive_editions_count = 0
         drive_error = None
+        credential_config = settings.google_cloud.credentials.get("api")
         with services["tracer"].start_as_current_span(
             "scan_drive_editions_api"
         ) as drive_span:
+            if credential_config:
+                drive_span.set_attribute(
+                    "credentials.principal", credential_config.principal
+                )
+                drive_span.set_attribute(
+                    "credentials.scopes",
+                    ",".join(credential_config.scopes),
+                )
+                drive_span.set_attribute("credentials.source", "config:api")
+            else:
+                drive_span.set_attribute("credentials.source", "ambient")
+                drive_span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
             try:
                 gdrive_client = _get_drive_client()
                 drive_scan_results = scan_drive_editions(gdrive_client)
