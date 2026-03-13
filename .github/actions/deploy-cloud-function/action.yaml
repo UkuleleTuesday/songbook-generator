@@ -62,7 +62,7 @@ runs:
     - name: Generate requirements.txt
       shell: bash
       run: |
-        uv export --no-emit-project --format requirements-txt > generator/requirements.txt
+        uv export --no-emit-project --no-dev --format requirements-txt > generator/requirements.txt
         cat generator/requirements.txt
 
     - name: Deploy to Cloud Functions
