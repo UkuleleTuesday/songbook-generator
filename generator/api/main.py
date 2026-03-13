@@ -49,12 +49,29 @@ def _get_services():
 
 
 def _get_drive_client():
-    """Lazily initializes and returns a GoogleDriveClient for Drive scanning."""
+    """Lazily initializes and returns a GoogleDriveClient for Drive scanning.
+
+    Impersonates the ``songbook-cache-updater`` service account so that the
+    API can access the same Drive files as the cache updater and worker.
+    """
     global _drive_client
     if _drive_client is not None:
         return _drive_client
 
-    creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-cache-updater")
+    if credential_config:
+        creds = get_credentials(
+            scopes=credential_config.scopes,
+            target_principal=credential_config.principal,
+        )
+    else:
+        logger.warning(
+            "Credential config 'songbook-cache-updater' not found; "
+            "falling back to ambient credentials for Drive scan."
+        )
+        creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
+
     drive = build_drive_client(credentials=creds)
     _drive_client = GoogleDriveClient(cache=None, drive=drive)
     return _drive_client
