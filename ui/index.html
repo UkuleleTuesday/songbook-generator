@@ -292,6 +292,8 @@
         if (editions.length === 0) {
           editionsError.textContent = 'No editions found. Enter a Drive folder ID below.';
           editionsError.style.display = 'block';
+          // Select "Other (Drive folder ID)" so the form is still usable
+          editionInput.value = DRIVE_FOLDER_EDITION;
           document.getElementById('drive-folder-section').style.display = 'block';
         } else {
           // Insert edition items before the "Other" option
@@ -334,6 +336,8 @@
           'Could not load editions from the API. ' +
           'You can still use a Drive folder ID below.';
         editionsError.style.display = 'block';
+        // Select "Other (Drive folder ID)" so the form is still usable
+        editionInput.value = DRIVE_FOLDER_EDITION;
         document.getElementById('drive-folder-section').style.display = 'block';
         attachEditionMenuHandlers();
       }
@@ -368,6 +372,15 @@
 
       const songbookEdition = form.get("songbook_edition");
       const driveFolderId = form.get("drive_folder_id");
+
+      // Validate: require either a selected edition or a Drive folder ID
+      if (!songbookEdition && !driveFolderId) {
+        enableSubmitButton();
+        hideProgress();
+        alert("Please select an edition or enter a Drive folder ID.");
+        return;
+      }
+
       payload.edition = (songbookEdition === DRIVE_FOLDER_EDITION && driveFolderId)
         ? driveFolderId
         : songbookEdition;
@@ -400,11 +413,11 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const editionInputEl = document.querySelector('input[name="songbook_edition"]');
-        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${editionInputEl.value}"]`);
+        const editionInput = document.querySelector('input[name="songbook_edition"]');
+        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${editionInput.value}"]`);
         const currentDriveFolderId = document.getElementById('drive-folder-id').value;
         let editionText;
-        if (editionInputEl.value === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
+        if (editionInput.value === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
           editionText = `Drive folder: ${currentDriveFolderId}`;
         } else {
           editionText = selectedOption ? selectedOption.textContent : 'Custom';

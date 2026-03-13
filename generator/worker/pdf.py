@@ -356,6 +356,8 @@ def scan_drive_editions(
     editions: List[Tuple[str, config.Edition]] = []
 
     for f in songbook_files:
+        # Drive files can technically have multiple parents, but edition folders
+        # are expected to have exactly one.  We use the first parent listed.
         folder_id = f.parents[0] if f.parents else None
         if not folder_id:
             click.echo(

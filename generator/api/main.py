@@ -13,6 +13,8 @@ from ..common.gdrive import GoogleDriveClient, client as build_drive_client
 from ..worker.gcp import get_credentials
 from ..worker.pdf import scan_drive_editions
 
+_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
+
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
 _drive_client = None
@@ -52,7 +54,7 @@ def _get_drive_client():
     if _drive_client is not None:
         return _drive_client
 
-    creds = get_credentials(scopes=["https://www.googleapis.com/auth/drive.readonly"])
+    creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
     drive = build_drive_client(credentials=creds)
     _drive_client = GoogleDriveClient(cache=None, drive=drive)
     return _drive_client
