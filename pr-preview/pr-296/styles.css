@@ -1,0 +1,156 @@
+body {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  color: #333;
+  text-align: center;
+}
+
+.mdl-layout__content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.mdl-card {
+  width: 100%;
+  max-width: 500px;
+  margin: 1rem;
+  overflow: visible;
+}
+
+.mdl-card__actions {
+  padding: 1rem;
+}
+
+.mdl-card__title {
+  display: block;
+}
+
+#historyList {
+  list-style-type: none;
+  padding: 0;
+}
+
+/* Edition card picker */
+.editions-section-label {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.54);
+  margin: 16px 0 8px;
+}
+
+.editions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.editions-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 0.9rem;
+  padding: 12px 0;
+}
+
+.editions-loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(63, 81, 181, 0.3);
+  border-top-color: #3f51b5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.editions-empty-msg {
+  color: rgba(0, 0, 0, 0.54);
+  font-size: 0.9rem;
+  padding: 12px 0;
+  margin: 0;
+}
+
+.edition-card {
+  position: relative;
+}
+
+.edition-radio {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.edition-card-label {
+  display: block;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  background: #fff;
+  transition: box-shadow 0.15s, border-left-color 0.15s, background 0.15s;
+}
+
+.edition-card-label:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  border-left-color: rgba(63, 81, 181, 0.4);
+}
+
+.edition-radio:checked + .edition-card-label {
+  border-left-color: #3f51b5;
+  background: rgba(63, 81, 181, 0.05);
+  box-shadow: 0 2px 6px rgba(63, 81, 181, 0.15);
+}
+
+.edition-radio:focus + .edition-card-label {
+  outline: 2px solid #3f51b5;
+  outline-offset: 1px;
+}
+
+.edition-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.edition-card-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #212121;
+}
+
+.edition-card-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.edition-card-badge--config {
+  background: #e8eaf6;
+  color: #3f51b5;
+}
+
+.edition-card-badge--drive {
+  background: #e0f2f1;
+  color: #00796b;
+}
+
+.edition-card-description {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.54);
+  line-height: 1.4;
+}
