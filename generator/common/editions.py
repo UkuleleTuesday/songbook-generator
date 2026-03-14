@@ -20,12 +20,19 @@ def scan_drive_editions(
     """
     Scan Google Drive for songbook edition folders.
 
-    Edition folders are direct children of the configured source folders.
-    Each folder must contain a valid ``.songbook.yaml`` file to be recognized
-    as an edition.
+    Edition folders are identified by the presence of a ``.songbook.yaml``
+    file anywhere within the configured source folder trees.  Each folder
+    containing such a file is treated as an edition; the folder ID is
+    derived from the ``parents`` field of the discovered ``.songbook.yaml``.
 
-    Folders without a ``.songbook.yaml`` file or with invalid YAML/schema are
-    skipped with a warning; they do not cause the entire scan to fail.
+    A single ``name = '.songbook.yaml' and '…' in ancestors`` query is
+    issued per configured source folder, replacing the previous approach
+    that made one API call per subfolder (O(n)).  This reduces API calls
+    from O(n) to O(1) per source folder, with pagination handled via
+    ``nextPageToken``.
+
+    Folders with a missing, unparseable, or schema-invalid ``.songbook.yaml``
+    are skipped with a warning; they do not cause the entire scan to fail.
 
     The search is restricted to specific Drive folders via
     ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).
@@ -55,100 +62,106 @@ def scan_drive_editions(
 
         logger.info(
             f"scan_drive_editions: scanning {len(source_folders)} source folder(s) "
-            f"for edition folders; source_folders={source_folders!r}"
+            f"for .songbook.yaml files; source_folders={source_folders!r}"
         )
 
         editions: List[Tuple[str, config.Edition]] = []
-        skipped_no_yaml = 0
         skipped_errors = 0
 
-        # For each source folder, find direct child folders
         for source_folder_id in source_folders:
             try:
-                # Query for folders that are direct children of source_folder
-                resp = (
-                    gdrive_client.drive.files()
-                    .list(
-                        q=f"'{source_folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-                        pageSize=100,
-                        fields="files(id, name)",
+                # Single query per source folder: find every .songbook.yaml
+                # anywhere in the subtree.  The parent of each result is
+                # the edition folder.  This replaces the previous O(n)
+                # pattern (list child folders, then probe each one).
+                page_token = None
+                while True:
+                    resp = (
+                        gdrive_client.drive.files()
+                        .list(
+                            q=(
+                                f"name = '.songbook.yaml'"
+                                f" and '{source_folder_id}' in ancestors"
+                                " and trashed = false"
+                            ),
+                            pageSize=100,
+                            fields="nextPageToken, files(id, parents)",
+                            pageToken=page_token,
+                        )
+                        .execute(num_retries=gdrive_client.config.api_retries)
                     )
-                    .execute(num_retries=gdrive_client.config.api_retries)
-                )
 
-                child_folders = resp.get("files", [])
-
-                # For each child folder, look for .songbook.yaml
-                for folder in child_folders:
-                    folder_id = folder["id"]
-                    folder_name = folder["name"]
-
-                    try:
-                        # Find .songbook.yaml in this folder
-                        yaml_resp = (
-                            gdrive_client.drive.files()
-                            .list(
-                                q=f"'{folder_id}' in parents and name = '.songbook.yaml' and trashed = false",
-                                pageSize=1,
-                                fields="files(id)",
+                    for yaml_file in resp.get("files", []):
+                        yaml_file_id = yaml_file["id"]
+                        parents = yaml_file.get("parents", [])
+                        if not parents:
+                            skipped_errors += 1
+                            logger.warning(
+                                f"scan_drive_editions: .songbook.yaml "
+                                f"(id={yaml_file_id!r}) has no parent; skipping"
                             )
-                            .execute(num_retries=gdrive_client.config.api_retries)
-                        )
-
-                        yaml_files = yaml_resp.get("files", [])
-                        if not yaml_files:
-                            skipped_no_yaml += 1
                             continue
+                        folder_id = parents[0]
 
-                        yaml_file_id = yaml_files[0]["id"]
+                        try:
+                            raw = gdrive_client.download_raw_bytes(yaml_file_id)
+                            data = yaml.safe_load(raw.decode("utf-8"))
 
-                        raw = gdrive_client.download_raw_bytes(yaml_file_id)
-                        data = yaml.safe_load(raw.decode("utf-8"))
+                            edition = config.Edition.model_validate(data)
+                            logger.info(
+                                f"scan_drive_editions: validated edition "
+                                f"title={edition.title!r} "
+                                f"from folder id={folder_id!r}"
+                            )
+                            editions.append((folder_id, edition))
 
-                        edition = config.Edition.model_validate(data)
-                        logger.info(
-                            f"scan_drive_editions: validated edition title={edition.title!r} "
-                            f"from folder {folder_name!r} (id={folder_id!r})"
-                        )
-                        editions.append((folder_id, edition))
+                        except HttpError as e:
+                            skipped_errors += 1
+                            logger.warning(
+                                f"scan_drive_editions: could not download "
+                                f".songbook.yaml (id={yaml_file_id!r}) in "
+                                f"folder id={folder_id!r}: {e}"
+                            )
+                            click.echo(
+                                f"Warning: could not read .songbook.yaml from "
+                                f"folder id='{folder_id}': {e}",
+                                err=True,
+                            )
+                        except (yaml.YAMLError, UnicodeDecodeError) as e:
+                            skipped_errors += 1
+                            logger.warning(
+                                f"scan_drive_editions: could not parse "
+                                f".songbook.yaml (id={yaml_file_id!r}) in "
+                                f"folder id={folder_id!r}: {e}"
+                            )
+                            click.echo(
+                                f"Warning: could not parse .songbook.yaml in "
+                                f"folder id='{folder_id}': {e}",
+                                err=True,
+                            )
+                        except ValidationError as e:
+                            skipped_errors += 1
+                            logger.warning(
+                                f"scan_drive_editions: .songbook.yaml "
+                                f"(id={yaml_file_id!r}) in folder "
+                                f"id={folder_id!r} failed Edition schema "
+                                f"validation: {e}"
+                            )
+                            click.echo(
+                                f"Warning: .songbook.yaml in folder "
+                                f"id='{folder_id}' does not match the "
+                                f"Edition schema: {e}",
+                                err=True,
+                            )
 
-                    except HttpError as e:
-                        skipped_errors += 1
-                        logger.warning(
-                            f"scan_drive_editions: could not download .songbook.yaml from "
-                            f"folder {folder_name!r} (id={folder_id!r}): {e}"
-                        )
-                        click.echo(
-                            f"Warning: could not read .songbook.yaml from folder "
-                            f"'{folder_name}': {e}",
-                            err=True,
-                        )
-                    except (yaml.YAMLError, UnicodeDecodeError) as e:
-                        skipped_errors += 1
-                        logger.warning(
-                            f"scan_drive_editions: could not parse .songbook.yaml in "
-                            f"folder {folder_name!r} (id={folder_id!r}): {e}"
-                        )
-                        click.echo(
-                            f"Warning: could not parse .songbook.yaml in folder '{folder_name}': {e}",
-                            err=True,
-                        )
-                    except ValidationError as e:
-                        skipped_errors += 1
-                        logger.warning(
-                            f"scan_drive_editions: .songbook.yaml in folder {folder_name!r} "
-                            f"(id={folder_id!r}) failed Edition schema validation: {e}"
-                        )
-                        click.echo(
-                            f"Warning: .songbook.yaml in folder '{folder_name}' does not "
-                            f"match the Edition schema: {e}",
-                            err=True,
-                        )
+                    page_token = resp.get("nextPageToken")
+                    if not page_token:
+                        break
 
             except HttpError as e:
                 logger.error(
-                    f"scan_drive_editions: could not list folders in "
-                    f"source_folder={source_folder_id!r}: {e}"
+                    f"scan_drive_editions: could not search for .songbook.yaml "
+                    f"in source_folder={source_folder_id!r}: {e}"
                 )
                 click.echo(
                     f"Error: could not scan source folder '{source_folder_id}': {e}",
@@ -156,10 +169,9 @@ def scan_drive_editions(
                 )
 
         span.set_attribute("scan.editions_valid", len(editions))
-        span.set_attribute("scan.skipped_no_yaml", skipped_no_yaml)
         span.set_attribute("scan.skipped_errors", skipped_errors)
         logger.info(
             f"scan_drive_editions: completed; editions_valid={len(editions)} "
-            f"skipped_no_yaml={skipped_no_yaml} skipped_errors={skipped_errors}"
+            f"skipped_errors={skipped_errors}"
         )
         return editions
