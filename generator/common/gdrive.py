@@ -546,11 +546,6 @@ class GoogleDriveClient:
                 parent_queries = [f"'{fid}' in parents" for fid in source_folders]
                 query += f" and ({' or '.join(parent_queries)})"
 
-            logger.debug(
-                f"find_all_files_named: filename={filename!r} "
-                f"source_folders={source_folders!r} query={query!r}"
-            )
-
             files: List[File] = []
             page_token = None
             pages_fetched = 0
@@ -586,11 +581,6 @@ class GoogleDriveClient:
 
                 pages_fetched += 1
                 page_results = resp.get("files", [])
-                logger.debug(
-                    f"find_all_files_named: page {pages_fetched} returned "
-                    f"{len(page_results)} file(s); "
-                    f"has_next_page={bool(resp.get('nextPageToken'))}"
-                )
                 for f in page_results:
                     files.append(
                         File(
@@ -606,10 +596,6 @@ class GoogleDriveClient:
                 if not page_token:
                     break
 
-            logger.debug(
-                f"find_all_files_named: completed; total files={len(files)} "
-                f"pages_fetched={pages_fetched}"
-            )
             span.set_attribute("gdrive.files_found", len(files))
             span.set_attribute("gdrive.pages_fetched", pages_fetched)
             return files

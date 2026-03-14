@@ -64,10 +64,6 @@ def scan_drive_editions(
 
         # For each source folder, find direct child folders
         for source_folder_id in source_folders:
-            logger.debug(
-                f"scan_drive_editions: listing child folders in source_folder={source_folder_id!r}"
-            )
-
             try:
                 # Query for folders that are direct children of source_folder
                 resp = (
@@ -81,20 +77,11 @@ def scan_drive_editions(
                 )
 
                 child_folders = resp.get("files", [])
-                logger.debug(
-                    f"scan_drive_editions: found {len(child_folders)} child folder(s) "
-                    f"in source_folder={source_folder_id!r}"
-                )
 
                 # For each child folder, look for .songbook.yaml
                 for folder in child_folders:
                     folder_id = folder["id"]
                     folder_name = folder["name"]
-
-                    logger.debug(
-                        f"scan_drive_editions: checking folder {folder_name!r} "
-                        f"(id={folder_id!r}) for .songbook.yaml"
-                    )
 
                     try:
                         # Find .songbook.yaml in this folder
@@ -111,26 +98,12 @@ def scan_drive_editions(
                         yaml_files = yaml_resp.get("files", [])
                         if not yaml_files:
                             skipped_no_yaml += 1
-                            logger.debug(
-                                f"scan_drive_editions: no .songbook.yaml found in "
-                                f"folder {folder_name!r} (id={folder_id!r}); skipping"
-                            )
                             continue
 
                         yaml_file_id = yaml_files[0]["id"]
 
-                        logger.debug(
-                            f"scan_drive_editions: downloading .songbook.yaml from "
-                            f"folder {folder_name!r} (id={folder_id!r}, yaml_file_id={yaml_file_id!r})"
-                        )
-
                         raw = gdrive_client.download_raw_bytes(yaml_file_id)
                         data = yaml.safe_load(raw.decode("utf-8"))
-
-                        logger.debug(
-                            f"scan_drive_editions: parsed YAML from folder {folder_name!r}: "
-                            f"keys={list(data.keys()) if isinstance(data, dict) else type(data).__name__}"
-                        )
 
                         edition = config.Edition.model_validate(data)
                         logger.info(
