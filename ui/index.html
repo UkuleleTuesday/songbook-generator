@@ -174,20 +174,6 @@
       submitButton.textContent = 'Generating...';
     }
 
-    function getDecadeRange(decade) {
-      const decadeMap = {
-        '1950s': { start: 1950, end: 1959 },
-        '1960s': { start: 1960, end: 1969 },
-        '1970s': { start: 1970, end: 1979 },
-        '1980s': { start: 1980, end: 1989 },
-        '1990s': { start: 1990, end: 1999 },
-        '2000s': { start: 2000, end: 2009 },
-        '2010s': { start: 2010, end: 2019 },
-        '2020s': { start: 2020, end: 2029 }
-      };
-      return decadeMap[decade];
-    }
-
     async function pollStatus(jobId) {
       const statusUrl = `${apiBase}/${jobId}`;
       while (true) {
