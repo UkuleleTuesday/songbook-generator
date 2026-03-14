@@ -1227,3 +1227,179 @@ def test_load_edition_from_drive_folder_no_components_when_disabled(mocker):
     mock_resolve.assert_called_once()
     loaded_edition = mock_resolve.call_args.args[2]
     assert loaded_edition.use_folder_components is False
+
+
+# ---------------------------------------------------------------------------
+# resolve_folder_components – Songs subfolder tests
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_folder_components_songs_from_subfolder(mocker):
+    """Song file IDs are resolved from the Songs subfolder when not in YAML."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = lambda fid, name: (
+        "songs_subfolder" if name.lower() == "songs" else None
+    )
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="song_1", name="Amazing Grace.pdf"),
+        File(id="song_2", name="Bohemian Rhapsody.pdf"),
+    ]
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.songs_file_ids == ["song_1", "song_2"]
+    assert result.cover_file_id is None
+    assert result.preface_file_ids is None
+    assert result.postface_file_ids is None
+    # Original edition not mutated
+    assert edition.songs_file_ids is None
+
+
+def test_resolve_folder_components_yaml_songs_takes_precedence(mocker):
+    """Explicit YAML songs_file_ids overrides Songs subfolder detection."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "songs_subfolder"
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="subfolder_song", name="Other Song.pdf"),
+    ]
+    edition = _make_edition_with_folder_components(
+        songs_file_ids=["yaml_song_1", "yaml_song_2"]
+    )
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.songs_file_ids == ["yaml_song_1", "yaml_song_2"]
+    # find_subfolder_by_name should NOT be called for songs because YAML has them
+    calls = [
+        c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
+    ]
+    assert "songs" not in calls
+
+
+def test_resolve_folder_components_empty_songs_subfolder_skipped(mocker):
+    """When the Songs subfolder exists but is empty, songs_file_ids is not set."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = lambda fid, name: (
+        "songs_subfolder" if name.lower() == "songs" else None
+    )
+    mock_gdrive.list_folder_contents.return_value = []
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.songs_file_ids is None
+
+
+def test_resolve_folder_components_all_four_resolved(mocker):
+    """All four components (cover, preface, postface, songs) are resolved."""
+
+    def find_subfolder(fid, name):
+        return f"{name.lower()}_subfolder"
+
+    def list_folder(subfolder_id):
+        if subfolder_id == "cover_subfolder":
+            return [File(id="cover_id", name="Cover.gdoc")]
+        if subfolder_id == "preface_subfolder":
+            return [File(id="pre_1", name="Intro.gdoc")]
+        if subfolder_id == "postface_subfolder":
+            return [File(id="post_1", name="Credits.gdoc")]
+        if subfolder_id == "songs_subfolder":
+            return [
+                File(id="song_1", name="Song A.pdf"),
+                File(id="song_2", name="Song B.pdf"),
+            ]
+        return []
+
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = find_subfolder
+    mock_gdrive.list_folder_contents.side_effect = list_folder
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id == "cover_id"
+    assert result.preface_file_ids == ["pre_1"]
+    assert result.postface_file_ids == ["post_1"]
+    assert result.songs_file_ids == ["song_1", "song_2"]
+
+
+# ---------------------------------------------------------------------------
+# generate_songbook_from_edition – songs_file_ids tests
+# ---------------------------------------------------------------------------
+
+
+def test_generate_songbook_from_edition_uses_songs_file_ids(mocker):
+    """When songs_file_ids is set, files are fetched by ID and passed as
+    pre-supplied files rather than using the filter-based query."""
+    from ..common.config import Edition as Cfg_Edition
+
+    song_files = [
+        File(id="song_1", name="Amazing Grace.pdf"),
+        File(id="song_2", name="Bohemian Rhapsody.pdf"),
+    ]
+
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.get_files_metadata_by_ids.return_value = song_files
+
+    mocker.patch(
+        "generator.worker.pdf.GoogleDriveClient", return_value=mock_gdrive_client
+    )
+
+    mock_generate = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    edition = Cfg_Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        songs_file_ids=["song_1", "song_2"],
+        filters=[],
+    )
+
+    generate_songbook_from_edition(
+        drive="mock_drive",
+        cache="mock_cache",
+        source_folders=["folder_id"],
+        destination_path=Path("/tmp/out.pdf"),
+        edition=edition,
+        limit=None,
+    )
+
+    mock_gdrive_client.get_files_metadata_by_ids.assert_called_once_with(
+        ["song_1", "song_2"]
+    )
+    call_kwargs = mock_generate.call_args.kwargs
+    # Pre-supplied files should be passed, sorted by song sort key
+    assert call_kwargs["files"] is not None
+    assert len(call_kwargs["files"]) == 2
+    # Amazing Grace sorts before Bohemian Rhapsody alphabetically
+    assert call_kwargs["files"][0].name == "Amazing Grace.pdf"
+    assert call_kwargs["files"][1].name == "Bohemian Rhapsody.pdf"
+
+
+def test_generate_songbook_from_edition_no_songs_file_ids_passes_none(mocker):
+    """When songs_file_ids is not set, files=None is passed so the standard
+    filter-based query runs inside generate_songbook."""
+    from ..common.config import Edition as Cfg_Edition
+
+    mocker.patch("generator.worker.pdf.GoogleDriveClient")
+    mock_generate = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    edition = Cfg_Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        filters=[],
+    )
+
+    generate_songbook_from_edition(
+        drive="mock_drive",
+        cache="mock_cache",
+        source_folders=["folder_id"],
+        destination_path=Path("/tmp/out.pdf"),
+        edition=edition,
+        limit=None,
+    )
+
+    call_kwargs = mock_generate.call_args.kwargs
+    assert call_kwargs["files"] is None

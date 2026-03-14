@@ -300,6 +300,7 @@ _FOLDER_COMPONENT_NAMES = {
     "cover": "Cover",
     "preface": "Preface",
     "postface": "Postface",
+    "songs": "Songs",
 }
 
 
@@ -309,18 +310,26 @@ def resolve_folder_components(
     edition: config.Edition,
 ) -> config.Edition:
     """
-    Resolve cover/preface/postface components from dedicated subfolders when
-    ``use_folder_components`` is enabled on the edition.
+    Resolve cover/preface/postface/songs components from dedicated subfolders
+    when ``use_folder_components`` is enabled on the edition.
 
-    For each component type (cover, preface, postface) the function looks for
-    a subfolder whose name matches the component name case-insensitively
-    (``Cover``, ``Preface``, ``Postface``).  If a matching subfolder is found
-    **and** the corresponding field on the edition is not already set in the
-    YAML config, the first valid file in that subfolder is used.
+    For each component type the function looks for a subfolder whose name
+    matches the component name case-insensitively (``Cover``, ``Preface``,
+    ``Postface``, ``Songs``).  If a matching subfolder is found **and** the
+    corresponding field on the edition is not already set in the YAML config,
+    the subfolder's contents are used:
+
+    - **Cover**: only the first file in the subfolder is used.
+    - **Preface**, **Postface**, **Songs**: all files in the subfolder are
+      used, in the order returned by the Drive API.
+
+    Shortcuts inside any subfolder are resolved transparently by
+    :meth:`~generator.common.gdrive.GoogleDriveClient.list_folder_contents`.
 
     Explicit YAML config entries (``cover_file_id``, ``preface_file_ids``,
-    ``postface_file_ids``) always take precedence over subfolder-detected
-    files so that existing configurations remain fully backward-compatible.
+    ``postface_file_ids``, ``songs_file_ids``) always take precedence over
+    subfolder-detected files so that existing configurations remain fully
+    backward-compatible.
 
     Args:
         gdrive_client: An authenticated GoogleDriveClient instance.
@@ -408,6 +417,30 @@ def resolve_folder_components(
         else:
             span.set_attribute("postface_from_yaml", True)
 
+        # --- Songs ---
+        if edition.songs_file_ids is None:
+            songs_folder_id = gdrive_client.find_subfolder_by_name(
+                folder_id, _FOLDER_COMPONENT_NAMES["songs"]
+            )
+            if songs_folder_id:
+                songs_files = gdrive_client.list_folder_contents(songs_folder_id)
+                if songs_files:
+                    updates["songs_file_ids"] = [f.id for f in songs_files]
+                    click.echo(
+                        f"Found {len(songs_files)} song(s) from Songs subfolder."
+                    )
+                    span.set_attribute("songs_resolved_from_folder", True)
+                    span.set_attribute("songs_files_count", len(songs_files))
+                else:
+                    click.echo(
+                        "Songs subfolder found but contains no files; skipping.",
+                        err=True,
+                    )
+            else:
+                span.set_attribute("songs_subfolder_found", False)
+        else:
+            span.set_attribute("songs_from_yaml", True)
+
         if updates:
             return edition.model_copy(update=updates)
         return edition
@@ -488,6 +521,19 @@ def generate_songbook_from_edition(
         if client_filter:
             span.set_attribute("client_filter", str(client_filter.model_dump()))
 
+        # If songs_file_ids are specified (e.g. from a Songs subfolder), fetch
+        # those files directly and pass them as pre-supplied song files so that
+        # the standard filter-based query is skipped.
+        songs_files = None
+        if edition.songs_file_ids:
+            gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+            songs_files = gdrive_client.get_files_metadata_by_ids(
+                edition.songs_file_ids
+            )
+            songs_files = _sort_titles(songs_files)
+            span.set_attribute("songs_from_file_ids", True)
+            span.set_attribute("songs_file_ids_count", len(edition.songs_file_ids))
+
         return generate_songbook(
             drive=drive,
             cache=cache,
@@ -502,6 +548,7 @@ def generate_songbook_from_edition(
             title=edition.title,
             subject=edition.description,
             edition_toc_config=edition.table_of_contents,
+            files=songs_files,
         )
 
 
