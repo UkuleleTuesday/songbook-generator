@@ -6,7 +6,6 @@
   <title>Songbook Chef</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.css">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -31,37 +30,14 @@
 
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
-                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label getmdl-select">
-                  <input class="mdl-textfield__input" value="" id="songbook-edition" readonly />
-                  <input value="" type="hidden" name="songbook_edition" />
-                  <label class="mdl-textfield__label" for="songbook-edition">Songbook Edition</label>
-                  <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="songbook-edition" id="edition-menu">
-                    <li class="mdl-menu__item mdl-menu__item--disabled" id="editions-loading">Loading editions…</li>
-                    <li class="mdl-menu__item" data-val="__drive_folder__">Other (Drive folder ID)...</li>
-                  </ul>
+                <span class="editions-section-label">Songbook Edition</span>
+                <div id="editions-grid" class="editions-grid">
+                  <div class="editions-loading">
+                    <div class="editions-loading-spinner"></div>
+                    Loading editions…
+                  </div>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
-                <div id="drive-folder-section" style="display: none;">
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width: 100%;">
-                    <input class="mdl-textfield__input" type="text" id="drive-folder-id" name="drive_folder_id" />
-                    <label class="mdl-textfield__label" for="drive-folder-id">Drive Folder ID</label>
-                  </div>
-                </div>
-                <details style="margin: 1rem 0;">
-                  <summary>Advanced Settings</summary>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="text" id="folders" name="source_folders" value="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95,1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM" required />
-                    <label class="mdl-textfield__label" for="folders">Folder IDs</label>
-                  </div>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="text" id="cover" name="cover_file_id" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" />
-                    <label class="mdl-textfield__label" for="cover">Cover File ID (optional)</label>
-                  </div>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="number" id="limit" name="limit" value="0" min="0" max="500" />
-                    <label class="mdl-textfield__label" for="limit">Limit</label>
-                  </div>
-                </details>
                 <button type="submit" id="submitButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" style="width: 100%;">
                   Generate Songbook!
                 </button>
@@ -83,10 +59,7 @@
     </main>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.js"></script>
   <script>
-    const DRIVE_FOLDER_EDITION = '__drive_folder__';
-
     function getApiBase() {
       const currentPath = window.location.pathname;
       const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
@@ -202,20 +175,6 @@
       submitButton.textContent = 'Generating...';
     }
 
-    function getDecadeRange(decade) {
-      const decadeMap = {
-        '1950s': { start: 1950, end: 1959 },
-        '1960s': { start: 1960, end: 1969 },
-        '1970s': { start: 1970, end: 1979 },
-        '1980s': { start: 1980, end: 1989 },
-        '1990s': { start: 1990, end: 1999 },
-        '2000s': { start: 2000, end: 2009 },
-        '2010s': { start: 2010, end: 2019 },
-        '2020s': { start: 2020, end: 2029 }
-      };
-      return decadeMap[decade];
-    }
-
     async function pollStatus(jobId) {
       const statusUrl = `${apiBase}/${jobId}`;
       while (true) {
@@ -247,112 +206,80 @@
     }
 
     /**
-     * Attach click handlers for all edition menu items so that:
-     * - the hidden input and visible input are updated
-     * - the Drive folder section is shown/hidden appropriately
-     */
-    function attachEditionMenuHandlers() {
-      document.querySelectorAll('#edition-menu .mdl-menu__item[data-val]').forEach(function(item) {
-        if (item.classList.contains('mdl-menu__item--disabled')) return;
-        item.addEventListener('click', function() {
-          const driveFolderSection = document.getElementById('drive-folder-section');
-          if (this.getAttribute('data-val') === DRIVE_FOLDER_EDITION) {
-            driveFolderSection.style.display = 'block';
-            const textfield = driveFolderSection.querySelector('.mdl-textfield');
-            if (textfield && typeof componentHandler !== 'undefined') {
-              componentHandler.upgradeElement(textfield);
-            }
-          } else {
-            driveFolderSection.style.display = 'none';
-          }
-        });
-      });
-    }
-
-    /**
-     * Populate the edition dropdown from the API response.
+     * Populate the edition cards from the API response.
      * Falls back gracefully if the API is unavailable.
      */
     async function loadEditions() {
-      const loadingItem = document.getElementById('editions-loading');
-      const editionMenu = document.getElementById('edition-menu');
+      const grid = document.getElementById('editions-grid');
       const editionsError = document.getElementById('editions-error');
-      const editionInput = document.querySelector('input[name="songbook_edition"]');
-      const editionDisplay = document.getElementById('songbook-edition');
-
       try {
         const res = await fetch(`${apiBase}/editions`, { method: 'GET' });
         if (!res.ok) throw new Error(`API returned ${res.status}`);
         const data = await res.json();
         const editions = data.editions || [];
 
-        // Remove the loading placeholder
-        if (loadingItem) loadingItem.remove();
-
+        grid.innerHTML = '';
         if (editions.length === 0) {
-          editionsError.textContent = 'No editions found. Enter a Drive folder ID below.';
+          editionsError.textContent = 'No editions available.';
           editionsError.style.display = 'block';
-          // Select "Other (Drive folder ID)" so the form is still usable
-          editionInput.value = DRIVE_FOLDER_EDITION;
-          document.getElementById('drive-folder-section').style.display = 'block';
-        } else {
-          // Insert edition items before the "Other" option
-          const otherItem = editionMenu.querySelector('[data-val="__drive_folder__"]');
-          editions.forEach((edition, index) => {
-            const li = document.createElement('li');
-            li.className = 'mdl-menu__item';
-            li.setAttribute('data-val', edition.id);
-            if (edition.description) {
-              li.setAttribute('title', edition.description);
-            }
-            const titleSpan = document.createElement('span');
-            titleSpan.textContent = edition.title;
-            li.appendChild(titleSpan);
-            if (edition.source) {
-              const badge = document.createElement('span');
-              badge.textContent = edition.source;
-              badge.style.cssText =
-                'margin-left:6px;font-size:0.7rem;padding:1px 5px;' +
-                'border-radius:3px;vertical-align:middle;font-weight:600;' +
-                (edition.source === 'drive'
-                  ? 'background:#e3f2fd;color:#1565c0;'
-                  : 'background:#f3e5f5;color:#6a1b9a;');
-              li.appendChild(badge);
-            }
-            editionMenu.insertBefore(li, otherItem);
+          return;
+        }
 
-            // Select the first edition by default
-            if (index === 0) {
-              editionInput.value = edition.id;
-              editionDisplay.value = edition.title;
-            }
-          });
+        editions.forEach((edition, index) => {
+          const card = document.createElement('div');
+          card.className = 'edition-card';
 
-          // Show a notice if Drive scanning had errors
-          if (data.drive_error) {
-            editionsError.textContent =
-              'Note: Drive edition scanning encountered an error. ' +
-              'Some drive-based editions may not be listed.';
-            editionsError.style.display = 'block';
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'songbook_edition';
+          radio.id = `edition-${edition.id}`;
+          radio.value = edition.id;
+          radio.className = 'edition-radio';
+          if (index === 0) radio.checked = true;
+
+          const lbl = document.createElement('label');
+          lbl.htmlFor = radio.id;
+          lbl.className = 'edition-card-label';
+
+          const header = document.createElement('div');
+          header.className = 'edition-card-header';
+
+          const title = document.createElement('span');
+          title.className = 'edition-card-title';
+          title.textContent = edition.title;
+          header.appendChild(title);
+
+          if (edition.source) {
+            const badge = document.createElement('span');
+            badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
+            badge.textContent = edition.source;
+            header.appendChild(badge);
           }
-        }
 
-        // Re-upgrade MDL components and re-attach handlers after DOM changes
-        if (typeof componentHandler !== 'undefined') {
-          componentHandler.upgradeDom();
-        }
-        attachEditionMenuHandlers();
+          lbl.appendChild(header);
 
+          if (edition.description) {
+            const desc = document.createElement('p');
+            desc.className = 'edition-card-description';
+            desc.textContent = edition.description;
+            lbl.appendChild(desc);
+          }
+
+          card.appendChild(radio);
+          card.appendChild(lbl);
+          grid.appendChild(card);
+        });
+
+        if (data.drive_error) {
+          editionsError.textContent =
+            'Note: Drive edition scanning encountered an error. ' +
+            'Some drive-based editions may not be listed.';
+          editionsError.style.display = 'block';
+        }
       } catch (err) {
-        if (loadingItem) loadingItem.remove();
-        editionsError.textContent =
-          'Could not load editions from the API. ' +
-          'You can still use a Drive folder ID below.';
+        grid.innerHTML = '<p class="editions-empty-msg">Could not load editions.</p>';
+        editionsError.textContent = 'Could not load editions from the API.';
         editionsError.style.display = 'block';
-        // Select "Other (Drive folder ID)" so the form is still usable
-        editionInput.value = DRIVE_FOLDER_EDITION;
-        document.getElementById('drive-folder-section').style.display = 'block';
-        attachEditionMenuHandlers();
       }
     }
 
@@ -363,40 +290,19 @@
       disableSubmitButton();
       showProgress();
 
-      const form = new FormData(e.target);
+      const payload = {};
 
-      // Parse comma-separated folder IDs
-      const foldersInput = form.get("source_folders");
-      const folderIds = foldersInput.split(',').map(id => id.trim()).filter(id => id.length > 0);
+      const checkedRadio = document.querySelector('input[name="songbook_edition"]:checked');
+      const songbookEdition = checkedRadio ? checkedRadio.value : '';
 
-      const payload = {
-        source_folders: folderIds,
-      };
-
-      const limitVal = Number(form.get("limit"));
-      if (limitVal > 0) {
-        payload.limit = limitVal;
-      }
-
-      const coverFileId = form.get("cover_file_id");
-      if (coverFileId) {
-        payload.cover_file_id = coverFileId;
-      }
-
-      const songbookEdition = form.get("songbook_edition");
-      const driveFolderId = form.get("drive_folder_id");
-
-      // Validate: require either a selected edition or a Drive folder ID
-      if (!songbookEdition && !driveFolderId) {
+      if (!songbookEdition) {
         enableSubmitButton();
         hideProgress();
-        alert("Please select an edition or enter a Drive folder ID.");
+        alert("Please select an edition.");
         return;
       }
 
-      payload.edition = (songbookEdition === DRIVE_FOLDER_EDITION && driveFolderId)
-        ? driveFolderId
-        : songbookEdition;
+      payload.edition = songbookEdition;
 
       try {
         // submit job
@@ -426,17 +332,10 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const editionInput = document.querySelector('input[name="songbook_edition"]');
-        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${editionInput.value}"]`);
-        const currentDriveFolderId = document.getElementById('drive-folder-id').value;
-        let editionText;
-        if (editionInput.value === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
-          editionText = `Drive folder: ${currentDriveFolderId}`;
-        } else {
-          const titleEl = selectedOption && selectedOption.querySelector('span');
-          editionText = titleEl ? titleEl.textContent : (selectedOption ? selectedOption.textContent : 'Custom');
-        }
-        const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
+        const editionTitle = checkedRadio
+          ? checkedRadio.nextElementSibling.querySelector('.edition-card-title').textContent
+          : songbookEdition;
+        const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
 
       } catch (err) {
@@ -453,11 +352,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
-      // Manually upgrade any dynamically added MDL components if needed
-      if (typeof componentHandler !== 'undefined') {
-        componentHandler.upgradeDom();
-      }
-
       // Load editions from the API (populates the dropdown dynamically)
       loadEditions();
     });
