@@ -86,7 +86,6 @@ class Edition(BaseModel):
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None
-    songs_file_ids: Optional[List[str]] = None
     filters: List[Union[FilterGroup, PropertyFilter]]
     table_of_contents: Optional[Toc] = None
     use_folder_components: bool = False
