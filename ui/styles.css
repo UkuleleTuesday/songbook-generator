@@ -40,3 +40,24 @@ body {
   list-style-type: none;
   padding: 0;
 }
+
+/* Source badges on edition dropdown items, rendered via ::after so they are
+   excluded from the element's textContent (which getmdl-select reads to
+   populate the display input). */
+#edition-menu .mdl-menu__item[data-source]::after {
+  content: attr(data-source);
+  margin-left: 6px;
+  font-size: 0.7rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  font-weight: 600;
+}
+#edition-menu .mdl-menu__item[data-source="drive"]::after {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+#edition-menu .mdl-menu__item[data-source="config"]::after {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}

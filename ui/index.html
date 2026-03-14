@@ -256,18 +256,35 @@
         if (item.classList.contains('mdl-menu__item--disabled')) return;
         item.addEventListener('click', function() {
           const val = this.getAttribute('data-val');
+          const itemEl = this;
 
-          // Update the hidden input used for form submission
-          const hiddenInput = document.querySelector('input[name="songbook_edition"]');
-          if (hiddenInput) hiddenInput.value = val;
+          // Defer so this runs after getmdl-select's own delegated handler
+          // (which fires on the parent <ul> as the event bubbles up), ensuring
+          // we always set the correct title-only display value last.
+          setTimeout(function() {
+            // Update the hidden input used for form submission
+            const hiddenInput = document.querySelector('input[name="songbook_edition"]');
+            if (hiddenInput) hiddenInput.value = val;
 
-          // Update the visible display input with the edition title (first span child)
-          const displayInput = document.getElementById('songbook-edition');
-          if (displayInput) {
-            const titleSpan = this.querySelector('span');
-            displayInput.value = titleSpan ? titleSpan.textContent : this.textContent;
-          }
+            // Update the visible display input (textContent is the title only)
+            const displayInput = document.getElementById('songbook-edition');
+            if (displayInput) {
+              displayInput.value = itemEl.textContent;
+              // Trigger MDL textfield dirty-check so the floating label updates
+              const textfieldEl = displayInput.closest('.mdl-textfield');
+              if (textfieldEl && textfieldEl.MaterialTextfield) {
+                textfieldEl.MaterialTextfield.checkDirty();
+              }
+            }
 
+            // Show which item is currently selected in the menu
+            document.querySelectorAll('#edition-menu .mdl-menu__item').forEach(function(i) {
+              i.classList.remove('is-checked');
+            });
+            itemEl.classList.add('is-checked');
+          }, 0);
+
+          // Drive-folder section visibility can be toggled immediately
           const driveFolderSection = document.getElementById('drive-folder-section');
           if (val === DRIVE_FOLDER_EDITION) {
             driveFolderSection.style.display = 'block';
@@ -318,19 +335,11 @@
             if (edition.description) {
               li.setAttribute('title', edition.description);
             }
-            const titleSpan = document.createElement('span');
-            titleSpan.textContent = edition.title;
-            li.appendChild(titleSpan);
+            // Keep textContent as the title only so that getmdl-select reads
+            // the correct label. The source badge is shown via CSS ::after.
+            li.textContent = edition.title;
             if (edition.source) {
-              const badge = document.createElement('span');
-              badge.textContent = edition.source;
-              badge.style.cssText =
-                'margin-left:6px;font-size:0.7rem;padding:1px 5px;' +
-                'border-radius:3px;vertical-align:middle;font-weight:600;' +
-                (edition.source === 'drive'
-                  ? 'background:#e3f2fd;color:#1565c0;'
-                  : 'background:#f3e5f5;color:#6a1b9a;');
-              li.appendChild(badge);
+              li.dataset.source = edition.source;
             }
             editionMenu.insertBefore(li, otherItem);
 
@@ -338,6 +347,12 @@
             if (index === 0) {
               editionInput.value = edition.id;
               editionDisplay.value = edition.title;
+              li.classList.add('is-checked');
+              // Trigger MDL textfield label update for the initial selection
+              const textfieldEl = editionDisplay.closest('.mdl-textfield');
+              if (textfieldEl && textfieldEl.MaterialTextfield) {
+                textfieldEl.MaterialTextfield.checkDirty();
+              }
             }
           });
 
