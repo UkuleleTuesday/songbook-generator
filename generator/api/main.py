@@ -11,8 +11,8 @@ from loguru import logger
 from ..common.tracing import get_tracer, setup_tracing
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient, client as build_drive_client
+from ..common.editions import scan_drive_editions
 from ..worker.gcp import get_credentials
-from ..worker.pdf import scan_drive_editions
 
 _DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 

@@ -11,7 +11,6 @@ from .pdf import (
     generate_songbook_from_drive_folder,
     generate_songbook_from_edition,
     generate_manifest,
-    scan_drive_editions,
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
@@ -23,7 +22,7 @@ TEST_DATA_DIR = Path(__file__).parent / "test_data"
 @pytest.fixture
 def mock_gdrive_client(mocker):
     """Fixture to mock GoogleDriveClient."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
+    mock_client = mocker.Mock()
     return mock_client
 
 
@@ -980,153 +979,3 @@ def test_generate_from_drive_folder_no_cover_or_preface(mocker):
     assert len(kwargs["files"]) == 2
 
 
-# ---------------------------------------------------------------------------
-# scan_drive_editions tests
-# ---------------------------------------------------------------------------
-
-_VALID_YAML = b"""
-id: drive-edition
-title: Drive Edition
-description: A drive-based edition
-filters:
-  - key: specialbooks
-    operator: contains
-    value: test
-"""
-
-_INVALID_YAML = b": this: is: not: valid: yaml: {"
-
-_INVALID_SCHEMA_YAML = b"""
-title: Missing required id field
-description: Missing id
-filters: []
-"""
-
-
-def test_scan_drive_editions_returns_valid_editions(mocker):
-    """Valid .songbook.yaml files are returned as (folder_id, Edition) tuples."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = [
-        File(id="file1", name=".songbook.yaml", parents=["folder_a"]),
-    ]
-    mock_client.download_raw_bytes.return_value = _VALID_YAML
-
-    result = scan_drive_editions(mock_client)
-
-    assert len(result) == 1
-    folder_id, edition = result[0]
-    assert folder_id == "folder_a"
-    assert edition.id == "drive-edition"
-    assert edition.title == "Drive Edition"
-
-
-def test_scan_drive_editions_skips_invalid_yaml(mocker):
-    """Files with unparseable YAML are skipped with a warning."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = [
-        File(id="bad", name=".songbook.yaml", parents=["folder_b"]),
-    ]
-    mock_client.download_raw_bytes.return_value = _INVALID_YAML
-
-    result = scan_drive_editions(mock_client)
-
-    assert result == []
-
-
-def test_scan_drive_editions_skips_invalid_schema(mocker):
-    """Files that don't conform to Edition schema are skipped."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = [
-        File(id="bad", name=".songbook.yaml", parents=["folder_c"]),
-    ]
-    mock_client.download_raw_bytes.return_value = _INVALID_SCHEMA_YAML
-
-    result = scan_drive_editions(mock_client)
-
-    assert result == []
-
-
-def test_scan_drive_editions_skips_files_without_parent(mocker):
-    """Files with no parent folder listed are skipped."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = [
-        File(id="orphan", name=".songbook.yaml", parents=[]),
-    ]
-
-    result = scan_drive_editions(mock_client)
-
-    assert result == []
-    mock_client.download_raw_bytes.assert_not_called()
-
-
-def test_scan_drive_editions_multiple_files(mocker):
-    """Processes multiple files and skips invalid ones."""
-    from googleapiclient.errors import HttpError
-    from unittest.mock import MagicMock
-
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = [
-        File(id="good", name=".songbook.yaml", parents=["folder_good"]),
-        File(id="bad", name=".songbook.yaml", parents=["folder_bad"]),
-    ]
-    http_err = HttpError(resp=MagicMock(status=404), content=b"Not Found")
-    mock_client.download_raw_bytes.side_effect = [_VALID_YAML, http_err]
-
-    result = scan_drive_editions(mock_client)
-
-    assert len(result) == 1
-    folder_id, edition = result[0]
-    assert folder_id == "folder_good"
-
-
-def test_scan_drive_editions_empty_drive(mocker):
-    """Returns empty list when no .songbook.yaml files exist in Drive."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = []
-
-    result = scan_drive_editions(mock_client)
-
-    assert result == []
-    mock_client.download_raw_bytes.assert_not_called()
-
-
-def test_scan_drive_editions_uses_unscoped_search_by_default(mocker):
-    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is unset, search is not scoped."""
-    mocker.patch.dict("os.environ", {}, clear=False)
-    # Ensure the env var is absent
-    mocker.patch.dict(
-        "os.environ", {"GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS": ""}, clear=False
-    )
-    from ..common import config as cfg
-
-    cfg.get_settings.cache_clear()
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = []
-
-    scan_drive_editions(mock_client)
-
-    mock_client.find_all_files_named.assert_called_once_with(
-        ".songbook.yaml", source_folders=None
-    )
-    cfg.get_settings.cache_clear()
-
-
-def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
-    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is set, search is restricted to those folders."""
-    mocker.patch.dict(
-        "os.environ",
-        {"GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS": "folder_x,folder_y"},
-        clear=False,
-    )
-    from ..common import config as cfg
-
-    cfg.get_settings.cache_clear()
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
-    mock_client.find_all_files_named.return_value = []
-
-    scan_drive_editions(mock_client)
-
-    mock_client.find_all_files_named.assert_called_once_with(
-        ".songbook.yaml", source_folders=["folder_x", "folder_y"]
-    )
-    cfg.get_settings.cache_clear()

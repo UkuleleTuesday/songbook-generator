@@ -22,6 +22,7 @@ from .common.gdrive import (
 from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser, parse_filters
+from .common.editions import scan_drive_editions
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import google.auth.exceptions
@@ -34,7 +35,6 @@ from .worker.pdf import (
     load_edition_from_drive_folder,
     init_services,
     collect_and_sort_files,
-    scan_drive_editions,
 )
 
 
