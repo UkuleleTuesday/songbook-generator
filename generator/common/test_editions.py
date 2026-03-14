@@ -24,28 +24,25 @@ filters: []
 """
 
 
+def _mock_settings(mocker, folder_ids):
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(songbook_editions=mocker.Mock(folder_ids=folder_ids)),
+    )
+
+
 def test_scan_drive_editions_returns_valid_editions(mocker):
-    """Valid edition folders with .songbook.yaml are returned as (folder_id, Edition) tuples."""
+    """Valid .songbook.yaml files are returned as (folder_id, Edition) tuples."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock listing child folders
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        # First call: list child folders in source folder
-        {"files": [{"id": "edition_folder_1", "name": "Edition 1"}]},
-        # Second call: check for .songbook.yaml in edition_folder_1
-        {"files": [{"id": "yaml_file_1"}]},
-    ]
-
+    # Single ancestors query returns one YAML file
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [{"id": "yaml_file_1", "parents": ["edition_folder_1"]}]
+    }
     mock_client.download_raw_bytes.return_value = _VALID_YAML
 
-    # Mock settings to have source folders
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
+    _mock_settings(mocker, ["source_folder"])
 
     result = scan_drive_editions(mock_client)
 
@@ -56,25 +53,38 @@ def test_scan_drive_editions_returns_valid_editions(mocker):
     assert edition.title == "Drive Edition"
 
 
+def test_scan_drive_editions_uses_ancestors_query(mocker):
+    """The Drive API query uses 'in ancestors' to avoid O(n) per-folder probing."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
+
+    _mock_settings(mocker, ["source_folder_x"])
+
+    scan_drive_editions(mock_client)
+
+    # Verify the query contains the ancestors clause
+    list_call = mock_client.drive.files.return_value.list.call_args
+    query = list_call.kwargs["q"]
+    assert "in ancestors" in query
+    assert "source_folder_x" in query
+    assert ".songbook.yaml" in query
+
+
 def test_scan_drive_editions_skips_invalid_yaml(mocker):
     """Folders with unparseable YAML are skipped with a warning."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock listing child folders and finding YAML file
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        {"files": [{"id": "folder_b", "name": "Bad Folder"}]},
-        {"files": [{"id": "bad_yaml"}]},
-    ]
-
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [{"id": "bad_yaml_id", "parents": ["folder_b"]}]
+    }
     mock_client.download_raw_bytes.return_value = _INVALID_YAML
 
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
+    _mock_settings(mocker, ["source_folder"])
 
     result = scan_drive_editions(mock_client)
 
@@ -86,45 +96,28 @@ def test_scan_drive_editions_skips_invalid_schema(mocker):
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock listing child folders and finding YAML file
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        {"files": [{"id": "folder_c", "name": "Bad Schema Folder"}]},
-        {"files": [{"id": "bad_schema_yaml"}]},
-    ]
-
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [{"id": "bad_schema_yaml_id", "parents": ["folder_c"]}]
+    }
     mock_client.download_raw_bytes.return_value = _INVALID_SCHEMA_YAML
 
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
+    _mock_settings(mocker, ["source_folder"])
 
     result = scan_drive_editions(mock_client)
 
     assert result == []
 
 
-def test_scan_drive_editions_skips_folders_without_yaml(mocker):
-    """Edition folders without .songbook.yaml file are skipped."""
+def test_scan_drive_editions_empty_drive(mocker):
+    """Returns empty list when no .songbook.yaml files exist under source folder."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock listing child folders
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        # First call: list child folders in source folder
-        {"files": [{"id": "no_yaml_folder", "name": "No YAML Folder"}]},
-        # Second call: check for .songbook.yaml in no_yaml_folder - not found
-        {"files": []},
-    ]
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
 
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
+    _mock_settings(mocker, ["source_folder"])
 
     result = scan_drive_editions(mock_client)
 
@@ -132,64 +125,28 @@ def test_scan_drive_editions_skips_folders_without_yaml(mocker):
     mock_client.download_raw_bytes.assert_not_called()
 
 
-def test_scan_drive_editions_multiple_folders(mocker):
-    """Processes multiple edition folders and skips invalid ones."""
+def test_scan_drive_editions_multiple_yamls(mocker):
+    """Multiple valid .songbook.yaml files in the same source folder are all returned."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock listing child folders and checking for YAML
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        # List child folders
-        {
-            "files": [
-                {"id": "folder_good", "name": "Good Folder"},
-                {"id": "folder_bad", "name": "Bad Folder"},
-            ]
-        },
-        # Check for YAML in folder_good
-        {"files": [{"id": "good_yaml"}]},
-        # Check for YAML in folder_bad - will error
-        {"files": [{"id": "bad_yaml"}]},
-    ]
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [
+            {"id": "good_yaml", "parents": ["folder_good"]},
+            {"id": "bad_yaml", "parents": ["folder_bad"]},
+        ]
+    }
 
     http_err = HttpError(resp=MagicMock(status=404), content=b"Not Found")
     mock_client.download_raw_bytes.side_effect = [_VALID_YAML, http_err]
 
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
+    _mock_settings(mocker, ["source_folder"])
 
     result = scan_drive_editions(mock_client)
 
     assert len(result) == 1
     folder_id, edition = result[0]
     assert folder_id == "folder_good"
-
-
-def test_scan_drive_editions_empty_drive(mocker):
-    """Returns empty list when no edition folders exist in Drive."""
-    mock_client = mocker.Mock()
-    mock_client.config = mocker.Mock(api_retries=3)
-
-    # Mock listing child folders - returns empty
-    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
-        "files": []
-    }
-
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
-        ),
-    )
-
-    result = scan_drive_editions(mock_client)
-
-    assert result == []
-    mock_client.download_raw_bytes.assert_not_called()
 
 
 def test_scan_drive_editions_requires_source_folders(mocker):
@@ -207,24 +164,71 @@ def test_scan_drive_editions_requires_source_folders(mocker):
 
 
 def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
-    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is set, search is restricted to those folders."""
-    mocker.patch(
-        "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=["folder_x", "folder_y"])
-        ),
-    )
+    """Search is issued once per configured source folder."""
+    _mock_settings(mocker, ["folder_x", "folder_y"])
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
-    # Mock the Drive API calls - returns empty for both folders
-    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
-        {"files": []},  # folder_x
-        {"files": []},  # folder_y
-    ]
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
 
     result = scan_drive_editions(mock_client)
 
     assert result == []
-    # Verify that list was called for each source folder
-    assert mock_client.drive.files.return_value.list.call_count >= 2
+    # Exactly one list() call per source folder (no per-subfolder probing)
+    assert mock_client.drive.files.return_value.list.call_count == 2
+
+
+def test_scan_drive_editions_handles_pagination(mocker):
+    """Results spread across multiple pages are all collected."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    # Page 1 has one YAML, page 2 has another
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {
+            "nextPageToken": "token_page2",
+            "files": [{"id": "yaml_p1", "parents": ["folder_p1"]}],
+        },
+        {
+            "files": [{"id": "yaml_p2", "parents": ["folder_p2"]}],
+        },
+    ]
+    mock_client.download_raw_bytes.return_value = _VALID_YAML
+
+    _mock_settings(mocker, ["source_folder"])
+
+    result = scan_drive_editions(mock_client)
+
+    assert len(result) == 2
+    folder_ids = {fid for fid, _ in result}
+    assert folder_ids == {"folder_p1", "folder_p2"}
+    # Two list() calls: page 1 and page 2
+    assert mock_client.drive.files.return_value.list.call_count == 2
+    # Second call must include the page token
+    second_call_kwargs = mock_client.drive.files.return_value.list.call_args_list[
+        1
+    ].kwargs
+    assert second_call_kwargs.get("pageToken") == "token_page2"
+
+
+def test_scan_drive_editions_single_api_call_per_source_folder(mocker):
+    """Only one Drive API list() call is made per source folder (O(1) not O(n))."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    # Simulate 10 editions in a single source folder
+    yaml_files = [{"id": f"yaml_{i}", "parents": [f"folder_{i}"]} for i in range(10)]
+    mock_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": yaml_files
+    }
+    mock_client.download_raw_bytes.return_value = _VALID_YAML
+
+    _mock_settings(mocker, ["source_folder"])
+
+    result = scan_drive_editions(mock_client)
+
+    assert len(result) == 10
+    # Exactly ONE list() call regardless of how many editions were found
+    assert mock_client.drive.files.return_value.list.call_count == 1
