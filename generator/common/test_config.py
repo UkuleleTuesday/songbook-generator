@@ -40,6 +40,27 @@ def test_gdrive_song_sheets_folder_ids_override(monkeypatch):
     assert settings.song_sheets.folder_ids == ["folder1", "folder2"]
 
 
+def test_gdrive_songbook_editions_folder_ids_override(monkeypatch):
+    """Test that GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS overrides songbook_editions.folder_ids."""
+    monkeypatch.setenv(
+        "GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS", "editions_folder1,editions_folder2"
+    )
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.songbook_editions.folder_ids == [
+        "editions_folder1",
+        "editions_folder2",
+    ]
+
+
+def test_gdrive_songbook_editions_folder_ids_default(monkeypatch):
+    """Test that songbook_editions.folder_ids defaults to an empty list."""
+    monkeypatch.delenv("GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS", raising=False)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.songbook_editions.folder_ids == []
+
+
 def test_gcs_worker_cache_bucket_override(monkeypatch):
     """Test that GCS_WORKER_CACHE_BUCKET overrides caching.gcs.worker_cache_bucket."""
     monkeypatch.setenv("GCS_WORKER_CACHE_BUCKET", "my-test-bucket")

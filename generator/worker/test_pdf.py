@@ -14,7 +14,6 @@ from .pdf import (
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
-from ..common.gdrive import GoogleDriveClient
 
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
 
@@ -22,7 +21,7 @@ TEST_DATA_DIR = Path(__file__).parent / "test_data"
 @pytest.fixture
 def mock_gdrive_client(mocker):
     """Fixture to mock GoogleDriveClient."""
-    mock_client = mocker.Mock(spec=GoogleDriveClient)
+    mock_client = mocker.Mock()
     return mock_client
 
 

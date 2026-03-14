@@ -22,8 +22,10 @@ from .common.gdrive import (
 from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from .common.filters import FilterParser, parse_filters
+from .common.editions import scan_drive_editions
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import google.auth.exceptions
 from .tagupdater.tags import Tagger
 from .worker.gcp import get_credentials
 from .worker.pdf import (
@@ -670,8 +672,8 @@ def validate_pdf_cli(
 
 
 @cli.group()
-def editions():
-    """Manage songbook editions for songs."""
+def specialbooks():
+    """Manage the specialbooks tag for songs (controls which editions a song appears in)."""
 
 
 def edition_management_command(func):
@@ -726,7 +728,7 @@ def edition_management_command(func):
     return wrapper
 
 
-@editions.command(name="add-song")
+@specialbooks.command(name="add-song")
 @click.argument("edition_name")
 @click.argument("file_identifier")
 @edition_management_command
@@ -740,7 +742,7 @@ def add_song_to_edition(current_editions, edition_name, **kwargs):
     return current_editions
 
 
-@editions.command(name="remove-song")
+@specialbooks.command(name="remove-song")
 @click.argument("edition_name")
 @click.argument("file_identifier")
 @edition_management_command
@@ -754,7 +756,7 @@ def remove_song_from_edition(current_editions, edition_name, **kwargs):
     return current_editions
 
 
-@editions.command(name="list")
+@specialbooks.command(name="list")
 @click.argument("file_identifier")
 def list_song_editions(file_identifier):
     """Lists all editions a song belongs to."""
@@ -794,6 +796,63 @@ def list_song_editions(file_identifier):
         click.echo("Song is in the following editions:")
         for edition in sorted(list(current_editions)):
             click.echo(f"- {edition}")
+
+
+@cli.group()
+def editions():
+    """List and manage configured songbook editions."""
+
+
+@editions.command(name="list")
+def list_editions():
+    """List all configured and drive-detected songbook editions."""
+    settings = get_settings()
+
+    # --- Config editions ---
+    config_editions = settings.editions
+    if config_editions:
+        click.echo("Config editions:")
+        for edition in config_editions:
+            click.echo(f"  [{edition.id}] {edition.title}")
+    else:
+        click.echo("No config editions found.")
+
+    # --- Drive editions ---
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo(
+            "\nWarning: credential config 'songbook-generator' not found; "
+            "skipping Drive scan.",
+            err=True,
+        )
+        return
+
+    # init_services can raise on auth/network errors; keep Drive scan best-effort.
+    try:
+        drive, cache = init_services(
+            scopes=credential_config.scopes,
+            target_principal=credential_config.principal,
+        )
+    except HttpError as exc:
+        click.echo(f"\nWarning: Drive scan failed: {exc}", err=True)
+        return
+    except google.auth.exceptions.TransportError as exc:
+        click.echo(f"\nWarning: Drive scan failed (network error): {exc}", err=True)
+        return
+    except google.auth.exceptions.DefaultCredentialsError as exc:
+        click.echo(f"\nWarning: Drive scan failed (credentials error): {exc}", err=True)
+        return
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    # scan_drive_editions handles Drive API errors internally and never raises.
+    drive_results = scan_drive_editions(gdrive_client)
+
+    if drive_results:
+        click.echo("\nDrive editions:")
+        for folder_id, edition in drive_results:
+            click.echo(f"  [{folder_id}] {edition.title}")
+    else:
+        click.echo("\nNo drive editions found.")
 
 
 @cli.group()

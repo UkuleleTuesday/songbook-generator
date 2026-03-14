@@ -2,14 +2,23 @@ import os
 import json
 import uuid
 from datetime import datetime, timedelta
+from google.auth.exceptions import GoogleAuthError
 from google.cloud import pubsub_v1, firestore
+from googleapiclient.errors import HttpError
 from loguru import logger
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
+from ..common.config import get_settings
+from ..common.gdrive import GoogleDriveClient, client as build_drive_client
+from ..common.editions import scan_drive_editions
+from ..worker.gcp import get_credentials
+
+_DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
 
 # Cache for initialized clients to avoid re-initialization on warm starts
 _services = None
+_drive_client = None
 
 
 def _get_services():
@@ -38,6 +47,42 @@ def _get_services():
         "firestore_collection": firestore_collection,
     }
     return _services
+
+
+def _get_drive_client():
+    """Lazily initializes and returns a GoogleDriveClient for Drive scanning.
+
+    Impersonates the ``api`` service account principal so that the API can
+    access the same Drive files as the worker and cache updater.
+    """
+    global _drive_client
+    if _drive_client is not None:
+        return _drive_client
+
+    tracer = get_tracer(__name__)
+    with tracer.start_as_current_span("init_drive_client") as span:
+        settings = get_settings()
+        credential_config = settings.google_cloud.credentials.get("api")
+        if credential_config:
+            span.set_attribute("credentials.principal", credential_config.principal)
+            span.set_attribute("credentials.scopes", ",".join(credential_config.scopes))
+            span.set_attribute("credentials.source", "config:api")
+            creds = get_credentials(
+                scopes=credential_config.scopes,
+                target_principal=credential_config.principal,
+            )
+        else:
+            logger.warning(
+                "Credential config 'api' not found; "
+                "falling back to ambient credentials for Drive scan."
+            )
+            span.set_attribute("credentials.source", "ambient")
+            span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
+            creds = get_credentials(scopes=[_DRIVE_READONLY_SCOPE])
+
+        drive = build_drive_client(credentials=creds)
+        _drive_client = GoogleDriveClient(cache=None, drive=drive)
+    return _drive_client
 
 
 def _cors_headers():
@@ -158,6 +203,94 @@ def handle_get_job(job_id, services):
         return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
 
 
+def handle_get_editions(services):
+    """Return all available songbook editions (static config + Drive-detected)."""
+    with services["tracer"].start_as_current_span("handle_get_editions") as span:
+        settings = get_settings()
+
+        # Always include statically-configured editions
+        editions = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "description": e.description,
+                "source": "config",
+            }
+            for e in settings.editions
+        ]
+        span.set_attribute("config_editions_count", len(editions))
+        logger.info(f"Loaded {len(editions)} edition(s) from static config")
+
+        # Attempt to augment with Drive-detected editions
+        credential_config = settings.google_cloud.credentials.get("api")
+        drive_editions_count = 0
+        drive_error = None
+        with services["tracer"].start_as_current_span(
+            "scan_drive_editions_api"
+        ) as drive_span:
+            if credential_config:
+                drive_span.set_attribute(
+                    "credentials.principal", credential_config.principal
+                )
+                drive_span.set_attribute(
+                    "credentials.scopes",
+                    ",".join(credential_config.scopes),
+                )
+                drive_span.set_attribute("credentials.source", "config:api")
+            else:
+                drive_span.set_attribute("credentials.source", "ambient")
+                drive_span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
+            try:
+                gdrive_client = _get_drive_client()
+                drive_scan_results = scan_drive_editions(gdrive_client)
+                for folder_id, edition in drive_scan_results:
+                    editions.append(
+                        {
+                            "id": folder_id,
+                            "title": edition.title,
+                            "description": edition.description,
+                            "source": "drive",
+                            "folder_id": folder_id,
+                        }
+                    )
+                    drive_editions_count += 1
+                drive_span.set_attribute(
+                    "drive.scan.editions_found", drive_editions_count
+                )
+                drive_span.set_attribute("drive.scan.available", True)
+                logger.info(
+                    f"Drive scan found {drive_editions_count} additional edition(s)"
+                )
+            except HttpError as e:
+                drive_error = f"Drive API error: {e}"
+                drive_span.set_attribute("drive.scan.available", False)
+                drive_span.set_attribute("drive.scan.error", drive_error)
+                logger.error(
+                    f"handle_get_editions: Drive API error scanning for editions "
+                    f"(HTTP {e.resp.status if e.resp else 'unknown'}): {e}"
+                )
+            except GoogleAuthError as e:
+                drive_error = f"Drive auth error ({type(e).__name__}): {e}"
+                drive_span.set_attribute("drive.scan.available", False)
+                drive_span.set_attribute("drive.scan.error", drive_error)
+                logger.error(
+                    f"handle_get_editions: auth error scanning Drive for editions "
+                    f"({type(e).__name__}): {e}"
+                )
+
+        span.set_attribute("drive_editions_count", drive_editions_count)
+        span.set_attribute("total_editions_count", len(editions))
+        span.set_attribute("drive.scan.available", drive_error is None)
+
+        response: dict = {"editions": editions}
+        if drive_error:
+            response["drive_error"] = drive_error
+
+        body = json.dumps(response)
+        span.set_attribute("response.status_code", 200)
+        return (body, 200, {**_cors_headers(), "Content-Type": "application/json"})
+
+
 def api_main(req):
     services = _get_services()
     with services["tracer"].start_as_current_span("api_main") as span:
@@ -180,6 +313,12 @@ def api_main(req):
             logger.info("Handling GET healthcheck at root path")
             span.set_attribute("request.type", "healthcheck")
             return ("OK", 200, _cors_headers())
+
+        # GET all available editions
+        if req.method == "GET" and req.path == "/editions":
+            logger.info("Handling GET request for editions")
+            span.set_attribute("request.type", "get_editions")
+            return handle_get_editions(services)
 
         # GET job status at /{job_id}
         if req.method == "GET":

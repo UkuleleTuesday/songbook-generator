@@ -26,6 +26,18 @@ class SongSheets(BaseModel):
     )
 
 
+class SongbookEditions(BaseModel):
+    """Configuration for Drive-based songbook edition discovery."""
+
+    folder_ids: List[str] = Field(
+        default=[],
+        description=(
+            "Drive folder IDs to restrict .songbook.yaml discovery to. "
+            "When empty, the search is performed across all of Drive."
+        ),
+    )
+
+
 class Cover(BaseModel):
     file_id: Optional[str] = None
 
@@ -131,6 +143,10 @@ class GoogleCloud(BaseModel):
             principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
             scopes=["https://www.googleapis.com/auth/drive.readonly"],
         ),
+        "api": GoogleCloudCredentials(
+            principal="songbook-generator@songbook-generator.iam.gserviceaccount.com",
+            scopes=["https://www.googleapis.com/auth/drive.readonly"],
+        ),
     }
 
 
@@ -153,6 +169,7 @@ class Settings(BaseSettings):
 
     google_cloud: GoogleCloud = Field(default_factory=GoogleCloud)
     song_sheets: SongSheets = Field(default_factory=SongSheets)
+    songbook_editions: SongbookEditions = Field(default_factory=SongbookEditions)
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
@@ -187,7 +204,15 @@ class Settings(BaseSettings):
 
         # Handle GDRIVE_SONG_SHEETS_FOLDER_IDS
         if folder_ids_env := os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS"):
-            self.song_sheets.folder_ids = folder_ids_env.split(",")
+            self.song_sheets.folder_ids = [
+                f for f in folder_ids_env.split(",") if f.strip()
+            ]
+
+        # Handle GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS
+        if editions_folder_ids_env := os.getenv("GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS"):
+            self.songbook_editions.folder_ids = [
+                f for f in editions_folder_ids_env.split(",") if f.strip()
+            ]
 
         # Handle GCS cache settings
         if gcs_bucket_env := os.getenv("GCS_WORKER_CACHE_BUCKET"):

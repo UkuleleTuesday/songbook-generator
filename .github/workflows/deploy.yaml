@@ -124,6 +124,7 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
+          GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS: "${{ env.GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS }}"
 
   deploy-generator:
     name: Deploy Worker

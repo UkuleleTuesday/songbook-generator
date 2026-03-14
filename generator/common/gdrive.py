@@ -4,15 +4,19 @@ import click
 from googleapiclient.http import MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 import io
+from loguru import logger
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
 from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
 from .config import get_settings, GoogleDriveClientConfig
+from .tracing import get_tracer
 from google.auth import credentials
 
 SHORTCUT_MIME_TYPE = "application/vnd.google-apps.shortcut"
+
+tracer = get_tracer(__name__)
 
 
 def client(credentials: credentials.Credentials):
@@ -509,6 +513,92 @@ class GoogleDriveClient:
                 err=True,
             )
             return None
+
+    def find_all_files_named(
+        self,
+        filename: str,
+        source_folders: Optional[List[str]] = None,
+    ) -> List[File]:
+        """
+        Find all files with the given exact name across accessible Drive.
+
+        Args:
+            filename: The exact file name to search for.
+            source_folders: Optional list of folder IDs to restrict the
+                search to direct children of those folders.  When ``None``
+                or empty the search is performed across all Drive files
+                accessible to the current credentials.
+
+        Returns:
+            List of matching File objects (may be empty).
+        """
+        with tracer.start_as_current_span("find_all_files_named") as span:
+            span.set_attribute("gdrive.query_filename", filename)
+            span.set_attribute(
+                "gdrive.source_folders_count",
+                len(source_folders) if source_folders else 0,
+            )
+            span.set_attribute("gdrive.search_scoped", bool(source_folders))
+
+            escaped_name = filename.replace("'", "\\'")
+            query = f"name = '{escaped_name}' and trashed = false"
+            if source_folders:
+                parent_queries = [f"'{fid}' in parents" for fid in source_folders]
+                query += f" and ({' or '.join(parent_queries)})"
+
+            files: List[File] = []
+            page_token = None
+            pages_fetched = 0
+
+            while True:
+                try:
+                    resp = (
+                        self.drive.files()
+                        .list(
+                            q=query,
+                            pageSize=100,
+                            fields=(
+                                "nextPageToken, "
+                                "files(id,name,mimeType,parents,properties)"
+                            ),
+                            pageToken=page_token,
+                        )
+                        .execute(num_retries=self.config.api_retries)
+                    )
+                except HttpError as e:
+                    error_code = e.resp.status if e.resp else "unknown"
+                    logger.error(
+                        f"Drive API error searching for {filename!r} "
+                        f"(HTTP {error_code}): {e}"
+                    )
+                    click.echo(
+                        f"Error searching for '{filename}' (HTTP {error_code}): {e}",
+                        err=True,
+                    )
+                    span.set_attribute("gdrive.error_code", str(error_code))
+                    span.set_attribute("gdrive.error", str(e))
+                    break
+
+                pages_fetched += 1
+                page_results = resp.get("files", [])
+                for f in page_results:
+                    files.append(
+                        File(
+                            id=f["id"],
+                            name=f["name"],
+                            mimeType=f.get("mimeType"),
+                            properties=f.get("properties") or {},
+                            parents=f.get("parents") or [],
+                        )
+                    )
+
+                page_token = resp.get("nextPageToken")
+                if not page_token:
+                    break
+
+            span.set_attribute("gdrive.files_found", len(files))
+            span.set_attribute("gdrive.pages_fetched", pages_fetched)
+            return files
 
     def download_raw_bytes(self, file_id: str) -> bytes:
         """
