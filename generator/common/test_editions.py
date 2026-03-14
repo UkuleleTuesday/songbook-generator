@@ -1,6 +1,5 @@
 """Tests for editions module."""
 
-import pytest
 from googleapiclient.errors import HttpError
 from unittest.mock import MagicMock
 
@@ -197,9 +196,7 @@ def test_scan_drive_editions_requires_source_folders(mocker):
     """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is unset, returns empty list."""
     mocker.patch(
         "generator.common.editions.config.get_settings",
-        return_value=mocker.Mock(
-            songbook_editions=mocker.Mock(folder_ids=None)
-        ),
+        return_value=mocker.Mock(songbook_editions=mocker.Mock(folder_ids=None)),
     )
     mock_client = mocker.Mock()
 

@@ -14,7 +14,6 @@ from .pdf import (
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
-from ..common.gdrive import GoogleDriveClient
 
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
 
@@ -977,5 +976,3 @@ def test_generate_from_drive_folder_no_cover_or_preface(mocker):
     assert kwargs["preface_file_ids"] is None
     assert kwargs["postface_file_ids"] is None
     assert len(kwargs["files"]) == 2
-
-

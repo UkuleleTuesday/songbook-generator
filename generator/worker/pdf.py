@@ -3,10 +3,9 @@ import click
 import os
 import yaml
 from datetime import datetime, timezone
-from loguru import logger
 from opentelemetry import trace
 from pathlib import Path
-from typing import List, Optional, Union, Dict, Any, Tuple
+from typing import List, Optional, Union, Dict, Any
 from pydantic import ValidationError
 from . import progress
 from . import toc
