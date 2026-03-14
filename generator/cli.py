@@ -188,6 +188,7 @@ def generate(
         # Try configured editions first, fall back to treating the value as a
         # Drive folder ID containing a .songbook.yaml.
         selected_edition = next((e for e in settings.editions if e.id == edition), None)
+        songs_files = None
         if not selected_edition:
             click.echo(
                 f"Edition '{edition}' not found in configuration, "
@@ -195,7 +196,7 @@ def generate(
             )
             gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
             try:
-                selected_edition = load_edition_from_drive_folder(
+                selected_edition, songs_files = load_edition_from_drive_folder(
                     gdrive_client, edition
                 )
             except ValueError as e:
@@ -213,6 +214,7 @@ def generate(
             edition=selected_edition,
             limit=limit,
             on_progress=progress_callback,
+            files=songs_files,
         )
     else:
         # Legacy mode without edition
