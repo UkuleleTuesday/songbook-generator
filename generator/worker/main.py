@@ -147,6 +147,7 @@ def worker_main(cloud_event):
                     selected_edition = next(
                         (e for e in settings.editions if e.id == edition_id), None
                     )
+                    songs_files = None
                     if not selected_edition:
                         logger.info(
                             f"Edition '{edition_id}' not found in configuration, "
@@ -154,8 +155,10 @@ def worker_main(cloud_event):
                         )
                         gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
                         try:
-                            selected_edition = load_edition_from_drive_folder(
-                                gdrive_client, edition_id
+                            selected_edition, songs_files = (
+                                load_edition_from_drive_folder(
+                                    gdrive_client, edition_id
+                                )
                             )
                         except ValueError as e:
                             raise ValueError(
@@ -174,6 +177,7 @@ def worker_main(cloud_event):
                         edition=selected_edition,
                         limit=limit,
                         on_progress=progress_callback,
+                        files=songs_files,
                     )
                 else:
                     # Legacy mode: Parse filters parameter
