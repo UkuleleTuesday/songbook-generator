@@ -37,21 +37,6 @@
                   </select>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
-                <details style="margin: 1rem 0;">
-                  <summary>Advanced Settings</summary>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="text" id="folders" name="source_folders" value="1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95,1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM" required />
-                    <label class="mdl-textfield__label" for="folders">Folder IDs</label>
-                  </div>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="text" id="cover" name="cover_file_id" value="1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740" />
-                    <label class="mdl-textfield__label" for="cover">Cover File ID (optional)</label>
-                  </div>
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
-                    <input class="mdl-textfield__input" type="number" id="limit" name="limit" value="0" min="0" max="500" />
-                    <label class="mdl-textfield__label" for="limit">Limit</label>
-                  </div>
-                </details>
                 <button type="submit" id="submitButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" style="width: 100%;">
                   Generate Songbook!
                 </button>
@@ -295,25 +280,7 @@
       disableSubmitButton();
       showProgress();
 
-      const form = new FormData(e.target);
-
-      // Parse comma-separated folder IDs
-      const foldersInput = form.get("source_folders");
-      const folderIds = foldersInput.split(',').map(id => id.trim()).filter(id => id.length > 0);
-
-      const payload = {
-        source_folders: folderIds,
-      };
-
-      const limitVal = Number(form.get("limit"));
-      if (limitVal > 0) {
-        payload.limit = limitVal;
-      }
-
-      const coverFileId = form.get("cover_file_id");
-      if (coverFileId) {
-        payload.cover_file_id = coverFileId;
-      }
+      const payload = {};
 
       const songbookEdition = document.getElementById('songbook-edition').value;
 
