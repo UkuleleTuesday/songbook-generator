@@ -41,23 +41,32 @@ body {
   padding: 0;
 }
 
-/* Source badges on edition dropdown items, rendered via ::after so they are
-   excluded from the element's textContent (which getmdl-select reads to
-   populate the display input). */
-#edition-menu .mdl-menu__item[data-source]::after {
-  content: attr(data-source);
-  margin-left: 6px;
-  font-size: 0.7rem;
-  padding: 1px 5px;
-  border-radius: 3px;
-  vertical-align: middle;
-  font-weight: 600;
+/* Edition dropdown */
+.edition-select-wrapper {
+  margin: 16px 0 8px;
 }
-#edition-menu .mdl-menu__item[data-source="drive"]::after {
-  background: #e3f2fd;
-  color: #1565c0;
+
+.edition-select-label {
+  display: block;
+  font-size: 0.75rem;
+  color: rgba(0, 0, 0, 0.54);
+  margin-bottom: 4px;
 }
-#edition-menu .mdl-menu__item[data-source="config"]::after {
-  background: #f3e5f5;
-  color: #6a1b9a;
+
+.edition-select {
+  width: 100%;
+  padding: 6px 4px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: #333;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+  appearance: auto;
+}
+
+.edition-select:focus {
+  border-bottom: 2px solid #3f51b5;
 }

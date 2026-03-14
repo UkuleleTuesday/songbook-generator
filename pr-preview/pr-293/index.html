@@ -6,7 +6,6 @@
   <title>Songbook Chef</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.css">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -31,22 +30,13 @@
 
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
-                <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label getmdl-select">
-                  <input class="mdl-textfield__input" value="" id="songbook-edition" readonly />
-                  <input value="" type="hidden" name="songbook_edition" />
-                  <label class="mdl-textfield__label" for="songbook-edition">Songbook Edition</label>
-                  <ul class="mdl-menu mdl-menu--bottom-left mdl-js-menu" for="songbook-edition" id="edition-menu">
-                    <li class="mdl-menu__item mdl-menu__item--disabled" id="editions-loading">Loading editions…</li>
-                    <li class="mdl-menu__item" data-val="__drive_folder__">Other (Drive folder ID)...</li>
-                  </ul>
+                <div class="edition-select-wrapper">
+                  <label class="edition-select-label" for="songbook-edition">Songbook Edition</label>
+                  <select id="songbook-edition" name="songbook_edition" class="edition-select">
+                    <option value="" disabled selected>Loading editions…</option>
+                  </select>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
-                <div id="drive-folder-section" style="display: none;">
-                  <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width: 100%;">
-                    <input class="mdl-textfield__input" type="text" id="drive-folder-id" name="drive_folder_id" />
-                    <label class="mdl-textfield__label" for="drive-folder-id">Drive Folder ID</label>
-                  </div>
-                </div>
                 <details style="margin: 1rem 0;">
                   <summary>Advanced Settings</summary>
                   <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
@@ -83,17 +73,7 @@
     </main>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/getmdl-select@2.0.1/getmdl-select.min.js"></script>
   <script>
-    const DRIVE_FOLDER_EDITION = '__drive_folder__';
-
-    // Source of truth for the currently selected edition ID.
-    // We cannot rely on the hidden input managed by getmdl-select because
-    // getmdl-select registers a document.body click listener that resets the
-    // hidden input to "" whenever the user clicks anywhere (including the
-    // Generate button) if the selection was made on a dynamically-added item.
-    let selectedEditionId = '';
-
     function getApiBase() {
       const currentPath = window.location.pathname;
       const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
@@ -254,123 +234,40 @@
     }
 
     /**
-     * Attach click handlers for all edition menu items so that:
-     * - the hidden input and visible input are updated
-     * - the Drive folder section is shown/hidden appropriately
-     */
-    function attachEditionMenuHandlers() {
-      document.querySelectorAll('#edition-menu .mdl-menu__item[data-val]').forEach(function(item) {
-        if (item.classList.contains('mdl-menu__item--disabled')) return;
-        item.addEventListener('click', function() {
-          const val = this.getAttribute('data-val');
-          const itemEl = this;
-
-          // Update the module-level variable immediately so the submit handler
-          // always reads the right edition even after getmdl-select's body-level
-          // reset listener fires on subsequent clicks (e.g. the Generate button).
-          selectedEditionId = val;
-
-          // Defer so this runs after getmdl-select's own delegated handler
-          // (which fires on the parent <ul> as the event bubbles up), ensuring
-          // we always set the correct title-only display value last.
-          setTimeout(function() {
-            // Update the hidden input used for form submission
-            const hiddenInput = document.querySelector('input[name="songbook_edition"]');
-            if (hiddenInput) hiddenInput.value = val;
-
-            // Update the visible display input (textContent is the title only)
-            const displayInput = document.getElementById('songbook-edition');
-            if (displayInput) {
-              displayInput.value = itemEl.textContent;
-              // Trigger MDL textfield dirty-check so the floating label updates
-              const textfieldEl = displayInput.closest('.mdl-textfield');
-              if (textfieldEl && textfieldEl.MaterialTextfield) {
-                textfieldEl.MaterialTextfield.checkDirty();
-              }
-            }
-
-            // Show which item is currently selected in the menu
-            document.querySelectorAll('#edition-menu .mdl-menu__item').forEach(function(i) {
-              i.classList.remove('is-checked');
-            });
-            itemEl.classList.add('is-checked');
-          }, 0);
-
-          // Drive-folder section visibility can be toggled immediately
-          const driveFolderSection = document.getElementById('drive-folder-section');
-          if (val === DRIVE_FOLDER_EDITION) {
-            driveFolderSection.style.display = 'block';
-            const textfield = driveFolderSection.querySelector('.mdl-textfield');
-            if (textfield && typeof componentHandler !== 'undefined') {
-              componentHandler.upgradeElement(textfield);
-            }
-          } else {
-            driveFolderSection.style.display = 'none';
-          }
-        });
-      });
-    }
-
-    /**
      * Populate the edition dropdown from the API response.
      * Falls back gracefully if the API is unavailable.
      */
     async function loadEditions() {
-      const loadingItem = document.getElementById('editions-loading');
-      const editionMenu = document.getElementById('edition-menu');
+      const select = document.getElementById('songbook-edition');
       const editionsError = document.getElementById('editions-error');
-      const editionInput = document.querySelector('input[name="songbook_edition"]');
-      const editionDisplay = document.getElementById('songbook-edition');
-
       try {
         const res = await fetch(`${apiBase}/editions`, { method: 'GET' });
         if (!res.ok) throw new Error(`API returned ${res.status}`);
         const data = await res.json();
         const editions = data.editions || [];
 
-        // Remove the loading placeholder
-        if (loadingItem) loadingItem.remove();
-
+        select.innerHTML = '';
         if (editions.length === 0) {
-          editionsError.textContent = 'No editions found. Enter a Drive folder ID below.';
+          editionsError.textContent = 'No editions available.';
           editionsError.style.display = 'block';
-          // Select "Other (Drive folder ID)" so the form is still usable
-          selectedEditionId = DRIVE_FOLDER_EDITION;
-          editionInput.value = DRIVE_FOLDER_EDITION;
-          document.getElementById('drive-folder-section').style.display = 'block';
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.disabled = true;
+          opt.selected = true;
+          opt.textContent = 'No editions available';
+          select.appendChild(opt);
         } else {
-          // Insert edition items before the "Other" option
-          const otherItem = editionMenu.querySelector('[data-val="__drive_folder__"]');
           editions.forEach((edition, index) => {
-            const li = document.createElement('li');
-            li.className = 'mdl-menu__item';
-            li.setAttribute('data-val', edition.id);
-            if (edition.description) {
-              li.setAttribute('title', edition.description);
-            }
-            // Keep textContent as the title only so that getmdl-select reads
-            // the correct label. The source badge is shown via CSS ::after.
-            li.textContent = edition.title;
-            if (edition.source) {
-              li.dataset.source = edition.source;
-            }
-            editionMenu.insertBefore(li, otherItem);
-
-            // Select the first edition by default
-            if (index === 0) {
-              selectedEditionId = edition.id;
-              editionInput.value = edition.id;
-              editionDisplay.value = edition.title;
-              li.classList.add('is-checked');
-              // Trigger MDL textfield label update for the initial selection
-              const textfieldEl = editionDisplay.closest('.mdl-textfield');
-              if (textfieldEl && textfieldEl.MaterialTextfield) {
-                textfieldEl.MaterialTextfield.checkDirty();
-              }
-            }
+            const opt = document.createElement('option');
+            opt.value = edition.id;
+            opt.textContent = edition.source
+              ? `${edition.title} [${edition.source}]`
+              : edition.title;
+            if (edition.description) opt.title = edition.description;
+            if (index === 0) opt.selected = true;
+            select.appendChild(opt);
           });
 
-          // Show a notice if Drive scanning had errors
           if (data.drive_error) {
             editionsError.textContent =
               'Note: Drive edition scanning encountered an error. ' +
@@ -378,24 +275,16 @@
             editionsError.style.display = 'block';
           }
         }
-
-        // Re-upgrade MDL components and re-attach handlers after DOM changes
-        if (typeof componentHandler !== 'undefined') {
-          componentHandler.upgradeDom();
-        }
-        attachEditionMenuHandlers();
-
       } catch (err) {
-        if (loadingItem) loadingItem.remove();
-        editionsError.textContent =
-          'Could not load editions from the API. ' +
-          'You can still use a Drive folder ID below.';
+        select.innerHTML = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.disabled = true;
+        opt.selected = true;
+        opt.textContent = 'Could not load editions';
+        select.appendChild(opt);
+        editionsError.textContent = 'Could not load editions from the API.';
         editionsError.style.display = 'block';
-        // Select "Other (Drive folder ID)" so the form is still usable
-        selectedEditionId = DRIVE_FOLDER_EDITION;
-        editionInput.value = DRIVE_FOLDER_EDITION;
-        document.getElementById('drive-folder-section').style.display = 'block';
-        attachEditionMenuHandlers();
       }
     }
 
@@ -426,23 +315,16 @@
         payload.cover_file_id = coverFileId;
       }
 
-      // Use the module-level variable as the source of truth: getmdl-select's
-      // body-level reset listener fires *before* the submit event, so the hidden
-      // input may have been wiped to "" by the time we read it via FormData.
-      const songbookEdition = selectedEditionId;
-      const driveFolderId = form.get("drive_folder_id");
+      const songbookEdition = document.getElementById('songbook-edition').value;
 
-      // Validate: require either a selected edition or a Drive folder ID
-      if (!songbookEdition && !driveFolderId) {
+      if (!songbookEdition) {
         enableSubmitButton();
         hideProgress();
-        alert("Please select an edition or enter a Drive folder ID.");
+        alert("Please select an edition.");
         return;
       }
 
-      payload.edition = (songbookEdition === DRIVE_FOLDER_EDITION && driveFolderId)
-        ? driveFolderId
-        : songbookEdition;
+      payload.edition = songbookEdition;
 
       try {
         // submit job
@@ -472,14 +354,8 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${selectedEditionId}"]`);
-        const currentDriveFolderId = document.getElementById('drive-folder-id').value;
-        let editionText;
-        if (selectedEditionId === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
-          editionText = `Drive folder: ${currentDriveFolderId}`;
-        } else {
-          editionText = selectedOption ? selectedOption.textContent : (selectedEditionId || 'Custom');
-        }
+        const select = document.getElementById('songbook-edition');
+        const editionText = select.options[select.selectedIndex]?.text || songbookEdition;
         const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
 
@@ -497,11 +373,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
-      // Manually upgrade any dynamically added MDL components if needed
-      if (typeof componentHandler !== 'undefined') {
-        componentHandler.upgradeDom();
-      }
-
       // Load editions from the API (populates the dropdown dynamically)
       loadEditions();
     });
