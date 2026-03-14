@@ -255,8 +255,21 @@
       document.querySelectorAll('#edition-menu .mdl-menu__item[data-val]').forEach(function(item) {
         if (item.classList.contains('mdl-menu__item--disabled')) return;
         item.addEventListener('click', function() {
+          const val = this.getAttribute('data-val');
+
+          // Update the hidden input used for form submission
+          const hiddenInput = document.querySelector('input[name="songbook_edition"]');
+          if (hiddenInput) hiddenInput.value = val;
+
+          // Update the visible display input with the edition title (first span child)
+          const displayInput = document.getElementById('songbook-edition');
+          if (displayInput) {
+            const titleSpan = this.querySelector('span');
+            displayInput.value = titleSpan ? titleSpan.textContent : this.textContent;
+          }
+
           const driveFolderSection = document.getElementById('drive-folder-section');
-          if (this.getAttribute('data-val') === DRIVE_FOLDER_EDITION) {
+          if (val === DRIVE_FOLDER_EDITION) {
             driveFolderSection.style.display = 'block';
             const textfield = driveFolderSection.querySelector('.mdl-textfield');
             if (textfield && typeof componentHandler !== 'undefined') {
