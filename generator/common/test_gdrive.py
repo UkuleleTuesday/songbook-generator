@@ -690,3 +690,93 @@ def test_find_all_files_named_http_error_returns_partial(mock_echo, mock_drive_c
     assert result == []
     mock_echo.assert_called_once()
     assert "403" in mock_echo.call_args[0][0]
+
+
+# ---------------------------------------------------------------------------
+# find_subfolder_by_name tests
+# ---------------------------------------------------------------------------
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_exact_match(mock_echo, mock_drive_client):
+    """Returns the folder ID when a subfolder with matching name exists."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [
+            {"id": "cover_folder_id", "name": "Cover"},
+            {"id": "other_folder_id", "name": "Other"},
+        ]
+    }
+
+    result = mock_drive_client.find_subfolder_by_name("parent_id", "Cover")
+
+    assert result == "cover_folder_id"
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_case_insensitive(mock_echo, mock_drive_client):
+    """Matching is case-insensitive (e.g. 'cover' finds 'Cover')."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [
+            {"id": "cover_folder_id", "name": "Cover"},
+        ]
+    }
+
+    result = mock_drive_client.find_subfolder_by_name("parent_id", "cover")
+
+    assert result == "cover_folder_id"
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_not_found_returns_none(mock_echo, mock_drive_client):
+    """Returns None when no subfolder matches."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": [{"id": "other_id", "name": "Other"}]
+    }
+
+    result = mock_drive_client.find_subfolder_by_name("parent_id", "Cover")
+
+    assert result is None
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_empty_folder_returns_none(mock_echo, mock_drive_client):
+    """Returns None when the parent folder has no subfolders."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
+
+    result = mock_drive_client.find_subfolder_by_name("parent_id", "Cover")
+
+    assert result is None
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_http_error_returns_none(mock_echo, mock_drive_client):
+    """Returns None and echoes an error on HttpError."""
+    from googleapiclient.errors import HttpError
+    from unittest.mock import MagicMock
+
+    http_err = HttpError(resp=MagicMock(status=403), content=b"Forbidden")
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = (
+        http_err
+    )
+
+    result = mock_drive_client.find_subfolder_by_name("parent_id", "Cover")
+
+    assert result is None
+    mock_echo.assert_called_once()
+    assert "403" in mock_echo.call_args[0][0]
+
+
+@patch("generator.common.gdrive.click.echo")
+def test_find_subfolder_by_name_uses_folder_mime_type(mock_echo, mock_drive_client):
+    """The API query filters by folder MIME type."""
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
+        "files": []
+    }
+
+    mock_drive_client.find_subfolder_by_name("parent_id", "Cover")
+
+    call_kwargs = mock_drive_client.drive.files.return_value.list.call_args[1]
+    assert "application/vnd.google-apps.folder" in call_kwargs["q"]
+    assert "parent_id" in call_kwargs["q"]

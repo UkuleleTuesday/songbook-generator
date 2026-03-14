@@ -11,6 +11,8 @@ from .pdf import (
     generate_songbook_from_drive_folder,
     generate_songbook_from_edition,
     generate_manifest,
+    load_edition_from_drive_folder,
+    resolve_folder_components,
 )
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
@@ -976,3 +978,252 @@ def test_generate_from_drive_folder_no_cover_or_preface(mocker):
     assert kwargs["preface_file_ids"] is None
     assert kwargs["postface_file_ids"] is None
     assert len(kwargs["files"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# resolve_folder_components tests
+# ---------------------------------------------------------------------------
+
+
+def _make_edition_with_folder_components(**kwargs):
+    """Helper: build a minimal Edition with use_folder_components=True."""
+    defaults = dict(
+        id="test",
+        title="Test",
+        description="Test",
+        use_folder_components=True,
+        filters=[
+            PropertyFilter(
+                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
+            )
+        ],
+    )
+    defaults.update(kwargs)
+    return Edition(**defaults)
+
+
+def test_resolve_folder_components_disabled_returns_edition_unchanged(mocker):
+    """When use_folder_components is False the edition is returned as-is."""
+    mock_gdrive = mocker.Mock()
+    edition = Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        use_folder_components=False,
+        filters=[],
+    )
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+    assert result is edition
+    mock_gdrive.find_subfolder_by_name.assert_not_called()
+
+
+def test_resolve_folder_components_cover_from_subfolder(mocker):
+    """Cover file is resolved from the Cover subfolder when not in YAML."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = lambda fid, name: (
+        "cover_subfolder" if name.lower() == "cover" else None
+    )
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="cover_file_id", name="My Cover.gdoc"),
+    ]
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id == "cover_file_id"
+    assert result.preface_file_ids is None
+    assert result.postface_file_ids is None
+    # Original edition not mutated
+    assert edition.cover_file_id is None
+
+
+def test_resolve_folder_components_preface_from_subfolder(mocker):
+    """Preface files are resolved from the Preface subfolder when not in YAML."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = lambda fid, name: (
+        "preface_subfolder" if name.lower() == "preface" else None
+    )
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="preface_1", name="Welcome.gdoc"),
+        File(id="preface_2", name="About.gdoc"),
+    ]
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.preface_file_ids == ["preface_1", "preface_2"]
+    assert result.cover_file_id is None
+    assert result.postface_file_ids is None
+
+
+def test_resolve_folder_components_postface_from_subfolder(mocker):
+    """Postface files are resolved from the Postface subfolder when not in YAML."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = lambda fid, name: (
+        "postface_subfolder" if name.lower() == "postface" else None
+    )
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="postface_1", name="Credits.gdoc"),
+    ]
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.postface_file_ids == ["postface_1"]
+    assert result.cover_file_id is None
+    assert result.preface_file_ids is None
+
+
+def test_resolve_folder_components_yaml_cover_takes_precedence(mocker):
+    """Explicit YAML cover_file_id overrides any subfolder detection."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "cover_subfolder"
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="subfolder_cover", name="Different Cover.gdoc"),
+    ]
+    edition = _make_edition_with_folder_components(cover_file_id="yaml_cover_id")
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id == "yaml_cover_id"
+    # find_subfolder_by_name should NOT be called for cover because YAML has it
+    calls = [
+        c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
+    ]
+    assert "cover" not in calls
+
+
+def test_resolve_folder_components_yaml_preface_takes_precedence(mocker):
+    """Explicit YAML preface_file_ids overrides subfolder detection."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "preface_subfolder"
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="subfolder_preface", name="Intro.gdoc"),
+    ]
+    edition = _make_edition_with_folder_components(preface_file_ids=["yaml_preface_id"])
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.preface_file_ids == ["yaml_preface_id"]
+    calls = [
+        c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
+    ]
+    assert "preface" not in calls
+
+
+def test_resolve_folder_components_empty_subfolder_skipped(mocker):
+    """When a subfolder exists but is empty no file ID is set."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "cover_subfolder"
+    mock_gdrive.list_folder_contents.return_value = []  # Empty subfolder
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id is None
+
+
+def test_resolve_folder_components_no_subfolders(mocker):
+    """When no component subfolders exist the edition is returned unchanged."""
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = None
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id is None
+    assert result.preface_file_ids is None
+    assert result.postface_file_ids is None
+
+
+def test_resolve_folder_components_all_resolved(mocker):
+    """All three components are resolved from their respective subfolders."""
+
+    def find_subfolder(fid, name):
+        return f"{name.lower()}_subfolder"
+
+    def list_folder(subfolder_id):
+        if subfolder_id == "cover_subfolder":
+            return [File(id="cover_id", name="Cover.gdoc")]
+        if subfolder_id == "preface_subfolder":
+            return [
+                File(id="pre_1", name="Intro.gdoc"),
+                File(id="pre_2", name="Welcome.gdoc"),
+            ]
+        if subfolder_id == "postface_subfolder":
+            return [File(id="post_1", name="Credits.gdoc")]
+        return []
+
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.side_effect = find_subfolder
+    mock_gdrive.list_folder_contents.side_effect = list_folder
+    edition = _make_edition_with_folder_components()
+
+    result = resolve_folder_components(mock_gdrive, "folder_id", edition)
+
+    assert result.cover_file_id == "cover_id"
+    assert result.preface_file_ids == ["pre_1", "pre_2"]
+    assert result.postface_file_ids == ["post_1"]
+
+
+def test_load_edition_from_drive_folder_resolves_components(mocker):
+    """load_edition_from_drive_folder calls resolve_folder_components."""
+    import yaml as _yaml
+
+    yaml_content = _yaml.dump(
+        {
+            "id": "test",
+            "title": "Test Edition",
+            "description": "Desc",
+            "use_folder_components": True,
+            "filters": [],
+        }
+    ).encode()
+
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.find_file_in_folder.return_value = File(
+        id="yaml_id", name=".songbook.yaml"
+    )
+    mock_gdrive_client.download_raw_bytes.return_value = yaml_content
+
+    mock_resolve = mocker.patch("generator.worker.pdf.resolve_folder_components")
+    mock_resolve.side_effect = lambda gd, fid, ed: ed  # pass-through
+
+    load_edition_from_drive_folder(mock_gdrive_client, "folder_id")
+
+    mock_resolve.assert_called_once()
+    call_args = mock_resolve.call_args
+    assert call_args.args[1] == "folder_id"
+    loaded_edition = call_args.args[2]
+    assert loaded_edition.use_folder_components is True
+
+
+def test_load_edition_from_drive_folder_no_components_when_disabled(mocker):
+    """resolve_folder_components receives the edition even when disabled."""
+    import yaml as _yaml
+
+    yaml_content = _yaml.dump(
+        {
+            "id": "test",
+            "title": "Test Edition",
+            "description": "Desc",
+            "use_folder_components": False,
+            "filters": [],
+        }
+    ).encode()
+
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.find_file_in_folder.return_value = File(
+        id="yaml_id", name=".songbook.yaml"
+    )
+    mock_gdrive_client.download_raw_bytes.return_value = yaml_content
+
+    mock_resolve = mocker.patch("generator.worker.pdf.resolve_folder_components")
+    mock_resolve.side_effect = lambda gd, fid, ed: ed  # pass-through
+
+    load_edition_from_drive_folder(mock_gdrive_client, "folder_id")
+
+    # resolve_folder_components is always called; it exits early internally
+    mock_resolve.assert_called_once()
+    loaded_edition = mock_resolve.call_args.args[2]
+    assert loaded_edition.use_folder_components is False

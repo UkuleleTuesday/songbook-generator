@@ -514,6 +514,53 @@ class GoogleDriveClient:
             )
             return None
 
+    def find_subfolder_by_name(self, parent_folder_id: str, name: str) -> Optional[str]:
+        """
+        Find a direct child subfolder by name (case-insensitive) in a Drive folder.
+
+        All direct child folders of *parent_folder_id* are fetched and the
+        first one whose name matches *name* (case-insensitively) is returned.
+
+        Args:
+            parent_folder_id: The Drive folder ID to search within.
+            name: The subfolder name to look for (case-insensitive).
+
+        Returns:
+            The Drive folder ID of the matching subfolder, or ``None`` if not
+            found or an error occurs.
+        """
+        folder_mime = "application/vnd.google-apps.folder"
+        query = (
+            f"'{parent_folder_id}' in parents"
+            f" and mimeType = '{folder_mime}'"
+            f" and trashed = false"
+        )
+        try:
+            resp = (
+                self.drive.files()
+                .list(
+                    q=query,
+                    pageSize=100,
+                    fields="files(id,name)",
+                    orderBy="name",
+                )
+                .execute(num_retries=self.config.api_retries)
+            )
+        except HttpError as e:
+            error_code = e.resp.status if e.resp else "unknown"
+            click.echo(
+                f"Error listing subfolders of {parent_folder_id} "
+                f"(HTTP {error_code}): {e}",
+                err=True,
+            )
+            return None
+
+        target = name.lower()
+        for f in resp.get("files", []):
+            if f["name"].lower() == target:
+                return f["id"]
+        return None
+
     def find_all_files_named(
         self,
         filename: str,

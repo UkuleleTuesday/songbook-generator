@@ -296,6 +296,123 @@ def copy_pdfs(
             span.set_attribute("final_page_count", current_page)
 
 
+_FOLDER_COMPONENT_NAMES = {
+    "cover": "Cover",
+    "preface": "Preface",
+    "postface": "Postface",
+}
+
+
+def resolve_folder_components(
+    gdrive_client: GoogleDriveClient,
+    folder_id: str,
+    edition: config.Edition,
+) -> config.Edition:
+    """
+    Resolve cover/preface/postface components from dedicated subfolders when
+    ``use_folder_components`` is enabled on the edition.
+
+    For each component type (cover, preface, postface) the function looks for
+    a subfolder whose name matches the component name case-insensitively
+    (``Cover``, ``Preface``, ``Postface``).  If a matching subfolder is found
+    **and** the corresponding field on the edition is not already set in the
+    YAML config, the first valid file in that subfolder is used.
+
+    Explicit YAML config entries (``cover_file_id``, ``preface_file_ids``,
+    ``postface_file_ids``) always take precedence over subfolder-detected
+    files so that existing configurations remain fully backward-compatible.
+
+    Args:
+        gdrive_client: An authenticated GoogleDriveClient instance.
+        folder_id: The Drive folder ID that contains the edition subfolders.
+        edition: The Edition loaded from ``.songbook.yaml``.
+
+    Returns:
+        A (possibly updated) copy of the Edition with file IDs resolved from
+        the subfolders.  The original object is not mutated.
+    """
+    if not edition.use_folder_components:
+        return edition
+
+    with tracer.start_as_current_span("resolve_folder_components") as span:
+        span.set_attribute("folder_id", folder_id)
+
+        updates: dict = {}
+
+        # --- Cover ---
+        if edition.cover_file_id is None:
+            cover_folder_id = gdrive_client.find_subfolder_by_name(
+                folder_id, _FOLDER_COMPONENT_NAMES["cover"]
+            )
+            if cover_folder_id:
+                cover_files = gdrive_client.list_folder_contents(cover_folder_id)
+                if cover_files:
+                    updates["cover_file_id"] = cover_files[0].id
+                    click.echo(f"Found cover from subfolder: {cover_files[0].name}")
+                    span.set_attribute("cover_resolved_from_folder", True)
+                else:
+                    click.echo(
+                        "Cover subfolder found but contains no files; skipping.",
+                        err=True,
+                    )
+            else:
+                span.set_attribute("cover_subfolder_found", False)
+        else:
+            span.set_attribute("cover_from_yaml", True)
+
+        # --- Preface ---
+        if edition.preface_file_ids is None:
+            preface_folder_id = gdrive_client.find_subfolder_by_name(
+                folder_id, _FOLDER_COMPONENT_NAMES["preface"]
+            )
+            if preface_folder_id:
+                preface_files = gdrive_client.list_folder_contents(preface_folder_id)
+                if preface_files:
+                    updates["preface_file_ids"] = [f.id for f in preface_files]
+                    click.echo(
+                        f"Found {len(preface_files)} preface file(s) from subfolder."
+                    )
+                    span.set_attribute("preface_resolved_from_folder", True)
+                    span.set_attribute("preface_files_count", len(preface_files))
+                else:
+                    click.echo(
+                        "Preface subfolder found but contains no files; skipping.",
+                        err=True,
+                    )
+            else:
+                span.set_attribute("preface_subfolder_found", False)
+        else:
+            span.set_attribute("preface_from_yaml", True)
+
+        # --- Postface ---
+        if edition.postface_file_ids is None:
+            postface_folder_id = gdrive_client.find_subfolder_by_name(
+                folder_id, _FOLDER_COMPONENT_NAMES["postface"]
+            )
+            if postface_folder_id:
+                postface_files = gdrive_client.list_folder_contents(postface_folder_id)
+                if postface_files:
+                    updates["postface_file_ids"] = [f.id for f in postface_files]
+                    click.echo(
+                        f"Found {len(postface_files)} postface file(s) from subfolder."
+                    )
+                    span.set_attribute("postface_resolved_from_folder", True)
+                    span.set_attribute("postface_files_count", len(postface_files))
+                else:
+                    click.echo(
+                        "Postface subfolder found but contains no files; skipping.",
+                        err=True,
+                    )
+            else:
+                span.set_attribute("postface_subfolder_found", False)
+        else:
+            span.set_attribute("postface_from_yaml", True)
+
+        if updates:
+            return edition.model_copy(update=updates)
+        return edition
+
+
 def load_edition_from_drive_folder(
     gdrive_client: GoogleDriveClient,
     folder_id: str,
@@ -304,12 +421,19 @@ def load_edition_from_drive_folder(
     Load an Edition configuration from a .songbook.yaml file in a
     Google Drive folder.
 
+    If the loaded edition has ``use_folder_components: true``, dedicated
+    subfolders named ``Cover``, ``Preface``, and ``Postface`` inside
+    *folder_id* are scanned for component files.  Subfolder-detected files
+    are only used when the corresponding field is **not** already specified
+    in the YAML config, preserving full backward compatibility.
+
     Args:
         gdrive_client: An authenticated GoogleDriveClient instance.
         folder_id: The Drive folder ID to search for .songbook.yaml.
 
     Returns:
-        A validated Edition object parsed from the YAML file.
+        A validated Edition object parsed from the YAML file, with any
+        folder-based components resolved.
 
     Raises:
         ValueError: If the file is missing, unreadable, or invalid.
@@ -325,11 +449,13 @@ def load_edition_from_drive_folder(
         raise ValueError(f"Failed to parse .songbook.yaml: {e}") from e
 
     try:
-        return config.Edition.model_validate(data)
+        edition = config.Edition.model_validate(data)
     except ValidationError as e:
         raise ValueError(
             f".songbook.yaml does not match the Edition schema: {e}"
         ) from e
+
+    return resolve_folder_components(gdrive_client, folder_id, edition)
 
 
 def generate_songbook_from_edition(
