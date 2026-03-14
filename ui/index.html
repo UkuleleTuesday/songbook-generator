@@ -30,11 +30,12 @@
 
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
-                <div class="edition-select-wrapper">
-                  <label class="edition-select-label" for="songbook-edition">Songbook Edition</label>
-                  <select id="songbook-edition" name="songbook_edition" class="edition-select">
-                    <option value="" disabled selected>Loading editions…</option>
-                  </select>
+                <span class="editions-section-label">Songbook Edition</span>
+                <div id="editions-grid" class="editions-grid">
+                  <div class="editions-loading">
+                    <div class="editions-loading-spinner"></div>
+                    Loading editions…
+                  </div>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
                 <button type="submit" id="submitButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" style="width: 100%;">
@@ -205,11 +206,11 @@
     }
 
     /**
-     * Populate the edition dropdown from the API response.
+     * Populate the edition cards from the API response.
      * Falls back gracefully if the API is unavailable.
      */
     async function loadEditions() {
-      const select = document.getElementById('songbook-edition');
+      const grid = document.getElementById('editions-grid');
       const editionsError = document.getElementById('editions-error');
       try {
         const res = await fetch(`${apiBase}/editions`, { method: 'GET' });
@@ -217,43 +218,66 @@
         const data = await res.json();
         const editions = data.editions || [];
 
-        select.innerHTML = '';
+        grid.innerHTML = '';
         if (editions.length === 0) {
           editionsError.textContent = 'No editions available.';
           editionsError.style.display = 'block';
-          const opt = document.createElement('option');
-          opt.value = '';
-          opt.disabled = true;
-          opt.selected = true;
-          opt.textContent = 'No editions available';
-          select.appendChild(opt);
-        } else {
-          editions.forEach((edition, index) => {
-            const opt = document.createElement('option');
-            opt.value = edition.id;
-            opt.textContent = edition.source
-              ? `${edition.title} [${edition.source}]`
-              : edition.title;
-            if (edition.description) opt.title = edition.description;
-            if (index === 0) opt.selected = true;
-            select.appendChild(opt);
-          });
+          return;
+        }
 
-          if (data.drive_error) {
-            editionsError.textContent =
-              'Note: Drive edition scanning encountered an error. ' +
-              'Some drive-based editions may not be listed.';
-            editionsError.style.display = 'block';
+        editions.forEach((edition, index) => {
+          const card = document.createElement('div');
+          card.className = 'edition-card';
+
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'songbook_edition';
+          radio.id = `edition-${edition.id}`;
+          radio.value = edition.id;
+          radio.className = 'edition-radio';
+          if (index === 0) radio.checked = true;
+
+          const lbl = document.createElement('label');
+          lbl.htmlFor = radio.id;
+          lbl.className = 'edition-card-label';
+
+          const header = document.createElement('div');
+          header.className = 'edition-card-header';
+
+          const title = document.createElement('span');
+          title.className = 'edition-card-title';
+          title.textContent = edition.title;
+          header.appendChild(title);
+
+          if (edition.source) {
+            const badge = document.createElement('span');
+            badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
+            badge.textContent = edition.source;
+            header.appendChild(badge);
           }
+
+          lbl.appendChild(header);
+
+          if (edition.description) {
+            const desc = document.createElement('p');
+            desc.className = 'edition-card-description';
+            desc.textContent = edition.description;
+            lbl.appendChild(desc);
+          }
+
+          card.appendChild(radio);
+          card.appendChild(lbl);
+          grid.appendChild(card);
+        });
+
+        if (data.drive_error) {
+          editionsError.textContent =
+            'Note: Drive edition scanning encountered an error. ' +
+            'Some drive-based editions may not be listed.';
+          editionsError.style.display = 'block';
         }
       } catch (err) {
-        select.innerHTML = '';
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.disabled = true;
-        opt.selected = true;
-        opt.textContent = 'Could not load editions';
-        select.appendChild(opt);
+        grid.innerHTML = '<p class="editions-empty-msg">Could not load editions.</p>';
         editionsError.textContent = 'Could not load editions from the API.';
         editionsError.style.display = 'block';
       }
@@ -268,7 +292,8 @@
 
       const payload = {};
 
-      const songbookEdition = document.getElementById('songbook-edition').value;
+      const checkedRadio = document.querySelector('input[name="songbook_edition"]:checked');
+      const songbookEdition = checkedRadio ? checkedRadio.value : '';
 
       if (!songbookEdition) {
         enableSubmitButton();
@@ -307,9 +332,10 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const select = document.getElementById('songbook-edition');
-        const editionText = select.options[select.selectedIndex]?.text || songbookEdition;
-        const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
+        const editionTitle = checkedRadio
+          ? checkedRadio.nextElementSibling.querySelector('.edition-card-title').textContent
+          : songbookEdition;
+        const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
 
       } catch (err) {
