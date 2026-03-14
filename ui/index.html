@@ -305,7 +305,20 @@
             if (edition.description) {
               li.setAttribute('title', edition.description);
             }
-            li.textContent = edition.title;
+            const titleSpan = document.createElement('span');
+            titleSpan.textContent = edition.title;
+            li.appendChild(titleSpan);
+            if (edition.source) {
+              const badge = document.createElement('span');
+              badge.textContent = edition.source;
+              badge.style.cssText =
+                'margin-left:6px;font-size:0.7rem;padding:1px 5px;' +
+                'border-radius:3px;vertical-align:middle;font-weight:600;' +
+                (edition.source === 'drive'
+                  ? 'background:#e3f2fd;color:#1565c0;'
+                  : 'background:#f3e5f5;color:#6a1b9a;');
+              li.appendChild(badge);
+            }
             editionMenu.insertBefore(li, otherItem);
 
             // Select the first edition by default
@@ -420,7 +433,8 @@
         if (editionInput.value === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
           editionText = `Drive folder: ${currentDriveFolderId}`;
         } else {
-          editionText = selectedOption ? selectedOption.textContent : 'Custom';
+          const titleEl = selectedOption && selectedOption.querySelector('span');
+          editionText = titleEl ? titleEl.textContent : (selectedOption ? selectedOption.textContent : 'Custom');
         }
         const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
