@@ -87,6 +87,13 @@
   <script>
     const DRIVE_FOLDER_EDITION = '__drive_folder__';
 
+    // Source of truth for the currently selected edition ID.
+    // We cannot rely on the hidden input managed by getmdl-select because
+    // getmdl-select registers a document.body click listener that resets the
+    // hidden input to "" whenever the user clicks anywhere (including the
+    // Generate button) if the selection was made on a dynamically-added item.
+    let selectedEditionId = '';
+
     function getApiBase() {
       const currentPath = window.location.pathname;
       const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
@@ -258,6 +265,11 @@
           const val = this.getAttribute('data-val');
           const itemEl = this;
 
+          // Update the module-level variable immediately so the submit handler
+          // always reads the right edition even after getmdl-select's body-level
+          // reset listener fires on subsequent clicks (e.g. the Generate button).
+          selectedEditionId = val;
+
           // Defer so this runs after getmdl-select's own delegated handler
           // (which fires on the parent <ul> as the event bubbles up), ensuring
           // we always set the correct title-only display value last.
@@ -323,6 +335,7 @@
           editionsError.textContent = 'No editions found. Enter a Drive folder ID below.';
           editionsError.style.display = 'block';
           // Select "Other (Drive folder ID)" so the form is still usable
+          selectedEditionId = DRIVE_FOLDER_EDITION;
           editionInput.value = DRIVE_FOLDER_EDITION;
           document.getElementById('drive-folder-section').style.display = 'block';
         } else {
@@ -345,6 +358,7 @@
 
             // Select the first edition by default
             if (index === 0) {
+              selectedEditionId = edition.id;
               editionInput.value = edition.id;
               editionDisplay.value = edition.title;
               li.classList.add('is-checked');
@@ -378,6 +392,7 @@
           'You can still use a Drive folder ID below.';
         editionsError.style.display = 'block';
         // Select "Other (Drive folder ID)" so the form is still usable
+        selectedEditionId = DRIVE_FOLDER_EDITION;
         editionInput.value = DRIVE_FOLDER_EDITION;
         document.getElementById('drive-folder-section').style.display = 'block';
         attachEditionMenuHandlers();
@@ -411,7 +426,10 @@
         payload.cover_file_id = coverFileId;
       }
 
-      const songbookEdition = form.get("songbook_edition");
+      // Use the module-level variable as the source of truth: getmdl-select's
+      // body-level reset listener fires *before* the submit event, so the hidden
+      // input may have been wiped to "" by the time we read it via FormData.
+      const songbookEdition = selectedEditionId;
       const driveFolderId = form.get("drive_folder_id");
 
       // Validate: require either a selected edition or a Drive folder ID
@@ -454,15 +472,13 @@
         updateProgress(1.0, 'Download started!');
 
         // Add to history
-        const editionInput = document.querySelector('input[name="songbook_edition"]');
-        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${editionInput.value}"]`);
+        const selectedOption = document.querySelector(`#edition-menu .mdl-menu__item[data-val="${selectedEditionId}"]`);
         const currentDriveFolderId = document.getElementById('drive-folder-id').value;
         let editionText;
-        if (editionInput.value === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
+        if (selectedEditionId === DRIVE_FOLDER_EDITION && currentDriveFolderId) {
           editionText = `Drive folder: ${currentDriveFolderId}`;
         } else {
-          const titleEl = selectedOption && selectedOption.querySelector('span');
-          editionText = titleEl ? titleEl.textContent : (selectedOption ? selectedOption.textContent : 'Custom');
+          editionText = selectedOption ? selectedOption.textContent : (selectedEditionId || 'Custom');
         }
         const songbookName = `Edition: ${editionText} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl);
