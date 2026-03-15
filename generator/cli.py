@@ -1044,12 +1044,22 @@ def _create_component_shortcuts(
         "a successful conversion."
     ),
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help=(
+        "Print the actions that would be taken without making any changes "
+        "to Google Drive or the local file system."
+    ),
+)
 def convert_edition(
     edition_id: str,
     target_folder: Optional[str],
     folder_name: Optional[str],
     create_shortcuts: bool,
     delete_config: bool,
+    dry_run: bool,
 ):
     """Convert a config-based edition to a Google Drive folder structure.
 
@@ -1099,6 +1109,17 @@ def convert_edition(
 
     # Warn about features that require YAML editing in Drive
     _warn_complex_edition_features(edition)
+
+    if dry_run:
+        _dry_run_convert_edition(
+            edition=edition,
+            edition_id=edition_id,
+            folder_name=folder_name,
+            target_folder=target_folder,
+            create_shortcuts=create_shortcuts,
+            delete_config=delete_config,
+        )
+        return
 
     # Initialize Drive services
     credential_config = settings.google_cloud.credentials.get("songbook-generator")
@@ -1177,6 +1198,84 @@ def convert_edition(
     click.echo("\nConversion complete.")
     click.echo(f"Edition folder ID: {folder_id}")
     click.echo("Run 'editions list' to verify the new Drive edition is discovered.")
+
+
+def _dry_run_convert_edition(
+    edition: config.Edition,
+    edition_id: str,
+    folder_name: str,
+    target_folder: str,
+    create_shortcuts: bool,
+    delete_config: bool,
+) -> None:
+    """
+    Print the actions that ``editions convert`` would take, without making
+    any changes to Google Drive or the local file system.
+
+    Args:
+        edition: The Edition object loaded from config.
+        edition_id: The edition ID string.
+        folder_name: The Drive folder name that would be created.
+        target_folder: The parent Drive folder ID.
+        create_shortcuts: Whether shortcuts would be created.
+        delete_config: Whether the local config file would be deleted.
+    """
+    click.echo("[DRY RUN] The following actions would be performed:\n")
+
+    click.echo(
+        f"  1. Create Drive folder '{folder_name}' inside "
+        f"parent folder '{target_folder}'"
+    )
+
+    yaml_content = _edition_to_yaml_bytes(edition).decode("utf-8")
+    click.echo("  2. Upload .songbook.yaml with the following content:")
+    for line in yaml_content.splitlines():
+        click.echo(f"       {line}")
+
+    step = 3
+    if create_shortcuts:
+        shortcut_actions: List[str] = []
+        if edition.cover_file_id:
+            shortcut_actions.append(f"_cover → {edition.cover_file_id}")
+        preface_ids: List[str] = edition.preface_file_ids or []
+        for idx, preface_id in enumerate(preface_ids):
+            name = "_preface" if len(preface_ids) == 1 else f"_preface_{idx + 1:02d}"
+            shortcut_actions.append(f"{name} → {preface_id}")
+        postface_ids: List[str] = edition.postface_file_ids or []
+        for idx, postface_id in enumerate(postface_ids):
+            name = "_postface" if len(postface_ids) == 1 else f"_postface_{idx + 1:02d}"
+            shortcut_actions.append(f"{name} → {postface_id}")
+
+        if shortcut_actions:
+            click.echo(f"  {step}. Create component shortcuts:")
+            for action in shortcut_actions:
+                click.echo(f"       {action}")
+            step += 1
+        else:
+            click.echo(
+                f"  {step}. Create component shortcuts: "
+                "(none – no cover/preface/postface files configured)"
+            )
+            step += 1
+
+    if delete_config:
+        config_path = _find_edition_config_path(edition_id)
+        if config_path:
+            click.echo(f"  {step}. Delete local config file: {config_path}")
+        else:
+            click.echo(
+                f"  {step}. Delete local config file: "
+                f"(not found for edition '{edition_id}')"
+            )
+    else:
+        config_path = _find_edition_config_path(edition_id)
+        if config_path:
+            click.echo(
+                f"  {step}. Keep local config file: {config_path} "
+                "(pass --delete-config to remove it)"
+            )
+
+    click.echo("\n[DRY RUN] No changes were made.")
 
 
 @cli.group()

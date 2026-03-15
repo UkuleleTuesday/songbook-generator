@@ -800,3 +800,175 @@ def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
     assert loaded.id == "roundtrip-ed"
     assert loaded.title == "Roundtrip Edition"
     assert loaded.cover_file_id == "cover123"
+
+
+def test_convert_edition_dry_run_no_drive_calls(runner, mocker):
+    """--dry-run makes no Drive API calls and exits cleanly."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mock_init = mocker.patch("generator.cli.init_services")
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    mock_init.assert_not_called()
+    mock_gdrive.assert_not_called()
+    assert "[DRY RUN]" in result.output
+    assert "No changes were made" in result.output
+
+
+def test_convert_edition_dry_run_shows_folder_and_yaml(runner, mocker):
+    """--dry-run prints the folder name, target folder, and .songbook.yaml content."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--dry-run",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Test Edition" in result.output
+    assert "editions_folder" in result.output
+    assert ".songbook.yaml" in result.output
+    assert "test-ed" in result.output
+
+
+def test_convert_edition_dry_run_shows_shortcuts(runner, mocker):
+    """--dry-run lists shortcut names and targets when --create-shortcuts is on."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+        cover_file_id="cover_id",
+        preface_file_ids=["preface_id"],
+        postface_file_ids=["post1_id", "post2_id"],
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "_cover" in result.output
+    assert "cover_id" in result.output
+    assert "_preface" in result.output
+    assert "preface_id" in result.output
+    assert "_postface_01" in result.output
+    assert "_postface_02" in result.output
+
+
+def test_convert_edition_dry_run_shows_delete_config(runner, mocker, tmp_path):
+    """--dry-run with --delete-config shows which file would be deleted."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    config_file = tmp_path / "test-ed.yaml"
+    config_file.write_text("id: test-ed\n")
+    mocker.patch("generator.cli._find_edition_config_path", return_value=config_file)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--dry-run",
+            "--no-create-shortcuts",
+            "--delete-config",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert str(config_file) in result.output
+    # The file must NOT have been deleted
+    assert config_file.exists()
+
+
+def test_convert_edition_dry_run_shows_keep_config(runner, mocker, tmp_path):
+    """--dry-run without --delete-config shows which file would be kept."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    config_file = tmp_path / "test-ed.yaml"
+    config_file.write_text("id: test-ed\n")
+    mocker.patch("generator.cli._find_edition_config_path", return_value=config_file)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--dry-run",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Keep local config file" in result.output
+    assert str(config_file) in result.output
