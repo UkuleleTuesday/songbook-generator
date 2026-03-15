@@ -14,6 +14,38 @@ from .tracing import get_tracer
 tracer = get_tracer(__name__)
 
 
+def _make_default_edition(folder_id: str, folder_name: str) -> config.Edition:
+    """
+    Build a default :class:`~generator.common.config.Edition` for a Drive
+    folder that has no ``.songbook.yaml`` file.
+
+    The returned edition has:
+
+    - ``id`` set to *folder_id* (stable, unique Drive identifier)
+    - ``title`` set to *folder_name* (human-readable display name)
+    - ``description`` set to an empty string
+    - ``filters`` set to an empty list (no server-side filter; song files are
+      expected to come from a ``Songs`` subfolder resolved via
+      ``use_folder_components``)
+    - ``use_folder_components`` set to ``True`` so that ``Cover``, ``Preface``,
+      ``Postface``, and ``Songs`` sub-folders are automatically discovered
+
+    Args:
+        folder_id: The Google Drive folder ID.
+        folder_name: The human-readable folder name as shown in Drive.
+
+    Returns:
+        A fully-constructed :class:`~generator.common.config.Edition` instance.
+    """
+    return config.Edition(
+        id=folder_id,
+        title=folder_name,
+        description="",
+        filters=[],
+        use_folder_components=True,
+    )
+
+
 def scan_drive_editions(
     gdrive_client: GoogleDriveClient,
 ) -> List[Tuple[str, config.Edition]]:
@@ -59,7 +91,6 @@ def scan_drive_editions(
         )
 
         editions: List[Tuple[str, config.Edition]] = []
-        skipped_no_yaml = 0
         skipped_errors = 0
 
         # For each source folder, find direct child folders
@@ -97,7 +128,16 @@ def scan_drive_editions(
 
                         yaml_files = yaml_resp.get("files", [])
                         if not yaml_files:
-                            skipped_no_yaml += 1
+                            logger.info(
+                                f"scan_drive_editions: no .songbook.yaml in folder "
+                                f"{folder_name!r} (id={folder_id!r}); using sane defaults"
+                            )
+                            editions.append(
+                                (
+                                    folder_id,
+                                    _make_default_edition(folder_id, folder_name),
+                                )
+                            )
                             continue
 
                         yaml_file_id = yaml_files[0]["id"]
@@ -156,10 +196,9 @@ def scan_drive_editions(
                 )
 
         span.set_attribute("scan.editions_valid", len(editions))
-        span.set_attribute("scan.skipped_no_yaml", skipped_no_yaml)
         span.set_attribute("scan.skipped_errors", skipped_errors)
         logger.info(
-            f"scan_drive_editions: completed; editions_valid={len(editions)} "
-            f"skipped_no_yaml={skipped_no_yaml} skipped_errors={skipped_errors}"
+            f"scan_drive_editions: completed; "
+            f"editions_valid={len(editions)} skipped_errors={skipped_errors}"
         )
         return editions

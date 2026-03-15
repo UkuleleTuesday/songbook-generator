@@ -22,6 +22,7 @@ from ..common.gdrive import (
 )
 from .models import File
 from ..common.tracing import get_tracer
+from ..common.editions import _make_default_edition
 from natsort import natsorted
 from unidecode import unidecode
 import re
@@ -470,8 +471,17 @@ def load_edition_from_drive_folder(
     folder_id: str,
 ) -> tuple[config.Edition, Optional[List[File]]]:
     """
-    Load an Edition configuration from a .songbook.yaml file in a
-    Google Drive folder.
+    Load an Edition configuration from a Google Drive folder.
+
+    If the folder contains a ``.songbook.yaml`` file it is downloaded,
+    validated against the :class:`~generator.common.config.Edition` schema,
+    and used as the edition configuration.
+
+    If **no** ``.songbook.yaml`` is present the folder's display name is
+    fetched from the Drive API and a default edition is created via
+    :func:`~generator.common.editions._make_default_edition` with
+    ``use_folder_components=True``, so that ``Cover``, ``Preface``,
+    ``Postface``, and ``Songs`` sub-folders are automatically discovered.
 
     If the loaded edition has ``use_folder_components: true``, dedicated
     subfolders named ``Cover``, ``Preface``, ``Postface``, and ``Songs``
@@ -482,35 +492,38 @@ def load_edition_from_drive_folder(
 
     Args:
         gdrive_client: An authenticated GoogleDriveClient instance.
-        folder_id: The Drive folder ID to search for .songbook.yaml.
+        folder_id: The Drive folder ID to load the edition from.
 
     Returns:
         A tuple of ``(edition, songs_files)`` where *edition* is a validated
-        Edition object parsed from the YAML file with folder-based components
-        resolved, and *songs_files* is a sorted list of
-        :class:`~generator.worker.models.File` objects loaded from the
+        Edition object (parsed from YAML or built from sane defaults) with
+        folder-based components resolved, and *songs_files* is a sorted list
+        of :class:`~generator.worker.models.File` objects loaded from the
         ``Songs`` subfolder (or ``None`` if no such subfolder was found or
         ``use_folder_components`` is disabled).
 
     Raises:
-        ValueError: If the file is missing, unreadable, or invalid.
+        ValueError: If a ``.songbook.yaml`` file exists but is unreadable or
+            invalid.
     """
     songbook_file = gdrive_client.find_file_in_folder(folder_id, ".songbook.yaml")
     if not songbook_file:
-        raise ValueError(f"No .songbook.yaml found in Drive folder '{folder_id}'.")
+        folder_meta = gdrive_client.get_file_metadata(folder_id)
+        folder_name = folder_meta.name if folder_meta else folder_id
+        edition = _make_default_edition(folder_id, folder_name)
+    else:
+        raw = gdrive_client.download_raw_bytes(songbook_file.id)
+        try:
+            data = yaml.safe_load(raw.decode("utf-8"))
+        except (yaml.YAMLError, UnicodeDecodeError) as e:
+            raise ValueError(f"Failed to parse .songbook.yaml: {e}") from e
 
-    raw = gdrive_client.download_raw_bytes(songbook_file.id)
-    try:
-        data = yaml.safe_load(raw.decode("utf-8"))
-    except (yaml.YAMLError, UnicodeDecodeError) as e:
-        raise ValueError(f"Failed to parse .songbook.yaml: {e}") from e
-
-    try:
-        edition = config.Edition.model_validate(data)
-    except ValidationError as e:
-        raise ValueError(
-            f".songbook.yaml does not match the Edition schema: {e}"
-        ) from e
+        try:
+            edition = config.Edition.model_validate(data)
+        except ValidationError as e:
+            raise ValueError(
+                f".songbook.yaml does not match the Edition schema: {e}"
+            ) from e
 
     edition = resolve_folder_components(gdrive_client, folder_id, edition)
 

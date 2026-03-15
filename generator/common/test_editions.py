@@ -3,7 +3,8 @@
 from googleapiclient.errors import HttpError
 from unittest.mock import MagicMock
 
-from .editions import scan_drive_editions
+from .editions import scan_drive_editions, _make_default_edition
+from . import config
 
 _VALID_YAML = b"""
 id: drive-edition
@@ -106,8 +107,8 @@ def test_scan_drive_editions_skips_invalid_schema(mocker):
     assert result == []
 
 
-def test_scan_drive_editions_skips_folders_without_yaml(mocker):
-    """Edition folders without .songbook.yaml file are skipped."""
+def test_scan_drive_editions_uses_defaults_for_folders_without_yaml(mocker):
+    """Edition folders without .songbook.yaml get a default edition."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
@@ -128,7 +129,14 @@ def test_scan_drive_editions_skips_folders_without_yaml(mocker):
 
     result = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert len(result) == 1
+    folder_id, edition = result[0]
+    assert folder_id == "no_yaml_folder"
+    assert edition.id == "no_yaml_folder"
+    assert edition.title == "No YAML Folder"
+    assert edition.description == ""
+    assert edition.filters == []
+    assert edition.use_folder_components is True
     mock_client.download_raw_bytes.assert_not_called()
 
 
@@ -228,3 +236,44 @@ def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
     assert result == []
     # Verify that list was called for each source folder
     assert mock_client.drive.files.return_value.list.call_count >= 2
+
+
+# ---------------------------------------------------------------------------
+# _make_default_edition tests
+# ---------------------------------------------------------------------------
+
+
+def test_make_default_edition_uses_folder_id_as_id():
+    """Default edition id is set to the Drive folder ID."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert edition.id == "folder_abc"
+
+
+def test_make_default_edition_uses_folder_name_as_title():
+    """Default edition title is the folder's display name."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert edition.title == "My Edition"
+
+
+def test_make_default_edition_has_empty_description():
+    """Default edition description is an empty string."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert edition.description == ""
+
+
+def test_make_default_edition_has_empty_filters():
+    """Default edition has no filters (relies on Songs subfolder)."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert edition.filters == []
+
+
+def test_make_default_edition_enables_folder_components():
+    """Default edition has use_folder_components=True."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert edition.use_folder_components is True
+
+
+def test_make_default_edition_returns_edition_instance():
+    """_make_default_edition returns a valid Edition object."""
+    edition = _make_default_edition("folder_abc", "My Edition")
+    assert isinstance(edition, config.Edition)

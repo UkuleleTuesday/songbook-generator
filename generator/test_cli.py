@@ -27,7 +27,13 @@ def test_generate_command_with_edition(runner, mocker):
 
 
 def test_generate_command_with_invalid_edition(runner, mocker):
-    """Test the generate command with an unknown edition falls back to Drive."""
+    """Test the generate command with an unknown edition falls back to Drive.
+
+    When no .songbook.yaml is found a default edition is built using the
+    folder's display name, so generation proceeds rather than erroring out.
+    """
+    from .worker.models import File as WFile
+
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -35,12 +41,24 @@ def test_generate_command_with_invalid_edition(runner, mocker):
         "generator.cli.GoogleDriveClient.find_file_in_folder",
         return_value=None,
     )
+    mocker.patch(
+        "generator.cli.GoogleDriveClient.get_file_metadata",
+        return_value=WFile(id="nonexistent", name="Nonexistent Folder"),
+    )
+    mocker.patch(
+        "generator.cli.GoogleDriveClient.find_subfolder_by_name", return_value=None
+    )
+    mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
 
     result = runner.invoke(cli, ["generate", "--edition", "nonexistent"])
 
-    assert result.exit_code != 0
+    assert result.exit_code == 0
     assert "not found in configuration" in result.output
-    assert "No .songbook.yaml found" in result.output
+    mock_generate.assert_called_once()
+    # Verify the default edition was built with the folder's display name
+    called_edition = mock_generate.call_args.kwargs["edition"]
+    assert called_edition.title == "Nonexistent Folder"
+    assert called_edition.use_folder_components is True
 
 
 def test_generate_command_with_conflicting_flags(runner, mocker):
@@ -113,7 +131,10 @@ def test_generate_command_with_edition_as_folder_id(runner, mocker):
 
 
 def test_generate_command_edition_as_folder_id_missing_yaml(runner, mocker):
-    """--edition with Drive folder ID aborts when .songbook.yaml is missing."""
+    """--edition with Drive folder ID succeeds with defaults when .songbook.yaml
+    is absent from the folder."""
+    from .worker.models import File as WFile
+
     mocker.patch(
         "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
     )
@@ -121,11 +142,23 @@ def test_generate_command_edition_as_folder_id_missing_yaml(runner, mocker):
         "generator.cli.GoogleDriveClient.find_file_in_folder",
         return_value=None,
     )
+    mocker.patch(
+        "generator.cli.GoogleDriveClient.get_file_metadata",
+        return_value=WFile(id="folder-abc123", name="ABC123 Folder"),
+    )
+    mocker.patch(
+        "generator.cli.GoogleDriveClient.find_subfolder_by_name", return_value=None
+    )
+    mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
 
     result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
 
-    assert result.exit_code != 0
-    assert "No .songbook.yaml found" in result.output
+    assert result.exit_code == 0
+    mock_generate.assert_called_once()
+    called_edition = mock_generate.call_args.kwargs["edition"]
+    assert called_edition.id == "folder-abc123"
+    assert called_edition.title == "ABC123 Folder"
+    assert called_edition.use_folder_components is True
 
 
 def test_generate_command_edition_as_folder_id_invalid_yaml(runner, mocker):

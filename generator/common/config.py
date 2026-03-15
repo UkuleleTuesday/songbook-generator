@@ -82,11 +82,11 @@ class Toc(BaseModel):
 class Edition(BaseModel):
     id: str
     title: str
-    description: str
+    description: str = ""
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None
-    filters: List[Union[FilterGroup, PropertyFilter]]
+    filters: List[Union[FilterGroup, PropertyFilter]] = Field(default_factory=list)
     table_of_contents: Optional[Toc] = None
     use_folder_components: bool = False
 

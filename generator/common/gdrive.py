@@ -720,3 +720,38 @@ class GoogleDriveClient:
         except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)
             return False
+
+    def get_file_metadata(self, file_id: str) -> Optional[File]:
+        """
+        Fetch metadata for a single Drive file or folder by ID.
+
+        Args:
+            file_id: The Google Drive file or folder ID.
+
+        Returns:
+            A :class:`~generator.worker.models.File` object with the item's
+            metadata, or ``None`` if the item is not found or an error occurs.
+        """
+        try:
+            f = (
+                self.drive.files()
+                .get(
+                    fileId=file_id,
+                    fields="id,name,mimeType,parents,properties",
+                )
+                .execute(num_retries=self.config.api_retries)
+            )
+            return File(
+                id=f["id"],
+                name=f["name"],
+                mimeType=f.get("mimeType"),
+                properties=f.get("properties") or {},
+                parents=f.get("parents") or [],
+            )
+        except HttpError as e:
+            error_code = e.resp.status if e.resp else "unknown"
+            click.echo(
+                f"Error fetching metadata for '{file_id}' (HTTP {error_code}): {e}",
+                err=True,
+            )
+            return None

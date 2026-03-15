@@ -1421,3 +1421,90 @@ def test_generate_songbook_from_edition_without_files_passes_none(mocker):
 
     call_kwargs = mock_generate.call_args.kwargs
     assert call_kwargs["files"] is None
+
+
+# ---------------------------------------------------------------------------
+# load_edition_from_drive_folder – no .songbook.yaml fall-back tests
+# ---------------------------------------------------------------------------
+
+
+def test_load_edition_from_drive_folder_no_yaml_uses_folder_name(mocker):
+    """When no .songbook.yaml exists, a default edition is built from the
+    folder's display name fetched via get_file_metadata."""
+    from ..worker.models import File as WFile
+
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.find_file_in_folder.return_value = None
+    mock_gdrive_client.get_file_metadata.return_value = WFile(
+        id="folder_id", name="Summer Festival"
+    )
+
+    mocker.patch(
+        "generator.worker.pdf.resolve_folder_components",
+        side_effect=lambda gd, fid, ed: ed,
+    )
+    mocker.patch("generator.worker.pdf._resolve_songs_from_folder", return_value=None)
+
+    edition, songs_files = load_edition_from_drive_folder(
+        mock_gdrive_client, "folder_id"
+    )
+
+    assert edition.id == "folder_id"
+    assert edition.title == "Summer Festival"
+    assert edition.description == ""
+    assert edition.filters == []
+    assert edition.use_folder_components is True
+    mock_gdrive_client.download_raw_bytes.assert_not_called()
+
+
+def test_load_edition_from_drive_folder_no_yaml_metadata_unavailable(mocker):
+    """When no .songbook.yaml and get_file_metadata returns None, the
+    folder_id is used as a fallback title."""
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.find_file_in_folder.return_value = None
+    mock_gdrive_client.get_file_metadata.return_value = None
+
+    mocker.patch(
+        "generator.worker.pdf.resolve_folder_components",
+        side_effect=lambda gd, fid, ed: ed,
+    )
+    mocker.patch("generator.worker.pdf._resolve_songs_from_folder", return_value=None)
+
+    edition, songs_files = load_edition_from_drive_folder(
+        mock_gdrive_client, "some_folder_id"
+    )
+
+    assert edition.id == "some_folder_id"
+    assert edition.title == "some_folder_id"
+
+
+def test_load_edition_from_drive_folder_no_yaml_resolves_songs(mocker):
+    """When no .songbook.yaml exists and a Songs subfolder is present,
+    song files are returned."""
+    from ..worker.models import File as WFile
+
+    expected_songs = [
+        File(id="s1", name="Song A.pdf"),
+        File(id="s2", name="Song B.pdf"),
+    ]
+
+    mock_gdrive_client = mocker.Mock()
+    mock_gdrive_client.find_file_in_folder.return_value = None
+    mock_gdrive_client.get_file_metadata.return_value = WFile(
+        id="folder_id", name="My Festival"
+    )
+
+    mocker.patch(
+        "generator.worker.pdf.resolve_folder_components",
+        side_effect=lambda gd, fid, ed: ed,
+    )
+    mocker.patch(
+        "generator.worker.pdf._resolve_songs_from_folder",
+        return_value=expected_songs,
+    )
+
+    edition, songs_files = load_edition_from_drive_folder(
+        mock_gdrive_client, "folder_id"
+    )
+
+    assert songs_files == expected_songs
