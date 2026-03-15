@@ -1,7 +1,7 @@
 from typing import Generator, List, Dict, Optional, Union
 from datetime import datetime
 import click
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 import io
 from loguru import logger
@@ -720,3 +720,116 @@ class GoogleDriveClient:
         except HttpError as e:
             click.echo(f"An error occurred: {e}", err=True)
             return False
+
+    def create_folder(self, name: str, parent_id: str) -> str:
+        """
+        Create a new folder in Google Drive.
+
+        Args:
+            name: The name of the new folder.
+            parent_id: The ID of the parent folder.
+
+        Returns:
+            The ID of the newly created folder.
+        """
+        with tracer.start_as_current_span("create_folder") as span:
+            span.set_attribute("folder.name", name)
+            span.set_attribute("folder.parent_id", parent_id)
+            body = {
+                "name": name,
+                "mimeType": "application/vnd.google-apps.folder",
+                "parents": [parent_id],
+            }
+            result = (
+                self.drive.files()
+                .create(body=body, fields="id")
+                .execute(num_retries=self.config.api_retries)
+            )
+            folder_id = result["id"]
+            span.set_attribute("folder.id", folder_id)
+            logger.info(
+                f"create_folder: created folder {name!r} "
+                f"(id={folder_id!r}) in parent {parent_id!r}"
+            )
+            return folder_id
+
+    def upload_file_bytes(
+        self,
+        name: str,
+        content: bytes,
+        parent_id: str,
+        mime_type: str = "application/octet-stream",
+    ) -> str:
+        """
+        Upload bytes as a new file to Google Drive.
+
+        Args:
+            name: The name of the new file.
+            content: The file content as bytes.
+            parent_id: The ID of the parent folder.
+            mime_type: The MIME type of the file.
+
+        Returns:
+            The ID of the newly uploaded file.
+        """
+        with tracer.start_as_current_span("upload_file_bytes") as span:
+            span.set_attribute("file.name", name)
+            span.set_attribute("file.parent_id", parent_id)
+            span.set_attribute("file.mime_type", mime_type)
+            body = {
+                "name": name,
+                "parents": [parent_id],
+            }
+            media = MediaIoBaseUpload(
+                io.BytesIO(content),
+                mimetype=mime_type,
+                resumable=False,
+            )
+            result = (
+                self.drive.files()
+                .create(body=body, media_body=media, fields="id")
+                .execute(num_retries=self.config.api_retries)
+            )
+            file_id = result["id"]
+            span.set_attribute("file.id", file_id)
+            logger.info(
+                f"upload_file_bytes: uploaded {name!r} (id={file_id!r}) "
+                f"to parent {parent_id!r}"
+            )
+            return file_id
+
+    def create_shortcut(self, name: str, target_id: str, parent_id: str) -> str:
+        """
+        Create a Drive shortcut pointing to an existing file.
+
+        Args:
+            name: The name of the shortcut.
+            target_id: The Google Drive file ID of the shortcut target.
+            parent_id: The ID of the parent folder for the shortcut.
+
+        Returns:
+            The ID of the newly created shortcut.
+        """
+        with tracer.start_as_current_span("create_shortcut") as span:
+            span.set_attribute("shortcut.name", name)
+            span.set_attribute("shortcut.target_id", target_id)
+            span.set_attribute("shortcut.parent_id", parent_id)
+            body = {
+                "name": name,
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "parents": [parent_id],
+                "shortcutDetails": {"targetId": target_id},
+            }
+            result = (
+                self.drive.files()
+                .create(body=body, fields="id")
+                .execute(num_retries=self.config.api_retries)
+            )
+            shortcut_id = result["id"]
+            span.set_attribute("shortcut.id", shortcut_id)
+            logger.info(
+                f"create_shortcut: created shortcut {name!r} → "
+                f"{target_id!r} (id={shortcut_id!r}) in parent "
+                f"{parent_id!r}"
+            )
+            return shortcut_id

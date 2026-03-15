@@ -780,3 +780,115 @@ def test_find_subfolder_by_name_uses_folder_mime_type(mock_echo, mock_drive_clie
     call_kwargs = mock_drive_client.drive.files.return_value.list.call_args[1]
     assert "application/vnd.google-apps.folder" in call_kwargs["q"]
     assert "parent_id" in call_kwargs["q"]
+
+
+# ---------------------------------------------------------------------------
+# create_folder tests
+# ---------------------------------------------------------------------------
+
+
+def test_create_folder_returns_folder_id(mock_drive_client):
+    """create_folder calls the Drive API and returns the new folder ID."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "new_folder_id"
+    }
+
+    result = mock_drive_client.create_folder("My Folder", "parent_id_123")
+
+    assert result == "new_folder_id"
+    call_kwargs = mock_drive_client.drive.files.return_value.create.call_args[1]
+    body = call_kwargs["body"]
+    assert body["name"] == "My Folder"
+    assert body["mimeType"] == "application/vnd.google-apps.folder"
+    assert body["parents"] == ["parent_id_123"]
+    assert call_kwargs["fields"] == "id"
+
+
+def test_create_folder_uses_api_retries(mock_drive_client):
+    """create_folder passes api_retries to the execute call."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "folder_id"
+    }
+
+    mock_drive_client.create_folder("Test", "parent")
+
+    mock_drive_client.drive.files.return_value.create.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
+
+
+# ---------------------------------------------------------------------------
+# upload_file_bytes tests
+# ---------------------------------------------------------------------------
+
+
+def test_upload_file_bytes_returns_file_id(mock_drive_client):
+    """upload_file_bytes uploads content and returns the new file ID."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "uploaded_file_id"
+    }
+
+    result = mock_drive_client.upload_file_bytes(
+        ".songbook.yaml",
+        b"id: test\ntitle: Test",
+        "parent_folder_id",
+        mime_type="application/x-yaml",
+    )
+
+    assert result == "uploaded_file_id"
+    call_kwargs = mock_drive_client.drive.files.return_value.create.call_args[1]
+    body = call_kwargs["body"]
+    assert body["name"] == ".songbook.yaml"
+    assert body["parents"] == ["parent_folder_id"]
+    assert call_kwargs["fields"] == "id"
+
+
+def test_upload_file_bytes_uses_api_retries(mock_drive_client):
+    """upload_file_bytes passes api_retries to the execute call."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "file_id"
+    }
+
+    mock_drive_client.upload_file_bytes("file.txt", b"data", "parent")
+
+    mock_drive_client.drive.files.return_value.create.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )
+
+
+# ---------------------------------------------------------------------------
+# create_shortcut tests
+# ---------------------------------------------------------------------------
+
+
+def test_create_shortcut_returns_shortcut_id(mock_drive_client):
+    """create_shortcut creates a Drive shortcut and returns its ID."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "shortcut_id_abc"
+    }
+
+    result = mock_drive_client.create_shortcut(
+        "_cover", "target_file_id", "parent_folder_id"
+    )
+
+    assert result == "shortcut_id_abc"
+    call_kwargs = mock_drive_client.drive.files.return_value.create.call_args[1]
+    body = call_kwargs["body"]
+    assert body["name"] == "_cover"
+    assert body["mimeType"] == "application/vnd.google-apps.shortcut"
+    assert body["parents"] == ["parent_folder_id"]
+    assert body["shortcutDetails"]["targetId"] == "target_file_id"
+    assert call_kwargs["fields"] == "id"
+
+
+def test_create_shortcut_uses_api_retries(mock_drive_client):
+    """create_shortcut passes api_retries to the execute call."""
+    mock_drive_client.drive.files.return_value.create.return_value.execute.return_value = {
+        "id": "shortcut_id"
+    }
+
+    mock_drive_client.create_shortcut("_cover", "target", "parent")
+
+    mock_drive_client.drive.files.return_value.create.return_value.execute.assert_called_once_with(
+        num_retries=3
+    )

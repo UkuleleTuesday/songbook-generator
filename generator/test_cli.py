@@ -333,3 +333,470 @@ def test_editions_list_no_config_editions(runner, mocker):
 
     assert result.exit_code == 0
     assert "No config editions found." in result.output
+
+
+# ---------------------------------------------------------------------------
+# editions convert tests
+# ---------------------------------------------------------------------------
+
+_CONVERT_FILTERS = [{"key": "specialbooks", "operator": "contains", "value": "test"}]
+_CONVERT_DESCRIPTION = "A test edition"
+
+
+def _make_convert_settings(mocker, edition, folder_ids=None):
+    """Return a mock settings object for convert_edition tests."""
+    return mocker.Mock(
+        editions=[edition],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(
+            folder_ids=folder_ids if folder_ids is not None else ["editions_folder"]
+        ),
+    )
+
+
+def test_convert_edition_success(runner, mocker):
+    """editions convert creates a Drive folder and uploads .songbook.yaml."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "new_folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_file_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Creating Drive folder 'Test Edition'" in result.output
+    assert "Created folder (id=new_folder_id)" in result.output
+    assert "Uploading .songbook.yaml" in result.output
+    assert "Uploaded .songbook.yaml (id=yaml_file_id)" in result.output
+    assert "Conversion complete." in result.output
+    assert "new_folder_id" in result.output
+    mock_instance.create_folder.assert_called_once_with(
+        "Test Edition", "editions_folder"
+    )
+    mock_instance.upload_file_bytes.assert_called_once()
+    call_args = mock_instance.upload_file_bytes.call_args
+    assert call_args[0][0] == ".songbook.yaml"
+    assert isinstance(call_args[0][1], bytes)
+    assert call_args[0][2] == "new_folder_id"
+
+
+def test_convert_edition_custom_folder_name(runner, mocker):
+    """editions convert uses --folder-name when provided."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--folder-name",
+            "My Custom Name",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    mock_instance.create_folder.assert_called_once_with(
+        "My Custom Name", "editions_folder"
+    )
+
+
+def test_convert_edition_unknown_edition(runner, mocker):
+    """editions convert aborts when the edition ID does not exist."""
+    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+        editions=[],
+        google_cloud=mocker.Mock(credentials={}),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+
+    result = runner.invoke(
+        cli,
+        ["editions", "convert", "nonexistent", "--target-folder", "folder"],
+    )
+
+    assert result.exit_code != 0
+    assert "not found in config editions" in result.output
+
+
+def test_convert_edition_no_target_folder_no_config(runner, mocker):
+    """editions convert aborts when no --target-folder and no config folder."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition, folder_ids=[]
+    )
+
+    result = runner.invoke(cli, ["editions", "convert", "test-ed"])
+
+    assert result.exit_code != 0
+    assert "GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS" in result.output
+
+
+def test_convert_edition_no_target_folder_multiple_config(runner, mocker):
+    """editions convert aborts when multiple config folders and no --target-folder."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition, folder_ids=["folder_a", "folder_b"]
+    )
+
+    result = runner.invoke(cli, ["editions", "convert", "test-ed"])
+
+    assert result.exit_code != 0
+    assert "Please specify --target-folder" in result.output
+
+
+def test_convert_edition_uses_single_config_folder(runner, mocker):
+    """editions convert auto-selects target when exactly one folder is configured."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition, folder_ids=["only_folder"]
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        ["editions", "convert", "test-ed", "--no-create-shortcuts"],
+    )
+
+    assert result.exit_code == 0, result.output
+    mock_instance.create_folder.assert_called_once_with("Test Edition", "only_folder")
+
+
+def test_convert_edition_creates_shortcuts(runner, mocker):
+    """editions convert creates shortcuts for cover, preface, and postface."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+        cover_file_id="cover_id",
+        preface_file_ids=["preface_id"],
+        postface_file_ids=["post1_id", "post2_id"],
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mock_instance.create_shortcut.return_value = "shortcut_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Creating component shortcuts" in result.output
+    # Four shortcuts: _cover, _preface, _postface_01, _postface_02
+    assert mock_instance.create_shortcut.call_count == 4
+    calls = [c[0] for c in mock_instance.create_shortcut.call_args_list]
+    shortcut_names = [c[0] for c in calls]
+    assert "_cover" in shortcut_names
+    assert "_preface" in shortcut_names
+    assert "_postface_01" in shortcut_names
+    assert "_postface_02" in shortcut_names
+
+
+def test_convert_edition_delete_config(runner, mocker, tmp_path):
+    """editions convert removes the original YAML file when --delete-config is set."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+
+    config_file = tmp_path / "test-ed.yaml"
+    config_file.write_text("id: test-ed\ntitle: Test Edition\n")
+    mocker.patch(
+        "generator.cli._find_edition_config_path",
+        return_value=config_file,
+    )
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--no-create-shortcuts",
+            "--delete-config",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Deleted config file" in result.output
+    assert not config_file.exists()
+
+
+def test_convert_edition_notes_original_config(runner, mocker, tmp_path):
+    """editions convert prints note about original config file when not deleted."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+
+    config_file = tmp_path / "test-ed.yaml"
+    config_file.write_text("id: test-ed\n")
+    mocker.patch(
+        "generator.cli._find_edition_config_path",
+        return_value=config_file,
+    )
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Note: The original config file" in result.output
+    assert config_file.exists()
+
+
+def test_convert_edition_warns_complex_filters(runner, mocker):
+    """editions convert warns when the edition uses FilterGroup."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=[
+            {
+                "operator": "OR",
+                "filters": [
+                    {"key": "status", "operator": "equals", "value": "A"},
+                    {"key": "status", "operator": "equals", "value": "B"},
+                ],
+            }
+        ],
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "folder",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "complex filter groups" in result.output
+
+
+def test_convert_edition_drive_init_failure(runner, mocker):
+    """editions convert aborts gracefully on Drive init failure."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    from unittest.mock import MagicMock
+
+    mocker.patch(
+        "generator.cli.init_services",
+        side_effect=HttpError(resp=MagicMock(status=403), content=b"Forbidden"),
+    )
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "folder",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Failed to initialize Drive services" in result.output
+
+
+def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
+    """The .songbook.yaml uploaded can be parsed back as a valid Edition."""
+    import yaml as pyyaml
+    from .common.config import Edition as CfgEdition
+
+    edition = Edition(
+        id="roundtrip-ed",
+        title="Roundtrip Edition",
+        description="Testing round-trip serialization",
+        filters=_CONVERT_FILTERS,
+        cover_file_id="cover123",
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    uploaded_content = {}
+
+    def capture_upload(name, content, parent_id, mime_type="application/octet-stream"):
+        uploaded_content["content"] = content
+        return "yaml_id"
+
+    mock_instance.upload_file_bytes.side_effect = capture_upload
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "roundtrip-ed",
+            "--target-folder",
+            "folder",
+            "--no-create-shortcuts",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "content" in uploaded_content
+    parsed = pyyaml.safe_load(uploaded_content["content"].decode("utf-8"))
+    loaded = CfgEdition.model_validate(parsed)
+    assert loaded.id == "roundtrip-ed"
+    assert loaded.title == "Roundtrip Edition"
+    assert loaded.cover_file_id == "cover123"

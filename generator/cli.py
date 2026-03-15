@@ -8,12 +8,14 @@ import os
 import functools
 import logging
 import sys
-from typing import Optional
+from typing import List, Optional
 import click
 import fitz
+import yaml
 from pathlib import Path
 
 from .common.config import get_settings
+from .common import config
 from .cache_updater.main import fetch_and_merge_pdfs
 import json
 from .common.gdrive import (
@@ -21,7 +23,7 @@ from .common.gdrive import (
 )
 from .common.caching import init_cache
 from .cache_updater.sync import download_gcs_cache_to_local, sync_cache
-from .common.filters import FilterParser, parse_filters
+from .common.filters import FilterGroup, FilterParser, parse_filters
 from .common.editions import scan_drive_editions
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -855,6 +857,326 @@ def list_editions():
             click.echo(f"  [{folder_id}] {edition.title}")
     else:
         click.echo("\nNo drive editions found.")
+
+
+def _edition_to_yaml_bytes(edition: config.Edition) -> bytes:
+    """
+    Serialize an Edition to YAML bytes.
+
+    Only fields that were explicitly set in the original YAML are included,
+    keeping the output minimal and readable.
+
+    Args:
+        edition: The Edition object to serialize.
+
+    Returns:
+        UTF-8 encoded YAML representation of the edition.
+    """
+    data = edition.model_dump(mode="json", exclude_unset=True)
+    return yaml.dump(
+        data,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+    ).encode("utf-8")
+
+
+def _warn_complex_edition_features(edition: config.Edition) -> None:
+    """
+    Emit warnings for edition features that require editing the
+    .songbook.yaml file directly in Google Drive.
+
+    Args:
+        edition: The Edition to inspect.
+    """
+    has_filter_groups = any(isinstance(f, FilterGroup) for f in edition.filters)
+    if has_filter_groups:
+        click.echo(
+            "Warning: This edition uses complex filter groups (AND/OR). "
+            "These can only be modified by editing the .songbook.yaml "
+            "file directly in Google Drive.",
+            err=True,
+        )
+    if edition.table_of_contents is not None and edition.table_of_contents.postfixes:
+        click.echo(
+            "Warning: This edition has Table of Contents postfixes. "
+            "These can only be modified by editing the .songbook.yaml "
+            "file directly in Google Drive.",
+            err=True,
+        )
+
+
+def _find_edition_config_path(edition_id: str) -> Optional[Path]:
+    """
+    Find the YAML config file path for a given edition ID.
+
+    Scans the ``generator/config/songbooks/`` directory for a YAML file
+    whose ``id`` field matches *edition_id*.
+
+    Args:
+        edition_id: The edition ID to search for.
+
+    Returns:
+        The :class:`~pathlib.Path` to the YAML file, or ``None`` if not found.
+    """
+    config_dir = Path(os.path.dirname(__file__)) / "config" / "songbooks"
+    if not config_dir.is_dir():
+        return None
+    for filepath in sorted(config_dir.iterdir()):
+        if filepath.suffix in (".yaml", ".yml"):
+            try:
+                with open(filepath) as f:
+                    data = yaml.safe_load(f)
+                if isinstance(data, dict) and data.get("id") == edition_id:
+                    return filepath
+            except (OSError, yaml.YAMLError):
+                continue
+    return None
+
+
+def _create_component_shortcuts(
+    gdrive_client: GoogleDriveClient,
+    edition: config.Edition,
+    folder_id: str,
+) -> None:
+    """
+    Create Drive shortcuts for cover, preface, and postface files.
+
+    The shortcuts use the naming conventions expected by
+    :func:`~generator.worker.pdf.categorize_folder_files`:
+
+    - Cover  → ``_cover``
+    - Single preface  → ``_preface``; multiple → ``_preface_01``, …
+    - Single postface → ``_postface``; multiple → ``_postface_01``, …
+
+    Failures for individual shortcuts are reported as warnings and do not
+    abort the overall conversion.
+
+    Args:
+        gdrive_client: An authenticated GoogleDriveClient instance.
+        edition: The Edition whose component file IDs to link.
+        folder_id: The Drive folder ID where shortcuts will be created.
+    """
+    if edition.cover_file_id:
+        try:
+            shortcut_id = gdrive_client.create_shortcut(
+                "_cover", edition.cover_file_id, folder_id
+            )
+            click.echo(f"  Created cover shortcut (id={shortcut_id})")
+        except HttpError as exc:
+            click.echo(
+                f"Warning: failed to create cover shortcut: {exc}",
+                err=True,
+            )
+
+    preface_ids: List[str] = edition.preface_file_ids or []
+    for idx, preface_id in enumerate(preface_ids):
+        if len(preface_ids) == 1:
+            shortcut_name = "_preface"
+        else:
+            shortcut_name = f"_preface_{idx + 1:02d}"
+        try:
+            shortcut_id = gdrive_client.create_shortcut(
+                shortcut_name, preface_id, folder_id
+            )
+            click.echo(
+                f"  Created preface shortcut '{shortcut_name}' (id={shortcut_id})"
+            )
+        except HttpError as exc:
+            click.echo(
+                f"Warning: failed to create preface shortcut '{shortcut_name}': {exc}",
+                err=True,
+            )
+
+    postface_ids: List[str] = edition.postface_file_ids or []
+    for idx, postface_id in enumerate(postface_ids):
+        if len(postface_ids) == 1:
+            shortcut_name = "_postface"
+        else:
+            shortcut_name = f"_postface_{idx + 1:02d}"
+        try:
+            shortcut_id = gdrive_client.create_shortcut(
+                shortcut_name, postface_id, folder_id
+            )
+            click.echo(
+                f"  Created postface shortcut '{shortcut_name}' (id={shortcut_id})"
+            )
+        except HttpError as exc:
+            click.echo(
+                f"Warning: failed to create postface shortcut '{shortcut_name}': {exc}",
+                err=True,
+            )
+
+
+@editions.command(name="convert")
+@click.argument("edition_id")
+@click.option(
+    "--target-folder",
+    "-t",
+    default=None,
+    help=(
+        "Google Drive folder ID where the new edition folder will be "
+        "created. Required when multiple edition source folders are "
+        "configured. Defaults to the single configured edition source "
+        "folder (GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS)."
+    ),
+)
+@click.option(
+    "--folder-name",
+    "-n",
+    default=None,
+    help="Name for the new Drive folder (defaults to the edition title).",
+)
+@click.option(
+    "--create-shortcuts/--no-create-shortcuts",
+    default=True,
+    help=(
+        "Create Drive shortcuts for cover, preface, and postface files "
+        "in the new folder (default: enabled)."
+    ),
+)
+@click.option(
+    "--delete-config",
+    is_flag=True,
+    default=False,
+    help=(
+        "Delete the original YAML config file from the repository after "
+        "a successful conversion."
+    ),
+)
+def convert_edition(
+    edition_id: str,
+    target_folder: Optional[str],
+    folder_name: Optional[str],
+    create_shortcuts: bool,
+    delete_config: bool,
+):
+    """Convert a config-based edition to a Google Drive folder structure.
+
+    Reads the config edition identified by EDITION_ID and creates an
+    equivalent Drive folder containing a .songbook.yaml file. Shortcuts
+    to cover, preface, and postface files are created by default for
+    easy browsing in Google Drive.
+
+    EDITION_ID is the edition's configured ID (e.g. 'current').
+    """
+    settings = get_settings()
+
+    # Find the edition in config editions
+    edition = next((e for e in settings.editions if e.id == edition_id), None)
+    if edition is None:
+        click.echo(
+            f"Error: Edition '{edition_id}' not found in config editions.",
+            err=True,
+        )
+        raise click.Abort()
+
+    # Determine target folder
+    if target_folder is None:
+        edition_folders = settings.songbook_editions.folder_ids
+        if len(edition_folders) == 1:
+            target_folder = edition_folders[0]
+        elif len(edition_folders) > 1:
+            click.echo(
+                "Error: Multiple edition source folders are configured. "
+                "Please specify --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+        else:
+            click.echo(
+                "Error: No --target-folder specified and no edition source "
+                "folders are configured "
+                "(GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS). "
+                "Please provide --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+
+    # Determine folder name
+    if folder_name is None:
+        folder_name = edition.title
+
+    # Warn about features that require YAML editing in Drive
+    _warn_complex_edition_features(edition)
+
+    # Initialize Drive services
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-generator' not found.",
+            err=True,
+        )
+        raise click.Abort()
+
+    try:
+        drive, cache = init_services(
+            scopes=credential_config.scopes,
+            target_principal=credential_config.principal,
+        )
+    except (
+        HttpError,
+        google.auth.exceptions.TransportError,
+        google.auth.exceptions.DefaultCredentialsError,
+    ) as exc:
+        click.echo(f"Error: Failed to initialize Drive services: {exc}", err=True)
+        raise click.Abort()
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+    # Create the edition folder in Drive
+    click.echo(f"Creating Drive folder '{folder_name}'...")
+    try:
+        folder_id = gdrive_client.create_folder(folder_name, target_folder)
+    except HttpError as exc:
+        click.echo(f"Error: Failed to create Drive folder: {exc}", err=True)
+        raise click.Abort()
+    click.echo(f"  Created folder (id={folder_id})")
+
+    # Serialize the edition and upload .songbook.yaml
+    yaml_content = _edition_to_yaml_bytes(edition)
+    click.echo("Uploading .songbook.yaml...")
+    try:
+        yaml_file_id = gdrive_client.upload_file_bytes(
+            ".songbook.yaml",
+            yaml_content,
+            folder_id,
+            mime_type="application/x-yaml",
+        )
+    except HttpError as exc:
+        click.echo(f"Error: Failed to upload .songbook.yaml: {exc}", err=True)
+        raise click.Abort()
+    click.echo(f"  Uploaded .songbook.yaml (id={yaml_file_id})")
+
+    # Optionally create shortcuts to component files
+    if create_shortcuts:
+        click.echo("Creating component shortcuts...")
+        _create_component_shortcuts(gdrive_client, edition, folder_id)
+
+    # Handle optional deletion of the original config file
+    if delete_config:
+        config_path = _find_edition_config_path(edition_id)
+        if config_path:
+            config_path.unlink()
+            click.echo(f"Deleted config file: {config_path}")
+        else:
+            click.echo(
+                f"Warning: Could not find the config YAML file for edition "
+                f"'{edition_id}'; nothing deleted.",
+                err=True,
+            )
+    else:
+        config_path = _find_edition_config_path(edition_id)
+        if config_path:
+            click.echo(
+                f"\nNote: The original config file '{config_path}' is "
+                f"still present. You may remove it from the repository "
+                f"once the Drive edition is confirmed working."
+            )
+
+    click.echo("\nConversion complete.")
+    click.echo(f"Edition folder ID: {folder_id}")
+    click.echo("Run 'editions list' to verify the new Drive edition is discovered.")
 
 
 @cli.group()
