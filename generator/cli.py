@@ -1121,19 +1121,12 @@ def convert_edition(
         )
         return
 
-    # Initialize Drive services
-    credential_config = settings.google_cloud.credentials.get("songbook-generator")
-    if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-generator' not found.",
-            err=True,
-        )
-        raise click.Abort()
-
+    # Initialize Drive services as the caller (no impersonation) — write
+    # operations require user-level access; the service account only has
+    # read permissions.
     try:
         drive, cache = init_services(
-            scopes=credential_config.scopes,
-            target_principal=credential_config.principal,
+            scopes=["https://www.googleapis.com/auth/drive"],
         )
     except (
         HttpError,

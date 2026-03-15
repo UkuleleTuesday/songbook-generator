@@ -347,14 +347,6 @@ def _make_convert_settings(mocker, edition, folder_ids=None):
     """Return a mock settings object for convert_edition tests."""
     return mocker.Mock(
         editions=[edition],
-        google_cloud=mocker.Mock(
-            credentials={
-                "songbook-generator": mocker.Mock(
-                    scopes=["https://www.googleapis.com/auth/drive"],
-                    principal="sa@project.iam.gserviceaccount.com",
-                )
-            }
-        ),
         songbook_editions=mocker.Mock(
             folder_ids=folder_ids if folder_ids is not None else ["editions_folder"]
         ),
@@ -372,7 +364,7 @@ def test_convert_edition_success(runner, mocker):
     mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
         mocker, edition
     )
-    mocker.patch(
+    mock_init = mocker.patch(
         "generator.cli.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
@@ -409,6 +401,9 @@ def test_convert_edition_success(runner, mocker):
     assert call_args[0][0] == ".songbook.yaml"
     assert isinstance(call_args[0][1], bytes)
     assert call_args[0][2] == "new_folder_id"
+    # Must not impersonate a service account principal
+    _, init_kwargs = mock_init.call_args
+    assert init_kwargs.get("target_principal") is None
 
 
 def test_convert_edition_custom_folder_name(runner, mocker):
@@ -456,7 +451,6 @@ def test_convert_edition_unknown_edition(runner, mocker):
     """editions convert aborts when the edition ID does not exist."""
     mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
         editions=[],
-        google_cloud=mocker.Mock(credentials={}),
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
 
