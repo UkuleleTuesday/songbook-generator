@@ -118,6 +118,7 @@ body {
 .edition-card-actions-row {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .edition-radio:checked ~ .edition-card-actions {
