@@ -27,11 +27,6 @@ body {
   display: block;
 }
 
-#historyList {
-  list-style-type: none;
-  padding: 0;
-}
-
 /* Edition card picker */
 .editions-section-label {
   display: block;
@@ -79,6 +74,18 @@ body {
 
 .edition-card {
   position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: #fff;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+
+.edition-card:has(.edition-radio:not(:disabled)):hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.edition-card:has(.edition-radio:checked) {
+  background: rgba(63, 81, 181, 0.04);
 }
 
 .edition-radio {
@@ -91,28 +98,127 @@ body {
 .edition-card-label {
   display: block;
   padding: 12px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-left: 3px solid transparent;
-  border-radius: 4px;
   cursor: pointer;
-  background: #fff;
-  transition: box-shadow 0.15s, border-left-color 0.15s, background 0.15s;
+  background: transparent;
 }
 
 .edition-card-label:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  border-left-color: rgba(63, 81, 181, 0.4);
 }
 
 .edition-radio:checked + .edition-card-label {
-  border-left-color: #3f51b5;
-  background: rgba(63, 81, 181, 0.05);
-  box-shadow: 0 2px 6px rgba(63, 81, 181, 0.15);
 }
 
-.edition-radio:focus + .edition-card-label {
+/* Card actions: generate button + per-edition history, shown when selected */
+.edition-card-actions {
+  display: none;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.10);
+}
+
+.edition-card-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.edition-radio:checked ~ .edition-card-actions {
+  display: block;
+}
+
+.edition-generate-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.edition-generate-btn .material-icons {
+  font-size: 1rem;
+}
+
+.edition-edit-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.edition-edit-btn .material-icons {
+  font-size: 1rem;
+}
+
+/* In-card progress section */
+.edition-card-progress {
+  margin-top: 10px;
+}
+
+.edition-card-progress-bar {
+  width: 100%;
+}
+
+.edition-card-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.edition-card-progress-pct {
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* Per-edition generation history */
+.edition-card-history {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.edition-card-history-label {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(0, 0, 0, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 5px;
+}
+
+.edition-card-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.edition-card-history-list li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  font-size: 0.78rem;
+}
+
+.edition-card-history-list .material-icons {
+  font-size: 0.9rem;
+  color: rgba(0, 0, 0, 0.35);
+  flex-shrink: 0;
+}
+
+.edition-card-history-list a {
+  color: #3f51b5;
+  text-decoration: none;
+}
+
+.edition-card-history-list a:hover {
+  text-decoration: underline;
+}
+
+.edition-radio:focus-visible + .edition-card-label {
   outline: 2px solid #3f51b5;
-  outline-offset: 1px;
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 
 .edition-card-header {
@@ -317,7 +423,7 @@ body {
   border-radius: 3px;
 }
 
-/* Config-based editions info banner */
+/* Config-based editions info note */
 .config-info {
   display: flex;
   align-items: flex-start;
