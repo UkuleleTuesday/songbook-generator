@@ -8,6 +8,7 @@ from .editions import (
     _find_yaml_files_in_folders,
     _list_child_folders,
     scan_drive_editions,
+    DriveEditionError,
 )
 
 _VALID_YAML = b"""
@@ -173,19 +174,20 @@ def test_scan_drive_editions_returns_valid_editions(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert len(result) == 1
-    folder_id, edition = result[0]
+    assert len(editions) == 1
+    folder_id, edition = editions[0]
     assert folder_id == "edition_folder_1"
     assert edition.id == "drive-edition"
     assert edition.title == "Drive Edition"
+    assert errors == []
     # Exactly 2 Drive API list calls (list folders + 1 batch YAML search)
     assert mock_client.drive.files.return_value.list.call_count == 2
 
 
-def test_scan_drive_editions_skips_invalid_yaml(mocker):
-    """Folders with unparseable YAML are skipped with a warning."""
+def test_scan_drive_editions_invalid_yaml_returns_error(mocker):
+    """Folders with unparseable YAML produce an error entry."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
@@ -203,13 +205,17 @@ def test_scan_drive_editions_skips_invalid_yaml(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert len(errors) == 1
+    assert isinstance(errors[0], DriveEditionError)
+    assert errors[0].folder_id == "folder_b"
+    assert "parse" in errors[0].error.lower() or "yaml" in errors[0].error.lower()
 
 
-def test_scan_drive_editions_skips_invalid_schema(mocker):
-    """Folders with YAML that doesn't conform to Edition schema are skipped."""
+def test_scan_drive_editions_invalid_schema_returns_error(mocker):
+    """Folders with YAML that doesn't conform to Edition schema produce an error entry."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
@@ -227,9 +233,40 @@ def test_scan_drive_editions_skips_invalid_schema(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert len(errors) == 1
+    assert errors[0].folder_id == "folder_c"
+    assert "schema" in errors[0].error.lower() or "edition" in errors[0].error.lower()
+
+
+def test_scan_drive_editions_download_error_returns_error(mocker):
+    """HTTP error when downloading .songbook.yaml is captured as an error entry."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {"files": [{"id": "folder_d", "name": "Download Error Folder"}]},
+        {"files": [{"id": "bad_download", "parents": ["folder_d"]}]},
+    ]
+
+    http_err = HttpError(resp=MagicMock(status=404), content=b"Not Found")
+    mock_client.download_raw_bytes.side_effect = http_err
+
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(
+            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
+        ),
+    )
+
+    editions, errors = scan_drive_editions(mock_client)
+
+    assert editions == []
+    assert len(errors) == 1
+    assert errors[0].folder_id == "folder_d"
+    assert "download" in errors[0].error.lower()
 
 
 def test_scan_drive_editions_skips_folders_without_yaml(mocker):
@@ -251,14 +288,15 @@ def test_scan_drive_editions_skips_folders_without_yaml(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert errors == []
     mock_client.download_raw_bytes.assert_not_called()
 
 
 def test_scan_drive_editions_multiple_folders(mocker):
-    """Processes multiple edition folders; download errors are skipped gracefully."""
+    """Processes multiple edition folders; download errors go into the error list."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
@@ -289,11 +327,13 @@ def test_scan_drive_editions_multiple_folders(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert len(result) == 1
-    folder_id, edition = result[0]
+    assert len(editions) == 1
+    folder_id, edition = editions[0]
     assert folder_id == "folder_good"
+    assert len(errors) == 1
+    assert errors[0].folder_id == "folder_bad"
     # Only 2 Drive API list calls (no per-folder calls)
     assert mock_client.drive.files.return_value.list.call_count == 2
 
@@ -325,9 +365,10 @@ def test_scan_drive_editions_batches_yaml_search(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert errors == []
     # 1 list-folders call + 2 YAML batch calls
     assert mock_client.drive.files.return_value.list.call_count == 3
 
@@ -363,15 +404,16 @@ def test_scan_drive_editions_paginates_child_folders(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert len(result) == 2
-    folder_ids = {r[0] for r in result}
+    assert len(editions) == 2
+    folder_ids = {r[0] for r in editions}
     assert folder_ids == {"folder_p1", "folder_p2"}
+    assert errors == []
 
 
 def test_scan_drive_editions_empty_drive(mocker):
-    """Returns empty list when no edition folders exist in Drive."""
+    """Returns empty lists when no edition folders exist in Drive."""
     mock_client = mocker.Mock()
     mock_client.config = mocker.Mock(api_retries=3)
 
@@ -386,23 +428,25 @@ def test_scan_drive_editions_empty_drive(mocker):
         ),
     )
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert errors == []
     mock_client.download_raw_bytes.assert_not_called()
 
 
 def test_scan_drive_editions_requires_source_folders(mocker):
-    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is unset, returns empty list."""
+    """When GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS is unset, returns empty lists."""
     mocker.patch(
         "generator.common.editions.config.get_settings",
         return_value=mocker.Mock(songbook_editions=mocker.Mock(folder_ids=None)),
     )
     mock_client = mocker.Mock()
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert errors == []
     mock_client.drive.files.assert_not_called()
 
 
@@ -423,8 +467,9 @@ def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
         {"files": []},  # folder_y child-folder listing
     ]
 
-    result = scan_drive_editions(mock_client)
+    editions, errors = scan_drive_editions(mock_client)
 
-    assert result == []
+    assert editions == []
+    assert errors == []
     # One list call per configured source folder
     assert mock_client.drive.files.return_value.list.call_count == 2

@@ -61,7 +61,7 @@ class TestHandleGetEditions:
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
-        mocker.patch("generator.api.main.scan_drive_editions", return_value=[])
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         from generator.api.main import handle_get_editions
 
@@ -115,7 +115,7 @@ class TestHandleGetEditions:
         )
         mocker.patch(
             "generator.api.main.scan_drive_editions",
-            return_value=[("folder_xyz", drive_edition)],
+            return_value=([("folder_xyz", drive_edition)], []),
         )
 
         from generator.api.main import handle_get_editions
@@ -182,7 +182,7 @@ class TestHandleGetEditions:
         mocker.patch(
             "generator.api.main._get_drive_client", return_value=mock_drive_client
         )
-        mocker.patch("generator.api.main.scan_drive_editions", return_value=[])
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         from generator.api.main import handle_get_editions
 
@@ -191,6 +191,42 @@ class TestHandleGetEditions:
         assert status == 200
         data = json.loads(body)
         assert len(data["editions"]) == 1
+        assert "drive_error" not in data
+
+    def test_invalid_drive_editions_included_in_response(self, mocker):
+        """Drive editions that fail validation appear in the response with
+        status='error' and an error message."""
+        from ..common.editions import DriveEditionError
+
+        mock_settings = MagicMock()
+        mock_settings.editions = []
+        mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
+
+        error_entry = DriveEditionError(
+            folder_id="folder_bad",
+            folder_name="Bad Folder",
+            error="Could not parse .songbook.yaml: invalid YAML",
+        )
+        mocker.patch(
+            "generator.api.main.scan_drive_editions",
+            return_value=([], [error_entry]),
+        )
+
+        from generator.api.main import handle_get_editions
+
+        body, status, _ = handle_get_editions(_make_services())
+
+        assert status == 200
+        data = json.loads(body)
+        assert len(data["editions"]) == 1
+        err_ed = data["editions"][0]
+        assert err_ed["id"] == "folder_bad"
+        assert err_ed["folder_id"] == "folder_bad"
+        assert err_ed["folder_name"] == "Bad Folder"
+        assert err_ed["source"] == "drive"
+        assert err_ed["status"] == "error"
+        assert "Could not parse" in err_ed["error"]
         assert "drive_error" not in data
 
 
@@ -223,7 +259,7 @@ class TestApiMainRouting:
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
-        mocker.patch("generator.api.main.scan_drive_editions", return_value=[])
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         # Patch service init so no real GCP calls happen
         mocker.patch("generator.api.main._get_services", return_value=_make_services())

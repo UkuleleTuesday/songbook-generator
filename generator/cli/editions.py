@@ -65,13 +65,19 @@ def list_editions():
         return
 
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-    # scan_drive_editions handles Drive API errors internally and never raises.
-    drive_results = scan_drive_editions(gdrive_client)
+    # scan_drive_editions handles Drive API errors internally and never
+    # raises.
+    drive_editions, drive_errors = scan_drive_editions(gdrive_client)
 
-    if drive_results:
+    if drive_editions or drive_errors:
         click.echo("\nDrive editions:")
-        for folder_id, edition in drive_results:
+        for folder_id, edition in drive_editions:
             click.echo(f"  [{folder_id}] {edition.title}")
+        for entry in drive_errors:
+            click.echo(
+                f"  [{entry.folder_id}] {entry.folder_name} [ERROR: {entry.error}]",
+                err=True,
+            )
     else:
         click.echo("\nNo drive editions found.")
 

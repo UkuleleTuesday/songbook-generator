@@ -53,7 +53,7 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
     )
     mocker.patch(
         "generator.cli.editions.scan_drive_editions",
-        return_value=[("folder_abc", drive_edition)],
+        return_value=([("folder_abc", drive_edition)], []),
     )
 
     result = runner.invoke(cli, ["editions", "list"])
@@ -89,7 +89,7 @@ def test_editions_list_no_drive_editions(runner, mocker):
         "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=[])
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=([], []))
 
     result = runner.invoke(cli, ["editions", "list"])
 
@@ -148,12 +148,57 @@ def test_editions_list_no_config_editions(runner, mocker):
         "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=[])
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=([], []))
 
     result = runner.invoke(cli, ["editions", "list"])
 
     assert result.exit_code == 0
     assert "No config editions found." in result.output
+
+
+def test_editions_list_shows_drive_edition_errors(runner, mocker):
+    """editions list shows error entries for misconfigured drive editions."""
+    from ..common.editions import DriveEditionError
+
+    config_edition = Edition(
+        id="current",
+        title="Current Songbook",
+        description=_EDITION_DESCRIPTION,
+        filters=_EDITION_FILTERS,
+    )
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
+        editions=[config_edition],
+        google_cloud=mocker.Mock(
+            credentials={
+                "songbook-generator": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            }
+        ),
+        songbook_editions=mocker.Mock(folder_ids=[]),
+    )
+    mocker.patch(
+        "generator.cli.editions.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    error_entry = DriveEditionError(
+        folder_id="folder_bad",
+        folder_name="Bad Folder",
+        error="Could not parse .songbook.yaml: invalid YAML",
+    )
+    mocker.patch(
+        "generator.cli.editions.scan_drive_editions",
+        return_value=([], [error_entry]),
+    )
+
+    result = runner.invoke(cli, ["editions", "list"])
+
+    assert result.exit_code == 0
+    assert "Drive editions:" in result.output
+    assert "folder_bad" in result.output
+    assert "Bad Folder" in result.output
+    assert "ERROR" in result.output
 
 
 # ---------------------------------------------------------------------------
