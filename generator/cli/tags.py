@@ -11,10 +11,10 @@ from ..common.gdrive import GoogleDriveClient
 from ..tagupdater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
-from .utils import _resolve_file_id
+from .utils import SubcmdGroup, _resolve_file_id
 
 
-@click.group()
+@click.group(cls=SubcmdGroup)
 def tags():
     """Get and set tags (custom properties) on Google Drive files."""
 

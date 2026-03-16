@@ -5,10 +5,10 @@ import click
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 from ..worker.pdf import init_services
-from .utils import _resolve_file_id
+from .utils import SubcmdGroup, _resolve_file_id
 
 
-@click.group()
+@click.group(cls=SubcmdGroup)
 def specialbooks():
     """Manage the specialbooks tag for songs (controls which editions a song appears in)."""
 

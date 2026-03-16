@@ -7,10 +7,11 @@ import logging
 
 import click
 
-from .cache import download_cache_command, merge_pdfs, sync_cache_command
+from .cache import cache, merge_pdfs
 from .editions import editions
-from .generate import generate, generate_from_folder, list_songs
+from .generate import generate
 from .misc import download_doc_json_command, print_settings, validate_pdf_cli
+from .songs import songs
 from .specialbooks import specialbooks
 from .tags import tags
 from .utils import global_options
@@ -29,10 +30,8 @@ def cli(ctx, log_level: str):
 
 
 cli.add_command(generate)
-cli.add_command(generate_from_folder)
-cli.add_command(list_songs)
-cli.add_command(sync_cache_command)
-cli.add_command(download_cache_command)
+cli.add_command(songs)
+cli.add_command(cache)
 cli.add_command(merge_pdfs)
 cli.add_command(print_settings)
 cli.add_command(validate_pdf_cli)

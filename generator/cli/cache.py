@@ -7,10 +7,15 @@ from ..cache_updater.main import fetch_and_merge_pdfs
 from ..cache_updater.sync import download_gcs_cache_to_local, sync_cache
 from ..common.caching import init_cache
 from ..common.config import get_settings
-from .utils import global_options
+from .utils import SubcmdGroup, global_options
 
 
-@click.command(name="sync-cache")
+@click.group(cls=SubcmdGroup)
+def cache():
+    """Manage the song sheet cache."""
+
+
+@cache.command("sync")
 @global_options
 @click.pass_context
 @click.option(
@@ -62,7 +67,7 @@ def sync_cache_command(
     local,
     **kwargs,
 ):
-    """Syncs files and metadata from Google Drive to the cache."""
+    """Sync files and metadata from Google Drive to the cache."""
     # Check for deprecated tagging options
     if update_tags_only or update_tags:
         click.echo(
@@ -123,7 +128,7 @@ def sync_cache_command(
         raise click.Abort()
 
 
-@click.command(name="download-cache")
+@cache.command("download")
 @global_options
 @click.option(
     "--with-metadata",
@@ -132,7 +137,7 @@ def sync_cache_command(
     help="Also download GCS object metadata and save it to a .metadata.json file.",
 )
 def download_cache_command(with_metadata, **kwargs):
-    """Downloads the GCS cache to the local cache directory."""
+    """Download the GCS cache to the local cache directory."""
     try:
         click.echo("Starting GCS cache download (CLI mode)")
         from ..cache_updater import main as cache_updater_main

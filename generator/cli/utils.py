@@ -6,6 +6,20 @@ from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 
 
+class SubcmdGroup(click.Group):
+    """Click Group that appends its subcommand names to the parent help listing."""
+
+    def get_short_help_str(self, limit: int = 45) -> str:
+        names = sorted(self.commands)
+        if not names:
+            return super().get_short_help_str(limit)
+        suffix = f" [{', '.join(names)}]"
+        remaining = limit - len(suffix)
+        if remaining > 0:
+            return super().get_short_help_str(remaining) + suffix
+        return super().get_short_help_str(limit)
+
+
 def make_cli_progress_callback():
     """Return a callback that displays progress updates to the console."""
 

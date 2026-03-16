@@ -16,9 +16,10 @@ from ..worker.pdf import (
     collect_and_sort_files,
     init_services,
 )
+from .utils import SubcmdGroup
 
 
-@click.group()
+@click.group(cls=SubcmdGroup)
 def editions():
     """List and manage configured songbook editions."""
 
