@@ -69,9 +69,7 @@ class PostfaceSection(BaseModel):
 class SongsSection(BaseModel):
     """Configuration for the songs section of a songbook edition."""
 
-    filters: List[Union[FilterGroup, PropertyFilter]] = Field(
-        default_factory=list
-    )
+    filters: List[Union[FilterGroup, PropertyFilter]] = Field(default_factory=list)
 
 
 class EditionSections(BaseModel):

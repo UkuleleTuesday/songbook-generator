@@ -127,8 +127,7 @@ def _warn_complex_edition_features(edition: config.Edition) -> None:
         edition: The Edition to inspect.
     """
     has_filter_groups = any(
-        isinstance(f, FilterGroup)
-        for f in edition.sections.songs.filters
+        isinstance(f, FilterGroup) for f in edition.sections.songs.filters
     )
     if has_filter_groups:
         click.echo(

@@ -1125,8 +1125,7 @@ def generate_manifest(
                 else None
             ),
             "filters": [
-                {**f.model_dump(mode="json")}
-                for f in edition.sections.songs.filters
+                {**f.model_dump(mode="json")} for f in edition.sections.songs.filters
             ],
         }
 
