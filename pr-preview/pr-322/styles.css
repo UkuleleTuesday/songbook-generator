@@ -134,11 +134,15 @@ body {
   font-size: 1rem;
 }
 
-.edition-open-btn {
+.edition-edit-btn {
   display: inline-flex !important;
   align-items: center;
   gap: 4px;
   text-decoration: none;
+}
+
+.edition-edit-btn .material-icons {
+  font-size: 1rem;
 }
 
 /* In-card progress section */
