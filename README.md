@@ -206,7 +206,7 @@ The Cloud Functions require these environment variables:
 - `GCS_WORKER_CACHE_BUCKET`: Storage bucket for caching intermediate files
 - `PUBSUB_TOPIC`: Pub/Sub topic for job queue
 
-... and probably a bunch more. Check `.env` for the
+... and probably a bunch more. Check `.env` for the full list.
 
 ### Caching
 
@@ -265,6 +265,8 @@ Each songbook edition is defined by a single YAML file in `generator/config/song
 
 Each config file describes what songs to include (via tag-based filters), which Google Drive files to use for the cover and any preface pages, and optional table of contents customisations. See the existing files in `generator/config/songbooks/` for concrete examples.
 
+Run `uv run songbook-tools editions list` to see all currently configured editions (both YAML-based and any discovered drive-based editions).
+
 **Adding or updating an edition**
 
 1. Add or edit a file in `generator/config/songbooks/`.
@@ -274,6 +276,43 @@ Each config file describes what songs to include (via tag-based filters), which 
 **Removing an edition**
 
 Delete its YAML file and open a pull request. No other changes are needed.
+
+#### Experimental: Drive-Based Edition Support
+
+As an alternative to YAML config files, editions can be configured directly in Google Drive. This is experimental and is primarily intended for editions that are actively curated in Drive rather than managed through code review.
+
+**How it works**
+
+Each Drive-based edition is a Google Drive folder containing a `.songbook.yaml` file. The YAML schema is the same as for YAML config editions (see above), with one additional flag:
+
+```yaml
+use_folder_components: true
+```
+
+When `use_folder_components: true` is set, component files are resolved from named subfolders within the edition folder rather than from explicit Drive file IDs in the YAML:
+
+| Subfolder | Purpose |
+|-----------|---------|
+| `Cover/` | First file is used as the cover (overrides `cover_file_id`) |
+| `Preface/` | All files are used as preface pages (overrides `preface_file_ids`) |
+| `Postface/` | All files are used as postface pages (overrides `postface_file_ids`) |
+| `Songs/` | All files are included directly (bypasses tag-based filtering) |
+
+**Discovery**
+
+Drive editions are discovered by scanning folders listed in the `GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS` environment variable (comma-separated folder IDs). Each direct child folder of these source folders that contains a valid `.songbook.yaml` is treated as an edition. Folders without a `.songbook.yaml` are silently skipped.
+
+Drive editions are referenced by their **Drive folder ID** rather than a string ID from the YAML. Use `uv run songbook-tools editions list` to see discovered editions and their folder IDs.
+
+**Converting a YAML edition to a Drive edition**
+
+The `editions convert` command migrates a YAML config edition to a Drive folder structure, creating component subfolders and shortcuts automatically:
+
+```bash
+uv run songbook-tools editions convert <edition-id> --target-folder <drive-folder-id>
+```
+
+Run `uv run songbook-tools editions convert --help` for all options including `--dry-run`.
 
 ### Automated Songbook Generation
 
