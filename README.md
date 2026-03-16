@@ -281,6 +281,8 @@ Delete its YAML file and open a pull request. No other changes are needed.
 
 As an alternative to YAML config files, editions can be configured directly in Google Drive. Each Drive-based edition is a Google Drive folder containing a `.songbook.yaml` file (same schema as above). Setting `use_folder_components: true` in that YAML resolves cover, preface, postface, and song files from named subfolders (`Cover/`, `Preface/`, `Postface/`, `Songs/`) rather than explicit Drive file IDs.
 
+**Shortcuts to folders** inside any of these component subfolders (e.g. `Songs/`) are resolved recursively: the generator follows the shortcut, lists the contents of the target folder, and includes those files exactly as if they had been placed directly in the subfolder. This makes it easy to link an entire external folder of songs into an edition without copying each file individually. Multiple levels of nested shortcuts are supported; circular references are detected and skipped automatically.
+
 Drive editions are discovered by scanning folders listed in `GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS` (comma-separated). Drive editions are referenced by their Drive folder ID. Run `uv run songbook-tools editions list` to see all discovered editions and their IDs.
 
 ### Automated Songbook Generation

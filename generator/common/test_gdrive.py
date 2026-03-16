@@ -368,12 +368,15 @@ def test_list_folder_contents_subfolders_excluded(mock_drive_client):
     assert "mimeType != 'application/vnd.google-apps.folder'" in called_query
 
 
-def test_list_folder_contents_shortcut_to_folder_skipped(mock_drive_client):
-    """Shortcuts whose target is a folder are silently skipped."""
+def test_list_folder_contents_shortcut_to_folder_resolved_recursively(
+    mock_drive_client,
+):
+    """Shortcuts whose target is a folder are resolved recursively."""
     from .gdrive import SHORTCUT_MIME_TYPE
 
     folder_mime = "application/vnd.google-apps.folder"
-    mock_response = {
+    # First call: parent folder containing a folder shortcut and a regular file.
+    parent_response = {
         "files": [
             {
                 "id": "sc1",
@@ -388,12 +391,30 @@ def test_list_folder_contents_shortcut_to_folder_skipped(mock_drive_client):
         ],
         "nextPageToken": None,
     }
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+    # Second call: the target folder's contents.
+    subfolder_response = {
+        "files": [
+            {
+                "id": "song_in_subfolder",
+                "name": "Nested Song.pdf",
+                "mimeType": "application/pdf",
+            },
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        parent_response,
+        subfolder_response,
+    ]
 
     result = mock_drive_client.list_folder_contents("folder123")
 
-    assert len(result) == 1
-    assert result[0].id == "file2"
+    # Both the directly present file and the file from the shortcut's target
+    # folder should be returned.
+    assert len(result) == 2
+    ids = {f.id for f in result}
+    assert "file2" in ids
+    assert "song_in_subfolder" in ids
 
 
 def test_list_folder_contents_shortcut_resolved(mock_drive_client):
@@ -478,6 +499,94 @@ def test_list_folder_contents_pagination(mock_drive_client):
     calls = mock_drive_client.drive.files.return_value.list.call_args_list
     assert calls[0].kwargs["pageToken"] is None
     assert calls[1].kwargs["pageToken"] == "tok1"
+
+
+def test_list_folder_contents_shortcut_to_folder_cycle_skipped(mock_drive_client):
+    """A folder shortcut that would create a cycle is skipped with a warning."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    folder_mime = "application/vnd.google-apps.folder"
+    # The parent folder contains a shortcut back to itself.
+    cyclic_response = {
+        "files": [
+            {
+                "id": "sc_cycle",
+                "name": "Cyclic shortcut",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "folder123",  # same as the root folder
+                    "targetMimeType": folder_mime,
+                },
+            },
+            {"id": "file1", "name": "Real Song.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = cyclic_response
+
+    result = mock_drive_client.list_folder_contents("folder123")
+
+    # Only the non-cyclic file should be returned; the cycle shortcut is skipped.
+    assert len(result) == 1
+    assert result[0].id == "file1"
+
+
+def test_list_folder_contents_shortcut_to_folder_nested(mock_drive_client):
+    """Folder shortcuts are resolved at multiple levels of nesting."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    folder_mime = "application/vnd.google-apps.folder"
+    # Root folder → shortcut to level-1 folder.
+    root_response = {
+        "files": [
+            {
+                "id": "sc_l1",
+                "name": "Level 1 shortcut",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "level1_folder",
+                    "targetMimeType": folder_mime,
+                },
+            },
+        ],
+        "nextPageToken": None,
+    }
+    # Level-1 folder → shortcut to level-2 folder.
+    level1_response = {
+        "files": [
+            {
+                "id": "sc_l2",
+                "name": "Level 2 shortcut",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "level2_folder",
+                    "targetMimeType": folder_mime,
+                },
+            },
+        ],
+        "nextPageToken": None,
+    }
+    # Level-2 folder → actual song file.
+    level2_response = {
+        "files": [
+            {
+                "id": "deep_song",
+                "name": "Deep Song.pdf",
+                "mimeType": "application/pdf",
+            },
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        root_response,
+        level1_response,
+        level2_response,
+    ]
+
+    result = mock_drive_client.list_folder_contents("root_folder")
+
+    assert len(result) == 1
+    assert result[0].id == "deep_song"
 
 
 def test_find_file_in_folder_found(mock_drive_client):

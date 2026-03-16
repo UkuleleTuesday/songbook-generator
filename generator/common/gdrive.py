@@ -1,4 +1,4 @@
-from typing import Generator, List, Dict, Optional, Union
+from typing import Generator, List, Dict, Optional, Set, Union
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
@@ -376,20 +376,32 @@ class GoogleDriveClient:
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
 
-    def list_folder_contents(self, folder_id: str) -> List[File]:
+    def list_folder_contents(
+        self,
+        folder_id: str,
+        _visited_folder_ids: Optional[Set[str]] = None,
+    ) -> List[File]:
         """
         List all files in a Drive folder, resolving shortcuts to their targets.
 
-        Shortcuts are resolved so callers receive the target file's ID and
-        MIME type while retaining the shortcut's display name (as it appears
-        in the folder) for ordering and categorisation purposes.
+        Shortcuts to files are resolved so callers receive the target file's
+        ID and MIME type while retaining the shortcut's display name (as it
+        appears in the folder) for ordering and categorisation purposes.
+
+        Shortcuts to folders are resolved recursively: all files inside the
+        target folder are fetched and included in the results.  Cycle
+        detection prevents infinite loops caused by circular shortcuts.
 
         Args:
             folder_id: The Google Drive folder ID to list.
+            _visited_folder_ids: Internal set of already-visited folder IDs
+                used to prevent infinite recursion.  Callers should not pass
+                this argument.
 
         Returns:
-            List of File objects sorted by name.  Shortcuts are returned as
-            the target file with the shortcut's name.
+            List of File objects.  Shortcuts to files are returned as the
+            target file with the shortcut's display name.  Shortcuts to
+            folders are expanded so their contents are included inline.
         """
         folder_mime = "application/vnd.google-apps.folder"
         # Exclude sub-folders so they are never treated as song files.
@@ -400,6 +412,10 @@ class GoogleDriveClient:
         )
         files = []
         page_token = None
+
+        if _visited_folder_ids is None:
+            _visited_folder_ids = set()
+        _visited_folder_ids.add(folder_id)
 
         while True:
             try:
@@ -439,10 +455,21 @@ class GoogleDriveClient:
                         )
                         continue
                     if target_mime == folder_mime:
-                        click.echo(
-                            f"Warning: shortcut '{f['name']}' points to a "
-                            "folder, skipping.",
-                            err=True,
+                        if target_id in _visited_folder_ids:
+                            click.echo(
+                                f"Warning: shortcut '{f['name']}' points to "
+                                f"folder {target_id} which was already "
+                                "visited, skipping to prevent infinite "
+                                "recursion.",
+                                err=True,
+                            )
+                            continue
+                        # Recursively include all files in the target folder.
+                        files.extend(
+                            self.list_folder_contents(
+                                target_id,
+                                _visited_folder_ids=_visited_folder_ids,
+                            )
                         )
                         continue
                     files.append(
