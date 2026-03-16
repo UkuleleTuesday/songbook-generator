@@ -134,6 +134,13 @@ body {
   font-size: 1rem;
 }
 
+.edition-open-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
 /* In-card progress section */
 .edition-card-progress {
   margin-top: 10px;
@@ -411,7 +418,7 @@ body {
   border-radius: 3px;
 }
 
-/* Config-based editions info banner */
+/* Config-based editions info note */
 .config-info {
   display: flex;
   align-items: flex-start;
