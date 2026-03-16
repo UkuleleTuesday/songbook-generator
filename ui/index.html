@@ -23,11 +23,6 @@
         </div>
         <div class="mdl-card__actions">
           <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-            <div class="mdl-tabs__tab-bar">
-              <a href="#generator-panel" id="generator-tab" class="mdl-tabs__tab is-active">Generate</a>
-              <a href="#history-panel" id="history-tab" class="mdl-tabs__tab" style="display: none;">History</a>
-            </div>
-
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
                 <div class="source-toggle-group">
@@ -70,23 +65,11 @@
                   </div>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
-                <button type="submit" id="submitButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" style="width: 100%;">
-                  Generate Songbook!
-                </button>
               </form>
-            </section>
-            <section class="mdl-tabs__panel" id="history-panel">
-              <div id="historyContainer">
-                <ul id="historyList" class="mdl-list"></ul>
-              </div>
             </section>
           </div>
         </div>
-        <div id="progressContainer" style="display: none; padding: 1rem;">
-          <div id="progressBar" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>
-          <div id="progressText" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Starting...</div>
-          <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
-        </div>
+
       </div>
     </main>
   </div>
@@ -103,69 +86,73 @@
     }
 
     const apiBase = getApiBase();
-    const submitButton = document.getElementById('submitButton');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const progressPercentage = document.getElementById('progressPercentage');
-    const historyTab = document.getElementById('history-tab');
-    const historyList = document.getElementById('historyList');
+    let progressContainer = null;
+    let progressBar = null;
+    let progressText = null;
+    let progressPercentage = null;
 
-    function renderHistory() {
-      let songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
-
-      // TTL items older than 60 days
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-      const recentSongbooks = songbooks.filter(songbook => {
-        const songbookDate = new Date(songbook.date);
-        return songbookDate >= sixtyDaysAgo;
-      });
-
-      if (recentSongbooks.length < songbooks.length) {
-        songbooks = recentSongbooks;
-        localStorage.setItem('generatedSongbooks', JSON.stringify(songbooks));
-      }
-
-      if (songbooks.length > 0) {
-        historyList.innerHTML = '';
-        songbooks.forEach(songbook => {
-          const li = document.createElement('li');
-          li.className = 'mdl-list__item';
-
-          const primaryContent = document.createElement('span');
-          primaryContent.className = 'mdl-list__item-primary-content';
-
-          const icon = document.createElement('i');
-          icon.className = 'material-icons mdl-list__item-icon';
-          icon.textContent = 'book';
-          primaryContent.appendChild(icon);
-
-          const a = document.createElement('a');
-          a.href = songbook.url;
-          a.textContent = songbook.name;
-          a.target = '_blank';
-          primaryContent.appendChild(a);
-
-          li.appendChild(primaryContent);
-          historyList.appendChild(li);
-        });
-        historyTab.style.display = 'inline-block';
-      } else {
-        historyTab.style.display = 'none';
-      }
-    }
-
-    function addSongbookToHistory(name, url) {
+    function addSongbookToHistory(name, url, editionId) {
       const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
       // To keep the list clean, we'll limit it to the last 10 generated songbooks
-      const newSongbooks = [{ name, url, date: new Date().toISOString() }, ...songbooks].slice(0, 10);
+      const newSongbooks = [{ name, url, date: new Date().toISOString(), editionId }, ...songbooks].slice(0, 10);
       localStorage.setItem('generatedSongbooks', JSON.stringify(newSongbooks));
-      renderHistory();
+      if (editionId) updateEditionCardHistory(editionId);
+    }
+
+    function getEditionHistory(editionId) {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      return songbooks.filter(s => s.editionId === editionId);
+    }
+
+    function createEditionHistorySection(history) {
+      const section = document.createElement('div');
+      section.className = 'edition-card-history';
+
+      const label = document.createElement('span');
+      label.className = 'edition-card-history-label';
+      label.textContent = 'Previously generated';
+      section.appendChild(label);
+
+      const list = document.createElement('ul');
+      list.className = 'edition-card-history-list';
+
+      history.slice(0, 5).forEach(item => {
+        const li = document.createElement('li');
+        const icon = document.createElement('i');
+        icon.className = 'material-icons';
+        icon.textContent = 'picture_as_pdf';
+        li.appendChild(icon);
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.target = '_blank';
+        a.textContent = new Date(item.date).toLocaleString('en-GB');
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+
+      section.appendChild(list);
+      return section;
+    }
+
+    function updateEditionCardHistory(editionId) {
+      const radio = document.getElementById(`edition-${editionId}`);
+      if (!radio) return;
+      const card = radio.closest('.edition-card');
+      if (!card) return;
+      const actions = card.querySelector('.edition-card-actions');
+      if (!actions) return;
+
+      const existing = actions.querySelector('.edition-card-history');
+      if (existing) existing.remove();
+
+      const history = getEditionHistory(editionId);
+      if (history.length > 0) {
+        actions.appendChild(createEditionHistorySection(history));
+      }
     }
 
     function setIndeterminate(indeterminate) {
+      if (!progressBar) return;
       if (indeterminate) {
         progressBar.classList.add('mdl-progress__indeterminate');
       } else {
@@ -174,6 +161,7 @@
     }
 
     function updateProgress(progress, message) {
+      if (!progressBar) return;
       const percentage = Math.round(progress * 100);
       if (progress > 0) {
         setIndeterminate(false);
@@ -181,30 +169,56 @@
       if (progressBar.MaterialProgress) {
         progressBar.MaterialProgress.setProgress(percentage);
       }
-      progressPercentage.textContent = percentage + '%';
-      if (message) {
+      if (progressPercentage) progressPercentage.textContent = percentage + '%';
+      if (message && progressText) {
         progressText.textContent = message;
       }
     }
 
     function showProgress() {
-      progressContainer.style.display = 'block';
+      const checked = document.querySelector(
+        'input[name="songbook_edition"]:checked'
+      );
+      if (!checked) return;
+      const card = checked.closest('.edition-card');
+      if (!card) return;
+      progressContainer = card.querySelector('.edition-card-progress');
+      progressBar = card.querySelector('.edition-card-progress-bar');
+      progressText = card.querySelector('.edition-card-progress-text');
+      progressPercentage = card.querySelector('.edition-card-progress-pct');
+      if (progressContainer) progressContainer.style.display = 'block';
       setIndeterminate(true);
       updateProgress(0, 'Starting...');
     }
 
     function hideProgress() {
-      progressContainer.style.display = 'none';
+      document.querySelectorAll('.edition-card-progress').forEach(
+        el => { el.style.display = 'none'; }
+      );
+      progressContainer = null;
+      progressBar = null;
+      progressText = null;
+      progressPercentage = null;
     }
 
     function enableSubmitButton() {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Generate Songbook!';
+      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
+        btn.disabled = false;
+        const textSpan = btn.querySelector('.btn-text');
+        if (textSpan) textSpan.textContent = 'Generate';
+        const icon = btn.querySelector('.material-icons');
+        if (icon) icon.textContent = 'auto_fix_high';
+      });
     }
 
     function disableSubmitButton() {
-      submitButton.disabled = true;
-      submitButton.textContent = 'Generating...';
+      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
+        btn.disabled = true;
+        const textSpan = btn.querySelector('.btn-text');
+        if (textSpan) textSpan.textContent = 'Generating...';
+        const icon = btn.querySelector('.material-icons');
+        if (icon) icon.textContent = 'hourglass_empty';
+      });
     }
 
     async function pollStatus(jobId) {
@@ -221,7 +235,7 @@
         // Update progress if available
         if (typeof progress === 'number') {
           updateProgress(progress, last_message || `Status: ${status}`);
-        } else {
+        } else if (progressText) {
           progressText.textContent = `Status: ${status}`;
         }
 
@@ -261,7 +275,7 @@
       return driveLink;
     }
 
-    function createEditionCard(edition, isFirst) {
+    function createEditionCard(edition) {
       const isError = edition.status === 'error';
 
       const card = document.createElement('div');
@@ -273,7 +287,6 @@
       radio.id = `edition-${edition.id}`;
       radio.value = edition.id;
       radio.className = 'edition-radio';
-      if (isFirst && !isError) radio.checked = true;
       if (isError) radio.disabled = true;
 
       const lbl = document.createElement('label');
@@ -330,6 +343,81 @@
 
       card.appendChild(radio);
       card.appendChild(lbl);
+
+      if (!isError) {
+        const actions = document.createElement('div');
+        actions.className = 'edition-card-actions';
+
+        const actionsRow = document.createElement('div');
+        actionsRow.className = 'edition-card-actions-row';
+
+        const generateBtn = document.createElement('button');
+        generateBtn.type = 'submit';
+        generateBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
+
+        const btnIcon = document.createElement('i');
+        btnIcon.className = 'material-icons';
+        btnIcon.textContent = 'auto_fix_high';
+        generateBtn.appendChild(btnIcon);
+
+        const btnText = document.createElement('span');
+        btnText.className = 'btn-text';
+        btnText.textContent = 'Generate';
+        generateBtn.appendChild(btnText);
+
+        const editUrl = edition.source === 'drive' && edition.folder_id
+          ? `https://drive.google.com/drive/folders/${edition.folder_id}`
+          : `https://github.com/UkuleleTuesday/songbook-generator/edit/main/generator/config/songbooks/${edition.id}.yaml`;
+
+        const editBtn = document.createElement('a');
+        editBtn.href = editUrl;
+        editBtn.target = '_blank';
+        editBtn.rel = 'noopener noreferrer';
+        editBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect edition-edit-btn';
+
+        const editIcon = document.createElement('i');
+        editIcon.className = 'material-icons';
+        editIcon.textContent = edition.source === 'drive' ? 'folder_open' : 'edit';
+        editBtn.appendChild(editIcon);
+        editBtn.appendChild(document.createTextNode('Edit'));
+
+        actionsRow.appendChild(editBtn);
+        actionsRow.appendChild(generateBtn);
+        actions.appendChild(actionsRow);
+
+        const progressSection = document.createElement('div');
+        progressSection.className = 'edition-card-progress';
+        progressSection.style.display = 'none';
+
+        const progressBarEl = document.createElement('div');
+        progressBarEl.className =
+          'edition-card-progress-bar mdl-progress mdl-js-progress';
+        progressSection.appendChild(progressBarEl);
+
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'edition-card-progress-info';
+
+        const progressTextEl = document.createElement('span');
+        progressTextEl.className = 'edition-card-progress-text';
+        progressTextEl.textContent = 'Starting...';
+        progressInfo.appendChild(progressTextEl);
+
+        const progressPctEl = document.createElement('span');
+        progressPctEl.className = 'edition-card-progress-pct';
+        progressPctEl.textContent = '0%';
+        progressInfo.appendChild(progressPctEl);
+
+        progressSection.appendChild(progressInfo);
+        actions.appendChild(progressSection);
+
+        const history = getEditionHistory(edition.id);
+        if (history.length > 0) {
+          actions.appendChild(createEditionHistorySection(history));
+        }
+
+        card.appendChild(actions);
+      }
+
       return card;
     }
 
@@ -353,11 +441,8 @@
         grid.innerHTML =
           `<p class="editions-empty-msg">${emptyMsg}</p>`;
       } else {
-        let firstSelectableFound = false;
         filtered.forEach((edition) => {
-          const isFirst = !firstSelectableFound && edition.status !== 'error';
-          if (isFirst) firstSelectableFound = true;
-          grid.appendChild(createEditionCard(edition, isFirst));
+          grid.appendChild(createEditionCard(edition));
         });
       }
 
@@ -371,6 +456,10 @@
         editionsError.style.display = 'block';
       } else {
         editionsError.style.display = 'none';
+      }
+
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeDom();
       }
     }
 
@@ -437,23 +526,37 @@
         // poll until done
         const downloadUrl = await pollStatus(job_id);
 
-        // download PDF
-        updateProgress(1.0, 'Downloading PDF...');
-        const a = document.createElement("a");
-        a.href = downloadUrl;
-        a.download = "songbook.pdf";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        updateProgress(1.0, 'Download started!');
+        updateProgress(1.0, 'Ready!');
 
         // Add to history
         const editionTitle = checkedRadio
           ? checkedRadio.nextElementSibling.querySelector('.edition-card-title').textContent
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
-        addSongbookToHistory(songbookName, downloadUrl);
+        addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
+
+        // Replace Generate button with Open button in the active card
+        const activeCard = checkedRadio.closest('.edition-card');
+        if (activeCard) {
+          const actionsRow = activeCard.querySelector('.edition-card-actions-row');
+          if (actionsRow) {
+            const openBtn = document.createElement('a');
+            openBtn.href = downloadUrl;
+            openBtn.target = '_blank';
+            openBtn.rel = 'noopener noreferrer';
+            openBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--colored edition-open-btn';
+            const openIcon = document.createElement('i');
+            openIcon.className = 'material-icons';
+            openIcon.textContent = 'open_in_new';
+            openBtn.appendChild(openIcon);
+            openBtn.appendChild(document.createTextNode('Open'));
+            actionsRow.innerHTML = '';
+            actionsRow.appendChild(openBtn);
+            if (typeof componentHandler !== 'undefined') {
+              componentHandler.upgradeElement(openBtn);
+            }
+          }
+        }
 
       } catch (err) {
         updateProgress(0, `Error: ${err.message}`);
@@ -468,7 +571,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      renderHistory();
       // Load editions from the API (populates the grid dynamically)
       loadEditions();
       // Re-render when the source toggle changes
