@@ -31,7 +31,7 @@ The application uses a microservices architecture deployed on Google Cloud:
 - **Cache Updater Service** (`generator/cache_updater/main.py`): Periodically syncs song data and metadata from Google Drive to a GCS cache bucket (this way, the worker has very little work to do).
 - **Tag Updater Service** (`generator/tagupdater/main.py`): Processes individual file change events from Google Drive to update tags and metadata. This service is triggered by the Drive Watcher and ensures tags are kept up-to-date without causing timeouts.
 - **Drive Watcher Service** (`generator/drivewatcher/main.py`): Monitors Google Drive for file changes and publishes change events to trigger the Tag Updater and cache refresh operations.
-- **CLI Tool** (`generator/cli.py`): A standalone command-line interface for local development, testing, and utilities.
+- **CLI Tool** (`generator/cli/`): A standalone command-line interface for local development, testing, and utilities.
   It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
   songbook) so they're easy to test locally.
 
@@ -142,7 +142,7 @@ The easiest way to test the PDF generation functionality locally is to use the C
 uv sync
 
 # Download the GCS cache to your local machine. This is used by the 'generate' command.
-uv run songbook-tools download-cache
+uv run songbook-tools cache download
 
 # Run the generator (will output to ./out/songbook.pdf by default)
 uv run songbook-tools generate
@@ -152,150 +152,13 @@ Run `uv run songbook-tools --help` for more commands and options.
 
 ### CLI Commands
 
-The `songbook-tools` CLI provides several commands for local development and utility tasks. Here's a summary of the available commands. Run `uv run songbook-tools [COMMAND] --help` for a full list of options.
+The `songbook-tools` CLI provides commands for local development and utility tasks,
+organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`) and
+standalone commands (`generate`, `merge-pdfs`, `validate-pdf`, `print-settings`).
 
-#### `generate`
-
-Generates a songbook PDF from files in Google Drive. This is the primary command for local testing of the end-to-end PDF generation process. You can either specify a predefined edition or use manual flags for filtering and customization. When using `--edition`, other flags like `--filter`, `--cover-file-id`, etc., are not allowed.
-
-```bash
-# Generate a specific edition (e.g., the "regular" songbook)
-uv run songbook-tools generate --edition regular
-
-# Generate the "complete" edition
-uv run songbook-tools generate --edition complete
-
-# Basic usage with default settings (manual mode)
-uv run songbook-tools generate
-
-# Generate with a limit and open the PDF when done
-uv run songbook-tools generate --limit 10 --open-generated-pdf
-
-# Filter songs by property (cannot be used with --edition)
-uv run songbook-tools generate --filter "difficulty:in:easy,medium"
-```
-
-#### `download-cache`
-
-Downloads the GCS cache (containing song sheets and metadata) to your local machine. This is useful for speeding up local `generate` commands.
-
-```bash
-uv run songbook-tools download-cache
-```
-
-#### `sync-cache`
-
-Syncs files and metadata from Google Drive to the GCS cache. This command is typically run by the Cache Updater service in the cloud but can be triggered locally.
-
-```bash
-# Sync new and modified files from Google Drive to the GCS cache
-uv run songbook-tools sync-cache
-
-# Force a full sync, ignoring modification times
-uv run songbook-tools sync-cache --force
-```
-
-#### `merge-pdfs`
-
-Merges all individual song sheet PDFs from the local cache into a single, large PDF with a table of contents. This is a sub-step of the `sync-cache` process.
-
-```bash
-# Create a merged PDF from the cached song sheets
-uv run songbook-tools merge-pdfs --output out/merged.pdf
-```
-
-#### `validate-pdf`
-
-Validates a PDF file for basic sanity checks to ensure it's not corrupted and meets quality standards for a songbook. This is automatically run in the GitHub Actions workflow before uploading PDFs.
-
-```bash
-# Basic validation
-uv run songbook-tools validate-pdf songbook.pdf
-
-# Validation with specific expectations
-uv run songbook-tools validate-pdf songbook.pdf \
-  --expected-title "Ukulele Tuesday - Current Songbook" \
-  --expected-author "Ukulele Tuesday" \
-  --verbose
-
-# Custom validation parameters
-uv run songbook-tools validate-pdf songbook.pdf \
-  --min-pages 5 \
-  --max-size-mb 100 \
-  --no-check-structure
-```
-
-#### `editions`
-
-A group of commands to manage which songbook editions a song belongs to. This is a shortcut for managing the `specialbooks` tag.
-
-- **`editions add-song <edition_name> <file_identifier>`**: Adds a song to a specific edition.
-- **`editions remove-song <edition_name> <file_identifier>`**: Removes a song from a specific edition.
-- **`editions list <file_identifier>`**: Lists all editions a song belongs to.
-
-The `file_identifier` can be a Google Drive file ID or a partial file name to search for.
-
-```bash
-# Add the song "Chaise Longue" to the "regular" and "test" editions
-uv run songbook-tools editions add-song regular "Chaise Longue"
-uv run songbook-tools editions add-song test "Chaise Longue"
-
-# List the editions it belongs to
-uv run songbook-tools editions list "Chaise Longue"
-
-# Remove it from the "test" edition
-uv run songbook-tools editions remove-song test "Chaise Longue"
-```
-
-#### `tags`
-
-A group of commands to manage custom properties (tags) on Google Drive files.
-
-- **`tags get <file_identifier> [key]`**: Get all tags for a file, or the value of a specific tag. The identifier can be a Google Drive file ID or a partial file name to search for.
-- **`tags set <file_identifier> <key> <value>`**: Set a tag on a file. The identifier can be a Google Drive file ID or a partial file name to search for.
-
-If a partial name is used and more than one file matches, the command will error out. These commands impersonate the `songbook-metadata-writer` service account by default.
-
-```bash
-# Get all tags for a file by searching for its name
-uv run songbook-tools tags get "Chaise Longue"
-
-# Get a specific tag using a file ID
-uv run songbook-tools tags get <YOUR_FILE_ID> difficulty
-
-# Set a tag by searching for file name
-uv run songbook-tools tags set "Chaise Longue" difficulty easy
-```
-
-**Example: Add a song to the "Regular" Songbook**
-
-The "regular" songbook is generated from songs that have the `specialbooks` tag set to include `regular`. Here's how to add a song to it.
-
-First, check the current `specialbooks` tag for the song. Let's say we want to add "Hate To Say I Told You So", which is currently only in the "Sweden" book.
-
-```bash
-uv run songbook-tools tags get "Hate To Say" specialbooks
-```
-
-This might return:
-
-```
-sweden
-```
-
-To add it to the regular book while keeping it in the Sweden book, update the tag with a comma-separated list:
-
-```bash
-uv run songbook-tools tags set "Hate To Say" specialbooks "sweden,regular"
-```
-
-#### `print-settings`
-
-Prints the current application settings, which are loaded from environment variables and the local config file. This is useful for debugging configuration issues.
-
-```bash
-uv run songbook-tools print-settings
-```
+Run `uv run songbook-tools --help` for a full list of commands and groups, and
+`uv run songbook-tools <command> --help` (or `uv run songbook-tools <group> <subcommand> --help`)
+for detailed options on any individual command.
 
 ### Testing Full Application
 
