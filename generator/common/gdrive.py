@@ -376,11 +376,7 @@ class GoogleDriveClient:
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
 
-    def list_folder_contents(
-        self,
-        folder_id: str,
-        _visited_folder_ids: Optional[Set[str]] = None,
-    ) -> List[File]:
+    def list_folder_contents(self, folder_id: str) -> List[File]:
         """
         List all files in a Drive folder, resolving shortcuts to their targets.
 
@@ -394,14 +390,29 @@ class GoogleDriveClient:
 
         Args:
             folder_id: The Google Drive folder ID to list.
-            _visited_folder_ids: Internal set of already-visited folder IDs
-                used to prevent infinite recursion.  Callers should not pass
-                this argument.
 
         Returns:
             List of File objects.  Shortcuts to files are returned as the
             target file with the shortcut's display name.  Shortcuts to
             folders are expanded so their contents are included inline.
+        """
+        return self._list_folder_contents(folder_id, visited_folder_ids=set())
+
+    def _list_folder_contents(
+        self,
+        folder_id: str,
+        visited_folder_ids: Set[str],
+    ) -> List[File]:
+        """
+        Internal implementation of list_folder_contents with cycle tracking.
+
+        Args:
+            folder_id: The Google Drive folder ID to list.
+            visited_folder_ids: Set of folder IDs already visited in this
+                traversal, used to detect and break cycles.
+
+        Returns:
+            List of File objects with shortcuts resolved.
         """
         folder_mime = "application/vnd.google-apps.folder"
         # Exclude sub-folders so they are never treated as song files.
@@ -413,9 +424,7 @@ class GoogleDriveClient:
         files = []
         page_token = None
 
-        if _visited_folder_ids is None:
-            _visited_folder_ids = set()
-        _visited_folder_ids.add(folder_id)
+        visited_folder_ids.add(folder_id)
 
         while True:
             try:
@@ -455,7 +464,7 @@ class GoogleDriveClient:
                         )
                         continue
                     if target_mime == folder_mime:
-                        if target_id in _visited_folder_ids:
+                        if target_id in visited_folder_ids:
                             click.echo(
                                 f"Warning: shortcut '{f['name']}' points to "
                                 f"folder {target_id} which was already "
@@ -466,9 +475,9 @@ class GoogleDriveClient:
                             continue
                         # Recursively include all files in the target folder.
                         files.extend(
-                            self.list_folder_contents(
+                            self._list_folder_contents(
                                 target_id,
-                                _visited_folder_ids=_visited_folder_ids,
+                                visited_folder_ids=visited_folder_ids,
                             )
                         )
                         continue
