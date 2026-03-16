@@ -365,6 +365,23 @@
         btnText.textContent = 'Generate';
         generateBtn.appendChild(btnText);
 
+        const editUrl = edition.source === 'drive' && edition.folder_id
+          ? `https://drive.google.com/drive/folders/${edition.folder_id}`
+          : `https://github.com/UkuleleTuesday/songbook-generator/edit/main/generator/config/songbooks/${edition.id}.yaml`;
+
+        const editBtn = document.createElement('a');
+        editBtn.href = editUrl;
+        editBtn.target = '_blank';
+        editBtn.rel = 'noopener noreferrer';
+        editBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect edition-edit-btn';
+
+        const editIcon = document.createElement('i');
+        editIcon.className = 'material-icons';
+        editIcon.textContent = edition.source === 'drive' ? 'folder_open' : 'edit';
+        editBtn.appendChild(editIcon);
+        editBtn.appendChild(document.createTextNode('Edit'));
+
+        actionsRow.appendChild(editBtn);
         actionsRow.appendChild(generateBtn);
         actions.appendChild(actionsRow);
 
