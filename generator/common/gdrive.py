@@ -379,7 +379,7 @@ class GoogleDriveClient:
     def list_folder_contents(
         self,
         folder_id: str,
-        resolve_shortcuts: bool = True,
+        resolve_shortcuts: bool = False,
     ) -> List[File]:
         """
         List all files in a Drive folder, resolving shortcuts to their targets.
@@ -389,16 +389,16 @@ class GoogleDriveClient:
         (as it appears in the folder) for ordering and categorisation
         purposes.
 
-        When *resolve_shortcuts* is ``True`` (the default), shortcuts that
-        point to folders are followed recursively: all files inside the
-        target folder are fetched and included in the results.  Cycle
-        detection prevents infinite loops caused by circular shortcuts.
-        When ``False``, folder shortcuts are skipped.
+        When *resolve_shortcuts* is ``True``, shortcuts that point to folders
+        are followed recursively: all files inside the target folder are
+        fetched and included in the results.  Cycle detection prevents
+        infinite loops caused by circular shortcuts.
+        When ``False`` (the default), folder shortcuts are skipped.
 
         Args:
             folder_id: The Google Drive folder ID to list.
             resolve_shortcuts: Whether to recursively follow shortcuts that
-                point to folders.  Defaults to ``True``.
+                point to folders.  Defaults to ``False``.
 
         Returns:
             List of File objects.  Shortcuts to files are returned as the

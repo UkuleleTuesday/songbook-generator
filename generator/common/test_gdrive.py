@@ -407,7 +407,7 @@ def test_list_folder_contents_shortcut_to_folder_resolved_recursively(
         subfolder_response,
     ]
 
-    result = mock_drive_client.list_folder_contents("folder123")
+    result = mock_drive_client.list_folder_contents("folder123", resolve_shortcuts=True)
 
     # Both the directly present file and the file from the shortcut's target
     # folder should be returned.
@@ -562,7 +562,7 @@ def test_list_folder_contents_shortcut_to_folder_cycle_skipped(mock_drive_client
     }
     mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = cyclic_response
 
-    result = mock_drive_client.list_folder_contents("folder123")
+    result = mock_drive_client.list_folder_contents("folder123", resolve_shortcuts=True)
 
     # Only the non-cyclic file should be returned; the cycle shortcut is skipped.
     assert len(result) == 1
@@ -621,7 +621,9 @@ def test_list_folder_contents_shortcut_to_folder_nested(mock_drive_client):
         level2_response,
     ]
 
-    result = mock_drive_client.list_folder_contents("root_folder")
+    result = mock_drive_client.list_folder_contents(
+        "root_folder", resolve_shortcuts=True
+    )
 
     assert len(result) == 1
     assert result[0].id == "deep_song"
