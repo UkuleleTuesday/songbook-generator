@@ -127,7 +127,7 @@ def _warn_complex_edition_features(edition: config.Edition) -> None:
     Args:
         edition: The Edition to inspect.
     """
-    has_filter_groups = any(isinstance(f, FilterGroup) for f in edition.filters)
+    has_filter_groups = any(isinstance(f, FilterGroup) for f in (edition.filters or []))
     if has_filter_groups:
         click.echo(
             "Warning: This edition uses complex filter groups (AND/OR). "

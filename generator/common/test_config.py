@@ -140,3 +140,52 @@ def test_each_edition_file_loads_as_single_edition():
     ids = [e.id for e in settings.editions]
     # No duplicate IDs should exist
     assert len(ids) == len(set(ids))
+
+
+def test_edition_filters_optional_when_use_folder_components():
+    """filters can be omitted when use_folder_components is True."""
+    edition = config.Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        use_folder_components=True,
+    )
+    assert edition.filters is None
+
+
+def test_edition_filters_required_without_folder_components():
+    """filters is required when use_folder_components is False (the default)."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError, match="filters is required"):
+        config.Edition(
+            id="test",
+            title="Test",
+            description="Test",
+        )
+
+
+def test_edition_empty_filters_allowed_without_folder_components():
+    """An explicit empty filters list is valid even without use_folder_components."""
+    edition = config.Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        filters=[],
+    )
+    assert edition.filters == []
+
+
+def test_edition_filters_and_folder_components_together():
+    """filters can be provided alongside use_folder_components=True."""
+    from generator.common.filters import PropertyFilter, FilterOperator
+
+    f = PropertyFilter(key="status", operator=FilterOperator.EQUALS, value="active")
+    edition = config.Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        use_folder_components=True,
+        filters=[f],
+    )
+    assert edition.filters == [f]
