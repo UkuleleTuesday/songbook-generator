@@ -5,13 +5,118 @@ import yaml
 from googleapiclient.errors import HttpError
 from loguru import logger
 from pydantic import ValidationError
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 from . import config
 from .gdrive import GoogleDriveClient
 from .tracing import get_tracer
 
 tracer = get_tracer(__name__)
+
+# Maximum number of parent folder IDs to include in a single Drive API
+# OR-query.
+_YAML_SEARCH_BATCH_SIZE = 50
+
+
+def _list_child_folders(
+    gdrive_client: GoogleDriveClient,
+    source_folder_id: str,
+) -> List[Dict[str, str]]:
+    """
+    Return all direct child folders of *source_folder_id*.
+
+    Handles Drive API pagination so that more than 1 000 child folders are
+    returned correctly.
+
+    Args:
+        gdrive_client: An authenticated Drive client.
+        source_folder_id: The parent folder ID to query.
+
+    Returns:
+        A list of ``{"id": …, "name": …}`` dicts for every child folder.
+
+    Raises:
+        HttpError: If the Drive API returns an error.
+    """
+    folder_mime = "application/vnd.google-apps.folder"
+    query = (
+        f"'{source_folder_id}' in parents"
+        f" and mimeType = '{folder_mime}'"
+        f" and trashed = false"
+    )
+    folders: List[Dict[str, str]] = []
+    page_token = None
+    while True:
+        resp = (
+            gdrive_client.drive.files()
+            .list(
+                q=query,
+                pageSize=1000,
+                fields="nextPageToken, files(id, name)",
+                pageToken=page_token,
+            )
+            .execute(num_retries=gdrive_client.config.api_retries)
+        )
+        folders.extend(resp.get("files", []))
+        page_token = resp.get("nextPageToken")
+        if not page_token:
+            break
+    return folders
+
+
+def _find_yaml_files_in_folders(
+    gdrive_client: GoogleDriveClient,
+    folder_ids: List[str],
+) -> Dict[str, str]:
+    """
+    Find ``.songbook.yaml`` files that are direct children of any of the
+    given *folder_ids* using a single batched OR-query per chunk.
+
+    Instead of issuing one API call per folder (O(n)), this function groups
+    up to ``_YAML_SEARCH_BATCH_SIZE`` folder IDs into each Drive query,
+    reducing the total number of requests to O(n / batch_size).
+
+    Args:
+        gdrive_client: An authenticated Drive client.
+        folder_ids: Folder IDs to search within.
+
+    Returns:
+        A dict mapping ``folder_id → yaml_file_id`` for every folder that
+        contains a ``.songbook.yaml`` file.  Only the *first* match per
+        folder is kept (duplicates are silently ignored).
+
+    Raises:
+        HttpError: If the Drive API returns an error for any batch.
+    """
+    yaml_by_parent: Dict[str, str] = {}
+    folder_id_set = set(folder_ids)
+
+    for i in range(0, len(folder_ids), _YAML_SEARCH_BATCH_SIZE):
+        batch = folder_ids[i : i + _YAML_SEARCH_BATCH_SIZE]
+        parents_clause = " or ".join(f"'{fid}' in parents" for fid in batch)
+        query = f"name = '.songbook.yaml' and trashed = false and ({parents_clause})"
+        page_token = None
+        while True:
+            resp = (
+                gdrive_client.drive.files()
+                .list(
+                    q=query,
+                    pageSize=1000,
+                    fields="nextPageToken, files(id, parents)",
+                    pageToken=page_token,
+                )
+                .execute(num_retries=gdrive_client.config.api_retries)
+            )
+            for f in resp.get("files", []):
+                for parent_id in f.get("parents", []):
+                    if parent_id in folder_id_set:
+                        yaml_by_parent.setdefault(parent_id, f["id"])
+                        break
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+
+    return yaml_by_parent
 
 
 def scan_drive_editions(
@@ -62,86 +167,69 @@ def scan_drive_editions(
         skipped_no_yaml = 0
         skipped_errors = 0
 
-        # For each source folder, find direct child folders
         for source_folder_id in source_folders:
             try:
-                # Query for folders that are direct children of source_folder
-                resp = (
-                    gdrive_client.drive.files()
-                    .list(
-                        q=f"'{source_folder_id}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
-                        pageSize=100,
-                        fields="files(id, name)",
-                    )
-                    .execute(num_retries=gdrive_client.config.api_retries)
-                )
+                child_folders = _list_child_folders(gdrive_client, source_folder_id)
 
-                child_folders = resp.get("files", [])
+                if not child_folders:
+                    continue
 
-                # For each child folder, look for .songbook.yaml
-                for folder in child_folders:
-                    folder_id = folder["id"]
-                    folder_name = folder["name"]
+                folder_map = {f["id"]: f["name"] for f in child_folders}
+                folder_ids = list(folder_map.keys())
 
+                yaml_by_parent = _find_yaml_files_in_folders(gdrive_client, folder_ids)
+
+                skipped_no_yaml += len(folder_ids) - len(yaml_by_parent)
+
+                for folder_id, yaml_file_id in yaml_by_parent.items():
+                    folder_name = folder_map[folder_id]
                     try:
-                        # Find .songbook.yaml in this folder
-                        yaml_resp = (
-                            gdrive_client.drive.files()
-                            .list(
-                                q=f"'{folder_id}' in parents and name = '.songbook.yaml' and trashed = false",
-                                pageSize=1,
-                                fields="files(id)",
-                            )
-                            .execute(num_retries=gdrive_client.config.api_retries)
-                        )
-
-                        yaml_files = yaml_resp.get("files", [])
-                        if not yaml_files:
-                            skipped_no_yaml += 1
-                            continue
-
-                        yaml_file_id = yaml_files[0]["id"]
-
                         raw = gdrive_client.download_raw_bytes(yaml_file_id)
                         data = yaml.safe_load(raw.decode("utf-8"))
 
                         edition = config.Edition.model_validate(data)
                         logger.info(
-                            f"scan_drive_editions: validated edition title={edition.title!r} "
-                            f"from folder {folder_name!r} (id={folder_id!r})"
+                            f"scan_drive_editions: validated edition "
+                            f"title={edition.title!r} from folder "
+                            f"{folder_name!r} (id={folder_id!r})"
                         )
                         editions.append((folder_id, edition))
 
                     except HttpError as e:
                         skipped_errors += 1
                         logger.warning(
-                            f"scan_drive_editions: could not download .songbook.yaml from "
-                            f"folder {folder_name!r} (id={folder_id!r}): {e}"
+                            f"scan_drive_editions: could not download "
+                            f".songbook.yaml from folder {folder_name!r} "
+                            f"(id={folder_id!r}): {e}"
                         )
                         click.echo(
-                            f"Warning: could not read .songbook.yaml from folder "
-                            f"'{folder_name}': {e}",
+                            f"Warning: could not read .songbook.yaml from "
+                            f"folder '{folder_name}': {e}",
                             err=True,
                         )
                     except (yaml.YAMLError, UnicodeDecodeError) as e:
                         skipped_errors += 1
                         logger.warning(
-                            f"scan_drive_editions: could not parse .songbook.yaml in "
-                            f"folder {folder_name!r} (id={folder_id!r}): {e}"
+                            f"scan_drive_editions: could not parse "
+                            f".songbook.yaml in folder {folder_name!r} "
+                            f"(id={folder_id!r}): {e}"
                         )
                         click.echo(
-                            f"Warning: could not parse .songbook.yaml in folder '{folder_name}': {e}",
+                            f"Warning: could not parse .songbook.yaml in "
+                            f"folder '{folder_name}': {e}",
                             err=True,
                         )
                     except ValidationError as e:
                         skipped_errors += 1
                         logger.warning(
-                            f"scan_drive_editions: .songbook.yaml in folder {folder_name!r} "
-                            f"(id={folder_id!r}) failed Edition schema validation: {e}"
+                            f"scan_drive_editions: .songbook.yaml in folder "
+                            f"{folder_name!r} (id={folder_id!r}) failed "
+                            f"Edition schema validation: {e}"
                         )
                         click.echo(
-                            f"Warning: .songbook.yaml in folder '{folder_name}' does not "
-                            f"match the Edition schema: {e}",
+                            f"Warning: .songbook.yaml in folder "
+                            f"'{folder_name}' does not match the Edition "
+                            f"schema: {e}",
                             err=True,
                         )
 
