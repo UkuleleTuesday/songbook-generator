@@ -938,19 +938,8 @@ def generate_songbook_from_drive_folder(
     in other folders (shortcuts let you reuse a tab in multiple editions
     without duplicating the file).
 
-    Special files are identified by their name prefix (case-insensitive):
-
-    ==================  =======================================================
-    Prefix              Role
-    ==================  =======================================================
-    ``_cover…``         Cover page – the first matching file is used.
-    ``_preface…``       Preface page(s) – inserted after cover, before TOC,
-                        sorted alphabetically.
-    ``_postface…``      Postface page(s) – appended at the end, sorted
-                        alphabetically.
-    *(anything else)*   Song file – included as songbook body content, sorted
-                        with the standard song sort key.
-    ==================  =======================================================
+    File categorisation (cover/preface/postface/songs) is determined by the
+    name-prefix convention described in :func:`categorize_folder_files`.
 
     Args:
         drive: Authenticated Google Drive service object.
@@ -965,9 +954,9 @@ def generate_songbook_from_drive_folder(
 
     Returns:
         Generation information dict (same as :func:`generate_songbook`), or
-        ``None`` if no song files are found in the folder (i.e. every file
-        matched a special ``_cover``, ``_preface``, or ``_postface`` prefix,
-        or the folder contained no files at all).
+        ``None`` if no song files are found in the folder (i.e. all files were
+        classified as cover/preface/postface, or the folder contained no
+        files at all).
     """
     with tracer.start_as_current_span("generate_songbook_from_drive_folder") as span:
         span.set_attribute("folder_id", folder_id)

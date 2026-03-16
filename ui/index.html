@@ -30,6 +30,38 @@
 
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
+                <div class="source-toggle-group">
+                  <span class="editions-section-label" style="margin-top: 0;">Edition Source</span>
+                  <div class="source-toggle" id="source-toggle"
+                       role="group" aria-label="Edition source">
+                    <label class="source-toggle-option">
+                      <input type="radio" name="edition_source"
+                             value="config" checked>
+                      <span>Standard</span>
+                    </label>
+                    <label class="source-toggle-option">
+                      <input type="radio" name="edition_source"
+                             value="drive">
+                      <span>Experimental (Drive)</span>
+                    </label>
+                  </div>
+                </div>
+                <div id="drive-warning" class="drive-warning"
+                     style="display: none;" role="alert">
+                  <i class="material-icons" aria-hidden="true">science</i>
+                  <div class="drive-warning-body">
+                    <p><strong>Experimental: Drive-based editions</strong></p>
+                    <p>These editions are defined by a <code>.songbook.yaml</code> file inside a Google Drive folder. Each folder that is a direct child of the configured source folders and contains a valid <code>.songbook.yaml</code> will appear here. Click the <span style="font-size:0.8rem; vertical-align:middle;" class="material-icons">folder_open</span> icon next to an edition to open its Drive folder.</p>
+                    <p>How it works:</p>
+                    <ul>
+                      <li>The <code>.songbook.yaml</code> uses the same schema as config-based editions — it defines the title, description, and song selection filters.</li>
+                      <li>Cover, preface, and postface pages can be auto-detected from <code>Cover/</code>, <code>Preface/</code>, and <code>Postface/</code> subfolders by setting <code>use_folder_components: true</code> in the YAML.</li>
+                      <li>Drive shortcuts are fully supported — use them to include files from other folders without duplicating them.</li>
+                      <li>Folders without a valid <code>.songbook.yaml</code> are silently skipped.</li>
+                    </ul>
+                    <p>Because this feature reads live Drive content it may behave differently from config-based editions and is still under active development.</p>
+                  </div>
+                </div>
                 <span class="editions-section-label">Songbook Edition</span>
                 <div id="editions-grid" class="editions-grid">
                   <div class="editions-loading">
@@ -206,6 +238,117 @@
     }
 
     /**
+     * All editions loaded from the API. Filtered by source before display.
+     */
+    let allEditions = [];
+    let hasDriveError = false;
+
+    /**
+     * Create a single edition card DOM element.
+     */
+    function createEditionCard(edition, isFirst) {
+      const card = document.createElement('div');
+      card.className = 'edition-card';
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'songbook_edition';
+      radio.id = `edition-${edition.id}`;
+      radio.value = edition.id;
+      radio.className = 'edition-radio';
+      if (isFirst) radio.checked = true;
+
+      const lbl = document.createElement('label');
+      lbl.htmlFor = radio.id;
+      lbl.className = 'edition-card-label';
+
+      const header = document.createElement('div');
+      header.className = 'edition-card-header';
+
+      const title = document.createElement('span');
+      title.className = 'edition-card-title';
+      title.textContent = edition.title;
+      header.appendChild(title);
+
+      const headerRight = document.createElement('div');
+      headerRight.className = 'edition-card-header-right';
+
+      if (edition.source) {
+        const badge = document.createElement('span');
+        badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
+        badge.textContent = edition.source;
+        headerRight.appendChild(badge);
+      }
+
+      if (edition.source === 'drive' && edition.folder_id) {
+        const driveLink = document.createElement('a');
+        driveLink.href =
+          `https://drive.google.com/drive/folders/${edition.folder_id}`;
+        driveLink.target = '_blank';
+        driveLink.rel = 'noopener noreferrer';
+        driveLink.className = 'edition-drive-link';
+        driveLink.title = 'Open Drive folder';
+
+        const icon = document.createElement('i');
+        icon.className = 'material-icons';
+        icon.textContent = 'folder_open';
+        driveLink.appendChild(icon);
+
+        headerRight.appendChild(driveLink);
+      }
+
+      header.appendChild(headerRight);
+      lbl.appendChild(header);
+
+      if (edition.description) {
+        const desc = document.createElement('p');
+        desc.className = 'edition-card-description';
+        desc.textContent = edition.description;
+        lbl.appendChild(desc);
+      }
+
+      card.appendChild(radio);
+      card.appendChild(lbl);
+      return card;
+    }
+
+    /**
+     * Render only editions matching the given source ('config' or 'drive').
+     * Shows the experimental warning banner when source is 'drive'.
+     */
+    function renderEditions(source) {
+      const grid = document.getElementById('editions-grid');
+      const editionsError = document.getElementById('editions-error');
+      const driveWarning = document.getElementById('drive-warning');
+
+      const filtered = allEditions.filter(e => e.source === source);
+
+      grid.innerHTML = '';
+      if (filtered.length === 0) {
+        const emptyMsg = source === 'drive'
+          ? 'No drive-based editions available.'
+          : 'No editions available.';
+        grid.innerHTML =
+          `<p class="editions-empty-msg">${emptyMsg}</p>`;
+      } else {
+        filtered.forEach((edition, index) => {
+          grid.appendChild(createEditionCard(edition, index === 0));
+        });
+      }
+
+      driveWarning.style.display = source === 'drive' ? 'flex' : 'none';
+
+      if (hasDriveError && source === 'drive') {
+        editionsError.textContent =
+          'Note: Drive edition scanning encountered an error. ' +
+          'Some drive-based editions may not be listed.';
+        editionsError.style.display = 'block';
+      } else {
+        editionsError.style.display = 'none';
+      }
+    }
+
+    /**
      * Populate the edition cards from the API response.
      * Falls back gracefully if the API is unavailable.
      */
@@ -216,89 +359,16 @@
         const res = await fetch(`${apiBase}/editions`, { method: 'GET' });
         if (!res.ok) throw new Error(`API returned ${res.status}`);
         const data = await res.json();
-        const editions = data.editions || [];
+        allEditions = data.editions || [];
+        hasDriveError = !!data.drive_error;
 
-        grid.innerHTML = '';
-        if (editions.length === 0) {
-          editionsError.textContent = 'No editions available.';
-          editionsError.style.display = 'block';
-          return;
-        }
-
-        editions.forEach((edition, index) => {
-          const card = document.createElement('div');
-          card.className = 'edition-card';
-
-          const radio = document.createElement('input');
-          radio.type = 'radio';
-          radio.name = 'songbook_edition';
-          radio.id = `edition-${edition.id}`;
-          radio.value = edition.id;
-          radio.className = 'edition-radio';
-          if (index === 0) radio.checked = true;
-
-          const lbl = document.createElement('label');
-          lbl.htmlFor = radio.id;
-          lbl.className = 'edition-card-label';
-
-          const header = document.createElement('div');
-          header.className = 'edition-card-header';
-
-          const title = document.createElement('span');
-          title.className = 'edition-card-title';
-          title.textContent = edition.title;
-          header.appendChild(title);
-
-          const headerRight = document.createElement('div');
-          headerRight.className = 'edition-card-header-right';
-
-          if (edition.source) {
-            const badge = document.createElement('span');
-            badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
-            badge.textContent = edition.source;
-            headerRight.appendChild(badge);
-          }
-
-          if (edition.source === 'drive' && edition.folder_id) {
-            const driveLink = document.createElement('a');
-            driveLink.href = `https://drive.google.com/drive/folders/${edition.folder_id}`;
-            driveLink.target = '_blank';
-            driveLink.rel = 'noopener noreferrer';
-            driveLink.className = 'edition-drive-link';
-            driveLink.title = 'Open Drive folder';
-
-            const icon = document.createElement('i');
-            icon.className = 'material-icons';
-            icon.textContent = 'folder_open';
-            driveLink.appendChild(icon);
-
-            headerRight.appendChild(driveLink);
-          }
-
-          header.appendChild(headerRight);
-
-          lbl.appendChild(header);
-
-          if (edition.description) {
-            const desc = document.createElement('p');
-            desc.className = 'edition-card-description';
-            desc.textContent = edition.description;
-            lbl.appendChild(desc);
-          }
-
-          card.appendChild(radio);
-          card.appendChild(lbl);
-          grid.appendChild(card);
-        });
-
-        if (data.drive_error) {
-          editionsError.textContent =
-            'Note: Drive edition scanning encountered an error. ' +
-            'Some drive-based editions may not be listed.';
-          editionsError.style.display = 'block';
-        }
+        const selectedSource = document.querySelector(
+          'input[name="edition_source"]:checked'
+        ).value;
+        renderEditions(selectedSource);
       } catch (err) {
-        grid.innerHTML = '<p class="editions-empty-msg">Could not load editions.</p>';
+        grid.innerHTML =
+          '<p class="editions-empty-msg">Could not load editions.</p>';
         editionsError.textContent = 'Could not load editions from the API.';
         editionsError.style.display = 'block';
       }
@@ -373,8 +443,14 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
-      // Load editions from the API (populates the dropdown dynamically)
+      // Load editions from the API (populates the grid dynamically)
       loadEditions();
+      // Re-render when the source toggle changes
+      document.querySelectorAll('input[name="edition_source"]').forEach(
+        radio => radio.addEventListener('change', () => {
+          renderEditions(radio.value);
+        })
+      );
     });
   </script>
 </body>
