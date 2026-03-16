@@ -279,40 +279,9 @@ Delete its YAML file and open a pull request. No other changes are needed.
 
 #### Experimental: Drive-Based Edition Support
 
-As an alternative to YAML config files, editions can be configured directly in Google Drive. This is experimental and is primarily intended for editions that are actively curated in Drive rather than managed through code review.
+As an alternative to YAML config files, editions can be configured directly in Google Drive. Each Drive-based edition is a Google Drive folder containing a `.songbook.yaml` file (same schema as above). Setting `use_folder_components: true` in that YAML resolves cover, preface, postface, and song files from named subfolders (`Cover/`, `Preface/`, `Postface/`, `Songs/`) rather than explicit Drive file IDs.
 
-**How it works**
-
-Each Drive-based edition is a Google Drive folder containing a `.songbook.yaml` file. The YAML schema is the same as for YAML config editions (see above), with one additional flag:
-
-```yaml
-use_folder_components: true
-```
-
-When `use_folder_components: true` is set, component files are resolved from named subfolders within the edition folder rather than from explicit Drive file IDs in the YAML:
-
-| Subfolder | Purpose |
-|-----------|---------|
-| `Cover/` | First file is used as the cover (overrides `cover_file_id`) |
-| `Preface/` | All files are used as preface pages (overrides `preface_file_ids`) |
-| `Postface/` | All files are used as postface pages (overrides `postface_file_ids`) |
-| `Songs/` | All files are included directly (bypasses tag-based filtering) |
-
-**Discovery**
-
-Drive editions are discovered by scanning folders listed in the `GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS` environment variable (comma-separated folder IDs). Each direct child folder of these source folders that contains a valid `.songbook.yaml` is treated as an edition. Folders without a `.songbook.yaml` are silently skipped.
-
-Drive editions are referenced by their **Drive folder ID** rather than a string ID from the YAML. Use `uv run songbook-tools editions list` to see discovered editions and their folder IDs.
-
-**Converting a YAML edition to a Drive edition**
-
-The `editions convert` command migrates a YAML config edition to a Drive folder structure, creating component subfolders and shortcuts automatically:
-
-```bash
-uv run songbook-tools editions convert <edition-id> --target-folder <drive-folder-id>
-```
-
-Run `uv run songbook-tools editions convert --help` for all options including `--dry-run`.
+Drive editions are discovered by scanning folders listed in `GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS` (comma-separated). Drive editions are referenced by their Drive folder ID. Run `uv run songbook-tools editions list` to see all discovered editions and their IDs.
 
 ### Automated Songbook Generation
 
