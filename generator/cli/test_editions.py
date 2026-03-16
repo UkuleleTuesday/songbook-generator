@@ -52,7 +52,7 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
         filters=_EDITION_FILTERS,
     )
     mocker.patch(
-        "generator.cli.editions.scan_drive_editions_full",
+        "generator.cli.editions.scan_drive_editions",
         return_value=([("folder_abc", drive_edition)], []),
     )
 
@@ -89,9 +89,7 @@ def test_editions_list_no_drive_editions(runner, mocker):
         "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch(
-        "generator.cli.editions.scan_drive_editions_full", return_value=([], [])
-    )
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=([], []))
 
     result = runner.invoke(cli, ["editions", "list"])
 
@@ -150,9 +148,7 @@ def test_editions_list_no_config_editions(runner, mocker):
         "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch(
-        "generator.cli.editions.scan_drive_editions_full", return_value=([], [])
-    )
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=([], []))
 
     result = runner.invoke(cli, ["editions", "list"])
 
@@ -192,7 +188,7 @@ def test_editions_list_shows_drive_edition_errors(runner, mocker):
         error="Could not parse .songbook.yaml: invalid YAML",
     )
     mocker.patch(
-        "generator.cli.editions.scan_drive_editions_full",
+        "generator.cli.editions.scan_drive_editions",
         return_value=([], [error_entry]),
     )
 

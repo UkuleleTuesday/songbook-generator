@@ -8,7 +8,7 @@ from googleapiclient.errors import HttpError
 
 from ..common import config
 from ..common.config import get_settings
-from ..common.editions import scan_drive_editions_full
+from ..common.editions import scan_drive_editions
 from ..common.filters import FilterGroup
 from ..common.gdrive import GoogleDriveClient
 from ..worker.pdf import (
@@ -65,9 +65,9 @@ def list_editions():
         return
 
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-    # scan_drive_editions_full handles Drive API errors internally and never
+    # scan_drive_editions handles Drive API errors internally and never
     # raises.
-    drive_editions, drive_errors = scan_drive_editions_full(gdrive_client)
+    drive_editions, drive_errors = scan_drive_editions(gdrive_client)
 
     if drive_editions or drive_errors:
         click.echo("\nDrive editions:")

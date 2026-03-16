@@ -11,7 +11,7 @@ from loguru import logger
 from ..common.tracing import get_tracer, setup_tracing
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient, client as build_drive_client
-from ..common.editions import scan_drive_editions_full
+from ..common.editions import scan_drive_editions
 from ..worker.gcp import get_credentials
 
 _DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
@@ -242,7 +242,7 @@ def handle_get_editions(services):
                 drive_span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
             try:
                 gdrive_client = _get_drive_client()
-                drive_scan_editions, drive_scan_errors = scan_drive_editions_full(
+                drive_scan_editions, drive_scan_errors = scan_drive_editions(
                     gdrive_client
                 )
                 for folder_id, edition in drive_scan_editions:

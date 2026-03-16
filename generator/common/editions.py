@@ -135,7 +135,7 @@ def _find_yaml_files_in_folders(
     return yaml_by_parent
 
 
-def scan_drive_editions_full(
+def scan_drive_editions(
     gdrive_client: GoogleDriveClient,
 ) -> Tuple[List[Tuple[str, config.Edition]], List[DriveEditionError]]:
     """
@@ -294,36 +294,3 @@ def scan_drive_editions_full(
             f"editions_errors={len(errors)}"
         )
         return editions, errors
-
-
-def scan_drive_editions(
-    gdrive_client: GoogleDriveClient,
-) -> List[Tuple[str, config.Edition]]:
-    """
-    Scan Google Drive for songbook edition folders.
-
-    Edition folders are direct children of the configured source folders.
-    Each folder must contain a valid ``.songbook.yaml`` file to be recognized
-    as an edition.
-
-    Folders without a ``.songbook.yaml`` file or with invalid YAML/schema are
-    skipped with a warning; they do not cause the entire scan to fail.
-
-    The search is restricted to specific Drive folders via
-    ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).
-
-    Args:
-        gdrive_client: An authenticated
-            :class:`~generator.common.gdrive.GoogleDriveClient`.
-
-    Returns:
-        A list of ``(folder_id, Edition)`` tuples – one entry per valid
-        edition folder found.  The *folder_id* is the Drive folder that
-        contains the ``.songbook.yaml`` and can be used directly as an
-        edition identifier when submitting a generation job.
-
-        Use :func:`scan_drive_editions_full` to also retrieve folders whose
-        ``.songbook.yaml`` failed validation.
-    """
-    editions, _errors = scan_drive_editions_full(gdrive_client)
-    return editions

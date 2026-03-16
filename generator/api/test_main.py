@@ -61,9 +61,7 @@ class TestHandleGetEditions:
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
-        mocker.patch(
-            "generator.api.main.scan_drive_editions_full", return_value=([], [])
-        )
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         from generator.api.main import handle_get_editions
 
@@ -116,7 +114,7 @@ class TestHandleGetEditions:
             "generator.api.main._get_drive_client", return_value=mock_drive_client
         )
         mocker.patch(
-            "generator.api.main.scan_drive_editions_full",
+            "generator.api.main.scan_drive_editions",
             return_value=([("folder_xyz", drive_edition)], []),
         )
 
@@ -184,9 +182,7 @@ class TestHandleGetEditions:
         mocker.patch(
             "generator.api.main._get_drive_client", return_value=mock_drive_client
         )
-        mocker.patch(
-            "generator.api.main.scan_drive_editions_full", return_value=([], [])
-        )
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         from generator.api.main import handle_get_editions
 
@@ -213,7 +209,7 @@ class TestHandleGetEditions:
             error="Could not parse .songbook.yaml: invalid YAML",
         )
         mocker.patch(
-            "generator.api.main.scan_drive_editions_full",
+            "generator.api.main.scan_drive_editions",
             return_value=([], [error_entry]),
         )
 
@@ -263,9 +259,7 @@ class TestApiMainRouting:
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
-        mocker.patch(
-            "generator.api.main.scan_drive_editions_full", return_value=([], [])
-        )
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
         # Patch service init so no real GCP calls happen
         mocker.patch("generator.api.main._get_services", return_value=_make_services())
