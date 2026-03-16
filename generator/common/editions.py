@@ -14,9 +14,7 @@ from .tracing import get_tracer
 tracer = get_tracer(__name__)
 
 # Maximum number of parent folder IDs to include in a single Drive API
-# OR-query.  Keeping this well below typical URL-length limits while still
-# reducing the number of round-trips dramatically compared to one call per
-# folder.
+# OR-query.
 _YAML_SEARCH_BATCH_SIZE = 50
 
 
@@ -95,8 +93,6 @@ def _find_yaml_files_in_folders(
 
     for i in range(0, len(folder_ids), _YAML_SEARCH_BATCH_SIZE):
         batch = folder_ids[i : i + _YAML_SEARCH_BATCH_SIZE]
-        # Folder IDs originate from Drive API responses and are always
-        # alphanumeric, so no additional escaping is needed here.
         parents_clause = " or ".join(f"'{fid}' in parents" for fid in batch)
         query = f"name = '.songbook.yaml' and trashed = false and ({parents_clause})"
         page_token = None
@@ -112,8 +108,6 @@ def _find_yaml_files_in_folders(
                 .execute(num_retries=gdrive_client.config.api_retries)
             )
             for f in resp.get("files", []):
-                # A file may declare multiple parents; we only care about the
-                # first parent that is one of our target folders.
                 for parent_id in f.get("parents", []):
                     if parent_id in folder_id_set:
                         yaml_by_parent.setdefault(parent_id, f["id"])
@@ -140,15 +134,6 @@ def scan_drive_editions(
 
     The search is restricted to specific Drive folders via
     ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).
-
-    **API call complexity**
-
-    The previous implementation issued one Drive API request per child folder
-    to locate ``.songbook.yaml``, resulting in O(n) calls.  This
-    implementation batches up to ``_YAML_SEARCH_BATCH_SIZE`` parent-folder
-    conditions into a single query, reducing the YAML-search phase to
-    O(n / batch_size) calls and the overall scan to near-constant requests
-    for typical edition counts.
 
     Args:
         gdrive_client: An authenticated :class:`~generator.common.gdrive.GoogleDriveClient`.
@@ -184,7 +169,6 @@ def scan_drive_editions(
 
         for source_folder_id in source_folders:
             try:
-                # Step 1: collect all direct child folders (with pagination).
                 child_folders = _list_child_folders(gdrive_client, source_folder_id)
 
                 if not child_folders:
@@ -193,14 +177,10 @@ def scan_drive_editions(
                 folder_map = {f["id"]: f["name"] for f in child_folders}
                 folder_ids = list(folder_map.keys())
 
-                # Step 2: find .songbook.yaml files across all child folders
-                # using batched OR-queries – O(n/batch) instead of O(n).
                 yaml_by_parent = _find_yaml_files_in_folders(gdrive_client, folder_ids)
 
-                # Folders with no .songbook.yaml are silently skipped.
                 skipped_no_yaml += len(folder_ids) - len(yaml_by_parent)
 
-                # Step 3: download and validate each discovered YAML file.
                 for folder_id, yaml_file_id in yaml_by_parent.items():
                     folder_name = folder_map[folder_id]
                     try:
