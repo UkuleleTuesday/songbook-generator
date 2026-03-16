@@ -69,4 +69,4 @@ include-package-data = true
 extend-select = ["BLE001"] # Catch all exceptions are the plague
 
 [tool.ruff.lint.per-file-ignores]
-"generator/cli.py" = ["E402"] # Early import for warning suppression
+"generator/cli/__init__.py" = ["E402"] # Early import for warning suppression

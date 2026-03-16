@@ -1,10 +1,11 @@
-from click.testing import CliRunner
-from .cli import cli
 import pytest
-import yaml
-from unittest.mock import MagicMock
+import yaml as pyyaml
+from click.testing import CliRunner
 from googleapiclient.errors import HttpError
-from .common.config import Edition
+from unittest.mock import MagicMock
+
+from ..cli import cli
+from ..common.config import Edition
 
 
 @pytest.fixture
@@ -12,192 +13,9 @@ def runner():
     return CliRunner()
 
 
-def test_generate_command_with_edition(runner, mocker):
-    """Test the generate command with a valid edition."""
-    mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "current"])
-
-    assert result.exit_code == 0
-    assert "Generating songbook for edition: current" in result.output
-    mock_generate.assert_called_once()
-
-
-def test_generate_command_with_invalid_edition(runner, mocker):
-    """Test the generate command with an unknown edition falls back to Drive."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.find_file_in_folder",
-        return_value=None,
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "nonexistent"])
-
-    assert result.exit_code != 0
-    assert "not found in configuration" in result.output
-    assert "No .songbook.yaml found" in result.output
-
-
-def test_generate_command_with_conflicting_flags(runner, mocker):
-    """Test that using --edition with conflicting flags fails."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-    result = runner.invoke(
-        cli, ["generate", "--edition", "current", "--filter", "artist:Test"]
-    )
-
-    assert result.exit_code != 0
-    assert "Error: Cannot use --filter with --edition." in result.output
-
-
-def test_generate_command_legacy_mode(runner, mocker):
-    """Test the generate command without an edition (legacy mode)."""
-    mock_generate = mocker.patch("generator.cli.generate_songbook")
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-
-    result = runner.invoke(cli, ["generate", "--filter", "artist:equals:Someone"])
-
-    assert result.exit_code == 0
-    assert "Applying client-side filter: artist:equals:Someone" in result.output
-    mock_generate.assert_called_once()
-
-
-def _make_edition_yaml(**overrides):
-    """Helper: return a minimal valid .songbook.yaml as bytes."""
-    data = {
-        "id": "drive-edition",
-        "title": "Drive Edition",
-        "description": "Generated from Drive folder",
-        "filters": [{"key": "specialbooks", "operator": "contains", "value": "test"}],
-    }
-    data.update(overrides)
-    return yaml.dump(data).encode("utf-8")
-
-
-def test_generate_command_with_edition_as_folder_id(runner, mocker):
-    """--edition with a Drive folder ID reads .songbook.yaml and generates."""
-    mock_drive = mocker.Mock()
-    mock_cache = mocker.Mock()
-    mock_generate = mocker.patch("generator.cli.generate_songbook_from_edition")
-    mocker.patch("generator.cli.init_services", return_value=(mock_drive, mock_cache))
-    mock_file = mocker.Mock()
-    mock_file.id = "yaml-file-id"
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.find_file_in_folder",
-        return_value=mock_file,
-    )
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.download_raw_bytes",
-        return_value=_make_edition_yaml(),
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
-
-    assert result.exit_code == 0, result.output
-    assert "drive-edition" in result.output
-    mock_generate.assert_called_once()
-    call_kwargs = mock_generate.call_args.kwargs
-    assert call_kwargs["drive"] is mock_drive
-    assert call_kwargs["cache"] is mock_cache
-    edition_arg = call_kwargs["edition"]
-    assert edition_arg.id == "drive-edition"
-    assert edition_arg.title == "Drive Edition"
-
-
-def test_generate_command_edition_as_folder_id_missing_yaml(runner, mocker):
-    """--edition with Drive folder ID aborts when .songbook.yaml is missing."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.find_file_in_folder",
-        return_value=None,
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
-
-    assert result.exit_code != 0
-    assert "No .songbook.yaml found" in result.output
-
-
-def test_generate_command_edition_as_folder_id_invalid_yaml(runner, mocker):
-    """--edition with Drive folder ID aborts when .songbook.yaml is invalid YAML."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-    mock_file = mocker.Mock()
-    mock_file.id = "yaml-file-id"
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.find_file_in_folder",
-        return_value=mock_file,
-    )
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.download_raw_bytes",
-        return_value=b": invalid: yaml: {{{",
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
-
-    assert result.exit_code != 0
-    assert "Failed to parse .songbook.yaml" in result.output
-
-
-def test_generate_command_edition_as_folder_id_invalid_schema(runner, mocker):
-    """--edition with Drive folder ID aborts when .songbook.yaml has wrong schema."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-    mock_file = mocker.Mock()
-    mock_file.id = "yaml-file-id"
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.find_file_in_folder",
-        return_value=mock_file,
-    )
-    # Missing required fields (id, title, description, filters)
-    mocker.patch(
-        "generator.cli.GoogleDriveClient.download_raw_bytes",
-        return_value=b"just_a_string: true",
-    )
-
-    result = runner.invoke(cli, ["generate", "--edition", "folder-abc123"])
-
-    assert result.exit_code != 0
-    assert "does not match the Edition schema" in result.output
-
-
-def test_generate_command_edition_as_folder_id_conflicting_flags(runner, mocker):
-    """--edition as Drive folder ID still rejects --filter and related flags."""
-    mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
-    )
-
-    result = runner.invoke(
-        cli,
-        [
-            "generate",
-            "--edition",
-            "folder-abc123",
-            "--filter",
-            "artist:equals:Test",
-        ],
-    )
-
-    assert result.exit_code != 0
-    assert "Cannot use --filter with --edition" in result.output
-
-
 # ---------------------------------------------------------------------------
 # editions list tests
 # ---------------------------------------------------------------------------
-
 
 _EDITION_FILTERS = [{"key": "specialbooks", "operator": "contains", "value": "current"}]
 _EDITION_DESCRIPTION = "Test edition"
@@ -211,7 +29,7 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
         description=_EDITION_DESCRIPTION,
         filters=_EDITION_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
         google_cloud=mocker.Mock(
             credentials={
@@ -224,7 +42,8 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
     mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+        "generator.cli.editions.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
     )
     drive_edition = Edition(
         id="drive-ed",
@@ -233,7 +52,7 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
         filters=_EDITION_FILTERS,
     )
     mocker.patch(
-        "generator.cli.scan_drive_editions",
+        "generator.cli.editions.scan_drive_editions",
         return_value=[("folder_abc", drive_edition)],
     )
 
@@ -254,7 +73,7 @@ def test_editions_list_no_drive_editions(runner, mocker):
         description=_EDITION_DESCRIPTION,
         filters=_EDITION_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
         google_cloud=mocker.Mock(
             credentials={
@@ -267,9 +86,10 @@ def test_editions_list_no_drive_editions(runner, mocker):
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
     mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+        "generator.cli.editions.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch("generator.cli.scan_drive_editions", return_value=[])
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=[])
 
     result = runner.invoke(cli, ["editions", "list"])
 
@@ -286,7 +106,7 @@ def test_editions_list_drive_scan_http_error(runner, mocker):
         description=_EDITION_DESCRIPTION,
         filters=_EDITION_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
         google_cloud=mocker.Mock(
             credentials={
@@ -299,7 +119,7 @@ def test_editions_list_drive_scan_http_error(runner, mocker):
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.init_services",
         side_effect=HttpError(resp=MagicMock(status=403), content=b"Forbidden"),
     )
 
@@ -312,7 +132,7 @@ def test_editions_list_drive_scan_http_error(runner, mocker):
 
 def test_editions_list_no_config_editions(runner, mocker):
     """editions list reports when no config editions exist."""
-    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[],
         google_cloud=mocker.Mock(
             credentials={
@@ -325,9 +145,10 @@ def test_editions_list_no_config_editions(runner, mocker):
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
     mocker.patch(
-        "generator.cli.init_services", return_value=(mocker.Mock(), mocker.Mock())
+        "generator.cli.editions.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mocker.patch("generator.cli.scan_drive_editions", return_value=[])
+    mocker.patch("generator.cli.editions.scan_drive_editions", return_value=[])
 
     result = runner.invoke(cli, ["editions", "list"])
 
@@ -362,18 +183,18 @@ def test_convert_edition_success(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
     mock_init = mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "new_folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_file_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -415,18 +236,18 @@ def test_convert_edition_custom_folder_name(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -450,7 +271,7 @@ def test_convert_edition_custom_folder_name(runner, mocker):
 
 def test_convert_edition_unknown_edition(runner, mocker):
     """editions convert aborts when the edition ID does not exist."""
-    mocker.patch("generator.cli.get_settings").return_value = mocker.Mock(
+    mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[],
         songbook_editions=mocker.Mock(folder_ids=[]),
     )
@@ -472,9 +293,9 @@ def test_convert_edition_no_target_folder_no_config(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition, folder_ids=[]
-    )
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition, folder_ids=[])
 
     result = runner.invoke(cli, ["editions", "convert", "test-ed"])
 
@@ -490,7 +311,9 @@ def test_convert_edition_no_target_folder_multiple_config(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(
         mocker, edition, folder_ids=["folder_a", "folder_b"]
     )
 
@@ -508,18 +331,18 @@ def test_convert_edition_uses_single_config_folder(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition, folder_ids=["only_folder"]
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition, folder_ids=["only_folder"])
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -532,7 +355,7 @@ def test_convert_edition_uses_single_config_folder(runner, mocker):
 
 def test_convert_edition_creates_shortcuts(runner, mocker):
     """editions convert creates Cover/Preface/Postface/Songs subfolders with shortcuts."""
-    from .worker.models import File as DriveFile
+    from ..worker.models import File as DriveFile
 
     edition = Edition(
         id="test-ed",
@@ -543,14 +366,14 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
         preface_file_ids=["preface_id"],
         postface_file_ids=["post1_id", "post2_id"],
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     # edition folder + Cover + Preface + Postface + Songs subfolders
     mock_instance.create_folder.side_effect = [
@@ -562,12 +385,14 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     ]
     mock_instance.upload_file_bytes.return_value = "yaml_id"
     mock_instance.create_shortcut.return_value = "shortcut_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
     song_files = [
         DriveFile(id="song1_id", name="Song One"),
         DriveFile(id="song2_id", name="Song Two"),
     ]
-    mocker.patch("generator.cli.collect_and_sort_files", return_value=song_files)
+    mocker.patch(
+        "generator.cli.editions.collect_and_sort_files", return_value=song_files
+    )
 
     result = runner.invoke(
         cli,
@@ -606,8 +431,6 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
 
 def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     """editions convert sets use_folder_components=true when shortcuts are created."""
-    import yaml as pyyaml
-
     edition = Edition(
         id="test-ed",
         title="Test Edition",
@@ -616,14 +439,14 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
         cover_file_id="cover_id",
         preface_file_ids=["preface_id"],
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     uploaded_content = {}
@@ -634,8 +457,8 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
 
     mock_instance.upload_file_bytes.side_effect = capture_upload
     mock_instance.create_shortcut.return_value = "shortcut_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
-    mocker.patch("generator.cli.collect_and_sort_files", return_value=[])
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions.collect_and_sort_files", return_value=[])
 
     result = runner.invoke(
         cli,
@@ -654,7 +477,7 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
 
 def test_convert_edition_creates_songs_subfolder(runner, mocker):
     """editions convert creates a Songs subfolder with shortcuts for each song file."""
-    from .worker.models import File as DriveFile
+    from ..worker.models import File as DriveFile
 
     edition = Edition(
         id="test-ed",
@@ -662,25 +485,27 @@ def test_convert_edition_creates_songs_subfolder(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.side_effect = ["edition_folder_id", "songs_sub_id"]
     mock_instance.upload_file_bytes.return_value = "yaml_id"
     mock_instance.create_shortcut.return_value = "shortcut_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
     song_files = [
         DriveFile(id="s1", name="Alpha Song"),
         DriveFile(id="s2", name="Beta Song"),
         DriveFile(id="s3", name="Gamma Song"),
     ]
-    mocker.patch("generator.cli.collect_and_sort_files", return_value=song_files)
+    mocker.patch(
+        "generator.cli.editions.collect_and_sort_files", return_value=song_files
+    )
 
     result = runner.invoke(
         cli,
@@ -722,20 +547,22 @@ def test_convert_edition_collects_songs_with_filter(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
     mock_instance.create_shortcut.return_value = "shortcut_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
-    mock_collect = mocker.patch("generator.cli.collect_and_sort_files", return_value=[])
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
+    mock_collect = mocker.patch(
+        "generator.cli.editions.collect_and_sort_files", return_value=[]
+    )
 
     result = runner.invoke(
         cli,
@@ -759,14 +586,14 @@ def test_convert_edition_delete_config(runner, mocker, tmp_path):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
@@ -774,7 +601,7 @@ def test_convert_edition_delete_config(runner, mocker, tmp_path):
     config_file = tmp_path / "test-ed.yaml"
     config_file.write_text("id: test-ed\ntitle: Test Edition\n")
     mocker.patch(
-        "generator.cli._find_edition_config_path",
+        "generator.cli.editions._find_edition_config_path",
         return_value=config_file,
     )
 
@@ -804,14 +631,14 @@ def test_convert_edition_notes_original_config(runner, mocker, tmp_path):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
@@ -819,7 +646,7 @@ def test_convert_edition_notes_original_config(runner, mocker, tmp_path):
     config_file = tmp_path / "test-ed.yaml"
     config_file.write_text("id: test-ed\n")
     mocker.patch(
-        "generator.cli._find_edition_config_path",
+        "generator.cli.editions._find_edition_config_path",
         return_value=config_file,
     )
 
@@ -856,18 +683,18 @@ def test_convert_edition_warns_complex_filters(runner, mocker):
             }
         ],
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     mock_instance.upload_file_bytes.return_value = "yaml_id"
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -893,13 +720,11 @@ def test_convert_edition_drive_init_failure(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
-    from unittest.mock import MagicMock
-
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         side_effect=HttpError(resp=MagicMock(status=403), content=b"Forbidden"),
     )
 
@@ -920,8 +745,7 @@ def test_convert_edition_drive_init_failure(runner, mocker):
 
 def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
     """The .songbook.yaml uploaded can be parsed back as a valid Edition."""
-    import yaml as pyyaml
-    from .common.config import Edition as CfgEdition
+    from ..common.config import Edition as CfgEdition
 
     edition = Edition(
         id="roundtrip-ed",
@@ -930,14 +754,14 @@ def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
         filters=_CONVERT_FILTERS,
         cover_file_id="cover123",
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
     mocker.patch(
-        "generator.cli.init_services",
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch(
+        "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
     mock_instance.create_folder.return_value = "folder_id"
     uploaded_content = {}
@@ -947,7 +771,7 @@ def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
         return "yaml_id"
 
     mock_instance.upload_file_bytes.side_effect = capture_upload
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -978,12 +802,12 @@ def test_convert_edition_dry_run_no_drive_calls(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
-    mock_init = mocker.patch("generator.cli.init_services")
-    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mock_init = mocker.patch("generator.cli.editions.init_services")
+    mock_gdrive = mocker.patch("generator.cli.editions.GoogleDriveClient")
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -1012,10 +836,10 @@ def test_convert_edition_dry_run_shows_folder_and_yaml(runner, mocker):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -1048,10 +872,10 @@ def test_convert_edition_dry_run_shows_shortcuts(runner, mocker):
         preface_file_ids=["preface_id"],
         postface_file_ids=["post1_id", "post2_id"],
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
-    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
+    mocker.patch("generator.cli.editions._find_edition_config_path", return_value=None)
 
     result = runner.invoke(
         cli,
@@ -1088,12 +912,14 @@ def test_convert_edition_dry_run_shows_delete_config(runner, mocker, tmp_path):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
     config_file = tmp_path / "test-ed.yaml"
     config_file.write_text("id: test-ed\n")
-    mocker.patch("generator.cli._find_edition_config_path", return_value=config_file)
+    mocker.patch(
+        "generator.cli.editions._find_edition_config_path", return_value=config_file
+    )
 
     result = runner.invoke(
         cli,
@@ -1123,12 +949,14 @@ def test_convert_edition_dry_run_shows_keep_config(runner, mocker, tmp_path):
         description=_CONVERT_DESCRIPTION,
         filters=_CONVERT_FILTERS,
     )
-    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
-        mocker, edition
-    )
+    mocker.patch(
+        "generator.cli.editions.get_settings"
+    ).return_value = _make_convert_settings(mocker, edition)
     config_file = tmp_path / "test-ed.yaml"
     config_file.write_text("id: test-ed\n")
-    mocker.patch("generator.cli._find_edition_config_path", return_value=config_file)
+    mocker.patch(
+        "generator.cli.editions._find_edition_config_path", return_value=config_file
+    )
 
     result = runner.invoke(
         cli,
