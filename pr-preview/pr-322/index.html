@@ -69,11 +69,7 @@
             </section>
           </div>
         </div>
-        <div id="progressContainer" style="display: none; padding: 1rem;">
-          <div id="progressBar" class="mdl-progress mdl-js-progress mdl-progress__indeterminate"></div>
-          <div id="progressText" style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Starting...</div>
-          <div id="progressPercentage" style="font-weight: bold; margin-top: 0.25rem;">0%</div>
-        </div>
+
       </div>
     </main>
   </div>
@@ -90,10 +86,10 @@
     }
 
     const apiBase = getApiBase();
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const progressText = document.getElementById('progressText');
-    const progressPercentage = document.getElementById('progressPercentage');
+    let progressContainer = null;
+    let progressBar = null;
+    let progressText = null;
+    let progressPercentage = null;
 
     function addSongbookToHistory(name, url, editionId) {
       const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
@@ -156,6 +152,7 @@
     }
 
     function setIndeterminate(indeterminate) {
+      if (!progressBar) return;
       if (indeterminate) {
         progressBar.classList.add('mdl-progress__indeterminate');
       } else {
@@ -164,6 +161,7 @@
     }
 
     function updateProgress(progress, message) {
+      if (!progressBar) return;
       const percentage = Math.round(progress * 100);
       if (progress > 0) {
         setIndeterminate(false);
@@ -171,20 +169,36 @@
       if (progressBar.MaterialProgress) {
         progressBar.MaterialProgress.setProgress(percentage);
       }
-      progressPercentage.textContent = percentage + '%';
-      if (message) {
+      if (progressPercentage) progressPercentage.textContent = percentage + '%';
+      if (message && progressText) {
         progressText.textContent = message;
       }
     }
 
     function showProgress() {
-      progressContainer.style.display = 'block';
+      const checked = document.querySelector(
+        'input[name="songbook_edition"]:checked'
+      );
+      if (!checked) return;
+      const card = checked.closest('.edition-card');
+      if (!card) return;
+      progressContainer = card.querySelector('.edition-card-progress');
+      progressBar = card.querySelector('.edition-card-progress-bar');
+      progressText = card.querySelector('.edition-card-progress-text');
+      progressPercentage = card.querySelector('.edition-card-progress-pct');
+      if (progressContainer) progressContainer.style.display = 'block';
       setIndeterminate(true);
       updateProgress(0, 'Starting...');
     }
 
     function hideProgress() {
-      progressContainer.style.display = 'none';
+      document.querySelectorAll('.edition-card-progress').forEach(
+        el => { el.style.display = 'none'; }
+      );
+      progressContainer = null;
+      progressBar = null;
+      progressText = null;
+      progressPercentage = null;
     }
 
     function enableSubmitButton() {
@@ -221,7 +235,7 @@
         // Update progress if available
         if (typeof progress === 'number') {
           updateProgress(progress, last_message || `Status: ${status}`);
-        } else {
+        } else if (progressText) {
           progressText.textContent = `Status: ${status}`;
         }
 
@@ -334,6 +348,9 @@
         const actions = document.createElement('div');
         actions.className = 'edition-card-actions';
 
+        const actionsRow = document.createElement('div');
+        actionsRow.className = 'edition-card-actions-row';
+
         const generateBtn = document.createElement('button');
         generateBtn.type = 'submit';
         generateBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
@@ -348,7 +365,33 @@
         btnText.textContent = 'Generate';
         generateBtn.appendChild(btnText);
 
-        actions.appendChild(generateBtn);
+        actionsRow.appendChild(generateBtn);
+        actions.appendChild(actionsRow);
+
+        const progressSection = document.createElement('div');
+        progressSection.className = 'edition-card-progress';
+        progressSection.style.display = 'none';
+
+        const progressBarEl = document.createElement('div');
+        progressBarEl.className =
+          'edition-card-progress-bar mdl-progress mdl-js-progress';
+        progressSection.appendChild(progressBarEl);
+
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'edition-card-progress-info';
+
+        const progressTextEl = document.createElement('span');
+        progressTextEl.className = 'edition-card-progress-text';
+        progressTextEl.textContent = 'Starting...';
+        progressInfo.appendChild(progressTextEl);
+
+        const progressPctEl = document.createElement('span');
+        progressPctEl.className = 'edition-card-progress-pct';
+        progressPctEl.textContent = '0%';
+        progressInfo.appendChild(progressPctEl);
+
+        progressSection.appendChild(progressInfo);
+        actions.appendChild(progressSection);
 
         const history = getEditionHistory(edition.id);
         if (history.length > 0) {

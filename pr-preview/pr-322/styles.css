@@ -115,6 +115,11 @@ body {
   border-top: 1px solid rgba(0, 0, 0, 0.10);
 }
 
+.edition-card-actions-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .edition-radio:checked ~ .edition-card-actions {
   display: block;
 }
@@ -127,6 +132,30 @@ body {
 
 .edition-generate-btn .material-icons {
   font-size: 1rem;
+}
+
+/* In-card progress section */
+.edition-card-progress {
+  margin-top: 10px;
+}
+
+.edition-card-progress-bar {
+  width: 100%;
+}
+
+.edition-card-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.edition-card-progress-pct {
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 /* Per-edition generation history */
