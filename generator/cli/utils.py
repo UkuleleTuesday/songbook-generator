@@ -10,6 +10,7 @@ class SubcmdGroup(click.Group):
     """Click Group that appends its subcommand names to the parent help listing."""
 
     def get_short_help_str(self, limit: int = 45) -> str:
+        """Return short help with subcommand names appended as ``[cmd1, cmd2]``."""
         names = sorted(self.commands)
         if not names:
             return super().get_short_help_str(limit)

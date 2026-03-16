@@ -10,7 +10,7 @@ import click
 from .cache import cache, merge_pdfs
 from .editions import editions
 from .generate import generate
-from .misc import download_doc_json_command, print_settings, validate_pdf_cli
+from .misc import print_settings, validate_pdf_cli
 from .songs import songs
 from .specialbooks import specialbooks
 from .tags import tags
@@ -35,7 +35,6 @@ cli.add_command(cache)
 cli.add_command(merge_pdfs)
 cli.add_command(print_settings)
 cli.add_command(validate_pdf_cli)
-cli.add_command(download_doc_json_command)
 cli.add_command(specialbooks)
 cli.add_command(editions)
 cli.add_command(tags)

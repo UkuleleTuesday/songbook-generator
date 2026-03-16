@@ -1,17 +1,12 @@
-import json
 import sys
 from pathlib import Path
 from typing import Optional
 
 import click
 import fitz
-from googleapiclient.discovery import build
 
-from ..common.caching import init_cache
 from ..common.config import get_settings
-from ..common.gdrive import GoogleDriveClient
-from ..worker.gcp import get_credentials
-from .utils import _resolve_file_id, global_options
+from .utils import global_options
 
 
 @click.command(name="print-settings")
@@ -104,54 +99,3 @@ def validate_pdf_cli(
     except (OSError, IOError, fitz.FileDataError) as e:
         click.echo(f"❌ Error accessing PDF file: {e}", err=True)
         sys.exit(1)
-
-
-@click.command(name="download-doc-json")
-@click.argument("file_identifier")
-@click.argument(
-    "output_path",
-    type=click.Path(path_type=Path, dir_okay=False, writable=True),
-    required=False,
-)
-def download_doc_json_command(file_identifier, output_path):
-    """
-    Downloads the raw JSON of a Google Doc.
-
-    FILE_IDENTIFIER can be a Google Drive file ID or a partial file name.
-    If OUTPUT_PATH is provided, saves to that file. Otherwise, prints to stdout.
-    """
-    settings = get_settings()
-    credential_config = settings.google_cloud.credentials.get("songbook-generator")
-    if not credential_config:
-        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
-        raise click.Abort()
-
-    # Add Docs API scope
-    scopes = credential_config.scopes + [
-        "https://www.googleapis.com/auth/documents.readonly"
-    ]
-
-    creds = get_credentials(
-        scopes=scopes,
-        target_principal=credential_config.principal,
-    )
-    drive_service = build("drive", "v3", credentials=creds)
-    docs_service = build("docs", "v1", credentials=creds)
-    cache = init_cache()
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
-
-    file_id = _resolve_file_id(gdrive_client, file_identifier)
-
-    if not output_path:
-        click.echo(f"Fetching document content for ID: {file_id}...", err=True)
-
-    document = docs_service.documents().get(documentId=file_id).execute()
-
-    if output_path:
-        # Ensure the output directory exists
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(output_path, "w") as f:
-            json.dump(document, f, indent=2)
-        click.echo(f"Successfully saved document JSON to {output_path}")
-    else:
-        click.echo(json.dumps(document, indent=2))
