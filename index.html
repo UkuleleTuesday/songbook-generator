@@ -46,6 +46,14 @@
                     </label>
                   </div>
                 </div>
+                <div id="config-info" class="config-info"
+                     role="note">
+                  <i class="material-icons" aria-hidden="true">folder</i>
+                  <div class="config-info-body">
+                    <p><strong>Config-based editions</strong></p>
+                    <p>Songbook editions can be defined by YAML files found in the <a href="https://github.com/UkuleleTuesday/songbook-generator/tree/main/generator/config/songbooks" target="_blank" rel="noopener noreferrer">config/songbooks</a> folder in this repository. To create or edit a config-based edition, add or edit a <code>.yaml</code> file in that directory. See the README for details on the format.</p>
+                  </div>
+                </div>
                 <div id="drive-warning" class="drive-warning"
                      style="display: none;" role="alert">
                   <i class="material-icons" aria-hidden="true">science</i>
@@ -320,6 +328,7 @@
       const grid = document.getElementById('editions-grid');
       const editionsError = document.getElementById('editions-error');
       const driveWarning = document.getElementById('drive-warning');
+      const configInfo = document.getElementById('config-info');
 
       const filtered = allEditions.filter(e => e.source === source);
 
@@ -337,6 +346,7 @@
       }
 
       driveWarning.style.display = source === 'drive' ? 'flex' : 'none';
+      configInfo.style.display = source === 'config' ? 'flex' : 'none';
 
       if (hasDriveError && source === 'drive') {
         editionsError.textContent =
