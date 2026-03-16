@@ -86,9 +86,15 @@ class Edition(BaseModel):
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None
-    filters: List[Union[FilterGroup, PropertyFilter]]
+    filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
     table_of_contents: Optional[Toc] = None
     use_folder_components: bool = False
+
+    @model_validator(mode="after")
+    def filters_required_without_folder_components(self) -> "Edition":
+        if not self.use_folder_components and self.filters is None:
+            raise ValueError("filters is required when use_folder_components is False")
+        return self
 
 
 class CachingGcs(BaseModel):
