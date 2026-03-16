@@ -254,9 +254,26 @@
     /**
      * Create a single edition card DOM element.
      */
+    function _createDriveFolderLink(folderId) {
+      const driveLink = document.createElement('a');
+      driveLink.href =
+        `https://drive.google.com/drive/folders/${folderId}`;
+      driveLink.target = '_blank';
+      driveLink.rel = 'noopener noreferrer';
+      driveLink.className = 'edition-drive-link';
+      driveLink.title = 'Open Drive folder';
+      const icon = document.createElement('i');
+      icon.className = 'material-icons';
+      icon.textContent = 'folder_open';
+      driveLink.appendChild(icon);
+      return driveLink;
+    }
+
     function createEditionCard(edition, isFirst) {
+      const isError = edition.status === 'error';
+
       const card = document.createElement('div');
-      card.className = 'edition-card';
+      card.className = isError ? 'edition-card edition-card--error' : 'edition-card';
 
       const radio = document.createElement('input');
       radio.type = 'radio';
@@ -264,7 +281,8 @@
       radio.id = `edition-${edition.id}`;
       radio.value = edition.id;
       radio.className = 'edition-radio';
-      if (isFirst) radio.checked = true;
+      if (isFirst && !isError) radio.checked = true;
+      if (isError) radio.disabled = true;
 
       const lbl = document.createElement('label');
       lbl.htmlFor = radio.id;
@@ -275,44 +293,47 @@
 
       const title = document.createElement('span');
       title.className = 'edition-card-title';
-      title.textContent = edition.title;
+      title.textContent = edition.title || edition.folder_name || edition.id;
       header.appendChild(title);
 
       const headerRight = document.createElement('div');
       headerRight.className = 'edition-card-header-right';
 
-      if (edition.source) {
+      if (isError) {
+        const badge = document.createElement('span');
+        badge.className = 'edition-card-badge edition-card-badge--error';
+        badge.textContent = 'invalid';
+        headerRight.appendChild(badge);
+      } else if (edition.source) {
         const badge = document.createElement('span');
         badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
         badge.textContent = edition.source;
         headerRight.appendChild(badge);
       }
 
-      if (edition.source === 'drive' && edition.folder_id) {
-        const driveLink = document.createElement('a');
-        driveLink.href =
-          `https://drive.google.com/drive/folders/${edition.folder_id}`;
-        driveLink.target = '_blank';
-        driveLink.rel = 'noopener noreferrer';
-        driveLink.className = 'edition-drive-link';
-        driveLink.title = 'Open Drive folder';
-
-        const icon = document.createElement('i');
-        icon.className = 'material-icons';
-        icon.textContent = 'folder_open';
-        driveLink.appendChild(icon);
-
-        headerRight.appendChild(driveLink);
+      if (edition.folder_id) {
+        headerRight.appendChild(_createDriveFolderLink(edition.folder_id));
       }
 
       header.appendChild(headerRight);
       lbl.appendChild(header);
 
-      if (edition.description) {
+      if (!isError && edition.description) {
         const desc = document.createElement('p');
         desc.className = 'edition-card-description';
         desc.textContent = edition.description;
         lbl.appendChild(desc);
+      }
+
+      if (isError && edition.error) {
+        const errMsg = document.createElement('p');
+        errMsg.className = 'edition-card-error-msg';
+        const errIcon = document.createElement('i');
+        errIcon.className = 'material-icons';
+        errIcon.textContent = 'error_outline';
+        errMsg.appendChild(errIcon);
+        errMsg.appendChild(document.createTextNode(edition.error));
+        lbl.appendChild(errMsg);
       }
 
       card.appendChild(radio);
@@ -340,8 +361,11 @@
         grid.innerHTML =
           `<p class="editions-empty-msg">${emptyMsg}</p>`;
       } else {
-        filtered.forEach((edition, index) => {
-          grid.appendChild(createEditionCard(edition, index === 0));
+        let firstSelectableFound = false;
+        filtered.forEach((edition) => {
+          const isFirst = !firstSelectableFound && edition.status !== 'error';
+          if (isFirst) firstSelectableFound = true;
+          grid.appendChild(createEditionCard(edition, isFirst));
         });
       }
 
