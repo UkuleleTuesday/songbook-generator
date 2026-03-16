@@ -376,32 +376,47 @@ class GoogleDriveClient:
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
 
-    def list_folder_contents(self, folder_id: str) -> List[File]:
+    def list_folder_contents(
+        self,
+        folder_id: str,
+        resolve_shortcuts: bool = True,
+    ) -> List[File]:
         """
         List all files in a Drive folder, resolving shortcuts to their targets.
 
-        Shortcuts to files are resolved so callers receive the target file's
-        ID and MIME type while retaining the shortcut's display name (as it
-        appears in the folder) for ordering and categorisation purposes.
+        Shortcuts to files are always resolved so callers receive the target
+        file's ID and MIME type while retaining the shortcut's display name
+        (as it appears in the folder) for ordering and categorisation
+        purposes.
 
-        Shortcuts to folders are resolved recursively: all files inside the
+        When *resolve_shortcuts* is ``True`` (the default), shortcuts that
+        point to folders are followed recursively: all files inside the
         target folder are fetched and included in the results.  Cycle
         detection prevents infinite loops caused by circular shortcuts.
+        When ``False``, folder shortcuts are skipped.
 
         Args:
             folder_id: The Google Drive folder ID to list.
+            resolve_shortcuts: Whether to recursively follow shortcuts that
+                point to folders.  Defaults to ``True``.
 
         Returns:
             List of File objects.  Shortcuts to files are returned as the
-            target file with the shortcut's display name.  Shortcuts to
-            folders are expanded so their contents are included inline.
+            target file with the shortcut's display name.  When
+            *resolve_shortcuts* is ``True``, shortcuts to folders are
+            expanded so their contents are included inline.
         """
-        return self._list_folder_contents(folder_id, visited_folder_ids=set())
+        return self._list_folder_contents(
+            folder_id,
+            visited_folder_ids=set(),
+            resolve_shortcuts=resolve_shortcuts,
+        )
 
     def _list_folder_contents(
         self,
         folder_id: str,
         visited_folder_ids: Set[str],
+        resolve_shortcuts: bool,
     ) -> List[File]:
         """
         Internal implementation of list_folder_contents with cycle tracking.
@@ -410,6 +425,7 @@ class GoogleDriveClient:
             folder_id: The Google Drive folder ID to list.
             visited_folder_ids: Set of folder IDs already visited in this
                 traversal, used to detect and break cycles.
+            resolve_shortcuts: Whether to recursively follow folder shortcuts.
 
         Returns:
             List of File objects with shortcuts resolved.
@@ -464,6 +480,8 @@ class GoogleDriveClient:
                         )
                         continue
                     if target_mime == folder_mime:
+                        if not resolve_shortcuts:
+                            continue
                         if target_id in visited_folder_ids:
                             click.echo(
                                 f"Warning: shortcut '{f['name']}' points to "
@@ -478,6 +496,7 @@ class GoogleDriveClient:
                             self._list_folder_contents(
                                 target_id,
                                 visited_folder_ids=visited_folder_ids,
+                                resolve_shortcuts=resolve_shortcuts,
                             )
                         )
                         continue

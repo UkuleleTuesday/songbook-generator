@@ -417,6 +417,44 @@ def test_list_folder_contents_shortcut_to_folder_resolved_recursively(
     assert "song_in_subfolder" in ids
 
 
+def test_list_folder_contents_shortcut_to_folder_skipped_when_resolve_false(
+    mock_drive_client,
+):
+    """With resolve_shortcuts=False, folder shortcuts are skipped."""
+    from .gdrive import SHORTCUT_MIME_TYPE
+
+    folder_mime = "application/vnd.google-apps.folder"
+    mock_response = {
+        "files": [
+            {
+                "id": "sc1",
+                "name": "Sub-edition folder",
+                "mimeType": SHORTCUT_MIME_TYPE,
+                "shortcutDetails": {
+                    "targetId": "subfolder_id",
+                    "targetMimeType": folder_mime,
+                },
+            },
+            {"id": "file2", "name": "Good Song.pdf", "mimeType": "application/pdf"},
+        ],
+        "nextPageToken": None,
+    }
+    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
+
+    result = mock_drive_client.list_folder_contents(
+        "folder123", resolve_shortcuts=False
+    )
+
+    # The folder shortcut is skipped; only the regular file is returned.
+    assert len(result) == 1
+    assert result[0].id == "file2"
+    # Drive API is only called once (no recursive call for the shortcut target).
+    assert (
+        mock_drive_client.drive.files.return_value.list.return_value.execute.call_count
+        == 1
+    )
+
+
 def test_list_folder_contents_shortcut_resolved(mock_drive_client):
     """Shortcuts are resolved: target ID/mimeType used, shortcut name retained."""
     from .gdrive import SHORTCUT_MIME_TYPE
