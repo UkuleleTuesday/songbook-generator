@@ -284,3 +284,50 @@ body {
   padding: 1px 4px;
   border-radius: 3px;
 }
+
+/* Config-based editions info banner */
+.config-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #e8eaf6;
+  border: 1px solid #c5cae9;
+  border-left: 3px solid #3f51b5;
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: #1a237e;
+  line-height: 1.4;
+}
+
+.config-info .material-icons {
+  font-size: 1.1rem;
+  color: #3f51b5;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.config-info-body {
+  flex: 1;
+}
+
+.config-info-body p {
+  margin: 0 0 6px;
+}
+
+.config-info-body p:last-child {
+  margin-bottom: 0;
+}
+
+.config-info-body code {
+  font-family: monospace;
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+.config-info-body a {
+  color: #3f51b5;
+}
