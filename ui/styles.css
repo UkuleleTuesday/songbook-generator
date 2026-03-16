@@ -115,6 +115,11 @@ body {
   border-top: 1px solid rgba(0, 0, 0, 0.10);
 }
 
+.edition-card-actions-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .edition-radio:checked ~ .edition-card-actions {
   display: block;
 }
