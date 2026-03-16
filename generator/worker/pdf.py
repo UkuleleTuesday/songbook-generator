@@ -450,7 +450,9 @@ def _resolve_songs_from_folder(
             span.set_attribute("songs_subfolder_found", False)
             return None
 
-        songs_files = gdrive_client.list_folder_contents(songs_folder_id)
+        songs_files = gdrive_client.list_folder_contents(
+            songs_folder_id, resolve_shortcuts=True
+        )
         if not songs_files:
             click.echo(
                 "Songs subfolder found but contains no files; skipping.",
@@ -964,7 +966,9 @@ def generate_songbook_from_drive_folder(
         gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
         click.echo(f"Listing contents of Drive folder: {folder_id}")
-        all_files = gdrive_client.list_folder_contents(folder_id)
+        all_files = gdrive_client.list_folder_contents(
+            folder_id, resolve_shortcuts=True
+        )
         click.echo(f"Found {len(all_files)} item(s) in folder")
         span.set_attribute("folder_total_items", len(all_files))
 

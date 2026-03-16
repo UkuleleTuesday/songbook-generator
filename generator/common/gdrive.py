@@ -1,4 +1,4 @@
-from typing import Generator, List, Dict, Optional, Union
+from typing import Generator, List, Dict, Optional, Set, Union
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
@@ -376,20 +376,59 @@ class GoogleDriveClient:
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
 
-    def list_folder_contents(self, folder_id: str) -> List[File]:
+    def list_folder_contents(
+        self,
+        folder_id: str,
+        resolve_shortcuts: bool = False,
+    ) -> List[File]:
         """
         List all files in a Drive folder, resolving shortcuts to their targets.
 
-        Shortcuts are resolved so callers receive the target file's ID and
-        MIME type while retaining the shortcut's display name (as it appears
-        in the folder) for ordering and categorisation purposes.
+        Shortcuts to files are always resolved so callers receive the target
+        file's ID and MIME type while retaining the shortcut's display name
+        (as it appears in the folder) for ordering and categorisation
+        purposes.
+
+        When *resolve_shortcuts* is ``True``, shortcuts that point to folders
+        are followed recursively: all files inside the target folder are
+        fetched and included in the results.  Cycle detection prevents
+        infinite loops caused by circular shortcuts.
+        When ``False`` (the default), folder shortcuts are skipped.
 
         Args:
             folder_id: The Google Drive folder ID to list.
+            resolve_shortcuts: Whether to recursively follow shortcuts that
+                point to folders.  Defaults to ``False``.
 
         Returns:
-            List of File objects sorted by name.  Shortcuts are returned as
-            the target file with the shortcut's name.
+            List of File objects.  Shortcuts to files are returned as the
+            target file with the shortcut's display name.  When
+            *resolve_shortcuts* is ``True``, shortcuts to folders are
+            expanded so their contents are included inline.
+        """
+        return self._list_folder_contents(
+            folder_id,
+            visited_folder_ids=set(),
+            resolve_shortcuts=resolve_shortcuts,
+        )
+
+    def _list_folder_contents(
+        self,
+        folder_id: str,
+        visited_folder_ids: Set[str],
+        resolve_shortcuts: bool,
+    ) -> List[File]:
+        """
+        Internal implementation of list_folder_contents with cycle tracking.
+
+        Args:
+            folder_id: The Google Drive folder ID to list.
+            visited_folder_ids: Set of folder IDs already visited in this
+                traversal, used to detect and break cycles.
+            resolve_shortcuts: Whether to recursively follow folder shortcuts.
+
+        Returns:
+            List of File objects with shortcuts resolved.
         """
         folder_mime = "application/vnd.google-apps.folder"
         # Exclude sub-folders so they are never treated as song files.
@@ -400,6 +439,8 @@ class GoogleDriveClient:
         )
         files = []
         page_token = None
+
+        visited_folder_ids.add(folder_id)
 
         while True:
             try:
@@ -439,10 +480,24 @@ class GoogleDriveClient:
                         )
                         continue
                     if target_mime == folder_mime:
-                        click.echo(
-                            f"Warning: shortcut '{f['name']}' points to a "
-                            "folder, skipping.",
-                            err=True,
+                        if not resolve_shortcuts:
+                            continue
+                        if target_id in visited_folder_ids:
+                            click.echo(
+                                f"Warning: shortcut '{f['name']}' points to "
+                                f"folder {target_id} which was already "
+                                "visited, skipping to prevent infinite "
+                                "recursion.",
+                                err=True,
+                            )
+                            continue
+                        # Recursively include all files in the target folder.
+                        files.extend(
+                            self._list_folder_contents(
+                                target_id,
+                                visited_folder_ids=visited_folder_ids,
+                                resolve_shortcuts=resolve_shortcuts,
+                            )
                         )
                         continue
                     files.append(
