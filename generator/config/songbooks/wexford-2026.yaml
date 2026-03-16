@@ -1,8 +1,9 @@
 id: "wexford-2026"
 title: "Wexford 2026"
 description: "We packed a bunch of ukulele Tuesday classics in this songbook. Download it and play along with us at the Wexford uke fest Sunday jam!"
-cover_file_id: "1YOAi8XpZ-4clFLZwqHjHSrSnRfBDHBEjJoNIGOctXq4"
 sections:
+  cover:
+    file_id: "1YOAi8XpZ-4clFLZwqHjHSrSnRfBDHBEjJoNIGOctXq4"
   table_of_contents:
     include_difficulty: false
     include_wip_marker: false

@@ -102,8 +102,8 @@ def _edition_to_yaml_bytes(
     data = edition.model_dump(mode="json", exclude_unset=True)
     if use_folder_components:
         data["use_folder_components"] = True
-        data.pop("cover_file_id", None)
         sections = data.get("sections", {})
+        sections.pop("cover", None)
         sections.pop("preface", None)
         sections.pop("postface", None)
         if sections:

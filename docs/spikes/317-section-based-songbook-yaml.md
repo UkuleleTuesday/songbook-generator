@@ -28,7 +28,9 @@ table_of_contents:
 As the number of edition options grows, this flat structure becomes hard to
 read, hard to extend, and makes the relationships between fields implicit.
 For example, `filters` (which selects songs) sits at the same level as
-`table_of_contents` (which only controls rendering).
+`table_of_contents` (which only controls rendering), and `cover_file_id` sits
+alongside identity fields such as `id` and `title` even though it is strictly
+a content/layout concern.
 
 The hypothesis explored here is that grouping configuration into explicit
 **section blocks** improves clarity, reduces ambiguity, and provides a natural
@@ -42,8 +44,9 @@ extension point for future per-section features.
 id: "current"
 title: "Ukulele Tuesday - Current Songbook"
 description: "..."
-cover_file_id: "1rxn4Kl6..."
 sections:
+  cover:
+    file_id: "1rxn4Kl6..."
   preface:
     file_ids:
       - "1ZxYst-..."
@@ -68,13 +71,15 @@ sections:
 
 | Section | Fields | Purpose |
 |---|---|---|
+| `cover` | `file_id` | Single Drive file ID for the cover page |
 | `preface` | `file_ids` | Ordered Drive file IDs prepended before the TOC |
 | `table_of_contents` | all existing `Toc` fields + `postfixes` | TOC rendering / layout settings |
 | `songs` | `filters` | Property-based filter expressions that select which songs are included |
 | `postface` | `file_ids` | Ordered Drive file IDs appended after the song pages |
 
-`cover_file_id` stays at the top level because it is a single scalar that
-belongs to the overall edition identity, not to any specific section.
+All configuration that varies per-edition now lives under `sections`.  The only
+remaining top-level fields are the identity fields (`id`, `title`,
+`description`) and the operational flag `use_folder_components`.
 
 ---
 
@@ -82,9 +87,12 @@ belongs to the overall edition identity, not to any specific section.
 
 ### New Pydantic models (`generator/common/config.py`)
 
-Four new models were added:
+Five new models were added:
 
 ```python
+class CoverSection(BaseModel):
+    file_id: Optional[str] = None
+
 class PrefaceSection(BaseModel):
     file_ids: Optional[List[str]] = None
 
@@ -95,14 +103,17 @@ class SongsSection(BaseModel):
     filters: List[Union[FilterGroup, PropertyFilter]] = Field(default_factory=list)
 
 class EditionSections(BaseModel):
+    cover: Optional[CoverSection] = None
     preface: Optional[PrefaceSection] = None
     table_of_contents: Optional[Toc] = None
     songs: SongsSection = Field(default_factory=SongsSection)
     postface: Optional[PostfaceSection] = None
 ```
 
-The `Edition` model was updated to replace the four flat fields with a single
-`sections: EditionSections` field.
+The `Edition` model was updated to replace all the flat fields with a single
+`sections: EditionSections` field.  A `cover_file_id` property is retained on
+`Edition` as a convenience accessor (`sections.cover.file_id`) so that all
+downstream code and tests continue to work without modification.
 
 ### Backward compatibility migration
 
@@ -113,17 +124,21 @@ flat-format YAML to the new sections structure at parse time:
 @model_validator(mode="before")
 @classmethod
 def migrate_legacy_format(cls, data):
-    if "sections" in data:
-        return data  # already new format
-    # migrate flat → sections
-    sections = {}
-    if (ids := data.pop("preface_file_ids", None)) is not None:
+    sections = data.pop("sections", {})
+    # cover_file_id → sections.cover.file_id
+    if (fid := data.pop("cover_file_id", None)) and "cover" not in sections:
+        sections["cover"] = {"file_id": fid}
+    # preface_file_ids → sections.preface.file_ids
+    if (ids := data.pop("preface_file_ids", None)) and "preface" not in sections:
         sections["preface"] = {"file_ids": ids}
-    if (ids := data.pop("postface_file_ids", None)) is not None:
+    # postface_file_ids → sections.postface.file_ids
+    if (ids := data.pop("postface_file_ids", None)) and "postface" not in sections:
         sections["postface"] = {"file_ids": ids}
-    if (toc := data.pop("table_of_contents", None)) is not None:
+    # table_of_contents → sections.table_of_contents
+    if (toc := data.pop("table_of_contents", None)) and "table_of_contents" not in sections:
         sections["table_of_contents"] = toc
-    if (filters := data.pop("filters", None)) is not None:
+    # filters → sections.songs.filters
+    if (filters := data.pop("filters", None)) and "songs" not in sections:
         sections["songs"] = {"filters": filters}
     if sections:
         data["sections"] = sections

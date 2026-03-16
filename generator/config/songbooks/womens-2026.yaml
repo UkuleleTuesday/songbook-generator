@@ -3,8 +3,9 @@ title: "Women's Songbook 2026"
 description: >
   A curated collection of songs by female-identified artists
   for the 2026 women's edition.
-cover_file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"
 sections:
+  cover:
+    file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"
   preface:
     file_ids:
       - "1TCzHDdBMwlKm1tA82r_jsqS35VWS8sBX3shdnrUZ3y4"

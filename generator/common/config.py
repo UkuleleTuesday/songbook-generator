@@ -54,6 +54,12 @@ class Toc(BaseModel):
         return v
 
 
+class CoverSection(BaseModel):
+    """Configuration for the cover section of a songbook edition."""
+
+    file_id: Optional[str] = None
+
+
 class PrefaceSection(BaseModel):
     """Configuration for the preface section of a songbook edition."""
 
@@ -75,6 +81,7 @@ class SongsSection(BaseModel):
 class EditionSections(BaseModel):
     """Section-based configuration blocks for a songbook edition."""
 
+    cover: Optional[CoverSection] = None
     preface: Optional[PrefaceSection] = None
     table_of_contents: Optional[Toc] = None
     songs: SongsSection = Field(default_factory=SongsSection)
@@ -110,41 +117,50 @@ class Edition(BaseModel):
     id: str
     title: str
     description: str
-    cover_file_id: Optional[str] = None
     sections: EditionSections = Field(default_factory=EditionSections)
     use_folder_components: bool = False
+
+    @property
+    def cover_file_id(self) -> Optional[str]:
+        """Convenience accessor for sections.cover.file_id."""
+        return self.sections.cover.file_id if self.sections.cover else None
 
     @model_validator(mode="before")
     @classmethod
     def migrate_legacy_format(cls, data: object) -> object:
         """Migrate flat legacy fields to the new sections-based format.
 
-        Accepts the old flat structure (``filters``, ``preface_file_ids``,
-        ``postface_file_ids``, ``table_of_contents`` at the top level) and
-        converts it to the new ``sections``-based structure so that existing
-        ``.songbook.yaml`` files remain fully backward-compatible.
+        Accepts the old flat structure (``cover_file_id``, ``filters``,
+        ``preface_file_ids``, ``postface_file_ids``, ``table_of_contents`` at
+        the top level) and converts it to the new ``sections``-based structure
+        so that existing ``.songbook.yaml`` files remain fully
+        backward-compatible.
         """
         if not isinstance(data, dict):
             return data
-        if "sections" in data:
-            return data
 
-        sections: dict = {}
+        sections: dict = data.pop("sections", {})
+        if isinstance(sections, dict):
+            sections = dict(sections)
+
+        cover_file_id = data.pop("cover_file_id", None)
+        if cover_file_id is not None and "cover" not in sections:
+            sections["cover"] = {"file_id": cover_file_id}
 
         preface_ids = data.pop("preface_file_ids", None)
-        if preface_ids is not None:
+        if preface_ids is not None and "preface" not in sections:
             sections["preface"] = {"file_ids": preface_ids}
 
         postface_ids = data.pop("postface_file_ids", None)
-        if postface_ids is not None:
+        if postface_ids is not None and "postface" not in sections:
             sections["postface"] = {"file_ids": postface_ids}
 
         toc = data.pop("table_of_contents", None)
-        if toc is not None:
+        if toc is not None and "table_of_contents" not in sections:
             sections["table_of_contents"] = toc
 
         filters = data.pop("filters", None)
-        if filters is not None:
+        if filters is not None and "songs" not in sections:
             sections["songs"] = {"filters": filters}
 
         if sections:

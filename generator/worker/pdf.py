@@ -13,7 +13,7 @@ from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from ..common import caching, config
-from ..common.config import PrefaceSection, PostfaceSection
+from ..common.config import CoverSection, PrefaceSection, PostfaceSection
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from ..common.filters import PropertyFilter, FilterGroup
@@ -347,7 +347,6 @@ def resolve_folder_components(
     with tracer.start_as_current_span("resolve_folder_components") as span:
         span.set_attribute("folder_id", folder_id)
 
-        updates: dict = {}
         sections_updates: dict = {}
 
         # --- Cover ---
@@ -358,7 +357,7 @@ def resolve_folder_components(
             if cover_folder_id:
                 cover_files = gdrive_client.list_folder_contents(cover_folder_id)
                 if cover_files:
-                    updates["cover_file_id"] = cover_files[0].id
+                    sections_updates["cover"] = CoverSection(file_id=cover_files[0].id)
                     click.echo(f"Found cover from subfolder: {cover_files[0].name}")
                     span.set_attribute("cover_resolved_from_folder", True)
                 else:
@@ -423,9 +422,9 @@ def resolve_folder_components(
         else:
             span.set_attribute("postface_from_yaml", True)
 
-        if updates or sections_updates:
+        if sections_updates:
             new_sections = edition.sections.model_copy(update=sections_updates)
-            return edition.model_copy(update={**updates, "sections": new_sections})
+            return edition.model_copy(update={"sections": new_sections})
         return edition
 
 
