@@ -70,9 +70,6 @@
                   </div>
                 </div>
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
-                <button type="submit" id="submitButton" class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" style="width: 100%;">
-                  Generate Songbook!
-                </button>
               </form>
             </section>
             <section class="mdl-tabs__panel" id="history-panel">
@@ -103,7 +100,6 @@
     }
 
     const apiBase = getApiBase();
-    const submitButton = document.getElementById('submitButton');
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
@@ -157,12 +153,65 @@
       }
     }
 
-    function addSongbookToHistory(name, url) {
+    function addSongbookToHistory(name, url, editionId) {
       const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
       // To keep the list clean, we'll limit it to the last 10 generated songbooks
-      const newSongbooks = [{ name, url, date: new Date().toISOString() }, ...songbooks].slice(0, 10);
+      const newSongbooks = [{ name, url, date: new Date().toISOString(), editionId }, ...songbooks].slice(0, 10);
       localStorage.setItem('generatedSongbooks', JSON.stringify(newSongbooks));
       renderHistory();
+      if (editionId) updateEditionCardHistory(editionId);
+    }
+
+    function getEditionHistory(editionId) {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      return songbooks.filter(s => s.editionId === editionId);
+    }
+
+    function createEditionHistorySection(history) {
+      const section = document.createElement('div');
+      section.className = 'edition-card-history';
+
+      const label = document.createElement('span');
+      label.className = 'edition-card-history-label';
+      label.textContent = 'Previously generated';
+      section.appendChild(label);
+
+      const list = document.createElement('ul');
+      list.className = 'edition-card-history-list';
+
+      history.slice(0, 5).forEach(item => {
+        const li = document.createElement('li');
+        const icon = document.createElement('i');
+        icon.className = 'material-icons';
+        icon.textContent = 'picture_as_pdf';
+        li.appendChild(icon);
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.target = '_blank';
+        a.textContent = new Date(item.date).toLocaleString('en-GB');
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+
+      section.appendChild(list);
+      return section;
+    }
+
+    function updateEditionCardHistory(editionId) {
+      const radio = document.getElementById(`edition-${editionId}`);
+      if (!radio) return;
+      const card = radio.closest('.edition-card');
+      if (!card) return;
+      const actions = card.querySelector('.edition-card-actions');
+      if (!actions) return;
+
+      const existing = actions.querySelector('.edition-card-history');
+      if (existing) existing.remove();
+
+      const history = getEditionHistory(editionId);
+      if (history.length > 0) {
+        actions.appendChild(createEditionHistorySection(history));
+      }
     }
 
     function setIndeterminate(indeterminate) {
@@ -198,13 +247,23 @@
     }
 
     function enableSubmitButton() {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Generate Songbook!';
+      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
+        btn.disabled = false;
+        const textSpan = btn.querySelector('.btn-text');
+        if (textSpan) textSpan.textContent = 'Generate Songbook!';
+        const icon = btn.querySelector('.material-icons');
+        if (icon) icon.textContent = 'auto_fix_high';
+      });
     }
 
     function disableSubmitButton() {
-      submitButton.disabled = true;
-      submitButton.textContent = 'Generating...';
+      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
+        btn.disabled = true;
+        const textSpan = btn.querySelector('.btn-text');
+        if (textSpan) textSpan.textContent = 'Generating...';
+        const icon = btn.querySelector('.material-icons');
+        if (icon) icon.textContent = 'hourglass_empty';
+      });
     }
 
     async function pollStatus(jobId) {
@@ -330,6 +389,35 @@
 
       card.appendChild(radio);
       card.appendChild(lbl);
+
+      if (!isError) {
+        const actions = document.createElement('div');
+        actions.className = 'edition-card-actions';
+
+        const generateBtn = document.createElement('button');
+        generateBtn.type = 'submit';
+        generateBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
+
+        const btnIcon = document.createElement('i');
+        btnIcon.className = 'material-icons';
+        btnIcon.textContent = 'auto_fix_high';
+        generateBtn.appendChild(btnIcon);
+
+        const btnText = document.createElement('span');
+        btnText.className = 'btn-text';
+        btnText.textContent = 'Generate Songbook!';
+        generateBtn.appendChild(btnText);
+
+        actions.appendChild(generateBtn);
+
+        const history = getEditionHistory(edition.id);
+        if (history.length > 0) {
+          actions.appendChild(createEditionHistorySection(history));
+        }
+
+        card.appendChild(actions);
+      }
+
       return card;
     }
 
@@ -371,6 +459,10 @@
         editionsError.style.display = 'block';
       } else {
         editionsError.style.display = 'none';
+      }
+
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeDom();
       }
     }
 
@@ -453,7 +545,7 @@
           ? checkedRadio.nextElementSibling.querySelector('.edition-card-title').textContent
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
-        addSongbookToHistory(songbookName, downloadUrl);
+        addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
 
       } catch (err) {
         updateProgress(0, `Error: ${err.message}`);
