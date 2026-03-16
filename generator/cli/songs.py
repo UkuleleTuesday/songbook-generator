@@ -61,7 +61,7 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwarg
         edition_config = next((e for e in settings.editions if e.id == edition), None)
         if not edition_config:
             raise click.BadParameter(f"Edition '{edition}' not found in configuration.")
-        client_filter = parse_filters(edition_config.sections.songs.filters)
+        client_filter = parse_filters(edition_config.filters)
 
     files = collect_and_sort_files(
         gdrive_client=gdrive_client,

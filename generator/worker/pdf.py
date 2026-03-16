@@ -13,7 +13,6 @@ from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from ..common import caching, config
-from ..common.config import CoverSection, PrefaceSection, PostfaceSection
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from ..common.filters import PropertyFilter, FilterGroup
@@ -327,10 +326,9 @@ def resolve_folder_components(
     Shortcuts inside any subfolder are resolved transparently by
     :meth:`~generator.common.gdrive.GoogleDriveClient.list_folder_contents`.
 
-    Explicit YAML config entries (``cover_file_id``,
-    ``sections.preface.file_ids``, ``sections.postface.file_ids``) always take
-    precedence over subfolder-detected files so that existing configurations
-    remain fully backward-compatible.
+    Explicit YAML config entries (``cover_file_id``, ``preface_file_ids``,
+    ``postface_file_ids``) always take precedence over subfolder-detected
+    files so that existing configurations remain fully backward-compatible.
 
     Args:
         gdrive_client: An authenticated GoogleDriveClient instance.
@@ -347,7 +345,7 @@ def resolve_folder_components(
     with tracer.start_as_current_span("resolve_folder_components") as span:
         span.set_attribute("folder_id", folder_id)
 
-        sections_updates: dict = {}
+        updates: dict = {}
 
         # --- Cover ---
         if edition.cover_file_id is None:
@@ -357,7 +355,7 @@ def resolve_folder_components(
             if cover_folder_id:
                 cover_files = gdrive_client.list_folder_contents(cover_folder_id)
                 if cover_files:
-                    sections_updates["cover"] = CoverSection(file_id=cover_files[0].id)
+                    updates["cover_file_id"] = cover_files[0].id
                     click.echo(f"Found cover from subfolder: {cover_files[0].name}")
                     span.set_attribute("cover_resolved_from_folder", True)
                 else:
@@ -371,16 +369,14 @@ def resolve_folder_components(
             span.set_attribute("cover_from_yaml", True)
 
         # --- Preface ---
-        if edition.sections.preface is None:
+        if edition.preface_file_ids is None:
             preface_folder_id = gdrive_client.find_subfolder_by_name(
                 folder_id, FOLDER_COMPONENT_NAMES["preface"]
             )
             if preface_folder_id:
                 preface_files = gdrive_client.list_folder_contents(preface_folder_id)
                 if preface_files:
-                    sections_updates["preface"] = PrefaceSection(
-                        file_ids=[f.id for f in preface_files]
-                    )
+                    updates["preface_file_ids"] = [f.id for f in preface_files]
                     click.echo(
                         f"Found {len(preface_files)} preface file(s) from subfolder."
                     )
@@ -397,16 +393,14 @@ def resolve_folder_components(
             span.set_attribute("preface_from_yaml", True)
 
         # --- Postface ---
-        if edition.sections.postface is None:
+        if edition.postface_file_ids is None:
             postface_folder_id = gdrive_client.find_subfolder_by_name(
                 folder_id, FOLDER_COMPONENT_NAMES["postface"]
             )
             if postface_folder_id:
                 postface_files = gdrive_client.list_folder_contents(postface_folder_id)
                 if postface_files:
-                    sections_updates["postface"] = PostfaceSection(
-                        file_ids=[f.id for f in postface_files]
-                    )
+                    updates["postface_file_ids"] = [f.id for f in postface_files]
                     click.echo(
                         f"Found {len(postface_files)} postface file(s) from subfolder."
                     )
@@ -422,9 +416,8 @@ def resolve_folder_components(
         else:
             span.set_attribute("postface_from_yaml", True)
 
-        if sections_updates:
-            new_sections = edition.sections.model_copy(update=sections_updates)
-            return edition.model_copy(update={"sections": new_sections})
+        if updates:
+            return edition.model_copy(update=updates)
         return edition
 
 
@@ -566,12 +559,11 @@ def generate_songbook_from_edition(
 
         # Combine filters from the edition into a single FilterGroup if necessary
         client_filter = None
-        filters = edition.sections.songs.filters
-        if filters:
-            if len(filters) == 1:
-                client_filter = filters[0]
+        if edition.filters:
+            if len(edition.filters) == 1:
+                client_filter = edition.filters[0]
             else:
-                client_filter = FilterGroup(operator="AND", filters=filters)
+                client_filter = FilterGroup(operator="AND", filters=edition.filters)
 
         if client_filter:
             span.set_attribute("client_filter", str(client_filter.model_dump()))
@@ -580,16 +572,6 @@ def generate_songbook_from_edition(
             span.set_attribute("songs_pre_supplied", True)
             span.set_attribute("songs_files_count", len(files))
 
-        preface_file_ids = (
-            edition.sections.preface.file_ids
-            if edition.sections.preface is not None
-            else None
-        )
-        postface_file_ids = (
-            edition.sections.postface.file_ids
-            if edition.sections.postface is not None
-            else None
-        )
         return generate_songbook(
             drive=drive,
             cache=cache,
@@ -598,12 +580,12 @@ def generate_songbook_from_edition(
             limit=limit,
             cover_file_id=edition.cover_file_id,
             client_filter=client_filter,
-            preface_file_ids=preface_file_ids,
-            postface_file_ids=postface_file_ids,
+            preface_file_ids=edition.preface_file_ids,
+            postface_file_ids=edition.postface_file_ids,
             on_progress=on_progress,
             title=edition.title,
             subject=edition.description,
-            edition_toc_config=edition.sections.table_of_contents,
+            edition_toc_config=edition.table_of_contents,
             files=files,
         )
 
@@ -1108,24 +1090,16 @@ def generate_manifest(
             "title": edition.title,
             "description": edition.description,
             "cover_file_id": edition.cover_file_id,
-            "preface_file_ids": (
-                edition.sections.preface.file_ids
-                if edition.sections.preface is not None
-                else None
-            ),
-            "postface_file_ids": (
-                edition.sections.postface.file_ids
-                if edition.sections.postface is not None
-                else None
-            ),
+            "preface_file_ids": edition.preface_file_ids,
+            "postface_file_ids": edition.postface_file_ids,
             "table_of_contents_config": (
-                edition.sections.table_of_contents.model_dump(mode="json")
-                if edition.sections.table_of_contents is not None
+                edition.table_of_contents.model_dump(mode="json")
+                if edition.table_of_contents
                 else None
             ),
-            "filters": [
-                {**f.model_dump(mode="json")} for f in edition.sections.songs.filters
-            ],
+            "filters": [{**f.model_dump(mode="json")} for f in edition.filters]
+            if edition.filters
+            else [],
         }
 
     # Add page information if PDF exists

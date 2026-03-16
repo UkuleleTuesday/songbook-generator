@@ -60,7 +60,7 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     mock_generate_songbook.assert_called_once()
     call_args = mock_generate_songbook.call_args[1]
     assert call_args["drive"] == mock_drive
-    assert call_args["client_filter"] == edition.sections.songs.filters[0]
+    assert call_args["client_filter"] == edition.filters[0]
     assert call_args["limit"] == 10
     assert call_args["title"] == "Test Edition"
     assert call_args["subject"] == "A test edition"
@@ -1032,8 +1032,8 @@ def test_resolve_folder_components_cover_from_subfolder(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_file_id"
-    assert result.sections.preface is None
-    assert result.sections.postface is None
+    assert result.preface_file_ids is None
+    assert result.postface_file_ids is None
     # Original edition not mutated
     assert edition.cover_file_id is None
 
@@ -1052,10 +1052,9 @@ def test_resolve_folder_components_preface_from_subfolder(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.sections.preface is not None
-    assert result.sections.preface.file_ids == ["preface_1", "preface_2"]
+    assert result.preface_file_ids == ["preface_1", "preface_2"]
     assert result.cover_file_id is None
-    assert result.sections.postface is None
+    assert result.postface_file_ids is None
 
 
 def test_resolve_folder_components_postface_from_subfolder(mocker):
@@ -1071,10 +1070,9 @@ def test_resolve_folder_components_postface_from_subfolder(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.sections.postface is not None
-    assert result.sections.postface.file_ids == ["postface_1"]
+    assert result.postface_file_ids == ["postface_1"]
     assert result.cover_file_id is None
-    assert result.sections.preface is None
+    assert result.preface_file_ids is None
 
 
 def test_resolve_folder_components_yaml_cover_takes_precedence(mocker):
@@ -1097,7 +1095,7 @@ def test_resolve_folder_components_yaml_cover_takes_precedence(mocker):
 
 
 def test_resolve_folder_components_yaml_preface_takes_precedence(mocker):
-    """Explicit sections.preface.file_ids overrides subfolder detection."""
+    """Explicit YAML preface_file_ids overrides subfolder detection."""
     mock_gdrive = mocker.Mock()
     mock_gdrive.find_subfolder_by_name.return_value = "preface_subfolder"
     mock_gdrive.list_folder_contents.return_value = [
@@ -1107,8 +1105,7 @@ def test_resolve_folder_components_yaml_preface_takes_precedence(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.sections.preface is not None
-    assert result.sections.preface.file_ids == ["yaml_preface_id"]
+    assert result.preface_file_ids == ["yaml_preface_id"]
     calls = [
         c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
     ]
@@ -1136,8 +1133,8 @@ def test_resolve_folder_components_no_subfolders(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id is None
-    assert result.sections.preface is None
-    assert result.sections.postface is None
+    assert result.preface_file_ids is None
+    assert result.postface_file_ids is None
 
 
 def test_resolve_folder_components_all_resolved(mocker):
@@ -1166,10 +1163,8 @@ def test_resolve_folder_components_all_resolved(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_id"
-    assert result.sections.preface is not None
-    assert result.sections.preface.file_ids == ["pre_1", "pre_2"]
-    assert result.sections.postface is not None
-    assert result.sections.postface.file_ids == ["post_1"]
+    assert result.preface_file_ids == ["pre_1", "pre_2"]
+    assert result.postface_file_ids == ["post_1"]
 
 
 def test_load_edition_from_drive_folder_resolves_components(mocker):
@@ -1356,10 +1351,8 @@ def test_resolve_folder_components_all_three_resolved(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_id"
-    assert result.sections.preface is not None
-    assert result.sections.preface.file_ids == ["pre_1"]
-    assert result.sections.postface is not None
-    assert result.sections.postface.file_ids == ["post_1"]
+    assert result.preface_file_ids == ["pre_1"]
+    assert result.postface_file_ids == ["post_1"]
     # Songs are no longer part of resolve_folder_components
     calls = [
         c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
