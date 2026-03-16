@@ -27,11 +27,6 @@ body {
   display: block;
 }
 
-#historyList {
-  list-style-type: none;
-  padding: 0;
-}
-
 /* Edition card picker */
 .editions-section-label {
   display: block;
@@ -92,25 +87,18 @@ body {
   display: block;
   padding: 12px 14px;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  border-left: 3px solid transparent;
   border-radius: 4px;
   cursor: pointer;
   background: #fff;
-  transition: box-shadow 0.15s, border-left-color 0.15s, background 0.15s;
+  transition: box-shadow 0.15s, background 0.15s;
 }
 
 .edition-card-label:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  border-left-color: rgba(63, 81, 181, 0.4);
 }
 
 .edition-radio:checked + .edition-card-label {
-  border-left-color: #3f51b5;
   background: rgba(63, 81, 181, 0.05);
-  box-shadow: none;
-  border-bottom: none;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 /* Card actions: generate button + per-edition history, shown when selected */
@@ -118,11 +106,8 @@ body {
   display: none;
   padding: 10px 14px 12px;
   background: rgba(63, 81, 181, 0.04);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-left: 3px solid #3f51b5;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
-  box-shadow: 0 4px 8px rgba(63, 81, 181, 0.12);
+  border-radius: 4px;
+  margin-top: 4px;
 }
 
 .edition-radio:checked ~ .edition-card-actions {

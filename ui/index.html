@@ -23,11 +23,6 @@
         </div>
         <div class="mdl-card__actions">
           <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
-            <div class="mdl-tabs__tab-bar">
-              <a href="#generator-panel" id="generator-tab" class="mdl-tabs__tab is-active">Generate</a>
-              <a href="#history-panel" id="history-tab" class="mdl-tabs__tab" style="display: none;">History</a>
-            </div>
-
             <section class="mdl-tabs__panel is-active" id="generator-panel">
               <form id="jobForm" style="text-align: left;">
                 <div class="source-toggle-group">
@@ -72,11 +67,6 @@
                 <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
               </form>
             </section>
-            <section class="mdl-tabs__panel" id="history-panel">
-              <div id="historyContainer">
-                <ul id="historyList" class="mdl-list"></ul>
-              </div>
-            </section>
           </div>
         </div>
         <div id="progressContainer" style="display: none; padding: 1rem;">
@@ -104,61 +94,12 @@
     const progressBar = document.getElementById('progressBar');
     const progressText = document.getElementById('progressText');
     const progressPercentage = document.getElementById('progressPercentage');
-    const historyTab = document.getElementById('history-tab');
-    const historyList = document.getElementById('historyList');
-
-    function renderHistory() {
-      let songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
-
-      // TTL items older than 60 days
-      const sixtyDaysAgo = new Date();
-      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-
-      const recentSongbooks = songbooks.filter(songbook => {
-        const songbookDate = new Date(songbook.date);
-        return songbookDate >= sixtyDaysAgo;
-      });
-
-      if (recentSongbooks.length < songbooks.length) {
-        songbooks = recentSongbooks;
-        localStorage.setItem('generatedSongbooks', JSON.stringify(songbooks));
-      }
-
-      if (songbooks.length > 0) {
-        historyList.innerHTML = '';
-        songbooks.forEach(songbook => {
-          const li = document.createElement('li');
-          li.className = 'mdl-list__item';
-
-          const primaryContent = document.createElement('span');
-          primaryContent.className = 'mdl-list__item-primary-content';
-
-          const icon = document.createElement('i');
-          icon.className = 'material-icons mdl-list__item-icon';
-          icon.textContent = 'book';
-          primaryContent.appendChild(icon);
-
-          const a = document.createElement('a');
-          a.href = songbook.url;
-          a.textContent = songbook.name;
-          a.target = '_blank';
-          primaryContent.appendChild(a);
-
-          li.appendChild(primaryContent);
-          historyList.appendChild(li);
-        });
-        historyTab.style.display = 'inline-block';
-      } else {
-        historyTab.style.display = 'none';
-      }
-    }
 
     function addSongbookToHistory(name, url, editionId) {
       const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
       // To keep the list clean, we'll limit it to the last 10 generated songbooks
       const newSongbooks = [{ name, url, date: new Date().toISOString(), editionId }, ...songbooks].slice(0, 10);
       localStorage.setItem('generatedSongbooks', JSON.stringify(newSongbooks));
-      renderHistory();
       if (editionId) updateEditionCardHistory(editionId);
     }
 
@@ -250,7 +191,7 @@
       document.querySelectorAll('.edition-generate-btn').forEach(btn => {
         btn.disabled = false;
         const textSpan = btn.querySelector('.btn-text');
-        if (textSpan) textSpan.textContent = 'Generate Songbook!';
+        if (textSpan) textSpan.textContent = 'Generate Songbook';
         const icon = btn.querySelector('.material-icons');
         if (icon) icon.textContent = 'auto_fix_high';
       });
@@ -320,7 +261,7 @@
       return driveLink;
     }
 
-    function createEditionCard(edition, isFirst) {
+    function createEditionCard(edition) {
       const isError = edition.status === 'error';
 
       const card = document.createElement('div');
@@ -332,7 +273,6 @@
       radio.id = `edition-${edition.id}`;
       radio.value = edition.id;
       radio.className = 'edition-radio';
-      if (isFirst && !isError) radio.checked = true;
       if (isError) radio.disabled = true;
 
       const lbl = document.createElement('label');
@@ -405,7 +345,7 @@
 
         const btnText = document.createElement('span');
         btnText.className = 'btn-text';
-        btnText.textContent = 'Generate Songbook!';
+        btnText.textContent = 'Generate Songbook';
         generateBtn.appendChild(btnText);
 
         actions.appendChild(generateBtn);
@@ -441,11 +381,8 @@
         grid.innerHTML =
           `<p class="editions-empty-msg">${emptyMsg}</p>`;
       } else {
-        let firstSelectableFound = false;
         filtered.forEach((edition) => {
-          const isFirst = !firstSelectableFound && edition.status !== 'error';
-          if (isFirst) firstSelectableFound = true;
-          grid.appendChild(createEditionCard(edition, isFirst));
+          grid.appendChild(createEditionCard(edition));
         });
       }
 
@@ -560,7 +497,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      renderHistory();
       // Load editions from the API (populates the grid dynamically)
       loadEditions();
       // Re-render when the source toggle changes
