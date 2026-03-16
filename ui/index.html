@@ -191,7 +191,7 @@
       document.querySelectorAll('.edition-generate-btn').forEach(btn => {
         btn.disabled = false;
         const textSpan = btn.querySelector('.btn-text');
-        if (textSpan) textSpan.textContent = 'Generate Songbook';
+        if (textSpan) textSpan.textContent = 'Generate';
         const icon = btn.querySelector('.material-icons');
         if (icon) icon.textContent = 'auto_fix_high';
       });
@@ -345,7 +345,7 @@
 
         const btnText = document.createElement('span');
         btnText.className = 'btn-text';
-        btnText.textContent = 'Generate Songbook';
+        btnText.textContent = 'Generate';
         generateBtn.appendChild(btnText);
 
         actions.appendChild(generateBtn);

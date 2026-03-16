@@ -74,6 +74,18 @@ body {
 
 .edition-card {
   position: relative;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  background: #fff;
+  transition: box-shadow 0.15s, background 0.15s;
+}
+
+.edition-card:has(.edition-radio:not(:disabled)):hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.edition-card:has(.edition-radio:checked) {
+  background: rgba(63, 81, 181, 0.04);
 }
 
 .edition-radio {
@@ -86,28 +98,21 @@ body {
 .edition-card-label {
   display: block;
   padding: 12px 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 4px;
   cursor: pointer;
-  background: #fff;
-  transition: box-shadow 0.15s, background 0.15s;
+  background: transparent;
 }
 
 .edition-card-label:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 }
 
 .edition-radio:checked + .edition-card-label {
-  background: rgba(63, 81, 181, 0.05);
 }
 
 /* Card actions: generate button + per-edition history, shown when selected */
 .edition-card-actions {
   display: none;
   padding: 10px 14px 12px;
-  background: rgba(63, 81, 181, 0.04);
-  border-radius: 4px;
-  margin-top: 4px;
+  border-top: 1px solid rgba(0, 0, 0, 0.10);
 }
 
 .edition-radio:checked ~ .edition-card-actions {
@@ -115,10 +120,8 @@ body {
 }
 
 .edition-generate-btn {
-  width: 100%;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center;
-  justify-content: center;
   gap: 4px;
 }
 
@@ -171,9 +174,10 @@ body {
   text-decoration: underline;
 }
 
-.edition-radio:focus + .edition-card-label {
+.edition-radio:focus-visible + .edition-card-label {
   outline: 2px solid #3f51b5;
-  outline-offset: 1px;
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 
 .edition-card-header {
