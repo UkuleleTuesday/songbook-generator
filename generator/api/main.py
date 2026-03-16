@@ -11,7 +11,7 @@ from loguru import logger
 from ..common.tracing import get_tracer, setup_tracing
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient, client as build_drive_client
-from ..common.editions import scan_drive_editions
+from ..common.editions import scan_drive_editions_full
 from ..worker.gcp import get_credentials
 
 _DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
@@ -242,8 +242,10 @@ def handle_get_editions(services):
                 drive_span.set_attribute("credentials.scopes", _DRIVE_READONLY_SCOPE)
             try:
                 gdrive_client = _get_drive_client()
-                drive_scan_results = scan_drive_editions(gdrive_client)
-                for folder_id, edition in drive_scan_results:
+                drive_scan_editions, drive_scan_errors = scan_drive_editions_full(
+                    gdrive_client
+                )
+                for folder_id, edition in drive_scan_editions:
                     editions.append(
                         {
                             "id": folder_id,
@@ -254,12 +256,27 @@ def handle_get_editions(services):
                         }
                     )
                     drive_editions_count += 1
+                for entry in drive_scan_errors:
+                    editions.append(
+                        {
+                            "id": entry.folder_id,
+                            "folder_id": entry.folder_id,
+                            "folder_name": entry.folder_name,
+                            "source": "drive",
+                            "status": "error",
+                            "error": entry.error,
+                        }
+                    )
                 drive_span.set_attribute(
                     "drive.scan.editions_found", drive_editions_count
                 )
+                drive_span.set_attribute(
+                    "drive.scan.editions_errors", len(drive_scan_errors)
+                )
                 drive_span.set_attribute("drive.scan.available", True)
                 logger.info(
-                    f"Drive scan found {drive_editions_count} additional edition(s)"
+                    f"Drive scan found {drive_editions_count} additional edition(s), "
+                    f"{len(drive_scan_errors)} with errors"
                 )
             except HttpError as e:
                 drive_error = f"Drive API error: {e}"

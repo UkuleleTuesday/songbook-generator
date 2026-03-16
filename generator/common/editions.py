@@ -2,6 +2,7 @@
 
 import click
 import yaml
+from dataclasses import dataclass
 from googleapiclient.errors import HttpError
 from loguru import logger
 from pydantic import ValidationError
@@ -16,6 +17,21 @@ tracer = get_tracer(__name__)
 # Maximum number of parent folder IDs to include in a single Drive API
 # OR-query.
 _YAML_SEARCH_BATCH_SIZE = 50
+
+
+@dataclass
+class DriveEditionError:
+    """Represents a Drive edition folder whose ``.songbook.yaml`` is invalid.
+
+    Attributes:
+        folder_id: The Google Drive folder ID.
+        folder_name: Human-readable name of the Drive folder.
+        error: A short description of the validation error.
+    """
+
+    folder_id: str
+    folder_name: str
+    error: str
 
 
 def _list_child_folders(
@@ -119,30 +135,33 @@ def _find_yaml_files_in_folders(
     return yaml_by_parent
 
 
-def scan_drive_editions(
+def scan_drive_editions_full(
     gdrive_client: GoogleDriveClient,
-) -> List[Tuple[str, config.Edition]]:
+) -> Tuple[List[Tuple[str, config.Edition]], List[DriveEditionError]]:
     """
-    Scan Google Drive for songbook edition folders.
+    Scan Google Drive for songbook edition folders, returning both valid
+    editions and folders whose ``.songbook.yaml`` could not be loaded.
 
     Edition folders are direct children of the configured source folders.
-    Each folder must contain a valid ``.songbook.yaml`` file to be recognized
-    as an edition.
+    Each folder that contains a ``.songbook.yaml`` file is attempted; those
+    that parse and validate successfully are returned as
+    ``(folder_id, Edition)`` pairs, while those that fail are returned as
+    :class:`DriveEditionError` entries.
 
-    Folders without a ``.songbook.yaml`` file or with invalid YAML/schema are
-    skipped with a warning; they do not cause the entire scan to fail.
+    Folders without a ``.songbook.yaml`` file are silently ignored.
 
     The search is restricted to specific Drive folders via
     ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).
 
     Args:
-        gdrive_client: An authenticated :class:`~generator.common.gdrive.GoogleDriveClient`.
+        gdrive_client: An authenticated
+            :class:`~generator.common.gdrive.GoogleDriveClient`.
 
     Returns:
-        A list of ``(folder_id, Edition)`` tuples – one entry per valid
-        edition folder found.  The *folder_id* is the Drive folder that
-        contains the ``.songbook.yaml`` and can be used directly as an
-        edition identifier when submitting a generation job.
+        A tuple ``(editions, errors)`` where *editions* is a list of
+        ``(folder_id, Edition)`` tuples for every valid edition found and
+        *errors* is a list of :class:`DriveEditionError` objects for every
+        folder whose ``.songbook.yaml`` could not be loaded or validated.
     """
     with tracer.start_as_current_span("scan_drive_editions") as span:
         settings = config.get_settings()
@@ -154,7 +173,7 @@ def scan_drive_editions(
             )
             span.set_attribute("scan.source_folders_count", 0)
             span.set_attribute("scan.editions_valid", 0)
-            return []
+            return [], []
 
         span.set_attribute("scan.source_folders_count", len(source_folders))
 
@@ -164,8 +183,8 @@ def scan_drive_editions(
         )
 
         editions: List[Tuple[str, config.Edition]] = []
+        errors: List[DriveEditionError] = []
         skipped_no_yaml = 0
-        skipped_errors = 0
 
         for source_folder_id in source_folders:
             try:
@@ -196,7 +215,14 @@ def scan_drive_editions(
                         editions.append((folder_id, edition))
 
                     except HttpError as e:
-                        skipped_errors += 1
+                        error_msg = f"Could not download .songbook.yaml: {e}"
+                        errors.append(
+                            DriveEditionError(
+                                folder_id=folder_id,
+                                folder_name=folder_name,
+                                error=error_msg,
+                            )
+                        )
                         logger.warning(
                             f"scan_drive_editions: could not download "
                             f".songbook.yaml from folder {folder_name!r} "
@@ -208,7 +234,14 @@ def scan_drive_editions(
                             err=True,
                         )
                     except (yaml.YAMLError, UnicodeDecodeError) as e:
-                        skipped_errors += 1
+                        error_msg = f"Could not parse .songbook.yaml: {e}"
+                        errors.append(
+                            DriveEditionError(
+                                folder_id=folder_id,
+                                folder_name=folder_name,
+                                error=error_msg,
+                            )
+                        )
                         logger.warning(
                             f"scan_drive_editions: could not parse "
                             f".songbook.yaml in folder {folder_name!r} "
@@ -220,7 +253,16 @@ def scan_drive_editions(
                             err=True,
                         )
                     except ValidationError as e:
-                        skipped_errors += 1
+                        error_msg = (
+                            f".songbook.yaml does not match the Edition schema: {e}"
+                        )
+                        errors.append(
+                            DriveEditionError(
+                                folder_id=folder_id,
+                                folder_name=folder_name,
+                                error=error_msg,
+                            )
+                        )
                         logger.warning(
                             f"scan_drive_editions: .songbook.yaml in folder "
                             f"{folder_name!r} (id={folder_id!r}) failed "
@@ -245,9 +287,43 @@ def scan_drive_editions(
 
         span.set_attribute("scan.editions_valid", len(editions))
         span.set_attribute("scan.skipped_no_yaml", skipped_no_yaml)
-        span.set_attribute("scan.skipped_errors", skipped_errors)
+        span.set_attribute("scan.editions_errors", len(errors))
         logger.info(
             f"scan_drive_editions: completed; editions_valid={len(editions)} "
-            f"skipped_no_yaml={skipped_no_yaml} skipped_errors={skipped_errors}"
+            f"skipped_no_yaml={skipped_no_yaml} "
+            f"editions_errors={len(errors)}"
         )
-        return editions
+        return editions, errors
+
+
+def scan_drive_editions(
+    gdrive_client: GoogleDriveClient,
+) -> List[Tuple[str, config.Edition]]:
+    """
+    Scan Google Drive for songbook edition folders.
+
+    Edition folders are direct children of the configured source folders.
+    Each folder must contain a valid ``.songbook.yaml`` file to be recognized
+    as an edition.
+
+    Folders without a ``.songbook.yaml`` file or with invalid YAML/schema are
+    skipped with a warning; they do not cause the entire scan to fail.
+
+    The search is restricted to specific Drive folders via
+    ``GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS`` (comma-separated).
+
+    Args:
+        gdrive_client: An authenticated
+            :class:`~generator.common.gdrive.GoogleDriveClient`.
+
+    Returns:
+        A list of ``(folder_id, Edition)`` tuples – one entry per valid
+        edition folder found.  The *folder_id* is the Drive folder that
+        contains the ``.songbook.yaml`` and can be used directly as an
+        edition identifier when submitting a generation job.
+
+        Use :func:`scan_drive_editions_full` to also retrieve folders whose
+        ``.songbook.yaml`` failed validation.
+    """
+    editions, _errors = scan_drive_editions_full(gdrive_client)
+    return editions

@@ -181,6 +181,38 @@ body {
   font-size: 1.1rem;
 }
 
+.edition-card--error .edition-card-label {
+  border-left-color: #c62828;
+  background: #fff8f8;
+  cursor: default;
+}
+
+.edition-card--error .edition-card-label:hover {
+  box-shadow: none;
+  border-left-color: #c62828;
+}
+
+.edition-card-badge--error {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.edition-card-error-msg {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: #c62828;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.edition-card-error-msg .material-icons {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.05em;
+}
+
 /* Source toggle (Standard / Experimental Drive) */
 .source-toggle-group {
   margin: 12px 0 0;

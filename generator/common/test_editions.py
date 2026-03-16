@@ -8,6 +8,8 @@ from .editions import (
     _find_yaml_files_in_folders,
     _list_child_folders,
     scan_drive_editions,
+    scan_drive_editions_full,
+    DriveEditionError,
 )
 
 _VALID_YAML = b"""
@@ -428,3 +430,151 @@ def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
     assert result == []
     # One list call per configured source folder
     assert mock_client.drive.files.return_value.list.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# scan_drive_editions_full tests
+# ---------------------------------------------------------------------------
+
+
+def test_scan_drive_editions_full_returns_valid_and_errors(mocker):
+    """scan_drive_editions_full returns valid editions AND error entries."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {
+            "files": [
+                {"id": "folder_good", "name": "Good Folder"},
+                {"id": "folder_bad", "name": "Bad Folder"},
+            ]
+        },
+        {
+            "files": [
+                {"id": "good_yaml", "parents": ["folder_good"]},
+                {"id": "bad_yaml", "parents": ["folder_bad"]},
+            ]
+        },
+    ]
+
+    mock_client.download_raw_bytes.side_effect = [_VALID_YAML, _INVALID_YAML]
+
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(
+            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
+        ),
+    )
+
+    editions, errors = scan_drive_editions_full(mock_client)
+
+    assert len(editions) == 1
+    folder_id, edition = editions[0]
+    assert folder_id == "folder_good"
+    assert edition.title == "Drive Edition"
+
+    assert len(errors) == 1
+    err = errors[0]
+    assert isinstance(err, DriveEditionError)
+    assert err.folder_id == "folder_bad"
+    assert err.folder_name == "Bad Folder"
+    assert "parse" in err.error.lower() or "yaml" in err.error.lower()
+
+
+def test_scan_drive_editions_full_invalid_schema_returns_error(mocker):
+    """.songbook.yaml with invalid schema is captured as an error entry."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {"files": [{"id": "folder_c", "name": "Bad Schema Folder"}]},
+        {"files": [{"id": "bad_schema_yaml", "parents": ["folder_c"]}]},
+    ]
+
+    mock_client.download_raw_bytes.return_value = _INVALID_SCHEMA_YAML
+
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(
+            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
+        ),
+    )
+
+    editions, errors = scan_drive_editions_full(mock_client)
+
+    assert editions == []
+    assert len(errors) == 1
+    err = errors[0]
+    assert err.folder_id == "folder_c"
+    assert err.folder_name == "Bad Schema Folder"
+    assert "schema" in err.error.lower() or "edition" in err.error.lower()
+
+
+def test_scan_drive_editions_full_download_error_returns_error(mocker):
+    """HTTP error when downloading .songbook.yaml is captured as an error entry."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {"files": [{"id": "folder_d", "name": "Download Error Folder"}]},
+        {"files": [{"id": "bad_download", "parents": ["folder_d"]}]},
+    ]
+
+    http_err = HttpError(resp=MagicMock(status=404), content=b"Not Found")
+    mock_client.download_raw_bytes.side_effect = http_err
+
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(
+            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
+        ),
+    )
+
+    editions, errors = scan_drive_editions_full(mock_client)
+
+    assert editions == []
+    assert len(errors) == 1
+    err = errors[0]
+    assert err.folder_id == "folder_d"
+    assert err.folder_name == "Download Error Folder"
+    assert "download" in err.error.lower()
+
+
+def test_scan_drive_editions_full_no_errors_when_all_valid(mocker):
+    """scan_drive_editions_full returns empty error list when all editions valid."""
+    mock_client = mocker.Mock()
+    mock_client.config = mocker.Mock(api_retries=3)
+
+    mock_client.drive.files.return_value.list.return_value.execute.side_effect = [
+        {"files": [{"id": "folder_good", "name": "Good Folder"}]},
+        {"files": [{"id": "good_yaml", "parents": ["folder_good"]}]},
+    ]
+
+    mock_client.download_raw_bytes.return_value = _VALID_YAML
+
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(
+            songbook_editions=mocker.Mock(folder_ids=["source_folder"])
+        ),
+    )
+
+    editions, errors = scan_drive_editions_full(mock_client)
+
+    assert len(editions) == 1
+    assert errors == []
+
+
+def test_scan_drive_editions_full_no_source_folders(mocker):
+    """scan_drive_editions_full returns empty lists when no folders configured."""
+    mocker.patch(
+        "generator.common.editions.config.get_settings",
+        return_value=mocker.Mock(songbook_editions=mocker.Mock(folder_ids=None)),
+    )
+    mock_client = mocker.Mock()
+
+    editions, errors = scan_drive_editions_full(mock_client)
+
+    assert editions == []
+    assert errors == []
+    mock_client.drive.files.assert_not_called()
