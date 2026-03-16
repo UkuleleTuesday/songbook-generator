@@ -60,7 +60,7 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     mock_generate_songbook.assert_called_once()
     call_args = mock_generate_songbook.call_args[1]
     assert call_args["drive"] == mock_drive
-    assert call_args["client_filter"] == edition.filters[0]
+    assert call_args["client_filter"] == edition.sections.songs.filters[0]
     assert call_args["limit"] == 10
     assert call_args["title"] == "Test Edition"
     assert call_args["subject"] == "A test edition"

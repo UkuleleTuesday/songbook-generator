@@ -472,7 +472,7 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     assert parsed.get("use_folder_components") is True
     # Explicit file IDs must NOT be in the YAML (subfolders will provide them)
     assert "cover_file_id" not in parsed
-    assert "preface_file_ids" not in parsed
+    assert "preface" not in parsed.get("sections", {})
 
 
 def test_convert_edition_creates_songs_subfolder(runner, mocker):

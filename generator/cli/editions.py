@@ -87,7 +87,7 @@ def _edition_to_yaml_bytes(
 
     When *use_folder_components* is ``True``, the serialized YAML will have
     ``use_folder_components: true`` set and the ``cover_file_id``,
-    ``preface_file_ids``, and ``postface_file_ids`` fields omitted — these
+    ``sections.preface``, and ``sections.postface`` fields omitted — these
     will be resolved from the ``Cover``, ``Preface``, and ``Postface``
     subfolders that the caller is responsible for creating.
 
@@ -103,8 +103,13 @@ def _edition_to_yaml_bytes(
     if use_folder_components:
         data["use_folder_components"] = True
         data.pop("cover_file_id", None)
-        data.pop("preface_file_ids", None)
-        data.pop("postface_file_ids", None)
+        sections = data.get("sections", {})
+        sections.pop("preface", None)
+        sections.pop("postface", None)
+        if sections:
+            data["sections"] = sections
+        else:
+            data.pop("sections", None)
     return yaml.dump(
         data,
         default_flow_style=False,
@@ -121,7 +126,10 @@ def _warn_complex_edition_features(edition: config.Edition) -> None:
     Args:
         edition: The Edition to inspect.
     """
-    has_filter_groups = any(isinstance(f, FilterGroup) for f in edition.filters)
+    has_filter_groups = any(
+        isinstance(f, FilterGroup)
+        for f in edition.sections.songs.filters
+    )
     if has_filter_groups:
         click.echo(
             "Warning: This edition uses complex filter groups (AND/OR). "
@@ -129,7 +137,8 @@ def _warn_complex_edition_features(edition: config.Edition) -> None:
             "file directly in Google Drive.",
             err=True,
         )
-    if edition.table_of_contents is not None and edition.table_of_contents.postfixes:
+    toc = edition.sections.table_of_contents
+    if toc is not None and toc.postfixes:
         click.echo(
             "Warning: This edition has Table of Contents postfixes. "
             "These can only be modified by editing the .songbook.yaml "
@@ -217,7 +226,11 @@ def _create_component_shortcuts(
                 err=True,
             )
 
-    preface_ids: List[str] = edition.preface_file_ids or []
+    preface_ids: List[str] = (
+        edition.sections.preface.file_ids
+        if edition.sections.preface is not None
+        else []
+    ) or []
     if preface_ids:
         try:
             preface_subfolder_id = gdrive_client.create_folder(
@@ -247,7 +260,11 @@ def _create_component_shortcuts(
                 err=True,
             )
 
-    postface_ids: List[str] = edition.postface_file_ids or []
+    postface_ids: List[str] = (
+        edition.sections.postface.file_ids
+        if edition.sections.postface is not None
+        else []
+    ) or []
     if postface_ids:
         try:
             postface_subfolder_id = gdrive_client.create_folder(
@@ -469,11 +486,12 @@ def convert_edition(
     if create_shortcuts:
         click.echo("Collecting song files matching edition filters...")
         client_filter = None
-        if edition.filters:
-            if len(edition.filters) == 1:
-                client_filter = edition.filters[0]
+        filters = edition.sections.songs.filters
+        if filters:
+            if len(filters) == 1:
+                client_filter = filters[0]
             else:
-                client_filter = FilterGroup(operator="AND", filters=edition.filters)
+                client_filter = FilterGroup(operator="AND", filters=filters)
         song_files = collect_and_sort_files(
             gdrive_client, settings.song_sheets.folder_ids, client_filter
         )
@@ -550,7 +568,11 @@ def _dry_run_convert_edition(
                 f"{FOLDER_COMPONENT_NAMES['cover']}/ → "
                 f"cover shortcut → {edition.cover_file_id}"
             )
-        preface_ids: List[str] = edition.preface_file_ids or []
+        preface_ids: List[str] = (
+            edition.sections.preface.file_ids
+            if edition.sections.preface is not None
+            else []
+        ) or []
         if preface_ids:
             names = (
                 ["preface"]
@@ -561,7 +583,11 @@ def _dry_run_convert_edition(
                 subfolder_actions.append(
                     f"{FOLDER_COMPONENT_NAMES['preface']}/ → {name} shortcut → {fid}"
                 )
-        postface_ids: List[str] = edition.postface_file_ids or []
+        postface_ids: List[str] = (
+            edition.sections.postface.file_ids
+            if edition.sections.postface is not None
+            else []
+        ) or []
         if postface_ids:
             names = (
                 ["postface"]

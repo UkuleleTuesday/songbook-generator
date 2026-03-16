@@ -17,31 +17,6 @@ from pydantic_settings import (
 from .filters import FilterGroup, PropertyFilter
 
 
-class SongSheets(BaseModel):
-    folder_ids: List[str] = Field(
-        default=[
-            "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
-            "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
-        ],
-    )
-
-
-class SongbookEditions(BaseModel):
-    """Configuration for Drive-based songbook edition discovery."""
-
-    folder_ids: List[str] = Field(
-        default=[],
-        description=(
-            "Drive folder IDs to restrict .songbook.yaml discovery to. "
-            "When empty, the search is performed across all of Drive."
-        ),
-    )
-
-
-class Cover(BaseModel):
-    file_id: Optional[str] = None
-
-
 class TocPostfix(BaseModel):
     """Configuration for a single TOC entry postfix."""
 
@@ -79,16 +54,105 @@ class Toc(BaseModel):
         return v
 
 
+class PrefaceSection(BaseModel):
+    """Configuration for the preface section of a songbook edition."""
+
+    file_ids: Optional[List[str]] = None
+
+
+class PostfaceSection(BaseModel):
+    """Configuration for the postface section of a songbook edition."""
+
+    file_ids: Optional[List[str]] = None
+
+
+class SongsSection(BaseModel):
+    """Configuration for the songs section of a songbook edition."""
+
+    filters: List[Union[FilterGroup, PropertyFilter]] = Field(
+        default_factory=list
+    )
+
+
+class EditionSections(BaseModel):
+    """Section-based configuration blocks for a songbook edition."""
+
+    preface: Optional[PrefaceSection] = None
+    table_of_contents: Optional[Toc] = None
+    songs: SongsSection = Field(default_factory=SongsSection)
+    postface: Optional[PostfaceSection] = None
+
+
+class SongSheets(BaseModel):
+    folder_ids: List[str] = Field(
+        default=[
+            "1b_ZuZVOGgvkKVSUypkbRwBsXLVQGjl95",  # UT Song Sheets Google Docs
+            "1bvrIMQXjAxepzn4Vx8wEjhk3eQS5a9BM",  # (3) Ready To Play
+        ],
+    )
+
+
+class SongbookEditions(BaseModel):
+    """Configuration for Drive-based songbook edition discovery."""
+
+    folder_ids: List[str] = Field(
+        default=[],
+        description=(
+            "Drive folder IDs to restrict .songbook.yaml discovery to. "
+            "When empty, the search is performed across all of Drive."
+        ),
+    )
+
+
+class Cover(BaseModel):
+    file_id: Optional[str] = None
+
+
 class Edition(BaseModel):
     id: str
     title: str
     description: str
     cover_file_id: Optional[str] = None
-    preface_file_ids: Optional[List[str]] = None
-    postface_file_ids: Optional[List[str]] = None
-    filters: List[Union[FilterGroup, PropertyFilter]]
-    table_of_contents: Optional[Toc] = None
+    sections: EditionSections = Field(default_factory=EditionSections)
     use_folder_components: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_format(cls, data: object) -> object:
+        """Migrate flat legacy fields to the new sections-based format.
+
+        Accepts the old flat structure (``filters``, ``preface_file_ids``,
+        ``postface_file_ids``, ``table_of_contents`` at the top level) and
+        converts it to the new ``sections``-based structure so that existing
+        ``.songbook.yaml`` files remain fully backward-compatible.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "sections" in data:
+            return data
+
+        sections: dict = {}
+
+        preface_ids = data.pop("preface_file_ids", None)
+        if preface_ids is not None:
+            sections["preface"] = {"file_ids": preface_ids}
+
+        postface_ids = data.pop("postface_file_ids", None)
+        if postface_ids is not None:
+            sections["postface"] = {"file_ids": postface_ids}
+
+        toc = data.pop("table_of_contents", None)
+        if toc is not None:
+            sections["table_of_contents"] = toc
+
+        filters = data.pop("filters", None)
+        if filters is not None:
+            sections["songs"] = {"filters": filters}
+
+        if sections:
+            data["sections"] = sections
+
+        return data
 
 
 class CachingGcs(BaseModel):
