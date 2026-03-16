@@ -249,12 +249,33 @@
           title.textContent = edition.title;
           header.appendChild(title);
 
+          const headerRight = document.createElement('div');
+          headerRight.className = 'edition-card-header-right';
+
           if (edition.source) {
             const badge = document.createElement('span');
             badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
             badge.textContent = edition.source;
-            header.appendChild(badge);
+            headerRight.appendChild(badge);
           }
+
+          if (edition.source === 'drive' && edition.folder_id) {
+            const driveLink = document.createElement('a');
+            driveLink.href = `https://drive.google.com/drive/folders/${edition.folder_id}`;
+            driveLink.target = '_blank';
+            driveLink.rel = 'noopener noreferrer';
+            driveLink.className = 'edition-drive-link';
+            driveLink.title = 'Open Drive folder';
+
+            const icon = document.createElement('i');
+            icon.className = 'material-icons';
+            icon.textContent = 'folder_open';
+            driveLink.appendChild(icon);
+
+            headerRight.appendChild(driveLink);
+          }
+
+          header.appendChild(headerRight);
 
           lbl.appendChild(header);
 
