@@ -37,6 +37,7 @@ from .worker.pdf import (
     load_edition_from_drive_folder,
     init_services,
     collect_and_sort_files,
+    FOLDER_COMPONENT_NAMES,
 )
 
 
@@ -859,20 +860,35 @@ def list_editions():
         click.echo("\nNo drive editions found.")
 
 
-def _edition_to_yaml_bytes(edition: config.Edition) -> bytes:
+def _edition_to_yaml_bytes(
+    edition: config.Edition, use_folder_components: bool = False
+) -> bytes:
     """
     Serialize an Edition to YAML bytes.
 
     Only fields that were explicitly set in the original YAML are included,
     keeping the output minimal and readable.
 
+    When *use_folder_components* is ``True``, the serialized YAML will have
+    ``use_folder_components: true`` set and the ``cover_file_id``,
+    ``preface_file_ids``, and ``postface_file_ids`` fields omitted — these
+    will be resolved from the ``Cover``, ``Preface``, and ``Postface``
+    subfolders that the caller is responsible for creating.
+
     Args:
         edition: The Edition object to serialize.
+        use_folder_components: When True, emit ``use_folder_components: true``
+            and omit explicit file-ID fields.
 
     Returns:
         UTF-8 encoded YAML representation of the edition.
     """
     data = edition.model_dump(mode="json", exclude_unset=True)
+    if use_folder_components:
+        data["use_folder_components"] = True
+        data.pop("cover_file_id", None)
+        data.pop("preface_file_ids", None)
+        data.pop("postface_file_ids", None)
     return yaml.dump(
         data,
         default_flow_style=False,
@@ -940,70 +956,102 @@ def _create_component_shortcuts(
     folder_id: str,
 ) -> None:
     """
-    Create Drive shortcuts for cover, preface, and postface files.
+    Create component subfolders and shortcuts for cover, preface, and
+    postface files.
 
-    The shortcuts use the naming conventions expected by
-    :func:`~generator.worker.pdf.categorize_folder_files`:
+    Uses the naming conventions expected by
+    :func:`~generator.worker.pdf.resolve_folder_components` when
+    ``use_folder_components`` is enabled:
 
-    - Cover  → ``_cover``
-    - Single preface  → ``_preface``; multiple → ``_preface_01``, …
-    - Single postface → ``_postface``; multiple → ``_postface_01``, …
+    - ``Cover``   subfolder → shortcut named ``cover``
+    - ``Preface`` subfolder → shortcut named ``preface`` (single) or
+      ``preface_01``, ``preface_02``, … (multiple, sorted alphabetically)
+    - ``Postface`` subfolder → shortcut named ``postface`` (single) or
+      ``postface_01``, ``postface_02``, … (multiple, sorted alphabetically)
 
-    Failures for individual shortcuts are reported as warnings and do not
-    abort the overall conversion.
+    Failures for individual subfolders or shortcuts are reported as warnings
+    and do not abort the overall conversion.
 
     Args:
         gdrive_client: An authenticated GoogleDriveClient instance.
         edition: The Edition whose component file IDs to link.
-        folder_id: The Drive folder ID where shortcuts will be created.
+        folder_id: The Drive folder ID of the edition folder.
     """
     if edition.cover_file_id:
         try:
-            shortcut_id = gdrive_client.create_shortcut(
-                "_cover", edition.cover_file_id, folder_id
+            cover_subfolder_id = gdrive_client.create_folder(
+                FOLDER_COMPONENT_NAMES["cover"], folder_id
             )
-            click.echo(f"  Created cover shortcut (id={shortcut_id})")
+            shortcut_id = gdrive_client.create_shortcut(
+                "cover", edition.cover_file_id, cover_subfolder_id
+            )
+            click.echo(
+                f"  Created '{FOLDER_COMPONENT_NAMES['cover']}' subfolder "
+                f"with cover shortcut (id={shortcut_id})"
+            )
         except HttpError as exc:
             click.echo(
-                f"Warning: failed to create cover shortcut: {exc}",
+                f"Warning: failed to create cover subfolder/shortcut: {exc}",
                 err=True,
             )
 
     preface_ids: List[str] = edition.preface_file_ids or []
-    for idx, preface_id in enumerate(preface_ids):
-        if len(preface_ids) == 1:
-            shortcut_name = "_preface"
-        else:
-            shortcut_name = f"_preface_{idx + 1:02d}"
+    if preface_ids:
         try:
-            shortcut_id = gdrive_client.create_shortcut(
-                shortcut_name, preface_id, folder_id
+            preface_subfolder_id = gdrive_client.create_folder(
+                FOLDER_COMPONENT_NAMES["preface"], folder_id
             )
+            for idx, preface_id in enumerate(preface_ids):
+                shortcut_name = (
+                    "preface" if len(preface_ids) == 1 else f"preface_{idx + 1:02d}"
+                )
+                try:
+                    gdrive_client.create_shortcut(
+                        shortcut_name, preface_id, preface_subfolder_id
+                    )
+                except HttpError as exc:
+                    click.echo(
+                        f"Warning: failed to create preface shortcut "
+                        f"'{shortcut_name}' (target={preface_id}): {exc}",
+                        err=True,
+                    )
             click.echo(
-                f"  Created preface shortcut '{shortcut_name}' (id={shortcut_id})"
+                f"  Created '{FOLDER_COMPONENT_NAMES['preface']}' subfolder "
+                f"with {len(preface_ids)} preface shortcut(s)"
             )
         except HttpError as exc:
             click.echo(
-                f"Warning: failed to create preface shortcut '{shortcut_name}': {exc}",
+                f"Warning: failed to create preface subfolder: {exc}",
                 err=True,
             )
 
     postface_ids: List[str] = edition.postface_file_ids or []
-    for idx, postface_id in enumerate(postface_ids):
-        if len(postface_ids) == 1:
-            shortcut_name = "_postface"
-        else:
-            shortcut_name = f"_postface_{idx + 1:02d}"
+    if postface_ids:
         try:
-            shortcut_id = gdrive_client.create_shortcut(
-                shortcut_name, postface_id, folder_id
+            postface_subfolder_id = gdrive_client.create_folder(
+                FOLDER_COMPONENT_NAMES["postface"], folder_id
             )
+            for idx, postface_id in enumerate(postface_ids):
+                shortcut_name = (
+                    "postface" if len(postface_ids) == 1 else f"postface_{idx + 1:02d}"
+                )
+                try:
+                    gdrive_client.create_shortcut(
+                        shortcut_name, postface_id, postface_subfolder_id
+                    )
+                except HttpError as exc:
+                    click.echo(
+                        f"Warning: failed to create postface shortcut "
+                        f"'{shortcut_name}' (target={postface_id}): {exc}",
+                        err=True,
+                    )
             click.echo(
-                f"  Created postface shortcut '{shortcut_name}' (id={shortcut_id})"
+                f"  Created '{FOLDER_COMPONENT_NAMES['postface']}' subfolder "
+                f"with {len(postface_ids)} postface shortcut(s)"
             )
         except HttpError as exc:
             click.echo(
-                f"Warning: failed to create postface shortcut '{shortcut_name}': {exc}",
+                f"Warning: failed to create postface subfolder: {exc}",
                 err=True,
             )
 
@@ -1147,8 +1195,13 @@ def convert_edition(
         raise click.Abort()
     click.echo(f"  Created folder (id={folder_id})")
 
-    # Serialize the edition and upload .songbook.yaml
-    yaml_content = _edition_to_yaml_bytes(edition)
+    # Serialize the edition and upload .songbook.yaml.
+    # When creating component subfolders, those subfolders will provide the
+    # cover/preface/postface files, so use_folder_components is set in the
+    # YAML and the explicit file-ID fields are omitted.
+    yaml_content = _edition_to_yaml_bytes(
+        edition, use_folder_components=create_shortcuts
+    )
     click.echo("Uploading .songbook.yaml...")
     try:
         yaml_file_id = gdrive_client.upload_file_bytes(
@@ -1162,9 +1215,9 @@ def convert_edition(
         raise click.Abort()
     click.echo(f"  Uploaded .songbook.yaml (id={yaml_file_id})")
 
-    # Optionally create shortcuts to component files
+    # Optionally create component subfolders and shortcuts
     if create_shortcuts:
-        click.echo("Creating component shortcuts...")
+        click.echo("Creating component subfolders and shortcuts...")
         _create_component_shortcuts(gdrive_client, edition, folder_id)
 
     # Handle optional deletion of the original config file
@@ -1210,7 +1263,8 @@ def _dry_run_convert_edition(
         edition_id: The edition ID string.
         folder_name: The Drive folder name that would be created.
         target_folder: The parent Drive folder ID.
-        create_shortcuts: Whether shortcuts would be created.
+        create_shortcuts: Whether component subfolders/shortcuts would be
+            created.
         delete_config: Whether the local config file would be deleted.
     """
     click.echo("[DRY RUN] The following actions would be performed:\n")
@@ -1220,33 +1274,55 @@ def _dry_run_convert_edition(
         f"parent folder '{target_folder}'"
     )
 
-    yaml_content = _edition_to_yaml_bytes(edition).decode("utf-8")
+    yaml_content = _edition_to_yaml_bytes(
+        edition, use_folder_components=create_shortcuts
+    ).decode("utf-8")
     click.echo("  2. Upload .songbook.yaml with the following content:")
     for line in yaml_content.splitlines():
         click.echo(f"       {line}")
 
     step = 3
     if create_shortcuts:
-        shortcut_actions: List[str] = []
+        subfolder_actions: List[str] = []
         if edition.cover_file_id:
-            shortcut_actions.append(f"_cover → {edition.cover_file_id}")
+            subfolder_actions.append(
+                f"{FOLDER_COMPONENT_NAMES['cover']}/ → "
+                f"cover shortcut → {edition.cover_file_id}"
+            )
         preface_ids: List[str] = edition.preface_file_ids or []
-        for idx, preface_id in enumerate(preface_ids):
-            name = "_preface" if len(preface_ids) == 1 else f"_preface_{idx + 1:02d}"
-            shortcut_actions.append(f"{name} → {preface_id}")
+        if preface_ids:
+            names = (
+                ["preface"]
+                if len(preface_ids) == 1
+                else [f"preface_{i + 1:02d}" for i in range(len(preface_ids))]
+            )
+            for name, fid in zip(names, preface_ids):
+                subfolder_actions.append(
+                    f"{FOLDER_COMPONENT_NAMES['preface']}/ → {name} shortcut → {fid}"
+                )
         postface_ids: List[str] = edition.postface_file_ids or []
-        for idx, postface_id in enumerate(postface_ids):
-            name = "_postface" if len(postface_ids) == 1 else f"_postface_{idx + 1:02d}"
-            shortcut_actions.append(f"{name} → {postface_id}")
+        if postface_ids:
+            names = (
+                ["postface"]
+                if len(postface_ids) == 1
+                else [f"postface_{i + 1:02d}" for i in range(len(postface_ids))]
+            )
+            for name, fid in zip(names, postface_ids):
+                subfolder_actions.append(
+                    f"{FOLDER_COMPONENT_NAMES['postface']}/ → {name} shortcut → {fid}"
+                )
 
-        if shortcut_actions:
-            click.echo(f"  {step}. Create component shortcuts:")
-            for action in shortcut_actions:
+        if subfolder_actions:
+            click.echo(
+                f"  {step}. Create component subfolders "
+                f"(Cover, Preface, Postface) with shortcuts:"
+            )
+            for action in subfolder_actions:
                 click.echo(f"       {action}")
             step += 1
         else:
             click.echo(
-                f"  {step}. Create component shortcuts: "
+                f"  {step}. Create component subfolders: "
                 "(none – no cover/preface/postface files configured)"
             )
             step += 1

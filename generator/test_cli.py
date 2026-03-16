@@ -530,7 +530,7 @@ def test_convert_edition_uses_single_config_folder(runner, mocker):
 
 
 def test_convert_edition_creates_shortcuts(runner, mocker):
-    """editions convert creates shortcuts for cover, preface, and postface."""
+    """editions convert creates Cover/Preface/Postface subfolders with shortcuts."""
     edition = Edition(
         id="test-ed",
         title="Test Edition",
@@ -549,7 +549,13 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     )
     mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
-    mock_instance.create_folder.return_value = "folder_id"
+    # edition folder + Cover subfolder + Preface subfolder + Postface subfolder
+    mock_instance.create_folder.side_effect = [
+        "edition_folder_id",
+        "cover_sub_id",
+        "preface_sub_id",
+        "postface_sub_id",
+    ]
     mock_instance.upload_file_bytes.return_value = "yaml_id"
     mock_instance.create_shortcut.return_value = "shortcut_id"
     mocker.patch("generator.cli._find_edition_config_path", return_value=None)
@@ -566,15 +572,71 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     )
 
     assert result.exit_code == 0, result.output
-    assert "Creating component shortcuts" in result.output
-    # Four shortcuts: _cover, _preface, _postface_01, _postface_02
+    assert "Creating component subfolders" in result.output
+
+    # Four create_folder calls: edition + Cover + Preface + Postface
+    assert mock_instance.create_folder.call_count == 4
+    folder_names = [c[0][0] for c in mock_instance.create_folder.call_args_list]
+    assert folder_names[0] == "Test Edition"
+    assert "Cover" in folder_names
+    assert "Preface" in folder_names
+    assert "Postface" in folder_names
+
+    # 4 shortcuts: cover, preface, postface_01, postface_02
     assert mock_instance.create_shortcut.call_count == 4
-    calls = [c[0] for c in mock_instance.create_shortcut.call_args_list]
-    shortcut_names = [c[0] for c in calls]
-    assert "_cover" in shortcut_names
-    assert "_preface" in shortcut_names
-    assert "_postface_01" in shortcut_names
-    assert "_postface_02" in shortcut_names
+    shortcut_args = [c[0] for c in mock_instance.create_shortcut.call_args_list]
+    shortcut_names = [a[0] for a in shortcut_args]
+    assert "cover" in shortcut_names
+    assert "preface" in shortcut_names
+    assert "postface_01" in shortcut_names
+    assert "postface_02" in shortcut_names
+
+
+def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
+    """editions convert sets use_folder_components=true when shortcuts are created."""
+    import yaml as pyyaml
+
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+        cover_file_id="cover_id",
+        preface_file_ids=["preface_id"],
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    uploaded_content = {}
+
+    def capture_upload(name, content, parent_id, mime_type="application/octet-stream"):
+        uploaded_content["content"] = content
+        return "yaml_id"
+
+    mock_instance.upload_file_bytes.side_effect = capture_upload
+    mock_instance.create_shortcut.return_value = "shortcut_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+
+    result = runner.invoke(
+        cli,
+        ["editions", "convert", "test-ed", "--target-folder", "editions_folder"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "content" in uploaded_content
+    parsed = pyyaml.safe_load(uploaded_content["content"].decode("utf-8"))
+    # use_folder_components must be set when --create-shortcuts is on
+    assert parsed.get("use_folder_components") is True
+    # Explicit file IDs must NOT be in the YAML (subfolders will provide them)
+    assert "cover_file_id" not in parsed
+    assert "preface_file_ids" not in parsed
 
 
 def test_convert_edition_delete_config(runner, mocker, tmp_path):
@@ -892,12 +954,18 @@ def test_convert_edition_dry_run_shows_shortcuts(runner, mocker):
     )
 
     assert result.exit_code == 0, result.output
-    assert "_cover" in result.output
+    # Should show Cover/Preface/Postface subfolder structure, not _cover prefixes
+    assert "Cover" in result.output
     assert "cover_id" in result.output
-    assert "_preface" in result.output
+    assert "Preface" in result.output
     assert "preface_id" in result.output
-    assert "_postface_01" in result.output
-    assert "_postface_02" in result.output
+    assert "Postface" in result.output
+    assert "post1_id" in result.output
+    assert "post2_id" in result.output
+    # Must NOT use the old flat _cover/_preface prefix convention
+    assert "_cover" not in result.output
+    assert "_preface" not in result.output
+    assert "_postface_01" not in result.output
 
 
 def test_convert_edition_dry_run_shows_delete_config(runner, mocker, tmp_path):

@@ -296,7 +296,7 @@ def copy_pdfs(
             span.set_attribute("final_page_count", current_page)
 
 
-_FOLDER_COMPONENT_NAMES = {
+FOLDER_COMPONENT_NAMES = {
     "cover": "Cover",
     "preface": "Preface",
     "postface": "Postface",
@@ -350,7 +350,7 @@ def resolve_folder_components(
         # --- Cover ---
         if edition.cover_file_id is None:
             cover_folder_id = gdrive_client.find_subfolder_by_name(
-                folder_id, _FOLDER_COMPONENT_NAMES["cover"]
+                folder_id, FOLDER_COMPONENT_NAMES["cover"]
             )
             if cover_folder_id:
                 cover_files = gdrive_client.list_folder_contents(cover_folder_id)
@@ -371,7 +371,7 @@ def resolve_folder_components(
         # --- Preface ---
         if edition.preface_file_ids is None:
             preface_folder_id = gdrive_client.find_subfolder_by_name(
-                folder_id, _FOLDER_COMPONENT_NAMES["preface"]
+                folder_id, FOLDER_COMPONENT_NAMES["preface"]
             )
             if preface_folder_id:
                 preface_files = gdrive_client.list_folder_contents(preface_folder_id)
@@ -395,7 +395,7 @@ def resolve_folder_components(
         # --- Postface ---
         if edition.postface_file_ids is None:
             postface_folder_id = gdrive_client.find_subfolder_by_name(
-                folder_id, _FOLDER_COMPONENT_NAMES["postface"]
+                folder_id, FOLDER_COMPONENT_NAMES["postface"]
             )
             if postface_folder_id:
                 postface_files = gdrive_client.list_folder_contents(postface_folder_id)
@@ -444,7 +444,7 @@ def _resolve_songs_from_folder(
     with tracer.start_as_current_span("resolve_songs_from_folder") as span:
         span.set_attribute("folder_id", folder_id)
         songs_folder_id = gdrive_client.find_subfolder_by_name(
-            folder_id, _FOLDER_COMPONENT_NAMES["songs"]
+            folder_id, FOLDER_COMPONENT_NAMES["songs"]
         )
         if not songs_folder_id:
             span.set_attribute("songs_subfolder_found", False)
