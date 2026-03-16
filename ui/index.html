@@ -509,16 +509,7 @@
         // poll until done
         const downloadUrl = await pollStatus(job_id);
 
-        // download PDF
-        updateProgress(1.0, 'Downloading PDF...');
-        const a = document.createElement("a");
-        a.href = downloadUrl;
-        a.download = "songbook.pdf";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        updateProgress(1.0, 'Download started!');
+        updateProgress(1.0, 'Ready!');
 
         // Add to history
         const editionTitle = checkedRadio
@@ -526,6 +517,29 @@
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
+
+        // Replace Generate button with Open button in the active card
+        const activeCard = checkedRadio.closest('.edition-card');
+        if (activeCard) {
+          const actionsRow = activeCard.querySelector('.edition-card-actions-row');
+          if (actionsRow) {
+            const openBtn = document.createElement('a');
+            openBtn.href = downloadUrl;
+            openBtn.target = '_blank';
+            openBtn.rel = 'noopener noreferrer';
+            openBtn.className = 'mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--colored edition-open-btn';
+            const openIcon = document.createElement('i');
+            openIcon.className = 'material-icons';
+            openIcon.textContent = 'open_in_new';
+            openBtn.appendChild(openIcon);
+            openBtn.appendChild(document.createTextNode('Open'));
+            actionsRow.innerHTML = '';
+            actionsRow.appendChild(openBtn);
+            if (typeof componentHandler !== 'undefined') {
+              componentHandler.upgradeElement(openBtn);
+            }
+          }
+        }
 
       } catch (err) {
         updateProgress(0, `Error: ${err.message}`);
