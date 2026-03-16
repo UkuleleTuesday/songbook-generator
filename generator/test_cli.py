@@ -350,6 +350,7 @@ def _make_convert_settings(mocker, edition, folder_ids=None):
         songbook_editions=mocker.Mock(
             folder_ids=folder_ids if folder_ids is not None else ["editions_folder"]
         ),
+        song_sheets=mocker.Mock(folder_ids=["song_sheets_folder_id"]),
     )
 
 
@@ -530,7 +531,9 @@ def test_convert_edition_uses_single_config_folder(runner, mocker):
 
 
 def test_convert_edition_creates_shortcuts(runner, mocker):
-    """editions convert creates Cover/Preface/Postface subfolders with shortcuts."""
+    """editions convert creates Cover/Preface/Postface/Songs subfolders with shortcuts."""
+    from .worker.models import File as DriveFile
+
     edition = Edition(
         id="test-ed",
         title="Test Edition",
@@ -549,16 +552,22 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     )
     mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
     mock_instance = mock_gdrive.return_value
-    # edition folder + Cover subfolder + Preface subfolder + Postface subfolder
+    # edition folder + Cover + Preface + Postface + Songs subfolders
     mock_instance.create_folder.side_effect = [
         "edition_folder_id",
         "cover_sub_id",
         "preface_sub_id",
         "postface_sub_id",
+        "songs_sub_id",
     ]
     mock_instance.upload_file_bytes.return_value = "yaml_id"
     mock_instance.create_shortcut.return_value = "shortcut_id"
     mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    song_files = [
+        DriveFile(id="song1_id", name="Song One"),
+        DriveFile(id="song2_id", name="Song Two"),
+    ]
+    mocker.patch("generator.cli.collect_and_sort_files", return_value=song_files)
 
     result = runner.invoke(
         cli,
@@ -574,22 +583,25 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     assert result.exit_code == 0, result.output
     assert "Creating component subfolders" in result.output
 
-    # Four create_folder calls: edition + Cover + Preface + Postface
-    assert mock_instance.create_folder.call_count == 4
+    # Five create_folder calls: edition + Cover + Preface + Postface + Songs
+    assert mock_instance.create_folder.call_count == 5
     folder_names = [c[0][0] for c in mock_instance.create_folder.call_args_list]
     assert folder_names[0] == "Test Edition"
     assert "Cover" in folder_names
     assert "Preface" in folder_names
     assert "Postface" in folder_names
+    assert "Songs" in folder_names
 
-    # 4 shortcuts: cover, preface, postface_01, postface_02
-    assert mock_instance.create_shortcut.call_count == 4
+    # 6 shortcuts: cover, preface, postface_01, postface_02, Song One, Song Two
+    assert mock_instance.create_shortcut.call_count == 6
     shortcut_args = [c[0] for c in mock_instance.create_shortcut.call_args_list]
     shortcut_names = [a[0] for a in shortcut_args]
     assert "cover" in shortcut_names
     assert "preface" in shortcut_names
     assert "postface_01" in shortcut_names
     assert "postface_02" in shortcut_names
+    assert "Song One" in shortcut_names
+    assert "Song Two" in shortcut_names
 
 
 def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
@@ -623,6 +635,7 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     mock_instance.upload_file_bytes.side_effect = capture_upload
     mock_instance.create_shortcut.return_value = "shortcut_id"
     mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mocker.patch("generator.cli.collect_and_sort_files", return_value=[])
 
     result = runner.invoke(
         cli,
@@ -637,6 +650,105 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     # Explicit file IDs must NOT be in the YAML (subfolders will provide them)
     assert "cover_file_id" not in parsed
     assert "preface_file_ids" not in parsed
+
+
+def test_convert_edition_creates_songs_subfolder(runner, mocker):
+    """editions convert creates a Songs subfolder with shortcuts for each song file."""
+    from .worker.models import File as DriveFile
+
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.side_effect = ["edition_folder_id", "songs_sub_id"]
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mock_instance.create_shortcut.return_value = "shortcut_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    song_files = [
+        DriveFile(id="s1", name="Alpha Song"),
+        DriveFile(id="s2", name="Beta Song"),
+        DriveFile(id="s3", name="Gamma Song"),
+    ]
+    mocker.patch("generator.cli.collect_and_sort_files", return_value=song_files)
+
+    result = runner.invoke(
+        cli,
+        [
+            "editions",
+            "convert",
+            "test-ed",
+            "--target-folder",
+            "editions_folder",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Songs" in result.output
+    assert "3 song shortcut" in result.output
+
+    # create_folder: edition folder + Songs subfolder
+    assert mock_instance.create_folder.call_count == 2
+    folder_names = [c[0][0] for c in mock_instance.create_folder.call_args_list]
+    assert "Songs" in folder_names
+
+    # 3 song shortcuts, each with the song's name
+    assert mock_instance.create_shortcut.call_count == 3
+    shortcut_args = [c[0] for c in mock_instance.create_shortcut.call_args_list]
+    shortcut_names = [a[0] for a in shortcut_args]
+    assert "Alpha Song" in shortcut_names
+    assert "Beta Song" in shortcut_names
+    assert "Gamma Song" in shortcut_names
+    # All shortcuts point to the Songs subfolder
+    shortcut_parents = [a[2] for a in shortcut_args]
+    assert all(p == "songs_sub_id" for p in shortcut_parents)
+
+
+def test_convert_edition_collects_songs_with_filter(runner, mocker):
+    """editions convert calls collect_and_sort_files with the edition's filters."""
+    edition = Edition(
+        id="test-ed",
+        title="Test Edition",
+        description=_CONVERT_DESCRIPTION,
+        filters=_CONVERT_FILTERS,
+    )
+    mocker.patch("generator.cli.get_settings").return_value = _make_convert_settings(
+        mocker, edition
+    )
+    mocker.patch(
+        "generator.cli.init_services",
+        return_value=(mocker.Mock(), mocker.Mock()),
+    )
+    mock_gdrive = mocker.patch("generator.cli.GoogleDriveClient")
+    mock_instance = mock_gdrive.return_value
+    mock_instance.create_folder.return_value = "folder_id"
+    mock_instance.upload_file_bytes.return_value = "yaml_id"
+    mock_instance.create_shortcut.return_value = "shortcut_id"
+    mocker.patch("generator.cli._find_edition_config_path", return_value=None)
+    mock_collect = mocker.patch("generator.cli.collect_and_sort_files", return_value=[])
+
+    result = runner.invoke(
+        cli,
+        ["editions", "convert", "test-ed", "--target-folder", "editions_folder"],
+    )
+
+    assert result.exit_code == 0, result.output
+    # collect_and_sort_files must be called once with the song_sheets source folders
+    mock_collect.assert_called_once()
+    call_args = mock_collect.call_args
+    # First positional arg is gdrive_client, second is source_folder_ids
+    source_folders_arg = call_args[0][1]
+    assert source_folders_arg == ["song_sheets_folder_id"]
 
 
 def test_convert_edition_delete_config(runner, mocker, tmp_path):

@@ -954,10 +954,11 @@ def _create_component_shortcuts(
     gdrive_client: GoogleDriveClient,
     edition: config.Edition,
     folder_id: str,
+    song_files: Optional[List] = None,
 ) -> None:
     """
-    Create component subfolders and shortcuts for cover, preface, and
-    postface files.
+    Create component subfolders and shortcuts for cover, preface, postface,
+    and songs.
 
     Uses the naming conventions expected by
     :func:`~generator.worker.pdf.resolve_folder_components` when
@@ -968,6 +969,8 @@ def _create_component_shortcuts(
       ``preface_01``, ``preface_02``, … (multiple, sorted alphabetically)
     - ``Postface`` subfolder → shortcut named ``postface`` (single) or
       ``postface_01``, ``postface_02``, … (multiple, sorted alphabetically)
+    - ``Songs``   subfolder → one shortcut per song file, named by the
+      song's file name
 
     Failures for individual subfolders or shortcuts are reported as warnings
     and do not abort the overall conversion.
@@ -976,6 +979,9 @@ def _create_component_shortcuts(
         gdrive_client: An authenticated GoogleDriveClient instance.
         edition: The Edition whose component file IDs to link.
         folder_id: The Drive folder ID of the edition folder.
+        song_files: Pre-collected list of song File objects whose shortcuts
+            will be placed in the ``Songs`` subfolder.  When ``None`` the
+            ``Songs`` subfolder is not created.
     """
     if edition.cover_file_id:
         try:
@@ -1052,6 +1058,34 @@ def _create_component_shortcuts(
         except HttpError as exc:
             click.echo(
                 f"Warning: failed to create postface subfolder: {exc}",
+                err=True,
+            )
+
+    if song_files:
+        try:
+            songs_subfolder_id = gdrive_client.create_folder(
+                FOLDER_COMPONENT_NAMES["songs"], folder_id
+            )
+            created = 0
+            for song in song_files:
+                try:
+                    gdrive_client.create_shortcut(
+                        song.name, song.id, songs_subfolder_id
+                    )
+                    created += 1
+                except HttpError as exc:
+                    click.echo(
+                        f"Warning: failed to create song shortcut "
+                        f"'{song.name}' (id={song.id}): {exc}",
+                        err=True,
+                    )
+            click.echo(
+                f"  Created '{FOLDER_COMPONENT_NAMES['songs']}' subfolder "
+                f"with {created} song shortcut(s)"
+            )
+        except HttpError as exc:
+            click.echo(
+                f"Warning: failed to create songs subfolder: {exc}",
                 err=True,
             )
 
@@ -1217,8 +1251,19 @@ def convert_edition(
 
     # Optionally create component subfolders and shortcuts
     if create_shortcuts:
+        click.echo("Collecting song files matching edition filters...")
+        client_filter = None
+        if edition.filters:
+            if len(edition.filters) == 1:
+                client_filter = edition.filters[0]
+            else:
+                client_filter = FilterGroup(operator="AND", filters=edition.filters)
+        song_files = collect_and_sort_files(
+            gdrive_client, settings.song_sheets.folder_ids, client_filter
+        )
+        click.echo(f"  Found {len(song_files)} song(s)")
         click.echo("Creating component subfolders and shortcuts...")
-        _create_component_shortcuts(gdrive_client, edition, folder_id)
+        _create_component_shortcuts(gdrive_client, edition, folder_id, song_files)
 
     # Handle optional deletion of the original config file
     if delete_config:
@@ -1315,15 +1360,22 @@ def _dry_run_convert_edition(
         if subfolder_actions:
             click.echo(
                 f"  {step}. Create component subfolders "
-                f"(Cover, Preface, Postface) with shortcuts:"
+                f"(Cover, Preface, Postface, Songs) with shortcuts:"
             )
             for action in subfolder_actions:
                 click.echo(f"       {action}")
+            click.echo(
+                f"       {FOLDER_COMPONENT_NAMES['songs']}/ "
+                f"\u2192 shortcuts for song files matching edition filters "
+                f"(resolved at runtime)"
+            )
             step += 1
         else:
+            click.echo(f"  {step}. Create component subfolders (Songs) with shortcuts:")
             click.echo(
-                f"  {step}. Create component subfolders: "
-                "(none – no cover/preface/postface files configured)"
+                f"       {FOLDER_COMPONENT_NAMES['songs']}/ "
+                f"\u2192 shortcuts for song files matching edition filters "
+                f"(resolved at runtime)"
             )
             step += 1
 
