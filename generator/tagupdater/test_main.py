@@ -250,6 +250,7 @@ def test_tagupdater_main_parsing_error(mock_get_services):
     mock_span.set_attribute.assert_any_call("status", "error")
 
 
+@patch("generator.tagupdater.main.storage")
 @patch("generator.tagupdater.main.get_credentials")
 @patch("generator.tagupdater.main.build")
 @patch("generator.tagupdater.main.get_settings")
@@ -263,6 +264,7 @@ def test_get_services_success(
     mock_get_settings,
     mock_build,
     mock_get_credentials,
+    mock_storage,
 ):
     """Test successful creation of services with correct credential config."""
     # Clear the cache before testing
@@ -278,6 +280,7 @@ def test_get_services_success(
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -292,6 +295,10 @@ def test_get_services_success(
     mock_drive_service = Mock()
     mock_docs_service = Mock()
     mock_build.side_effect = [mock_drive_service, mock_docs_service]
+
+    # Mock GCS storage client
+    mock_storage_client = Mock()
+    mock_storage.Client.return_value = mock_storage_client
 
     # Call the function
     result = _get_services()
@@ -311,6 +318,10 @@ def test_get_services_success(
     assert mock_build.call_count == 2
     mock_build.assert_any_call("drive", "v3", credentials=mock_creds)
     mock_build.assert_any_call("docs", "v1", credentials=mock_creds)
+
+    # Verify GCS client was created
+    mock_storage.Client.assert_called_once_with(project="test-project")
+    mock_storage_client.bucket.assert_called_once_with("test-bucket")
 
     # Verify return structure
     assert "tracer" in result
@@ -358,6 +369,7 @@ def test_get_services_missing_credential_config(
     )
 
 
+@patch("generator.tagupdater.main.storage")
 @patch("generator.tagupdater.main.Tagger")
 @patch("generator.tagupdater.main.get_credentials")
 @patch("generator.tagupdater.main.build")
@@ -373,8 +385,9 @@ def test_get_services_tagger_instantiation(
     mock_build,
     mock_get_credentials,
     mock_tagger_class,
+    mock_storage,
 ):
-    """Test that Tagger is instantiated with both drive_service and docs_service."""
+    """Test that Tagger is instantiated with drive, docs, and cache_bucket."""
     # Clear the cache before testing
     _get_services.cache_clear()
 
@@ -388,6 +401,7 @@ def test_get_services_tagger_instantiation(
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -403,6 +417,12 @@ def test_get_services_tagger_instantiation(
     mock_docs_service = Mock()
     mock_build.side_effect = [mock_drive_service, mock_docs_service]
 
+    # Mock GCS storage client
+    mock_storage_client = Mock()
+    mock_cache_bucket = Mock()
+    mock_storage.Client.return_value = mock_storage_client
+    mock_storage_client.bucket.return_value = mock_cache_bucket
+
     # Mock Tagger instance
     mock_tagger_instance = Mock()
     mock_tagger_class.return_value = mock_tagger_instance
@@ -410,8 +430,10 @@ def test_get_services_tagger_instantiation(
     # Call the function
     result = _get_services()
 
-    # Verify Tagger was instantiated with both services
-    mock_tagger_class.assert_called_once_with(mock_drive_service, mock_docs_service)
+    # Verify Tagger was instantiated with drive, docs, and the GCS cache bucket
+    mock_tagger_class.assert_called_once_with(
+        mock_drive_service, mock_docs_service, cache_bucket=mock_cache_bucket
+    )
 
     # Verify the tagger is returned
     assert result["tagger"] == mock_tagger_instance

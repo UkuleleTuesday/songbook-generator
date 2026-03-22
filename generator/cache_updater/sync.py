@@ -37,18 +37,17 @@ def _sync_gcs_metadata_from_drive(
             expected_name = drive_file.name
             current_metadata = blob.metadata or {}
 
-            if current_metadata.get(
-                "gdrive-file-id"
-            ) == drive_file_id and current_metadata.get("gdrive-file-name") == str(
-                expected_name
-            ):
+            desired_metadata = dict(current_metadata)
+            desired_metadata["gdrive-file-id"] = drive_file_id
+            desired_metadata["gdrive-file-name"] = expected_name
+            for key, value in (drive_file.properties or {}).items():
+                desired_metadata[f"tag-{key}"] = value
+
+            if desired_metadata == current_metadata:
                 continue
 
-            new_metadata = dict(current_metadata)
-            new_metadata["gdrive-file-id"] = drive_file_id
-            new_metadata["gdrive-file-name"] = expected_name
             try:
-                blob.metadata = new_metadata
+                blob.metadata = desired_metadata
                 blob.patch()
                 click.echo(f"  UPDATE: {blob.name} metadata updated.")
                 updated_count += 1

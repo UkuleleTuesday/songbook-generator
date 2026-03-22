@@ -14,6 +14,7 @@ from typing import List
 import click
 from cloudevents.http import CloudEvent
 from google.auth import default
+from google.cloud import storage
 from googleapiclient.discovery import build
 
 from ..common.config import get_settings
@@ -55,10 +56,15 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
+    # Create GCS bucket client for writing tag metadata to cached blobs
+    gcs_worker_cache_bucket = settings.caching.gcs.worker_cache_bucket
+    storage_client = storage.Client(project=project_id)
+    cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
+
     return {
         "tracer": tracer,
         "drive": drive_service,
-        "tagger": Tagger(drive_service, docs_service),
+        "tagger": Tagger(drive_service, docs_service, cache_bucket=cache_bucket),
     }
 
 

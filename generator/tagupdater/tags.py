@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
 import click
+from google.api_core import exceptions as gcp_exceptions
 
 from ..common.tracing import get_tracer
 from ..worker.models import File
@@ -124,10 +125,72 @@ def tag(_func=None, *, only_if_unset: bool = False):
     return decorator(_func)
 
 
+GCS_TAG_PREFIX = "tag-"
+GCS_SONG_SHEETS_PREFIX = "song-sheets/"
+
+
 class Tagger:
-    def __init__(self, drive_service: Any, docs_service: Any):
+    def __init__(
+        self,
+        drive_service: Any,
+        docs_service: Any,
+        cache_bucket: Any = None,
+    ):
         self.drive_service = drive_service
         self.docs_service = docs_service
+        self.cache_bucket = cache_bucket
+
+    def _write_tags_to_gcs(self, file: File, properties: Dict[str, str]) -> None:
+        """Write tag properties to GCS blob metadata for the cached song sheet.
+
+        Tags are stored with a ``tag-`` prefix on the blob metadata keys so
+        they can be distinguished from other metadata fields such as
+        ``gdrive-file-id`` and ``gdrive-file-name``.  Errors are logged but
+        never propagate so that a GCS failure cannot break the Drive write.
+
+        Args:
+            file: The Drive file whose cached GCS blob will be updated.
+            properties: A mapping of tag name to string value, e.g.
+                ``{"status": "APPROVED", "artist": "Oasis"}``.  Each entry
+                is stored in GCS metadata as ``tag-<name>``.
+        """
+        if not self.cache_bucket:
+            return
+        blob_name = f"{GCS_SONG_SHEETS_PREFIX}{file.id}.pdf"
+        blob = self.cache_bucket.blob(blob_name)
+        try:
+            blob.reload()
+        except gcp_exceptions.NotFound:
+            click.echo(
+                f"  GCS blob {blob_name} not found, skipping GCS metadata write.",
+                err=True,
+            )
+            return
+        except gcp_exceptions.GoogleAPICallError as e:
+            click.echo(
+                f"  WARNING: Failed to read GCS metadata for {blob_name}: {e}",
+                err=True,
+            )
+            return
+
+        current_metadata = blob.metadata or {}
+        new_metadata = dict(current_metadata)
+        for key, value in properties.items():
+            new_metadata[f"{GCS_TAG_PREFIX}{key}"] = value
+
+        if new_metadata == current_metadata:
+            click.echo(f"  GCS metadata unchanged for {blob_name}.")
+            return
+
+        try:
+            blob.metadata = new_metadata
+            blob.patch()
+            click.echo(f"  GCS metadata updated for {blob_name}.")
+        except gcp_exceptions.GoogleAPICallError as e:
+            click.echo(
+                f"  WARNING: Failed to update GCS metadata for {blob_name}: {e}",
+                err=True,
+            )
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -209,6 +272,10 @@ class Tagger:
                     body={"properties": updated_properties},
                     fields="properties",
                 ).execute()
+
+                # Also write to GCS blob metadata to avoid touching Drive
+                # modified time on future reads.
+                self._write_tags_to_gcs(file, updated_properties)
 
 
 @tag
