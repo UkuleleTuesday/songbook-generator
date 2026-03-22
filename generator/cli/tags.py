@@ -143,7 +143,16 @@ def delete_tag(file_identifier, key):
     is_flag=True,
     help="Show what tags would be applied without making any changes.",
 )
-def update_tags(file_identifier, all, dry_run):
+@click.option(
+    "--destination",
+    type=click.Choice(["drive", "gcs"], case_sensitive=False),
+    default=None,
+    help=(
+        "Where to write metadata: 'drive' (default) or 'gcs'. "
+        "Overrides the TAGS_METADATA_DESTINATION setting."
+    ),
+)
+def update_tags(file_identifier, all, dry_run, destination):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -181,6 +190,32 @@ def update_tags(file_identifier, all, dry_run):
     cache = init_cache()
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
+    # Determine metadata destination (CLI flag overrides settings)
+    dest = (destination or settings.tags.metadata_destination).lower()
+
+    if dest == "gcs":
+        from google.cloud import storage as gcs_storage
+
+        from ..tagupdater.metadata import GCSMetadataWriter
+
+        bucket_name = settings.caching.gcs.worker_cache_bucket
+        if not bucket_name:
+            click.echo(
+                "Error: GCS worker cache bucket is not configured "
+                "(set GCS_WORKER_CACHE_BUCKET).",
+                err=True,
+            )
+            raise click.Abort()
+        storage_client = gcs_storage.Client()
+        cache_bucket = storage_client.bucket(bucket_name)
+        metadata_writer = GCSMetadataWriter(cache_bucket)
+        click.echo("Tag metadata destination: GCS")
+    else:
+        from ..tagupdater.metadata import DriveMetadataWriter
+
+        metadata_writer = DriveMetadataWriter(drive_service)
+        click.echo("Tag metadata destination: Drive")
+
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
@@ -195,7 +230,11 @@ def update_tags(file_identifier, all, dry_run):
             settings.song_sheets.folder_ids
         )
 
-    tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
+    tagger = Tagger(
+        drive_service=drive_service,
+        docs_service=docs_service,
+        metadata_writer=metadata_writer,
+    )
     failed_updates = {}
 
     for file_obj in files_to_process:

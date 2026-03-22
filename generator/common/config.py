@@ -157,6 +157,31 @@ class GoogleCloud(BaseModel):
     }
 
 
+class TagsConfig(BaseModel):
+    """Configuration for song tag behaviour."""
+
+    metadata_destination: str = Field(
+        default="drive",
+        description=(
+            "Where to write computed song metadata. "
+            "Accepted values: 'drive' (default) or 'gcs'."
+        ),
+    )
+
+    @field_validator("metadata_destination")
+    @classmethod
+    def validate_metadata_destination(cls, v: str) -> str:
+        """Normalise to lowercase and reject unknown destinations."""
+        normalised = v.lower()
+        allowed = {"drive", "gcs"}
+        if normalised not in allowed:
+            raise ValueError(
+                f"Invalid metadata_destination '{v}'. "
+                f"Must be one of: {', '.join(sorted(allowed))}."
+            )
+        return normalised
+
+
 class Tracing(BaseModel):
     enabled: bool = Field(default=False)
 
@@ -180,6 +205,7 @@ class Settings(BaseSettings):
     cover: Cover = Field(default_factory=Cover)
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
+    tags: TagsConfig = Field(default_factory=TagsConfig)
     tracing: Tracing = Field(default_factory=Tracing)
     editions: List[Edition] = Field(default_factory=list)
 
@@ -245,6 +271,16 @@ class Settings(BaseSettings):
             except ValueError:
                 # Ignore invalid values, keep the default
                 pass
+
+        # Handle tags settings
+        if tags_dest_env := os.getenv("TAGS_METADATA_DESTINATION"):
+            dest = tags_dest_env.lower()
+            if dest not in ("drive", "gcs"):
+                raise ValueError(
+                    f"Invalid TAGS_METADATA_DESTINATION '{tags_dest_env}'. "
+                    f"Must be 'drive' or 'gcs'."
+                )
+            self.tags.metadata_destination = dest
 
         return self
 

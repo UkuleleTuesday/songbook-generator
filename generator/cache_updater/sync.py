@@ -41,7 +41,7 @@ def _sync_gcs_metadata_from_drive(
             desired_metadata["gdrive-file-id"] = drive_file_id
             desired_metadata["gdrive-file-name"] = expected_name
             for key, value in (drive_file.properties or {}).items():
-                desired_metadata[f"tag-{key}"] = value
+                desired_metadata[key] = value
 
             if desired_metadata == current_metadata:
                 continue

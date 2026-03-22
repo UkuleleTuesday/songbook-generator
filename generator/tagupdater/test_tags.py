@@ -1,15 +1,13 @@
 import json
 from pathlib import Path
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import pytest
-from google.api_core import exceptions as gcp_exceptions
 
 from ..worker.models import File
 from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
-    GCS_TAG_PREFIX,
     Tagger,
     status,
     tag,
@@ -418,146 +416,3 @@ def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
         mock_drive_service.files.return_value.update.assert_not_called()
     finally:
         tags._TAGGERS = original_taggers
-
-
-# ---------------------------------------------------------------------------
-# GCS metadata write tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def mock_cache_bucket():
-    """Create a mock GCS bucket object."""
-    return MagicMock()
-
-
-def _make_tagger_with_bucket(mock_drive_service, mock_docs_service, mock_cache_bucket):
-    """Return a Tagger wired up with all three mock dependencies.
-
-    Used by GCS-write tests to avoid repeating the constructor call.
-    Returns a :class:`Tagger` instance with ``cache_bucket`` set.
-    """
-    return Tagger(mock_drive_service, mock_docs_service, cache_bucket=mock_cache_bucket)
-
-
-def test_update_tags_writes_to_gcs_when_bucket_provided(
-    mock_drive_service, mock_docs_service, mock_cache_bucket
-):
-    """When a cache_bucket is provided, tags should be written to GCS metadata."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    mock_blob = MagicMock()
-    mock_blob.metadata = {}
-    mock_cache_bucket.blob.return_value = mock_blob
-
-    tagger = _make_tagger_with_bucket(
-        mock_drive_service, mock_docs_service, mock_cache_bucket
-    )
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-    )
-    tagger.update_tags(file_to_tag)
-
-    # Drive update should still happen (backwards compat)
-    mock_drive_service.files.return_value.update.assert_called_once()
-
-    # GCS blob should be fetched and patched
-    mock_cache_bucket.blob.assert_called_once_with("song-sheets/file123.pdf")
-    mock_blob.reload.assert_called_once()
-    mock_blob.patch.assert_called_once()
-
-    # Confirm tag- prefix on GCS metadata key
-    assert mock_blob.metadata.get(f"{GCS_TAG_PREFIX}status") == "APPROVED"
-
-
-def test_update_tags_no_gcs_write_without_bucket(mock_drive_service, mock_docs_service):
-    """When no cache_bucket is provided, no GCS calls should be made."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service)  # no cache_bucket
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-    )
-    tagger.update_tags(file_to_tag)
-    # Drive update should still happen
-    mock_drive_service.files.return_value.update.assert_called_once()
-
-
-def test_update_tags_gcs_blob_not_found_does_not_raise(
-    mock_drive_service, mock_docs_service, mock_cache_bucket
-):
-    """A missing GCS blob should be silently skipped (blob not cached yet)."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    mock_blob = MagicMock()
-    mock_blob.reload.side_effect = gcp_exceptions.NotFound("not found")
-    mock_cache_bucket.blob.return_value = mock_blob
-
-    tagger = _make_tagger_with_bucket(
-        mock_drive_service, mock_docs_service, mock_cache_bucket
-    )
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-    )
-    # Should not raise
-    tagger.update_tags(file_to_tag)
-
-    # Drive update should still succeed
-    mock_drive_service.files.return_value.update.assert_called_once()
-    # GCS patch should NOT have been called
-    mock_blob.patch.assert_not_called()
-
-
-def test_update_tags_gcs_api_error_does_not_raise(
-    mock_drive_service, mock_docs_service, mock_cache_bucket
-):
-    """A GCS API error during patch should be logged but not re-raised."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    mock_blob = MagicMock()
-    mock_blob.metadata = {}
-    mock_blob.patch.side_effect = gcp_exceptions.GoogleAPICallError("gcs error")
-    mock_cache_bucket.blob.return_value = mock_blob
-
-    tagger = _make_tagger_with_bucket(
-        mock_drive_service, mock_docs_service, mock_cache_bucket
-    )
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-    )
-    # Should not raise
-    tagger.update_tags(file_to_tag)
-
-    # Drive update should still have been called
-    mock_drive_service.files.return_value.update.assert_called_once()
-
-
-def test_update_tags_gcs_metadata_unchanged_skips_patch(
-    mock_drive_service, mock_docs_service, mock_cache_bucket
-):
-    """When GCS metadata already contains the correct tags, no patch is needed."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    mock_blob = MagicMock()
-    # Blob already has the tag we would write
-    mock_blob.metadata = {f"{GCS_TAG_PREFIX}status": "APPROVED"}
-    mock_cache_bucket.blob.return_value = mock_blob
-
-    # File already has the tag too, so Drive update is also skipped
-    tagger = _make_tagger_with_bucket(
-        mock_drive_service, mock_docs_service, mock_cache_bucket
-    )
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED"},
-    )
-    tagger.update_tags(file_to_tag)
-
-    # Neither Drive nor GCS should be patched
-    mock_drive_service.files.return_value.update.assert_not_called()
-    mock_blob.patch.assert_not_called()

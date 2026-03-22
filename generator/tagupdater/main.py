@@ -14,11 +14,11 @@ from typing import List
 import click
 from cloudevents.http import CloudEvent
 from google.auth import default
-from google.cloud import storage
 from googleapiclient.discovery import build
 
 from ..common.config import get_settings
 from ..common.tracing import get_tracer, setup_tracing
+from .metadata import DriveMetadataWriter, GCSMetadataWriter
 from .tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.models import File
@@ -56,15 +56,24 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
-    # Create GCS bucket client for writing tag metadata to cached blobs
-    gcs_worker_cache_bucket = settings.caching.gcs.worker_cache_bucket
-    storage_client = storage.Client(project=project_id)
-    cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
+    # Create the metadata writer based on configured destination
+    destination = settings.tags.metadata_destination.lower()
+    if destination == "gcs":
+        from google.cloud import storage
+
+        gcs_worker_cache_bucket = settings.caching.gcs.worker_cache_bucket
+        storage_client = storage.Client(project=project_id)
+        cache_bucket = storage_client.bucket(gcs_worker_cache_bucket)
+        metadata_writer = GCSMetadataWriter(cache_bucket)
+        click.echo("Tag metadata destination: GCS")
+    else:
+        metadata_writer = DriveMetadataWriter(drive_service)
+        click.echo("Tag metadata destination: Drive")
 
     return {
         "tracer": tracer,
         "drive": drive_service,
-        "tagger": Tagger(drive_service, docs_service, cache_bucket=cache_bucket),
+        "tagger": Tagger(drive_service, docs_service, metadata_writer=metadata_writer),
     }
 
 
