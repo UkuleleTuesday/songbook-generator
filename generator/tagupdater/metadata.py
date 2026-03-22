@@ -8,10 +8,11 @@ on the CLI ``tags update`` command.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-import click
 from google.api_core import exceptions as gcp_exceptions
+from google.cloud import storage as gcs_storage
+from loguru import logger
 
 from ..worker.models import File
 
@@ -87,16 +88,12 @@ class GCSMetadataWriter(MetadataWriter):
         try:
             blob.reload()
         except gcp_exceptions.NotFound:
-            click.echo(
-                f"  GCS blob {blob_name} not found, skipping GCS metadata write.",
-                err=True,
+            logger.warning(
+                "GCS blob {} not found, skipping GCS metadata write.", blob_name
             )
             return
         except gcp_exceptions.GoogleAPICallError as e:
-            click.echo(
-                f"  WARNING: Failed to read GCS metadata for {blob_name}: {e}",
-                err=True,
-            )
+            logger.warning("Failed to read GCS metadata for {}: {}", blob_name, e)
             return
 
         current_metadata = blob.metadata or {}
@@ -104,15 +101,56 @@ class GCSMetadataWriter(MetadataWriter):
         new_metadata.update(properties)
 
         if new_metadata == current_metadata:
-            click.echo(f"  GCS metadata unchanged for {blob_name}.")
+            logger.debug("GCS metadata unchanged for {}.", blob_name)
             return
 
         try:
             blob.metadata = new_metadata
             blob.patch()
-            click.echo(f"  GCS metadata updated for {blob_name}.")
+            logger.info("GCS metadata updated for {}.", blob_name)
         except gcp_exceptions.GoogleAPICallError as e:
-            click.echo(
-                f"  WARNING: Failed to update GCS metadata for {blob_name}: {e}",
-                err=True,
+            logger.warning("Failed to update GCS metadata for {}: {}", blob_name, e)
+
+
+def build_metadata_writer(
+    destination: str,
+    drive_service: Any = None,
+    gcs_bucket_name: Optional[str] = None,
+    gcs_project_id: Optional[str] = None,
+) -> MetadataWriter:
+    """Build and return the appropriate ``MetadataWriter`` for ``destination``.
+
+    Args:
+        destination: Either ``'drive'`` or ``'gcs'``.
+        drive_service: Authenticated Drive API service resource; required when
+            ``destination`` is ``'drive'``.
+        gcs_bucket_name: GCS bucket name; required when ``destination`` is
+            ``'gcs'``.
+        gcs_project_id: Optional GCP project ID used when creating the GCS
+            client for the ``'gcs'`` destination.
+
+    Returns:
+        A :class:`MetadataWriter` instance for the requested destination.
+
+    Raises:
+        ValueError: If ``destination`` is unknown, or a required argument for
+            the requested destination is missing.
+    """
+    dest = destination.lower()
+    if dest == "drive":
+        if drive_service is None:
+            raise ValueError(
+                "drive_service is required for the 'drive' metadata destination."
             )
+        return DriveMetadataWriter(drive_service)
+    if dest == "gcs":
+        if not gcs_bucket_name:
+            raise ValueError(
+                "gcs_bucket_name is required for the 'gcs' metadata destination."
+            )
+        storage_client = gcs_storage.Client(project=gcs_project_id)
+        cache_bucket = storage_client.bucket(gcs_bucket_name)
+        return GCSMetadataWriter(cache_bucket)
+    raise ValueError(
+        f"Unknown metadata destination '{destination}'. Must be 'drive' or 'gcs'."
+    )

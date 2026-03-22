@@ -1,13 +1,13 @@
 """Tests for MetadataWriter implementations."""
 
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from google.api_core import exceptions as gcp_exceptions
 from googleapiclient.errors import HttpError
 
 from ..worker.models import File
-from .metadata import DriveMetadataWriter, GCSMetadataWriter
+from .metadata import DriveMetadataWriter, GCSMetadataWriter, build_metadata_writer
 
 
 @pytest.fixture
@@ -145,3 +145,59 @@ def test_gcs_writer_unchanged_metadata_skips_patch(mock_cache_bucket, sample_fil
     writer.write(sample_file, {"status": "APPROVED"})
 
     mock_blob.patch.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# build_metadata_writer factory
+# ---------------------------------------------------------------------------
+
+
+def test_build_metadata_writer_drive(mock_drive_service):
+    """build_metadata_writer('drive', ...) should return a DriveMetadataWriter."""
+    writer = build_metadata_writer(
+        destination="drive", drive_service=mock_drive_service
+    )
+    assert isinstance(writer, DriveMetadataWriter)
+
+
+def test_build_metadata_writer_gcs():
+    """build_metadata_writer('gcs', ...) should return a GCSMetadataWriter."""
+    mock_storage_client = MagicMock()
+    mock_bucket = MagicMock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    with patch("generator.tagupdater.metadata.gcs_storage.Client") as mock_client_cls:
+        mock_client_cls.return_value = mock_storage_client
+        writer = build_metadata_writer(
+            destination="gcs", gcs_bucket_name="my-bucket", gcs_project_id="my-proj"
+        )
+
+    assert isinstance(writer, GCSMetadataWriter)
+    mock_client_cls.assert_called_once_with(project="my-proj")
+    mock_storage_client.bucket.assert_called_once_with("my-bucket")
+
+
+def test_build_metadata_writer_gcs_missing_bucket():
+    """build_metadata_writer('gcs') without a bucket name raises ValueError."""
+    with pytest.raises(ValueError, match="gcs_bucket_name"):
+        build_metadata_writer(destination="gcs")
+
+
+def test_build_metadata_writer_unknown_destination():
+    """build_metadata_writer raises ValueError for unknown destinations."""
+    with pytest.raises(ValueError, match="Unknown"):
+        build_metadata_writer(destination="s3")
+
+
+def test_build_metadata_writer_case_insensitive(mock_drive_service):
+    """build_metadata_writer should accept destination in any case."""
+    writer = build_metadata_writer(
+        destination="Drive", drive_service=mock_drive_service
+    )
+    assert isinstance(writer, DriveMetadataWriter)
+
+
+def test_build_metadata_writer_drive_missing_service():
+    """build_metadata_writer('drive') without drive_service raises ValueError."""
+    with pytest.raises(ValueError, match="drive_service"):
+        build_metadata_writer(destination="drive")

@@ -8,6 +8,7 @@ from googleapiclient.errors import HttpError
 from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
+from ..tagupdater.metadata import build_metadata_writer
 from ..tagupdater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
@@ -192,29 +193,16 @@ def update_tags(file_identifier, all, dry_run, destination):
 
     # Determine metadata destination (CLI flag overrides settings)
     dest = (destination or settings.tags.metadata_destination).lower()
-
-    if dest == "gcs":
-        from google.cloud import storage as gcs_storage
-
-        from ..tagupdater.metadata import GCSMetadataWriter
-
-        bucket_name = settings.caching.gcs.worker_cache_bucket
-        if not bucket_name:
-            click.echo(
-                "Error: GCS worker cache bucket is not configured "
-                "(set GCS_WORKER_CACHE_BUCKET).",
-                err=True,
-            )
-            raise click.Abort()
-        storage_client = gcs_storage.Client()
-        cache_bucket = storage_client.bucket(bucket_name)
-        metadata_writer = GCSMetadataWriter(cache_bucket)
-        click.echo("Tag metadata destination: GCS")
-    else:
-        from ..tagupdater.metadata import DriveMetadataWriter
-
-        metadata_writer = DriveMetadataWriter(drive_service)
-        click.echo("Tag metadata destination: Drive")
+    try:
+        metadata_writer = build_metadata_writer(
+            destination=dest,
+            drive_service=drive_service,
+            gcs_bucket_name=settings.caching.gcs.worker_cache_bucket,
+        )
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    click.echo(f"Tag metadata destination: {dest}")
 
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)

@@ -14,6 +14,7 @@ from .main import (
     _parse_cloud_event,
     tagupdater_main,
 )
+from .metadata import DriveMetadataWriter, GCSMetadataWriter
 
 
 @pytest.fixture
@@ -390,9 +391,6 @@ def test_get_services_tagger_instantiation_drive_destination(
 
     result = _get_services()
 
-    # Tagger must have been called with a DriveMetadataWriter (not a GCS bucket)
-    from .metadata import DriveMetadataWriter
-
     call_kwargs = mock_tagger_class.call_args
     assert call_kwargs.kwargs.get("metadata_writer") is not None
     assert isinstance(call_kwargs.kwargs["metadata_writer"], DriveMetadataWriter)
@@ -450,8 +448,6 @@ def test_get_services_tagger_instantiation_gcs_destination(
 
     with patch("google.cloud.storage.Client", return_value=mock_storage_client):
         result = _get_services()
-
-    from .metadata import GCSMetadataWriter
 
     call_kwargs = mock_tagger_class.call_args
     assert call_kwargs.kwargs.get("metadata_writer") is not None
