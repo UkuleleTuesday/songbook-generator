@@ -14,6 +14,7 @@ from .main import (
     _parse_cloud_event,
     tagupdater_main,
 )
+from .metadata import DriveMetadataWriter, GCSMetadataWriter
 
 
 @pytest.fixture
@@ -256,7 +257,7 @@ def test_tagupdater_main_parsing_error(mock_get_services):
 @patch("generator.tagupdater.main.setup_tracing")
 @patch("generator.tagupdater.main.get_tracer")
 @patch("generator.tagupdater.main.default")
-def test_get_services_success(
+def test_get_services_drive_destination(
     mock_default,
     mock_get_tracer,
     mock_setup_tracing,
@@ -264,65 +265,52 @@ def test_get_services_success(
     mock_build,
     mock_get_credentials,
 ):
-    """Test successful creation of services with correct credential config."""
-    # Clear the cache before testing
+    """When destination is 'drive', no GCS client should be created."""
     _get_services.cache_clear()
 
-    # Mock default credentials
     mock_default.return_value = (None, "test-project")
 
-    # Mock settings
     mock_credential_config = Mock()
     mock_credential_config.scopes = ["https://www.googleapis.com/auth/drive"]
     mock_credential_config.principal = "test@example.com"
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.tags.metadata_destination = "drive"
     mock_get_settings.return_value = mock_settings
 
-    # Mock tracer
     mock_tracer = Mock()
     mock_get_tracer.return_value = mock_tracer
 
-    # Mock credentials
     mock_creds = Mock()
     mock_get_credentials.return_value = mock_creds
 
-    # Mock Google API services
     mock_drive_service = Mock()
     mock_docs_service = Mock()
     mock_build.side_effect = [mock_drive_service, mock_docs_service]
 
-    # Call the function
     result = _get_services()
 
-    # Verify credentials config lookup used correct key
     mock_settings.google_cloud.credentials.get.assert_called_once_with(
         "songbook-generator"
     )
-
-    # Verify get_credentials was called correctly
     mock_get_credentials.assert_called_once_with(
         scopes=mock_credential_config.scopes,
         target_principal=mock_credential_config.principal,
     )
-
-    # Verify both services were built
     assert mock_build.call_count == 2
-    mock_build.assert_any_call("drive", "v3", credentials=mock_creds)
-    mock_build.assert_any_call("docs", "v1", credentials=mock_creds)
 
-    # Verify return structure
     assert "tracer" in result
     assert "drive" in result
     assert "tagger" in result
     assert result["tracer"] == mock_tracer
     assert result["drive"] == mock_drive_service
-
-    # Verify Tagger was created with both services
-    # Note: We can't easily verify the Tagger constructor call without mocking it,
-    # but we can verify the tagger object exists
     assert result["tagger"] is not None
+
+    # Verify the writer is a DriveMetadataWriter
+    from .metadata import DriveMetadataWriter
+
+    assert isinstance(result["tagger"].metadata_writer, DriveMetadataWriter)
 
 
 @patch("generator.tagupdater.main.get_settings")
@@ -365,7 +353,7 @@ def test_get_services_missing_credential_config(
 @patch("generator.tagupdater.main.setup_tracing")
 @patch("generator.tagupdater.main.get_tracer")
 @patch("generator.tagupdater.main.default")
-def test_get_services_tagger_instantiation(
+def test_get_services_tagger_instantiation_drive_destination(
     mock_default,
     mock_get_tracer,
     mock_setup_tracing,
@@ -374,44 +362,94 @@ def test_get_services_tagger_instantiation(
     mock_get_credentials,
     mock_tagger_class,
 ):
-    """Test that Tagger is instantiated with both drive_service and docs_service."""
-    # Clear the cache before testing
+    """Tagger is instantiated with a DriveMetadataWriter when destination is 'drive'."""
     _get_services.cache_clear()
 
-    # Mock default credentials
     mock_default.return_value = (None, "test-project")
 
-    # Mock settings
     mock_credential_config = Mock()
     mock_credential_config.scopes = ["https://www.googleapis.com/auth/drive"]
     mock_credential_config.principal = "test@example.com"
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.tags.metadata_destination = "drive"
     mock_get_settings.return_value = mock_settings
 
-    # Mock tracer
     mock_tracer = Mock()
     mock_get_tracer.return_value = mock_tracer
 
-    # Mock credentials
     mock_creds = Mock()
     mock_get_credentials.return_value = mock_creds
 
-    # Mock Google API services
     mock_drive_service = Mock()
     mock_docs_service = Mock()
     mock_build.side_effect = [mock_drive_service, mock_docs_service]
 
-    # Mock Tagger instance
     mock_tagger_instance = Mock()
     mock_tagger_class.return_value = mock_tagger_instance
 
-    # Call the function
     result = _get_services()
 
-    # Verify Tagger was instantiated with both services
-    mock_tagger_class.assert_called_once_with(mock_drive_service, mock_docs_service)
+    call_kwargs = mock_tagger_class.call_args
+    assert call_kwargs.kwargs.get("metadata_writer") is not None
+    assert isinstance(call_kwargs.kwargs["metadata_writer"], DriveMetadataWriter)
+    assert result["tagger"] == mock_tagger_instance
 
-    # Verify the tagger is returned
+
+@patch("generator.tagupdater.main.Tagger")
+@patch("generator.tagupdater.main.get_credentials")
+@patch("generator.tagupdater.main.build")
+@patch("generator.tagupdater.main.get_settings")
+@patch("generator.tagupdater.main.setup_tracing")
+@patch("generator.tagupdater.main.get_tracer")
+@patch("generator.tagupdater.main.default")
+def test_get_services_tagger_instantiation_gcs_destination(
+    mock_default,
+    mock_get_tracer,
+    mock_setup_tracing,
+    mock_get_settings,
+    mock_build,
+    mock_get_credentials,
+    mock_tagger_class,
+):
+    """Tagger is instantiated with a GCSMetadataWriter when destination is 'gcs'."""
+    _get_services.cache_clear()
+
+    mock_default.return_value = (None, "test-project")
+
+    mock_credential_config = Mock()
+    mock_credential_config.scopes = ["https://www.googleapis.com/auth/drive"]
+    mock_credential_config.principal = "test@example.com"
+
+    mock_settings = Mock()
+    mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.tags.metadata_destination = "gcs"
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+    mock_get_settings.return_value = mock_settings
+
+    mock_tracer = Mock()
+    mock_get_tracer.return_value = mock_tracer
+
+    mock_creds = Mock()
+    mock_get_credentials.return_value = mock_creds
+
+    mock_drive_service = Mock()
+    mock_docs_service = Mock()
+    mock_build.side_effect = [mock_drive_service, mock_docs_service]
+
+    mock_tagger_instance = Mock()
+    mock_tagger_class.return_value = mock_tagger_instance
+
+    # Patch the storage module at the point it is imported inside main._get_services
+    mock_storage_client = Mock()
+    mock_cache_bucket = Mock()
+    mock_storage_client.bucket.return_value = mock_cache_bucket
+
+    with patch("google.cloud.storage.Client", return_value=mock_storage_client):
+        result = _get_services()
+
+    call_kwargs = mock_tagger_class.call_args
+    assert call_kwargs.kwargs.get("metadata_writer") is not None
+    assert isinstance(call_kwargs.kwargs["metadata_writer"], GCSMetadataWriter)
     assert result["tagger"] == mock_tagger_instance

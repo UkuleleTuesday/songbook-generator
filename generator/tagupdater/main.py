@@ -18,6 +18,7 @@ from googleapiclient.discovery import build
 
 from ..common.config import get_settings
 from ..common.tracing import get_tracer, setup_tracing
+from .metadata import build_metadata_writer
 from .tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.models import File
@@ -55,10 +56,19 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
+    # Create the metadata writer based on configured destination
+    metadata_writer = build_metadata_writer(
+        destination=settings.tags.metadata_destination,
+        drive_service=drive_service,
+        gcs_bucket_name=settings.caching.gcs.worker_cache_bucket,
+        gcs_project_id=project_id,
+    )
+    click.echo(f"Tag metadata destination: {settings.tags.metadata_destination}")
+
     return {
         "tracer": tracer,
         "drive": drive_service,
-        "tagger": Tagger(drive_service, docs_service),
+        "tagger": Tagger(drive_service, docs_service, metadata_writer=metadata_writer),
     }
 
 

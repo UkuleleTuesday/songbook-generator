@@ -8,6 +8,7 @@ from googleapiclient.errors import HttpError
 from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
+from ..tagupdater.metadata import build_metadata_writer
 from ..tagupdater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
@@ -143,7 +144,16 @@ def delete_tag(file_identifier, key):
     is_flag=True,
     help="Show what tags would be applied without making any changes.",
 )
-def update_tags(file_identifier, all, dry_run):
+@click.option(
+    "--destination",
+    type=click.Choice(["drive", "gcs"], case_sensitive=False),
+    default=None,
+    help=(
+        "Where to write metadata: 'drive' (default) or 'gcs'. "
+        "Overrides the TAGS_METADATA_DESTINATION setting."
+    ),
+)
+def update_tags(file_identifier, all, dry_run, destination):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -181,6 +191,19 @@ def update_tags(file_identifier, all, dry_run):
     cache = init_cache()
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
+    # Determine metadata destination (CLI flag overrides settings)
+    dest = (destination or settings.tags.metadata_destination).lower()
+    try:
+        metadata_writer = build_metadata_writer(
+            destination=dest,
+            drive_service=drive_service,
+            gcs_bucket_name=settings.caching.gcs.worker_cache_bucket,
+        )
+    except ValueError as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+    click.echo(f"Tag metadata destination: {dest}")
+
     if file_identifier:
         file_id = _resolve_file_id(gdrive_client, file_identifier)
         files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
@@ -195,7 +218,11 @@ def update_tags(file_identifier, all, dry_run):
             settings.song_sheets.folder_ids
         )
 
-    tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
+    tagger = Tagger(
+        drive_service=drive_service,
+        docs_service=docs_service,
+        metadata_writer=metadata_writer,
+    )
     failed_updates = {}
 
     for file_obj in files_to_process:

@@ -7,6 +7,7 @@ import click
 
 from ..common.tracing import get_tracer
 from ..worker.models import File
+from .metadata import DriveMetadataWriter, MetadataWriter
 
 
 @dataclass
@@ -125,9 +126,19 @@ def tag(_func=None, *, only_if_unset: bool = False):
 
 
 class Tagger:
-    def __init__(self, drive_service: Any, docs_service: Any):
+    def __init__(
+        self,
+        drive_service: Any,
+        docs_service: Any,
+        metadata_writer: Optional[MetadataWriter] = None,
+    ):
         self.drive_service = drive_service
         self.docs_service = docs_service
+        self.metadata_writer: MetadataWriter = (
+            metadata_writer
+            if metadata_writer is not None
+            else DriveMetadataWriter(drive_service)
+        )
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -204,11 +215,7 @@ class Tagger:
                     span.set_attribute("dry_run", "true")
                     return
 
-                self.drive_service.files().update(
-                    fileId=file.id,
-                    body={"properties": updated_properties},
-                    fields="properties",
-                ).execute()
+                self.metadata_writer.write(file, updated_properties)
 
 
 @tag
