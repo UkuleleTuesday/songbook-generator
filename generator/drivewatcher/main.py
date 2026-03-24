@@ -137,6 +137,94 @@ def _save_check_time(services, check_time: datetime):
         click.echo(f"Error saving check time: {e}", err=True)
 
 
+def _load_file_parents(services) -> dict:
+    """
+    Load the last known parent folder IDs for each file from GCS.
+
+    Returns a dict mapping file ID to its last known list of parent IDs.
+    An empty dict is returned if the data does not yet exist.
+    """
+    try:
+        settings = get_settings()
+        bucket_name = settings.caching.gcs.worker_cache_bucket
+        bucket = services["storage_client"].bucket(bucket_name)
+
+        blob = bucket.get_blob("drivewatcher/file_parents.json")
+        if not blob:
+            return {}
+
+        data = blob.download_as_text().strip()
+        return json.loads(data)
+
+    except (
+        FileNotFoundError,
+        ValueError,
+        KeyError,
+        json.JSONDecodeError,
+        NotFound,
+    ) as e:
+        click.echo(f"Error loading file parents: {e}")
+        return {}
+
+
+def _save_file_parents(services, file_parents: dict):
+    """Persist the last known parent folder IDs for each file to GCS."""
+    try:
+        settings = get_settings()
+        bucket_name = settings.caching.gcs.worker_cache_bucket
+        bucket = services["storage_client"].bucket(bucket_name)
+
+        blob = bucket.blob("drivewatcher/file_parents.json")
+        blob.upload_from_string(
+            json.dumps(file_parents, indent=2),
+            content_type="application/json",
+        )
+        click.echo(f"Saved file parents for {len(file_parents)} files")
+
+    except (OSError, ValueError) as e:
+        click.echo(f"Error saving file parents: {e}", err=True)
+
+
+def _filter_parent_changes(changed_files: List[dict], stored_parents: dict) -> tuple:
+    """
+    Filter changed files to only those whose parent folders have changed.
+
+    A file is included when:
+    - It has never been seen before (new to the watched folders), or
+    - Its set of parent folder IDs differs from the last recorded value.
+
+    Args:
+        changed_files: Files detected as modified by the drive watcher.
+        stored_parents: Mapping of file ID → last known parent IDs from GCS.
+
+    Returns:
+        A 2-tuple of:
+        - filtered_files: subset of changed_files with parent changes.
+        - updated_parents: full parents dict to persist (covers all seen files).
+    """
+    filtered: List[dict] = []
+    updated = dict(stored_parents)
+
+    for file_info in changed_files:
+        file_id = file_info["id"]
+        current_parents = sorted(file_info.get("parents", []))
+        previous_parents = sorted(stored_parents.get(file_id, []))
+
+        if current_parents != previous_parents:
+            filtered.append(file_info)
+            click.echo(
+                f"  PARENT CHANGED: {file_info['name']} "
+                f"(was {previous_parents}, now {current_parents})"
+            )
+        else:
+            click.echo(f"  SKIPPED (same parents): {file_info['name']}")
+
+        # Always update stored parents so we track the latest state.
+        updated[file_id] = file_info.get("parents", [])
+
+    return filtered, updated
+
+
 def _get_watched_folders() -> List[str]:
     """Get the list of folder IDs to watch for changes."""
     # Environment variable takes precedence for configuration
@@ -278,10 +366,22 @@ def drivewatcher_main(cloud_event: CloudEvent):
             # Detect changes since last check
             changed_files = _detect_changes(services, watched_folders, last_check_time)
 
-            # Publish changes if any found
+            # Filter to only files whose parent folder has changed, then
+            # persist the updated parent state regardless of whether we
+            # publish (so subsequent runs have an up-to-date baseline).
             if changed_files:
-                _publish_changes(services, changed_files, current_time)
-                main_span.set_attribute("status", "published_changes")
+                stored_parents = _load_file_parents(services)
+                files_with_parent_changes, updated_parents = _filter_parent_changes(
+                    changed_files, stored_parents
+                )
+                _save_file_parents(services, updated_parents)
+
+                if files_with_parent_changes:
+                    _publish_changes(services, files_with_parent_changes, current_time)
+                    main_span.set_attribute("status", "published_changes")
+                else:
+                    click.echo("No parent folder changes detected, skipping tag update")
+                    main_span.set_attribute("status", "no_parent_changes")
             else:
                 main_span.set_attribute("status", "no_changes")
 

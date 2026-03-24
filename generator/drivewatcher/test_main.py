@@ -9,10 +9,13 @@ from google.api_core.exceptions import NotFound
 
 from generator.drivewatcher.main import (
     _detect_changes,
+    _filter_parent_changes,
     _get_last_check_time,
     _get_watched_folders,
+    _load_file_parents,
     _publish_changes,
     _save_check_time,
+    _save_file_parents,
     drivewatcher_main,
 )
 from generator.worker.models import File
@@ -302,13 +305,209 @@ def test_publish_changes_empty_list():
     services["publisher"].publish.assert_not_called()
 
 
+def test_load_file_parents_no_blob():
+    """Test loading file parents when no previous data exists."""
+    mock_bucket = Mock()
+    mock_bucket.get_blob.return_value = None
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        result = _load_file_parents(services)
+
+    assert result == {}
+    mock_bucket.get_blob.assert_called_once_with("drivewatcher/file_parents.json")
+
+
+def test_load_file_parents_with_existing_data():
+    """Test loading file parents when previous data exists."""
+    existing_data = {
+        "file1": ["folder1"],
+        "file2": ["folder1", "folder2"],
+    }
+
+    mock_blob = Mock()
+    mock_blob.download_as_text.return_value = json.dumps(existing_data)
+
+    mock_bucket = Mock()
+    mock_bucket.get_blob.return_value = mock_blob
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        result = _load_file_parents(services)
+
+    assert result == existing_data
+    mock_bucket.get_blob.assert_called_once_with("drivewatcher/file_parents.json")
+
+
+def test_load_file_parents_malformed_json():
+    """Test that malformed JSON returns an empty dict."""
+    mock_blob = Mock()
+    mock_blob.download_as_text.return_value = "not valid json"
+
+    mock_bucket = Mock()
+    mock_bucket.get_blob.return_value = mock_blob
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        result = _load_file_parents(services)
+
+    assert result == {}
+
+
+def test_save_file_parents():
+    """Test saving file parents to GCS."""
+    file_parents = {
+        "file1": ["folder1"],
+        "file2": ["folder2"],
+    }
+
+    mock_blob = Mock()
+    mock_bucket = Mock()
+    mock_bucket.blob.return_value = mock_blob
+
+    mock_storage_client = Mock()
+    mock_storage_client.bucket.return_value = mock_bucket
+
+    mock_settings = Mock()
+    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
+
+    services = {"storage_client": mock_storage_client}
+
+    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+        _save_file_parents(services, file_parents)
+
+    mock_bucket.blob.assert_called_once_with("drivewatcher/file_parents.json")
+    call_args = mock_blob.upload_from_string.call_args
+    saved_data = json.loads(call_args[0][0])
+    assert saved_data == file_parents
+    assert call_args[1]["content_type"] == "application/json"
+
+
+def test_filter_parent_changes_new_file():
+    """New file (never seen before) should be included."""
+    changed_files = [
+        {"id": "file1", "name": "New Song.pdf", "parents": ["folder1"]},
+    ]
+    stored_parents = {}
+
+    filtered, updated = _filter_parent_changes(changed_files, stored_parents)
+
+    assert len(filtered) == 1
+    assert filtered[0]["id"] == "file1"
+    assert updated == {"file1": ["folder1"]}
+
+
+def test_filter_parent_changes_parents_changed():
+    """File whose parents differ from stored state should be included."""
+    changed_files = [
+        {
+            "id": "file1",
+            "name": "Moved Song.pdf",
+            "parents": ["folder2"],
+        },
+    ]
+    stored_parents = {"file1": ["folder1"]}
+
+    filtered, updated = _filter_parent_changes(changed_files, stored_parents)
+
+    assert len(filtered) == 1
+    assert filtered[0]["id"] == "file1"
+    assert updated == {"file1": ["folder2"]}
+
+
+def test_filter_parent_changes_parents_same():
+    """File whose parents are unchanged should be skipped."""
+    changed_files = [
+        {
+            "id": "file1",
+            "name": "Unchanged Song.pdf",
+            "parents": ["folder1"],
+        },
+    ]
+    stored_parents = {"file1": ["folder1"]}
+
+    filtered, updated = _filter_parent_changes(changed_files, stored_parents)
+
+    assert filtered == []
+    # Parents are still stored (unchanged)
+    assert updated == {"file1": ["folder1"]}
+
+
+def test_filter_parent_changes_mixed():
+    """Only files with changed parents are forwarded."""
+    changed_files = [
+        {"id": "file1", "name": "Moved.pdf", "parents": ["folder2"]},
+        {"id": "file2", "name": "Content Only.pdf", "parents": ["folder1"]},
+        {"id": "file3", "name": "Brand New.pdf", "parents": ["folder1"]},
+    ]
+    stored_parents = {
+        "file1": ["folder1"],  # was in folder1, now folder2 → changed
+        "file2": ["folder1"],  # still in folder1 → no change
+        # file3 not stored → new
+    }
+
+    filtered, updated = _filter_parent_changes(changed_files, stored_parents)
+
+    filtered_ids = [f["id"] for f in filtered]
+    assert "file1" in filtered_ids
+    assert "file3" in filtered_ids
+    assert "file2" not in filtered_ids
+
+    assert updated == {
+        "file1": ["folder2"],
+        "file2": ["folder1"],
+        "file3": ["folder1"],
+    }
+
+
+def test_filter_parent_changes_updated_includes_all_seen():
+    """updated_parents must include all files, even those not forwarded."""
+    changed_files = [
+        {"id": "file1", "name": "Same.pdf", "parents": ["folder1"]},
+    ]
+    stored_parents = {"file1": ["folder1"], "file_old": ["folder1"]}
+
+    _, updated = _filter_parent_changes(changed_files, stored_parents)
+
+    # file_old is preserved from stored, file1 is refreshed
+    assert updated["file_old"] == ["folder1"]
+    assert updated["file1"] == ["folder1"]
+
+
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
 @patch("generator.drivewatcher.main._get_last_check_time")
 @patch("generator.drivewatcher.main._detect_changes")
 @patch("generator.drivewatcher.main._publish_changes")
 @patch("generator.drivewatcher.main._save_check_time")
+@patch("generator.drivewatcher.main._load_file_parents")
+@patch("generator.drivewatcher.main._save_file_parents")
+@patch("generator.drivewatcher.main._filter_parent_changes")
 def test_drivewatcher_main_with_changes(
+    mock_filter_parent_changes,
+    mock_save_file_parents,
+    mock_load_file_parents,
     mock_save_check_time,
     mock_publish_changes,
     mock_detect_changes,
@@ -335,8 +534,13 @@ def test_drivewatcher_main_with_changes(
     mock_get_last_check_time.return_value = last_check_time
 
     # Mock detecting changes
-    changed_files = [{"id": "file1", "name": "Test File.pdf"}]
+    changed_files = [{"id": "file1", "name": "Test File.pdf", "parents": ["folder1"]}]
     mock_detect_changes.return_value = changed_files
+
+    # Mock parent change filtering – one file with a changed parent
+    stored_parents = {}
+    mock_load_file_parents.return_value = stored_parents
+    mock_filter_parent_changes.return_value = (changed_files, {"file1": ["folder1"]})
 
     # Mock cloud event
     cloud_event = Mock()
@@ -350,7 +554,70 @@ def test_drivewatcher_main_with_changes(
     mock_detect_changes.assert_called_once_with(
         mock_get_services.return_value, ["folder1", "folder2"], last_check_time
     )
+    mock_load_file_parents.assert_called_once()
+    mock_filter_parent_changes.assert_called_once_with(changed_files, stored_parents)
+    # updated_parents is the second element returned by the filter mock
+    updated_parents = mock_filter_parent_changes.return_value[1]
+    mock_save_file_parents.assert_called_once_with(
+        mock_get_services.return_value, updated_parents
+    )
     mock_publish_changes.assert_called_once()
+    mock_save_check_time.assert_called_once()
+
+
+@patch("generator.drivewatcher.main._get_services")
+@patch("generator.drivewatcher.main._get_watched_folders")
+@patch("generator.drivewatcher.main._get_last_check_time")
+@patch("generator.drivewatcher.main._detect_changes")
+@patch("generator.drivewatcher.main._publish_changes")
+@patch("generator.drivewatcher.main._save_check_time")
+@patch("generator.drivewatcher.main._load_file_parents")
+@patch("generator.drivewatcher.main._save_file_parents")
+@patch("generator.drivewatcher.main._filter_parent_changes")
+def test_drivewatcher_main_no_parent_changes(
+    mock_filter_parent_changes,
+    mock_save_file_parents,
+    mock_load_file_parents,
+    mock_save_check_time,
+    mock_publish_changes,
+    mock_detect_changes,
+    mock_get_last_check_time,
+    mock_get_watched_folders,
+    mock_get_services,
+):
+    """Test the main drivewatcher function when files changed but parents did not."""
+    mock_span = Mock()
+    mock_tracer = Mock()
+    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
+        return_value=mock_span
+    )
+    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+
+    mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_watched_folders.return_value = ["folder1"]
+    mock_get_last_check_time.return_value = datetime.utcnow() - timedelta(hours=1)
+
+    changed_files = [{"id": "file1", "name": "Test File.pdf", "parents": ["folder1"]}]
+    mock_detect_changes.return_value = changed_files
+
+    stored_parents = {"file1": ["folder1"]}
+    mock_load_file_parents.return_value = stored_parents
+    # Filter returns no parent changes
+    mock_filter_parent_changes.return_value = ([], stored_parents)
+
+    drivewatcher_main(Mock())
+
+    # Parents were loaded, filtered, and saved …
+    mock_load_file_parents.assert_called_once()
+    mock_filter_parent_changes.assert_called_once_with(changed_files, stored_parents)
+    updated_parents = mock_filter_parent_changes.return_value[1]
+    mock_save_file_parents.assert_called_once_with(
+        mock_get_services.return_value, updated_parents
+    )
+    # … but nothing was published
+    mock_publish_changes.assert_not_called()
+    mock_span.set_attribute.assert_any_call("status", "no_parent_changes")
+    # The check time should still be saved for the next run
     mock_save_check_time.assert_called_once()
 
 
