@@ -158,24 +158,14 @@ def update_tags(file_identifier, all, dry_run):
         raise click.Abort()
 
     settings = get_settings()
-    credential_config = settings.google_cloud.credentials.get(
-        "songbook-metadata-writer"
-    )
+    credential_config = settings.google_cloud.credentials.get("tag-updater")
     if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
+        click.echo("Error: credential config 'tag-updater' not found.", err=True)
         raise click.Abort()
 
-    # The Tagger needs to read Google Docs content.
-    scopes = list(
-        set(
-            credential_config.scopes
-            + ["https://www.googleapis.com/auth/documents.readonly"]
-        )
+    creds = get_credentials(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
     )
-
-    creds = get_credentials(scopes=scopes, target_principal=credential_config.principal)
     drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
     cache = init_cache()
