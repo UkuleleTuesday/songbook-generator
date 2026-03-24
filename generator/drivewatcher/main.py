@@ -343,6 +343,7 @@ def drivewatcher_main(cloud_event: CloudEvent):
     for changes in configured Google Drive folders.
     """
     services = _get_services()
+    settings = get_settings()
 
     with services["tracer"].start_as_current_span("drivewatcher_main") as main_span:
         try:
@@ -366,22 +367,35 @@ def drivewatcher_main(cloud_event: CloudEvent):
             # Detect changes since last check
             changed_files = _detect_changes(services, watched_folders, last_check_time)
 
-            # Filter to only files whose parent folder has changed, then
-            # persist the updated parent state regardless of whether we
-            # publish (so subsequent runs have an up-to-date baseline).
-            if changed_files:
-                stored_parents = _load_file_parents(services)
-                files_with_parent_changes, updated_parents = _filter_parent_changes(
-                    changed_files, stored_parents
-                )
-                _save_file_parents(services, updated_parents)
+            # Optionally filter to only files whose parent folder has changed.
+            # When enabled (the default), the tag updater is triggered only when
+            # a file moves to a different folder (e.g. "Ready to Play" /
+            # "Approved"), not on every content edit. The updated parent state is
+            # always persisted so subsequent runs have an up-to-date baseline.
+            filter_by_parent_changes = settings.drive_watcher.filter_by_parent_changes
+            main_span.set_attribute(
+                "filter_by_parent_changes", filter_by_parent_changes
+            )
 
-                if files_with_parent_changes:
-                    _publish_changes(services, files_with_parent_changes, current_time)
-                    main_span.set_attribute("status", "published_changes")
+            if changed_files:
+                if filter_by_parent_changes:
+                    stored_parents = _load_file_parents(services)
+                    files_to_publish, updated_parents = _filter_parent_changes(
+                        changed_files, stored_parents
+                    )
+                    _save_file_parents(services, updated_parents)
+
+                    if files_to_publish:
+                        _publish_changes(services, files_to_publish, current_time)
+                        main_span.set_attribute("status", "published_changes")
+                    else:
+                        click.echo(
+                            "No parent folder changes detected, skipping tag update"
+                        )
+                        main_span.set_attribute("status", "no_parent_changes")
                 else:
-                    click.echo("No parent folder changes detected, skipping tag update")
-                    main_span.set_attribute("status", "no_parent_changes")
+                    _publish_changes(services, changed_files, current_time)
+                    main_span.set_attribute("status", "published_changes")
             else:
                 main_span.set_attribute("status", "no_changes")
 

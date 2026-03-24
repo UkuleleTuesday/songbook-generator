@@ -123,6 +123,35 @@ def test_google_drive_api_retries_invalid_override(monkeypatch):
     assert settings.google_cloud.drive_client.api_retries == 3  # Default value
 
 
+def test_drivewatcher_filter_by_parent_changes_default(monkeypatch):
+    """Test that filter_by_parent_changes defaults to True."""
+    monkeypatch.delenv("DRIVEWATCHER_FILTER_BY_PARENT_CHANGES", raising=False)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.drive_watcher.filter_by_parent_changes is True
+
+
+@pytest.mark.parametrize(
+    "env_value, expected",
+    [
+        ("true", True),
+        ("True", True),
+        ("1", True),
+        ("false", False),
+        ("False", False),
+        ("0", False),
+    ],
+)
+def test_drivewatcher_filter_by_parent_changes_override(
+    monkeypatch, env_value, expected
+):
+    """Test that DRIVEWATCHER_FILTER_BY_PARENT_CHANGES overrides the config flag."""
+    monkeypatch.setenv("DRIVEWATCHER_FILTER_BY_PARENT_CHANGES", env_value)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.drive_watcher.filter_by_parent_changes is expected
+
+
 def test_editions_loaded_from_songbooks_directory():
     """Test that editions are loaded from the songbooks/ directory."""
     config.get_settings.cache_clear()

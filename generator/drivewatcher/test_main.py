@@ -495,6 +495,7 @@ def test_filter_parent_changes_updated_includes_all_seen():
     assert updated["file1"] == ["folder1"]
 
 
+@patch("generator.drivewatcher.main.get_settings")
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
 @patch("generator.drivewatcher.main._get_last_check_time")
@@ -514,8 +515,14 @@ def test_drivewatcher_main_with_changes(
     mock_get_last_check_time,
     mock_get_watched_folders,
     mock_get_services,
+    mock_get_settings,
 ):
     """Test the main drivewatcher function when changes are detected."""
+    # Mock settings with filter enabled (default)
+    mock_settings = Mock()
+    mock_settings.drive_watcher.filter_by_parent_changes = True
+    mock_get_settings.return_value = mock_settings
+
     # Mock the services
     mock_span = Mock()
     mock_tracer = Mock()
@@ -565,6 +572,7 @@ def test_drivewatcher_main_with_changes(
     mock_save_check_time.assert_called_once()
 
 
+@patch("generator.drivewatcher.main.get_settings")
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
 @patch("generator.drivewatcher.main._get_last_check_time")
@@ -584,8 +592,13 @@ def test_drivewatcher_main_no_parent_changes(
     mock_get_last_check_time,
     mock_get_watched_folders,
     mock_get_services,
+    mock_get_settings,
 ):
     """Test the main drivewatcher function when files changed but parents did not."""
+    mock_settings = Mock()
+    mock_settings.drive_watcher.filter_by_parent_changes = True
+    mock_get_settings.return_value = mock_settings
+
     mock_span = Mock()
     mock_tracer = Mock()
     mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
@@ -618,6 +631,60 @@ def test_drivewatcher_main_no_parent_changes(
     mock_publish_changes.assert_not_called()
     mock_span.set_attribute.assert_any_call("status", "no_parent_changes")
     # The check time should still be saved for the next run
+    mock_save_check_time.assert_called_once()
+
+
+@patch("generator.drivewatcher.main.get_settings")
+@patch("generator.drivewatcher.main._get_services")
+@patch("generator.drivewatcher.main._get_watched_folders")
+@patch("generator.drivewatcher.main._get_last_check_time")
+@patch("generator.drivewatcher.main._detect_changes")
+@patch("generator.drivewatcher.main._publish_changes")
+@patch("generator.drivewatcher.main._save_check_time")
+@patch("generator.drivewatcher.main._load_file_parents")
+@patch("generator.drivewatcher.main._save_file_parents")
+@patch("generator.drivewatcher.main._filter_parent_changes")
+def test_drivewatcher_main_filter_disabled(
+    mock_filter_parent_changes,
+    mock_save_file_parents,
+    mock_load_file_parents,
+    mock_save_check_time,
+    mock_publish_changes,
+    mock_detect_changes,
+    mock_get_last_check_time,
+    mock_get_watched_folders,
+    mock_get_services,
+    mock_get_settings,
+):
+    """Test that all changed files are published when filter_by_parent_changes=False."""
+    mock_settings = Mock()
+    mock_settings.drive_watcher.filter_by_parent_changes = False
+    mock_get_settings.return_value = mock_settings
+
+    mock_span = Mock()
+    mock_tracer = Mock()
+    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
+        return_value=mock_span
+    )
+    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+
+    mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_watched_folders.return_value = ["folder1"]
+    mock_get_last_check_time.return_value = datetime.utcnow() - timedelta(hours=1)
+
+    changed_files = [{"id": "file1", "name": "Test File.pdf", "parents": ["folder1"]}]
+    mock_detect_changes.return_value = changed_files
+
+    drivewatcher_main(Mock())
+
+    # Parent filtering is bypassed entirely
+    mock_load_file_parents.assert_not_called()
+    mock_filter_parent_changes.assert_not_called()
+    mock_save_file_parents.assert_not_called()
+    # All changed files are published directly
+    mock_publish_changes.assert_called_once()
+    call_args = mock_publish_changes.call_args
+    assert call_args[0][1] == changed_files
     mock_save_check_time.assert_called_once()
 
 

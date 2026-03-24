@@ -164,6 +164,17 @@ class GoogleCloud(BaseModel):
     }
 
 
+class DriveWatcher(BaseModel):
+    filter_by_parent_changes: bool = Field(
+        default=True,
+        description=(
+            "When True, the tag updater is only triggered when a file's "
+            "parent folder changes (e.g. moved to 'Ready to Play' or "
+            "'Approved'). Set to False to trigger on every file modification."
+        ),
+    )
+
+
 class Tracing(BaseModel):
     enabled: bool = Field(default=False)
 
@@ -188,6 +199,7 @@ class Settings(BaseSettings):
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
+    drive_watcher: DriveWatcher = Field(default_factory=DriveWatcher)
     editions: List[Edition] = Field(default_factory=list)
 
     @model_validator(mode="before")
@@ -252,6 +264,15 @@ class Settings(BaseSettings):
             except ValueError:
                 # Ignore invalid values, keep the default
                 pass
+
+        # Handle DriveWatcher settings
+        if (
+            filter_env := os.getenv("DRIVEWATCHER_FILTER_BY_PARENT_CHANGES")
+        ) is not None:
+            self.drive_watcher.filter_by_parent_changes = filter_env.lower() in (
+                "true",
+                "1",
+            )
 
         return self
 
