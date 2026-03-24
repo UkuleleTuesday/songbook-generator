@@ -10,7 +10,7 @@ from ..common import config
 from ..common.config import get_settings
 from ..common.editions import scan_drive_editions
 from ..common.filters import FilterGroup
-from ..common.gdrive import GoogleDriveClient
+from ..common.gdrive import GoogleDriveClient, SHORTCUT_MIME_TYPE
 from ..worker.pdf import (
     FOLDER_COMPONENT_NAMES,
     collect_and_sort_files,
@@ -74,6 +74,408 @@ def list_editions():
             click.echo(f"  [{folder_id}] {edition.title}")
     else:
         click.echo("\nNo drive editions found.")
+
+
+@editions.command(name="copy")
+@click.argument("source_folder_id")
+@click.option(
+    "--target-folder",
+    "-t",
+    default=None,
+    help=(
+        "Google Drive folder ID where the new edition folder will be created. "
+        "Defaults to the single configured edition source folder "
+        "(GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS)."
+    ),
+)
+@click.option(
+    "--folder-name",
+    "-n",
+    default=None,
+    help="Name for the new Drive folder (defaults to 'Copy of <original name>').",
+)
+def copy_edition(
+    source_folder_id: str,
+    target_folder: Optional[str],
+    folder_name: Optional[str],
+):
+    """Copy an existing songbook edition on Google Drive.
+
+    Duplicates an edition folder including its .songbook.yaml config and all
+    subfolders (Cover, Preface, Postface, Songs). Shortcuts within component
+    folders are recreated pointing to the same target files.
+
+    SOURCE_FOLDER_ID is the Drive folder ID of the edition to copy.
+    """
+    settings = get_settings()
+
+    # Determine target folder
+    if target_folder is None:
+        edition_folders = settings.songbook_editions.folder_ids
+        if len(edition_folders) == 1:
+            target_folder = edition_folders[0]
+        elif len(edition_folders) > 1:
+            click.echo(
+                "Error: Multiple edition source folders are configured. "
+                "Please specify --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+        else:
+            click.echo(
+                "Error: No --target-folder specified and no edition source "
+                "folders are configured (GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS). "
+                "Please provide --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+
+    # Initialize Drive services
+    try:
+        drive, cache = init_services(
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
+    except (
+        HttpError,
+        google.auth.exceptions.TransportError,
+        google.auth.exceptions.DefaultCredentialsError,
+    ) as exc:
+        click.echo(f"Error: Failed to initialize Drive services: {exc}", err=True)
+        raise click.Abort()
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+    # Get source folder metadata
+    click.echo(f"Fetching source folder '{source_folder_id}'...")
+    try:
+        source_files = gdrive_client.query_drive_files([source_folder_id])
+        # Also get the folder itself to find its name
+        resp = (
+            drive.files()
+            .get(fileId=source_folder_id, fields="name")
+            .execute(num_retries=gdrive_client.config.api_retries)
+        )
+        source_folder_name = resp.get("name", "Untitled")
+    except HttpError as exc:
+        click.echo(f"Error: Failed to access source folder: {exc}", err=True)
+        raise click.Abort()
+
+    # Determine new folder name
+    if folder_name is None:
+        folder_name = f"Copy of {source_folder_name}"
+
+    # Create the new edition folder
+    click.echo(f"Creating new edition folder '{folder_name}'...")
+    try:
+        new_folder_id = gdrive_client.create_folder(folder_name, target_folder)
+    except HttpError as exc:
+        click.echo(f"Error: Failed to create new folder: {exc}", err=True)
+        raise click.Abort()
+    click.echo(f"  Created folder (id={new_folder_id})")
+
+    # Copy .songbook.yaml if it exists
+    click.echo("Copying .songbook.yaml...")
+    yaml_files = [f for f in source_files if f.name == ".songbook.yaml"]
+    if yaml_files:
+        try:
+            yaml_file = yaml_files[0]
+            yaml_stream = gdrive_client.download_file_stream(yaml_file, use_cache=False)
+            yaml_content = yaml_stream.read()
+            yaml_file_id = gdrive_client.upload_file_bytes(
+                ".songbook.yaml",
+                yaml_content,
+                new_folder_id,
+                mime_type="application/x-yaml",
+            )
+            click.echo(f"  Copied .songbook.yaml (id={yaml_file_id})")
+        except HttpError as exc:
+            click.echo(f"Warning: Failed to copy .songbook.yaml: {exc}", err=True)
+    else:
+        click.echo("  No .songbook.yaml found in source folder")
+
+    # Copy component subfolders and their shortcuts
+    click.echo("Copying component subfolders...")
+    component_folders = {
+        "Cover": [],
+        "Preface": [],
+        "Postface": [],
+        "Songs": [],
+    }
+
+    for file in source_files:
+        if file.mimeType == "application/vnd.google-apps.folder":
+            if file.name in component_folders:
+                component_folders[file.name].append(file)
+
+    for component_name, folders in component_folders.items():
+        try:
+            new_component_folder_id = gdrive_client.create_folder(
+                component_name, new_folder_id
+            )
+            click.echo(f"  Created '{component_name}' subfolder")
+
+            # If source has this component folder, copy its shortcuts
+            if folders:
+                source_component_folder = folders[0]
+                # Get files in the component folder
+                component_files = gdrive_client.query_drive_files(
+                    [source_component_folder.id]
+                )
+                for file in component_files:
+                    if file.mimeType == SHORTCUT_MIME_TYPE:
+                        try:
+                            # Get shortcut target
+                            shortcut_resp = (
+                                drive.files()
+                                .get(
+                                    fileId=file.id,
+                                    fields="shortcutDetails",
+                                )
+                                .execute(
+                                    num_retries=gdrive_client.config.api_retries
+                                )
+                            )
+                            target_id = shortcut_resp.get("shortcutDetails", {}).get(
+                                "targetId"
+                            )
+                            if target_id:
+                                gdrive_client.create_shortcut(
+                                    file.name, target_id, new_component_folder_id
+                                )
+                                click.echo(
+                                    f"    Copied shortcut '{file.name}' in {component_name}/"
+                                )
+                        except HttpError as exc:
+                            click.echo(
+                                f"    Warning: Failed to copy shortcut '{file.name}': {exc}",
+                                err=True,
+                            )
+        except HttpError as exc:
+            click.echo(
+                f"Warning: Failed to create '{component_name}' subfolder: {exc}",
+                err=True,
+            )
+
+    click.echo("\nEdition copy complete.")
+    click.echo(f"New edition folder ID: {new_folder_id}")
+    click.echo("Run 'editions list' to verify the new edition is discovered.")
+
+
+@editions.command(name="create")
+@click.argument("title")
+@click.option(
+    "--target-folder",
+    "-t",
+    default=None,
+    help=(
+        "Google Drive folder ID where the new edition folder will be created. "
+        "Defaults to the single configured edition source folder "
+        "(GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS)."
+    ),
+)
+@click.option(
+    "--folder-name",
+    "-n",
+    default=None,
+    help="Name for the new Drive folder (defaults to the title).",
+)
+@click.option(
+    "--description",
+    "-d",
+    default="",
+    help="Description for the edition.",
+)
+@click.option(
+    "--filters",
+    "-f",
+    multiple=True,
+    help=(
+        "Edition filters in the format 'property:value'. Can be specified multiple times. "
+        "Example: --filters 'artist:Beatles' --filters 'bpm:120'"
+    ),
+)
+@click.option(
+    "--cover-file-id",
+    default=None,
+    help="Google Drive file ID for the cover page.",
+)
+@click.option(
+    "--preface-file-ids",
+    default=None,
+    help="Comma-separated list of Google Drive file IDs for preface pages.",
+)
+@click.option(
+    "--postface-file-ids",
+    default=None,
+    help="Comma-separated list of Google Drive file IDs for postface pages.",
+)
+@click.option(
+    "--no-shortcuts",
+    is_flag=True,
+    default=False,
+    help="Do not create Drive component subfolders and shortcuts (default: create them).",
+)
+def create_edition(
+    title: str,
+    target_folder: Optional[str],
+    folder_name: Optional[str],
+    description: str,
+    filters: tuple,
+    cover_file_id: Optional[str],
+    preface_file_ids: Optional[str],
+    postface_file_ids: Optional[str],
+    no_shortcuts: bool,
+):
+    """Create a new songbook edition on Google Drive.
+
+    Creates a new Drive folder with a .songbook.yaml configuration file.
+    The edition can be configured with filters and optional cover/preface/postface files.
+
+    TITLE is the title for the new edition.
+    """
+    settings = get_settings()
+
+    # Determine target folder
+    if target_folder is None:
+        edition_folders = settings.songbook_editions.folder_ids
+        if len(edition_folders) == 1:
+            target_folder = edition_folders[0]
+        elif len(edition_folders) > 1:
+            click.echo(
+                "Error: Multiple edition source folders are configured. "
+                "Please specify --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+        else:
+            click.echo(
+                "Error: No --target-folder specified and no edition source "
+                "folders are configured (GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS). "
+                "Please provide --target-folder.",
+                err=True,
+            )
+            raise click.Abort()
+
+    # Determine folder name
+    if folder_name is None:
+        folder_name = title
+
+    # Initialize Drive services
+    try:
+        drive, cache = init_services(
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
+    except (
+        HttpError,
+        google.auth.exceptions.TransportError,
+        google.auth.exceptions.DefaultCredentialsError,
+    ) as exc:
+        click.echo(f"Error: Failed to initialize Drive services: {exc}", err=True)
+        raise click.Abort()
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+    # Create the edition folder in Drive
+    click.echo(f"Creating Drive folder '{folder_name}'...")
+    try:
+        folder_id = gdrive_client.create_folder(folder_name, target_folder)
+    except HttpError as exc:
+        click.echo(f"Error: Failed to create Drive folder: {exc}", err=True)
+        raise click.Abort()
+    click.echo(f"  Created folder (id={folder_id})")
+
+    # Build the edition configuration
+    edition_data = {
+        "title": title,
+        "description": description,
+        "use_folder_components": True,
+    }
+
+    # Add filters if provided
+    if filters:
+        filter_list = []
+        for filter_str in filters:
+            if ":" not in filter_str:
+                click.echo(
+                    f"Error: Invalid filter format '{filter_str}'. "
+                    f"Expected 'property:value'.",
+                    err=True,
+                )
+                raise click.Abort()
+            prop, value = filter_str.split(":", 1)
+            filter_list.append({"property": prop.strip(), "value": value.strip()})
+        if filter_list:
+            edition_data["filters"] = filter_list
+
+    # Add component file IDs if provided
+    if cover_file_id:
+        edition_data["cover_file_id"] = cover_file_id
+    if preface_file_ids:
+        edition_data["preface_file_ids"] = [
+            fid.strip() for fid in preface_file_ids.split(",")
+        ]
+    if postface_file_ids:
+        edition_data["postface_file_ids"] = [
+            fid.strip() for fid in postface_file_ids.split(",")
+        ]
+
+    # Serialize and upload .songbook.yaml
+    yaml_content = yaml.dump(
+        edition_data,
+        default_flow_style=False,
+        allow_unicode=True,
+        sort_keys=False,
+    ).encode("utf-8")
+
+    click.echo("Uploading .songbook.yaml...")
+    try:
+        yaml_file_id = gdrive_client.upload_file_bytes(
+            ".songbook.yaml",
+            yaml_content,
+            folder_id,
+            mime_type="application/x-yaml",
+        )
+    except HttpError as exc:
+        click.echo(f"Error: Failed to upload .songbook.yaml: {exc}", err=True)
+        raise click.Abort()
+    click.echo(f"  Uploaded .songbook.yaml (id={yaml_file_id})")
+
+    # Always create component subfolders
+    click.echo("Creating component subfolders...")
+    if not no_shortcuts:
+        # Create subfolders with shortcuts if component file IDs are provided
+        from ..common.config import Edition as ConfigEdition
+
+        edition_obj = ConfigEdition(
+            title=title,
+            description=description,
+            filters=[],
+            cover_file_id=cover_file_id,
+            preface_file_ids=preface_file_ids.split(",") if preface_file_ids else None,
+            postface_file_ids=postface_file_ids.split(",") if postface_file_ids else None,
+        )
+        _create_component_shortcuts(gdrive_client, edition_obj, folder_id)
+
+    # Always create empty subfolders (Cover, Preface, Postface, Songs)
+    # even if shortcuts weren't created or if no component files were specified
+    for component_name in ["Cover", "Preface", "Postface", "Songs"]:
+        try:
+            # Check if subfolder already exists (created above with shortcuts)
+            existing_files = gdrive_client.query_drive_files(
+                [folder_id], property_filters=None
+            )
+            if not any(f.name == component_name for f in existing_files):
+                gdrive_client.create_folder(component_name, folder_id)
+                click.echo(f"  Created '{component_name}' subfolder")
+        except HttpError as exc:
+            click.echo(
+                f"Warning: failed to create '{component_name}' subfolder: {exc}",
+                err=True,
+            )
+
+    click.echo("\nEdition creation complete.")
+    click.echo(f"Edition folder ID: {folder_id}")
+    click.echo("Run 'editions list' to verify the new Drive edition is discovered.")
 
 
 def _edition_to_yaml_bytes(
