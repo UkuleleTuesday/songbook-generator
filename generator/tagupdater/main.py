@@ -38,11 +38,9 @@ def _get_services():
             os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 
     # Get credentials for tagging (needs drive write permissions)
-    tagger_credential_config = settings.google_cloud.credentials.get(
-        "songbook-generator"
-    )
+    tagger_credential_config = settings.google_cloud.credentials.get("tag-updater")
     if not tagger_credential_config:
-        raise click.Abort("Credential config 'songbook-generator' not found.")
+        raise click.Abort("Credential config 'tag-updater' not found.")
 
     tagger_creds = get_credentials(
         scopes=tagger_credential_config.scopes,

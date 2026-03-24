@@ -297,9 +297,7 @@ def test_get_services_success(
     result = _get_services()
 
     # Verify credentials config lookup used correct key
-    mock_settings.google_cloud.credentials.get.assert_called_once_with(
-        "songbook-generator"
-    )
+    mock_settings.google_cloud.credentials.get.assert_called_once_with("tag-updater")
 
     # Verify get_credentials was called correctly
     mock_get_credentials.assert_called_once_with(
@@ -353,9 +351,7 @@ def test_get_services_missing_credential_config(
         _get_services()
 
     # Verify the correct credential config was requested
-    mock_settings.google_cloud.credentials.get.assert_called_once_with(
-        "songbook-generator"
-    )
+    mock_settings.google_cloud.credentials.get.assert_called_once_with("tag-updater")
 
 
 @patch("generator.tagupdater.main.Tagger")
