@@ -406,8 +406,12 @@ def test_get_services_tagger_instantiation(
     # Call the function
     result = _get_services()
 
-    # Verify Tagger was instantiated with both services
-    mock_tagger_class.assert_called_once_with(mock_drive_service, mock_docs_service)
+    # Verify Tagger was instantiated with both services and trigger_field from settings
+    mock_tagger_class.assert_called_once_with(
+        mock_drive_service,
+        mock_docs_service,
+        trigger_field=mock_get_settings.return_value.tag_updater.trigger_field,
+    )
 
     # Verify the tagger is returned
     assert result["tagger"] == mock_tagger_instance

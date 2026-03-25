@@ -125,9 +125,15 @@ def tag(_func=None, *, only_if_unset: bool = False):
 
 
 class Tagger:
-    def __init__(self, drive_service: Any, docs_service: Any):
+    def __init__(
+        self,
+        drive_service: Any,
+        docs_service: Any,
+        trigger_field: Optional[str] = None,
+    ):
         self.drive_service = drive_service
         self.docs_service = docs_service
+        self.trigger_field = trigger_field
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -139,7 +145,12 @@ class Tagger:
         to the file's properties.
         """
         with tracer.start_as_current_span(
-            "update_tags", attributes={"file.id": file.id, "file.name": file.name}
+            "update_tags",
+            attributes={
+                "file.id": file.id,
+                "file.name": file.name,
+                **({"trigger_field": self.trigger_field} if self.trigger_field else {}),
+            },
         ) as span:
             # Build context, fetching doc content if necessary
             document = None
@@ -194,9 +205,26 @@ class Tagger:
                 updated_properties.update(new_properties)
                 click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
 
-                if updated_properties == current_properties:
+                if self.trigger_field is not None:
+                    current_trigger_value = current_properties.get(self.trigger_field)
+                    new_trigger_value = updated_properties.get(self.trigger_field)
+                    span.set_attribute(
+                        "trigger_field.current_value", str(current_trigger_value)
+                    )
+                    span.set_attribute(
+                        "trigger_field.new_value", str(new_trigger_value)
+                    )
+                    if current_trigger_value == new_trigger_value:
+                        click.echo(
+                            f"  Trigger field '{self.trigger_field}' unchanged, skipping update."
+                        )
+                        span.set_attribute(
+                            "update_skipped.reason", "trigger_field_unchanged"
+                        )
+                        return
+                elif updated_properties == current_properties:
                     click.echo("  Tags are identical, no update needed.")
-                    span.set_attribute("update_skipped", "true")
+                    span.set_attribute("update_skipped.reason", "tags_identical")
                     return
 
                 if dry_run:
