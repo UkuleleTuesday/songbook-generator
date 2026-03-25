@@ -13,6 +13,9 @@ from .tags import (
     ready_to_play_date,
     status,
     tag,
+    year,
+    duration,
+    _parse_duration,
     Context,
     SongSheetGoogleDocument,
 )

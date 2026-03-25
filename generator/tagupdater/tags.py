@@ -5,9 +5,13 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import click
+from google import genai
+from google.genai import types
 
 from ..common.tracing import get_tracer
 from ..worker.models import File
+
+LLM_MODEL = "gemini-2.5-flash-lite"
 
 
 @dataclass
@@ -74,6 +78,7 @@ class Context:
     file: File
     document: Optional[SongSheetGoogleDocument] = None
     owner_name: Optional[str] = None
+    genai_client: Optional[genai.Client] = None
 
 
 @dataclass
@@ -125,16 +130,32 @@ def tag(_func=None, *, only_if_unset: bool = False):
     return decorator(_func)
 
 
+def ask_llm(ctx: Context, prompt: str) -> Optional[str]:
+    """Call Gemini with Google Search grounding. Returns None if no client or empty response."""
+    if ctx.genai_client is None:
+        return None
+    response = ctx.genai_client.models.generate_content(
+        model=LLM_MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            tools=[types.Tool(google_search=types.GoogleSearch())],
+        ),
+    )
+    return response.text.strip().rstrip(".") or None
+
+
 class Tagger:
     def __init__(
         self,
         drive_service: Any,
         docs_service: Any,
         trigger_field: Optional[str] = None,
+        genai_client: Optional[genai.Client] = None,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
         self.trigger_field = trigger_field
+        self.genai_client = genai_client
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -171,7 +192,12 @@ class Tagger:
             if "owners" in file_meta and file_meta["owners"]:
                 owner_name = file_meta["owners"][0].get("displayName")
 
-            context = Context(file=file, document=document, owner_name=owner_name)
+            context = Context(
+                file=file,
+                document=document,
+                owner_name=owner_name,
+                genai_client=self.genai_client,
+            )
 
             new_properties = {}
             current_properties = file.properties.copy()
@@ -407,3 +433,44 @@ def time_signature(ctx: Context) -> Optional[str]:
     if match:
         return match.group(1)
     return None
+
+
+@tag(only_if_unset=True)
+def year(ctx: Context) -> Optional[str]:
+    """Looks up the original release year of the song via Gemini + Google Search."""
+    raw = ask_llm(
+        ctx,
+        f'What year was "{ctx.file.properties.get("song", ctx.file.name)}" '
+        f'by {ctx.file.properties.get("artist", "unknown artist")} originally released? '
+        "Reply with only the 4-digit year, or empty string if unknown.",
+    )
+    if raw and re.fullmatch(r"\d{4}", raw):
+        return raw
+    return None
+
+
+def _parse_duration(raw: str) -> Optional[str]:
+    """Parse a duration string into HH:MM:SS format, or None if unparseable."""
+    match = re.search(r"(\d+):(\d{2})", raw)
+    if not match:
+        return None
+    minutes, seconds = int(match.group(1)), int(match.group(2))
+    if seconds > 59:
+        return None
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
+@tag(only_if_unset=True)
+def duration(ctx: Context) -> Optional[str]:
+    """Looks up the original track duration via Gemini + Google Search."""
+    raw = ask_llm(
+        ctx,
+        f'What is the duration of "{ctx.file.properties.get("song", ctx.file.name)}" '
+        f'by {ctx.file.properties.get("artist", "unknown artist")} '
+        f'({ctx.file.properties.get("year", "")}) on its original studio release? '
+        "Reply with only the duration in MM:SS format, or empty string if unknown.",
+    )
+    if not raw:
+        return None
+    return _parse_duration(raw)
