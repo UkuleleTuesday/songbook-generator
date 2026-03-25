@@ -208,13 +208,19 @@ class Tagger:
                 if self.trigger_field is not None:
                     current_trigger_value = current_properties.get(self.trigger_field)
                     new_trigger_value = updated_properties.get(self.trigger_field)
-                    span.set_attribute("trigger_field.current_value", str(current_trigger_value))
-                    span.set_attribute("trigger_field.new_value", str(new_trigger_value))
+                    span.set_attribute(
+                        "trigger_field.current_value", str(current_trigger_value)
+                    )
+                    span.set_attribute(
+                        "trigger_field.new_value", str(new_trigger_value)
+                    )
                     if current_trigger_value == new_trigger_value:
                         click.echo(
                             f"  Trigger field '{self.trigger_field}' unchanged, skipping update."
                         )
-                        span.set_attribute("update_skipped.reason", "trigger_field_unchanged")
+                        span.set_attribute(
+                            "update_skipped.reason", "trigger_field_unchanged"
+                        )
                         return
                 elif updated_properties == current_properties:
                     click.echo("  Tags are identical, no update needed.")

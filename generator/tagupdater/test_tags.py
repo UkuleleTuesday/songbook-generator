@@ -401,9 +401,7 @@ def test_trigger_field_skips_write_when_field_unchanged(
 ):
     """Test that no write occurs when trigger_field value is unchanged."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, trigger_field="status"
-    )
+    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status is already APPROVED, and parents still point to APPROVED folder
     file_to_tag = File(
         id="file123",
@@ -417,14 +415,10 @@ def test_trigger_field_skips_write_when_field_unchanged(
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
-def test_trigger_field_writes_when_field_changes(
-    mock_drive_service, mock_docs_service
-):
+def test_trigger_field_writes_when_field_changes(mock_drive_service, mock_docs_service):
     """Test that a write occurs when trigger_field value changes."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, trigger_field="status"
-    )
+    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status was READY_TO_PLAY, now file is in APPROVED folder
     file_to_tag = File(
         id="file123",
@@ -443,9 +437,7 @@ def test_trigger_field_writes_when_field_goes_from_absent_to_set(
 ):
     """Test that a missing trigger field value counts as a change when set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, trigger_field="status"
-    )
+    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status not yet set, file is in APPROVED folder
     file_to_tag = File(
         id="file123",
@@ -472,9 +464,7 @@ def test_trigger_field_skips_write_even_when_other_properties_change(
         return "new_value"
 
     try:
-        tagger = Tagger(
-            mock_drive_service, mock_docs_service, trigger_field="status"
-        )
+        tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
         # status is already APPROVED (unchanged), but extra_tag is new
         file_to_tag = File(
             id="file123",
@@ -488,6 +478,7 @@ def test_trigger_field_skips_write_even_when_other_properties_change(
         mock_drive_service.files.return_value.update.assert_not_called()
     finally:
         from . import tags
+
         tags._TAGGERS.pop()
 
 

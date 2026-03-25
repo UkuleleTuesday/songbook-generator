@@ -193,8 +193,16 @@ def update_tags(file_identifier, all, dry_run, trigger_field):
             settings.song_sheets.folder_ids
         )
 
-    effective_trigger_field = trigger_field if trigger_field is not None else settings.tag_updater.trigger_field
-    tagger = Tagger(drive_service=drive_service, docs_service=docs_service, trigger_field=effective_trigger_field)
+    effective_trigger_field = (
+        trigger_field
+        if trigger_field is not None
+        else settings.tag_updater.trigger_field
+    )
+    tagger = Tagger(
+        drive_service=drive_service,
+        docs_service=docs_service,
+        trigger_field=effective_trigger_field,
+    )
     failed_updates = {}
 
     for file_obj in files_to_process:
