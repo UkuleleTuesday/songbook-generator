@@ -2,6 +2,7 @@ import json
 import sys
 
 import click
+from google import genai
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -198,10 +199,16 @@ def update_tags(file_identifier, all, dry_run, trigger_field):
         if trigger_field is not None
         else settings.tag_updater.trigger_field
     )
+    genai_client = genai.Client(
+        vertexai=True,
+        project=settings.google_cloud.project_id,
+        location=settings.caching.gcs.region or "us-central1",
+    )
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
         trigger_field=effective_trigger_field,
+        genai_client=genai_client,
     )
     failed_updates = {}
 

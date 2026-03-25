@@ -39,6 +39,7 @@ dependencies = [
     "pyyaml>=6.0.2",
     "fontra>=0.5.2",
     "loguru>=0.7.0",
+    "google-genai>=1.68.0",
 ]
 
 [project.scripts]
