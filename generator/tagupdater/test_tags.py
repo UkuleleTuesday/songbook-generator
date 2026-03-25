@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -9,6 +9,8 @@ from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
     Tagger,
+    approved_date,
+    ready_to_play_date,
     status,
     tag,
     Context,
@@ -53,7 +55,8 @@ def test_status_tagger():
     assert status(Context(file=file_no_parents)) is None
 
 
-def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_update_tags_with_status_tag(mock_now, mock_drive_service, mock_docs_service):
     """Test Tagger.update_tags with the status tag."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     tagger = Tagger(mock_drive_service, mock_docs_service)
@@ -65,7 +68,9 @@ def test_update_tags_with_status_tag(mock_drive_service, mock_docs_service):
 
     tagger.update_tags(file_to_tag)
 
-    expected_body = {"properties": {"status": "APPROVED"}}
+    expected_body = {
+        "properties": {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"}
+    }
     mock_drive_service.files.return_value.update.assert_called_once_with(
         fileId="file123", body=expected_body, fields="properties"
     )
@@ -267,7 +272,7 @@ def test_update_tags_no_update_if_tags_are_identical(
         id="file123",
         name="test.pdf",
         parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED"},
+        properties={"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
     )
 
     tagger.update_tags(file_to_tag)
@@ -275,8 +280,9 @@ def test_update_tags_no_update_if_tags_are_identical(
     mock_drive_service.files.return_value.update.assert_not_called()
 
 
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
 def test_update_tags_with_multiple_tags_and_preserves_existing(
-    mock_drive_service, mock_docs_service
+    mock_now, mock_drive_service, mock_docs_service
 ):
     """Test that multiple tags are applied and existing properties preserved."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
@@ -300,6 +306,7 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
 
         expected_properties = {
             "status": "APPROVED",
+            "approved_date": "2026-03-25T11:00:00Z",
             "tabber": "Test owner",
             "another_tag": "another_value",
             "existing_prop": "existing_value",
@@ -502,3 +509,52 @@ def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
         mock_drive_service.files.return_value.update.assert_not_called()
     finally:
         tags._TAGGERS = original_taggers
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_ready_to_play_date_set_when_in_ready_to_play_folder(mock_now):
+    """ready_to_play_date is returned when file is in the ready to play folder."""
+    file = File(id="1", name="f", parents=[FOLDER_ID_READY_TO_PLAY])
+    assert ready_to_play_date(Context(file=file)) == "2026-03-25T11:00:00Z"
+
+
+def test_ready_to_play_date_not_set_for_other_folder():
+    """ready_to_play_date returns None when file is not in the ready to play folder."""
+    file = File(id="1", name="f", parents=[FOLDER_ID_APPROVED])
+    assert ready_to_play_date(Context(file=file)) is None
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_approved_date_set_when_in_approved_folder(mock_now):
+    """approved_date is returned when file is in the approved folder."""
+    file = File(id="1", name="f", parents=[FOLDER_ID_APPROVED])
+    assert approved_date(Context(file=file)) == "2026-03-25T11:00:00Z"
+
+
+def test_approved_date_not_set_for_other_folder():
+    """approved_date returns None when file is not in the approved folder."""
+    file = File(id="1", name="f", parents=[FOLDER_ID_READY_TO_PLAY])
+    assert approved_date(Context(file=file)) is None
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_status_date_not_overwritten_once_set(
+    mock_now, mock_drive_service, mock_docs_service
+):
+    """ready_to_play_date and approved_date are not overwritten if already set."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
+    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
+    file_to_tag = File(
+        id="file123",
+        name="test.pdf",
+        parents=[FOLDER_ID_APPROVED],
+        properties={
+            "status": "READY_TO_PLAY",
+            "approved_date": "2025-01-01T00:00:00Z",
+        },
+    )
+
+    tagger.update_tags(file_to_tag)
+
+    call_body = mock_drive_service.files.return_value.update.call_args[1]["body"]
+    assert call_body["properties"]["approved_date"] == "2025-01-01T00:00:00Z"
