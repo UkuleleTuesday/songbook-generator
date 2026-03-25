@@ -129,6 +129,18 @@ class GoogleDriveClientConfig(BaseModel):
     )
 
 
+class TagUpdater(BaseModel):
+    """Configuration for the tag updater service."""
+
+    trigger_field: Optional[str] = Field(
+        default=None,
+        description=(
+            "When set, metadata is only written if the value of this field changes. "
+            "If unset, any property change triggers a write."
+        ),
+    )
+
+
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
     drive_client: GoogleDriveClientConfig = Field(
@@ -188,6 +200,7 @@ class Settings(BaseSettings):
     toc: Toc = Field(default_factory=Toc)
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
+    tag_updater: TagUpdater = Field(default_factory=TagUpdater)
     editions: List[Edition] = Field(default_factory=list)
 
     @model_validator(mode="before")
@@ -252,6 +265,10 @@ class Settings(BaseSettings):
             except ValueError:
                 # Ignore invalid values, keep the default
                 pass
+
+        # Handle tag updater settings
+        if tagupdater_trigger_field_env := os.getenv("TAGUPDATER_TRIGGER_FIELD"):
+            self.tag_updater.trigger_field = tagupdater_trigger_field_env
 
         return self
 

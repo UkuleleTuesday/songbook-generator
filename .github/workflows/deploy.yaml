@@ -264,6 +264,7 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
+          TAGUPDATER_TRIGGER_FIELD: "status"
 
   deploy-drivewatcher:
     name: Deploy Drive Watcher

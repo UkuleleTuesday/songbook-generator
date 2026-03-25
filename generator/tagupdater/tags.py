@@ -125,9 +125,15 @@ def tag(_func=None, *, only_if_unset: bool = False):
 
 
 class Tagger:
-    def __init__(self, drive_service: Any, docs_service: Any):
+    def __init__(
+        self,
+        drive_service: Any,
+        docs_service: Any,
+        trigger_field: Optional[str] = None,
+    ):
         self.drive_service = drive_service
         self.docs_service = docs_service
+        self.trigger_field = trigger_field
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -194,7 +200,14 @@ class Tagger:
                 updated_properties.update(new_properties)
                 click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
 
-                if updated_properties == current_properties:
+                if self.trigger_field is not None:
+                    if current_properties.get(self.trigger_field) == updated_properties.get(self.trigger_field):
+                        click.echo(
+                            f"  Trigger field '{self.trigger_field}' unchanged, skipping update."
+                        )
+                        span.set_attribute("update_skipped", "true")
+                        return
+                elif updated_properties == current_properties:
                     click.echo("  Tags are identical, no update needed.")
                     span.set_attribute("update_skipped", "true")
                     return

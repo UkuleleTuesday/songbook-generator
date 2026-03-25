@@ -143,7 +143,15 @@ def delete_tag(file_identifier, key):
     is_flag=True,
     help="Show what tags would be applied without making any changes.",
 )
-def update_tags(file_identifier, all, dry_run):
+@click.option(
+    "--trigger-field",
+    default=None,
+    help=(
+        "Only write metadata if this field's value changes. "
+        "Overrides the config/env setting."
+    ),
+)
+def update_tags(file_identifier, all, dry_run, trigger_field):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -185,7 +193,8 @@ def update_tags(file_identifier, all, dry_run):
             settings.song_sheets.folder_ids
         )
 
-    tagger = Tagger(drive_service=drive_service, docs_service=docs_service)
+    effective_trigger_field = trigger_field if trigger_field is not None else settings.tag_updater.trigger_field
+    tagger = Tagger(drive_service=drive_service, docs_service=docs_service, trigger_field=effective_trigger_field)
     failed_updates = {}
 
     for file_obj in files_to_process:

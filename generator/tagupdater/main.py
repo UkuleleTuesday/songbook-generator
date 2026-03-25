@@ -56,7 +56,7 @@ def _get_services():
     return {
         "tracer": tracer,
         "drive": drive_service,
-        "tagger": Tagger(drive_service, docs_service),
+        "tagger": Tagger(drive_service, docs_service, trigger_field=settings.tag_updater.trigger_field),
     }
 
 
