@@ -31,18 +31,18 @@
                        role="group" aria-label="Edition source">
                     <label class="source-toggle-option">
                       <input type="radio" name="edition_source"
-                             value="config" checked>
-                      <span>Standard</span>
+                             value="drive" checked>
+                      <span>Google Drive</span>
                     </label>
                     <label class="source-toggle-option">
                       <input type="radio" name="edition_source"
-                             value="drive">
-                      <span>Google Drive</span>
+                             value="config">
+                      <span>Standard</span>
                     </label>
                   </div>
                 </div>
                 <div id="config-info" class="config-info"
-                     role="note">
+                     style="display: none;" role="note">
                   <i class="material-icons" aria-hidden="true">folder</i>
                   <div class="config-info-body">
                     <p><strong>Config-based editions</strong></p>
@@ -50,7 +50,7 @@
                   </div>
                 </div>
                 <div id="drive-warning" class="drive-warning"
-                     style="display: none;" role="alert">
+                     role="alert">
                   <i class="material-icons" aria-hidden="true">science</i>
                   <div class="drive-warning-body">
                     <p><strong>Google Drive editions (Experimental)</strong></p>
