@@ -139,6 +139,13 @@ class TagUpdater(BaseModel):
             "If unset, any property change triggers a write."
         ),
     )
+    dry_run: bool = Field(
+        default=False,
+        description=(
+            "When True, tags are computed but no writes are made to Google Drive. "
+            "Set TAGUPDATER_DRY_RUN=true for preview deployments."
+        ),
+    )
 
 
 class GoogleCloud(BaseModel):
@@ -269,6 +276,8 @@ class Settings(BaseSettings):
         # Handle tag updater settings
         if tagupdater_trigger_field_env := os.getenv("TAGUPDATER_TRIGGER_FIELD"):
             self.tag_updater.trigger_field = tagupdater_trigger_field_env
+        if (tagupdater_dry_run_env := os.getenv("TAGUPDATER_DRY_RUN")) is not None:
+            self.tag_updater.dry_run = tagupdater_dry_run_env.lower() in ("true", "1")
 
         return self
 

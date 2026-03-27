@@ -141,6 +141,7 @@ def test_tagupdater_main_success(mock_get_services, sample_cloud_event_data):
         "tracer": mock_tracer,
         "drive": Mock(),
         "tagger": mock_tagger,
+        "dry_run": False,
     }
 
     # Create cloud event
@@ -175,6 +176,7 @@ def test_tagupdater_main_no_files(mock_get_services):
         "tracer": mock_tracer,
         "drive": Mock(),
         "tagger": Mock(),
+        "dry_run": False,
     }
 
     # Create cloud event with no files
@@ -206,6 +208,7 @@ def test_tagupdater_main_with_errors(mock_get_services, sample_cloud_event_data)
         "tracer": mock_tracer,
         "drive": Mock(),
         "tagger": mock_tagger,
+        "dry_run": False,
     }
 
     cloud_event = CloudEvent(
@@ -235,6 +238,7 @@ def test_tagupdater_main_parsing_error(mock_get_services):
         "tracer": mock_tracer,
         "drive": Mock(),
         "tagger": Mock(),
+        "dry_run": False,
     }
 
     # Create invalid cloud event that will cause parsing error
