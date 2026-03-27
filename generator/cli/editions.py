@@ -513,6 +513,88 @@ def convert_edition(
     click.echo("Run 'editions list' to verify the new Drive edition is discovered.")
 
 
+@editions.command(name="replace-shortcuts")
+@click.argument("folder_id")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Print what would happen without making any changes.",
+)
+def replace_shortcuts(folder_id: str, dry_run: bool):
+    """Replace Drive shortcuts in an edition's Songs/ folder with file copies.
+
+    Finds the Songs/ subfolder inside FOLDER_ID, copies each shortcut's
+    target file into Songs/, then removes the shortcut.
+
+    FOLDER_ID is the Google Drive edition folder ID (e.g. from 'editions list').
+    """
+    try:
+        drive, cache = init_services(
+            scopes=["https://www.googleapis.com/auth/drive"],
+        )
+    except (
+        HttpError,
+        google.auth.exceptions.TransportError,
+        google.auth.exceptions.DefaultCredentialsError,
+    ) as exc:
+        click.echo(f"Error: Failed to initialize Drive services: {exc}", err=True)
+        raise click.Abort()
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+    songs_folder_id = gdrive_client.find_subfolder_by_name(folder_id, "Songs")
+    if not songs_folder_id:
+        click.echo(
+            f"Error: No 'Songs' subfolder found in folder {folder_id}.", err=True
+        )
+        raise click.Abort()
+
+    click.echo(f"Songs/ subfolder: {songs_folder_id}")
+
+    shortcuts = gdrive_client.list_shortcuts_in_folder(songs_folder_id)
+    if not shortcuts:
+        click.echo("No shortcuts found in Songs/ — nothing to do.")
+        return
+
+    click.echo(f"Found {len(shortcuts)} shortcut(s).")
+
+    if dry_run:
+        click.echo("\n[DRY RUN] Would replace the following shortcuts with copies:")
+        for s in shortcuts:
+            click.echo(f"  {s['name']!r} → copy of target {s['target_id']!r}")
+        click.echo("\n[DRY RUN] No changes were made.")
+        return
+
+    replaced = 0
+    failed = 0
+    for s in shortcuts:
+        try:
+            copy_id = gdrive_client.copy_file(s["target_id"], s["name"], songs_folder_id)
+            click.echo(f"  Copied   {s['name']!r} (new id={copy_id})")
+        except HttpError as exc:
+            click.echo(
+                f"  Warning: failed to copy {s['name']!r} "
+                f"(target={s['target_id']!r}): {exc}",
+                err=True,
+            )
+            failed += 1
+            continue
+        try:
+            gdrive_client.trash_file(s["id"])
+        except HttpError as exc:
+            click.echo(
+                f"  Warning: copy succeeded but failed to trash shortcut "
+                f"{s['name']!r} (id={s['id']!r}): {exc}",
+                err=True,
+            )
+            failed += 1
+            continue
+        replaced += 1
+
+    click.echo(f"\nDone: {replaced} replaced, {failed} failed.")
+
+
 def _dry_run_convert_edition(
     edition: config.Edition,
     edition_id: str,

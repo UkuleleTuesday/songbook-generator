@@ -888,3 +888,105 @@ class GoogleDriveClient:
                 f"{parent_id!r}"
             )
             return shortcut_id
+
+    def list_shortcuts_in_folder(self, folder_id: str) -> List[dict]:
+        """
+        List all shortcut files directly in a folder without resolving them.
+
+        Args:
+            folder_id: The Google Drive folder ID to query.
+
+        Returns:
+            List of dicts with keys ``id`` (shortcut file ID), ``name``,
+            ``target_id``, and ``target_mime``.  Shortcuts with no target ID
+            are silently skipped.
+        """
+        query = (
+            f"'{folder_id}' in parents"
+            f" and mimeType = '{SHORTCUT_MIME_TYPE}'"
+            f" and trashed = false"
+        )
+        shortcuts: List[dict] = []
+        page_token = None
+        while True:
+            try:
+                resp = (
+                    self.drive.files()
+                    .list(
+                        q=query,
+                        pageSize=1000,
+                        fields="nextPageToken, files(id,name,shortcutDetails)",
+                        orderBy="name",
+                        pageToken=page_token,
+                    )
+                    .execute(num_retries=self.config.api_retries)
+                )
+            except HttpError as e:
+                error_code = e.resp.status if e.resp else "unknown"
+                click.echo(
+                    f"Error listing shortcuts in folder {folder_id} "
+                    f"(HTTP {error_code}): {e}",
+                    err=True,
+                )
+                break
+            for f in resp.get("files", []):
+                details = f.get("shortcutDetails") or {}
+                target_id = details.get("targetId")
+                if target_id:
+                    shortcuts.append(
+                        {
+                            "id": f["id"],
+                            "name": f["name"],
+                            "target_id": target_id,
+                            "target_mime": details.get("targetMimeType", ""),
+                        }
+                    )
+            page_token = resp.get("nextPageToken")
+            if not page_token:
+                break
+        return shortcuts
+
+    def copy_file(self, file_id: str, name: str, parent_id: str) -> str:
+        """
+        Copy a Drive file into the given parent folder.
+
+        Args:
+            file_id: The ID of the file to copy.
+            name: The name to give the copy.
+            parent_id: The ID of the folder to place the copy in.
+
+        Returns:
+            The ID of the newly created copy.
+        """
+        with tracer.start_as_current_span("copy_file") as span:
+            span.set_attribute("file.source_id", file_id)
+            span.set_attribute("file.name", name)
+            span.set_attribute("file.parent_id", parent_id)
+            body = {"name": name, "parents": [parent_id]}
+            result = (
+                self.drive.files()
+                .copy(fileId=file_id, body=body, fields="id")
+                .execute(num_retries=self.config.api_retries)
+            )
+            copy_id = result["id"]
+            span.set_attribute("file.copy_id", copy_id)
+            logger.info(
+                f"copy_file: copied {file_id!r} → {copy_id!r} "
+                f"(name={name!r}) in parent {parent_id!r}"
+            )
+            return copy_id
+
+    def trash_file(self, file_id: str) -> None:
+        """
+        Move a Drive file to the trash.
+
+        Args:
+            file_id: The ID of the file to trash.
+        """
+        with tracer.start_as_current_span("trash_file") as span:
+            span.set_attribute("file.id", file_id)
+            self.drive.files().update(
+                fileId=file_id,
+                body={"trashed": True},
+            ).execute(num_retries=self.config.api_retries)
+            logger.info(f"trash_file: trashed {file_id!r}")
