@@ -574,45 +574,8 @@
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
-
-        // Update the active card's actions row: replace cancel btn with Open,
-        // keep edit btn, and add Generate back so the user can regenerate.
-        const activeCard = checkedRadio.closest('.edition-card');
-        if (activeCard) {
-          const actionsRow = activeCard.querySelector('.edition-card-actions-row');
-          if (actionsRow) {
-            const openBtn = document.createElement('a');
-            openBtn.href = downloadUrl;
-            openBtn.target = '_blank';
-            openBtn.rel = 'noopener noreferrer';
-            openBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--colored edition-open-btn';
-            const openIcon = document.createElement('i');
-            openIcon.className = 'material-icons';
-            openIcon.textContent = 'open_in_new';
-            openBtn.appendChild(openIcon);
-            openBtn.appendChild(document.createTextNode('Open'));
-
-            // Remove any previous Open button from an earlier generation
-            actionsRow.querySelectorAll('.edition-open-btn').forEach(el => el.remove());
-
-            // Swap cancel btn → Open btn; cancel btn was already placed by showCancelButton
-            const cancelBtn = actionsRow.querySelector('.edition-cancel-btn');
-            if (cancelBtn) {
-              cancelBtn.replaceWith(openBtn);
-            } else {
-              actionsRow.appendChild(openBtn);
-            }
-
-            // Add Generate back so the user can regenerate
-            const newGenerateBtn = _makeGenerateButton();
-            actionsRow.appendChild(newGenerateBtn);
-
-            if (typeof componentHandler !== 'undefined') {
-              componentHandler.upgradeElement(openBtn);
-              componentHandler.upgradeElement(newGenerateBtn);
-            }
-          }
-        }
+        // The generated PDF link appears in the history section below the card;
+        // no Open button needed in the actions row.
 
       } catch (err) {
         if (err.name !== 'AbortError') {
