@@ -226,6 +226,20 @@ body {
   text-decoration: underline;
 }
 
+@keyframes history-item-highlight {
+  0%   { background-color: rgba(63, 81, 181, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.edition-card-history-list li.edition-card-history-item--new {
+  border-radius: 3px;
+  animation: history-item-highlight 2.5s ease-out forwards;
+}
+
+.edition-card-history-list li.edition-card-history-item--new .material-icons {
+  color: #3f51b5;
+}
+
 .edition-radio:focus-visible + .edition-card-label {
   outline: 2px solid #3f51b5;
   outline-offset: -2px;
