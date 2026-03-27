@@ -11,7 +11,9 @@
 from google import genai
 from google.genai import types
 
-client = genai.Client(vertexai=True, project="songbook-generator", location="us-central1")
+client = genai.Client(
+    vertexai=True, project="songbook-generator", location="us-central1"
+)
 
 TEST_CASES = [
     ("Psycho Killer", "Talking Heads"),

@@ -441,7 +441,7 @@ def year(ctx: Context) -> Optional[str]:
     raw = ask_llm(
         ctx,
         f'What year was "{ctx.file.properties.get("song", ctx.file.name)}" '
-        f'by {ctx.file.properties.get("artist", "unknown artist")} originally released? '
+        f"by {ctx.file.properties.get('artist', 'unknown artist')} originally released? "
         "Reply with only the 4-digit year, or empty string if unknown.",
     )
     if raw and re.fullmatch(r"\d{4}", raw):
@@ -467,8 +467,8 @@ def duration(ctx: Context) -> Optional[str]:
     raw = ask_llm(
         ctx,
         f'What is the duration of "{ctx.file.properties.get("song", ctx.file.name)}" '
-        f'by {ctx.file.properties.get("artist", "unknown artist")} '
-        f'({ctx.file.properties.get("year", "")}) on its original studio release? '
+        f"by {ctx.file.properties.get('artist', 'unknown artist')} "
+        f"({ctx.file.properties.get('year', '')}) on its original studio release? "
         "Reply with only the duration in MM:SS format, or empty string if unknown.",
     )
     if not raw:

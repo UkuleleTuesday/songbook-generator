@@ -13,12 +13,16 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 
-client = genai.Client(vertexai=True, project="songbook-generator", location="us-central1")
+client = genai.Client(
+    vertexai=True, project="songbook-generator", location="us-central1"
+)
 
 
 class SongInfo(BaseModel):
     year: Optional[int] = Field(None, description="Original release year, e.g. 1977")
-    duration_seconds: Optional[int] = Field(None, description="Track duration in seconds on original studio release")
+    duration_seconds: Optional[int] = Field(
+        None, description="Track duration in seconds on original studio release"
+    )
 
 
 TEST_CASES = [
@@ -40,5 +44,9 @@ for song, artist in TEST_CASES:
         ),
     )
     info = SongInfo.model_validate_json(response.text)
-    duration = f"{info.duration_seconds // 60}:{info.duration_seconds % 60:02d}" if info.duration_seconds else None
+    duration = (
+        f"{info.duration_seconds // 60}:{info.duration_seconds % 60:02d}"
+        if info.duration_seconds
+        else None
+    )
     print(f"{song} - {artist}: year={info.year}, duration={duration}")
