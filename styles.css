@@ -135,6 +135,17 @@ body {
   font-size: 1rem;
 }
 
+.edition-cancel-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  color: #c62828 !important;
+}
+
+.edition-cancel-btn .material-icons {
+  font-size: 1rem;
+}
+
 .edition-edit-btn {
   display: inline-flex !important;
   align-items: center;
@@ -213,6 +224,20 @@ body {
 
 .edition-card-history-list a:hover {
   text-decoration: underline;
+}
+
+@keyframes history-item-highlight {
+  0%   { background-color: rgba(63, 81, 181, 0.15); }
+  100% { background-color: transparent; }
+}
+
+.edition-card-history-list li.edition-card-history-item--new {
+  border-radius: 3px;
+  animation: history-item-highlight 2.5s ease-out forwards;
+}
+
+.edition-card-history-list li.edition-card-history-item--new .material-icons {
+  color: #3f51b5;
 }
 
 .edition-radio:focus-visible + .edition-card-label {

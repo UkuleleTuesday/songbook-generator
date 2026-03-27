@@ -90,6 +90,7 @@
     let progressBar = null;
     let progressText = null;
     let progressPercentage = null;
+    let abortController = null;
 
     function addSongbookToHistory(name, url, editionId) {
       const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
@@ -201,30 +202,63 @@
       progressPercentage = null;
     }
 
-    function enableSubmitButton() {
-      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
-        btn.disabled = false;
-        const textSpan = btn.querySelector('.btn-text');
-        if (textSpan) textSpan.textContent = 'Generate';
-        const icon = btn.querySelector('.material-icons');
-        if (icon) icon.textContent = 'auto_fix_high';
+    function _makeGenerateButton() {
+      const btn = document.createElement('button');
+      btn.type = 'submit';
+      btn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
+      const icon = document.createElement('i');
+      icon.className = 'material-icons';
+      icon.textContent = 'auto_fix_high';
+      btn.appendChild(icon);
+      const text = document.createElement('span');
+      text.className = 'btn-text';
+      text.textContent = 'Generate';
+      btn.appendChild(text);
+      return btn;
+    }
+
+    function restoreGenerateButton() {
+      document.querySelectorAll('.edition-cancel-btn').forEach(cancelBtn => {
+        const generateBtn = _makeGenerateButton();
+        cancelBtn.replaceWith(generateBtn);
+        if (typeof componentHandler !== 'undefined') {
+          componentHandler.upgradeElement(generateBtn);
+        }
       });
     }
 
-    function disableSubmitButton() {
-      document.querySelectorAll('.edition-generate-btn').forEach(btn => {
-        btn.disabled = true;
-        const textSpan = btn.querySelector('.btn-text');
-        if (textSpan) textSpan.textContent = 'Generating...';
-        const icon = btn.querySelector('.material-icons');
-        if (icon) icon.textContent = 'hourglass_empty';
+    function showCancelButton() {
+      const checked = document.querySelector('input[name="songbook_edition"]:checked');
+      if (!checked) return;
+      const card = checked.closest('.edition-card');
+      if (!card) return;
+      const generateBtn = card.querySelector('.edition-generate-btn');
+      if (!generateBtn) return;
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect edition-cancel-btn';
+      const cancelIcon = document.createElement('i');
+      cancelIcon.className = 'material-icons';
+      cancelIcon.textContent = 'cancel';
+      cancelBtn.appendChild(cancelIcon);
+      const cancelText = document.createElement('span');
+      cancelText.className = 'btn-text';
+      cancelText.textContent = 'Cancel';
+      cancelBtn.appendChild(cancelText);
+      cancelBtn.addEventListener('click', () => {
+        if (abortController) abortController.abort();
       });
+      generateBtn.replaceWith(cancelBtn);
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeElement(cancelBtn);
+      }
     }
 
-    async function pollStatus(jobId) {
+    async function pollStatus(jobId, signal) {
       const statusUrl = `${apiBase}/${jobId}`;
       while (true) {
-        const res = await fetch(statusUrl, { method: 'GET' });
+        const res = await fetch(statusUrl, { method: 'GET', signal });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error || res.statusText);
@@ -247,7 +281,10 @@
           throw new Error('Job failed on server');
         }
         // wait before next poll
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 1000);
+          signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+        });
       }
     }
 
@@ -492,8 +529,9 @@
     document.getElementById("jobForm").onsubmit = async (e) => {
       e.preventDefault();
 
-      // Disable submit button and show progress
-      disableSubmitButton();
+      // Show cancel button and progress
+      abortController = new AbortController();
+      showCancelButton();
       showProgress();
 
       const payload = {};
@@ -502,7 +540,7 @@
       const songbookEdition = checkedRadio ? checkedRadio.value : '';
 
       if (!songbookEdition) {
-        enableSubmitButton();
+        restoreGenerateButton();
         hideProgress();
         alert("Please select an edition.");
         return;
@@ -513,10 +551,12 @@
       try {
         // submit job
         updateProgress(0, 'Submitting job...');
+        const { signal } = abortController;
         const submitRes = await fetch(apiBase, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal,
         });
         if (!submitRes.ok) throw new Error(submitRes.statusText);
         const { job_id } = await submitRes.json();
@@ -524,7 +564,7 @@
         updateProgress(0, 'Job submitted, waiting for processing...');
 
         // poll until done
-        const downloadUrl = await pollStatus(job_id);
+        const downloadUrl = await pollStatus(job_id, signal);
 
         updateProgress(1.0, 'Ready!');
 
@@ -534,35 +574,23 @@
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
-
-        // Replace Generate button with Open button in the active card
+        // Highlight the newly added history entry so the user can find the PDF
         const activeCard = checkedRadio.closest('.edition-card');
         if (activeCard) {
-          const actionsRow = activeCard.querySelector('.edition-card-actions-row');
-          if (actionsRow) {
-            const openBtn = document.createElement('a');
-            openBtn.href = downloadUrl;
-            openBtn.target = '_blank';
-            openBtn.rel = 'noopener noreferrer';
-            openBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--colored edition-open-btn';
-            const openIcon = document.createElement('i');
-            openIcon.className = 'material-icons';
-            openIcon.textContent = 'open_in_new';
-            openBtn.appendChild(openIcon);
-            openBtn.appendChild(document.createTextNode('Open'));
-            actionsRow.innerHTML = '';
-            actionsRow.appendChild(openBtn);
-            if (typeof componentHandler !== 'undefined') {
-              componentHandler.upgradeElement(openBtn);
-            }
-          }
+          const firstHistoryItem = activeCard.querySelector('.edition-card-history-list li');
+          if (firstHistoryItem) firstHistoryItem.classList.add('edition-card-history-item--new');
         }
 
       } catch (err) {
-        updateProgress(0, `Error: ${err.message}`);
-        alert("Error: " + err.message);
+        if (err.name !== 'AbortError') {
+          updateProgress(0, `Error: ${err.message}`);
+          alert("Error: " + err.message);
+        } else {
+          updateProgress(0, 'Cancelled.');
+        }
       } finally {
-        enableSubmitButton();
+        abortController = null;
+        restoreGenerateButton();
         // Hide progress after a delay to let user see final status
         setTimeout(() => {
           hideProgress();
