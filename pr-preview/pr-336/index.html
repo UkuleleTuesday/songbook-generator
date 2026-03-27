@@ -575,7 +575,8 @@
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
 
-        // Replace Generate button with Open button in the active card
+        // Update the active card's actions row: replace cancel btn with Open,
+        // keep edit btn, and add Generate back so the user can regenerate.
         const activeCard = checkedRadio.closest('.edition-card');
         if (activeCard) {
           const actionsRow = activeCard.querySelector('.edition-card-actions-row');
@@ -590,10 +591,25 @@
             openIcon.textContent = 'open_in_new';
             openBtn.appendChild(openIcon);
             openBtn.appendChild(document.createTextNode('Open'));
-            actionsRow.innerHTML = '';
-            actionsRow.appendChild(openBtn);
+
+            // Remove any previous Open button from an earlier generation
+            actionsRow.querySelectorAll('.edition-open-btn').forEach(el => el.remove());
+
+            // Swap cancel btn → Open btn; cancel btn was already placed by showCancelButton
+            const cancelBtn = actionsRow.querySelector('.edition-cancel-btn');
+            if (cancelBtn) {
+              cancelBtn.replaceWith(openBtn);
+            } else {
+              actionsRow.appendChild(openBtn);
+            }
+
+            // Add Generate back so the user can regenerate
+            const newGenerateBtn = _makeGenerateButton();
+            actionsRow.appendChild(newGenerateBtn);
+
             if (typeof componentHandler !== 'undefined') {
               componentHandler.upgradeElement(openBtn);
+              componentHandler.upgradeElement(newGenerateBtn);
             }
           }
         }
