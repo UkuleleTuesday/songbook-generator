@@ -13,6 +13,7 @@ from typing import List
 
 import click
 from cloudevents.http import CloudEvent
+from google import genai
 from google.auth import default
 from googleapiclient.discovery import build
 
@@ -53,6 +54,12 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
+    genai_client = genai.Client(
+        vertexai=True,
+        project=settings.google_cloud.project_id,
+        location=settings.caching.gcs.region or "us-central1",
+    )
+
     return {
         "tracer": tracer,
         "drive": drive_service,
@@ -60,6 +67,7 @@ def _get_services():
             drive_service,
             docs_service,
             trigger_field=settings.tag_updater.trigger_field,
+            genai_client=genai_client,
         ),
     }
 

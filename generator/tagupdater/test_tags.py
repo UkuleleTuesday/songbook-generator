@@ -11,6 +11,9 @@ from .tags import (
     Tagger,
     status,
     tag,
+    year,
+    duration,
+    _parse_duration,
     Context,
     SongSheetGoogleDocument,
 )
@@ -502,3 +505,46 @@ def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
         mock_drive_service.files.return_value.update.assert_not_called()
     finally:
         tags._TAGGERS = original_taggers
+
+
+# --- year tag tests ---
+
+
+def _make_genai_client(response_text: str) -> Mock:
+    client = Mock()
+    client.models.generate_content.return_value.text = response_text
+    return client
+
+
+def _ctx_with_year_props(genai_client=None) -> Context:
+    file = File(
+        id="1",
+        name="Psycho Killer - Talking Heads",
+        properties={"song": "Psycho Killer", "artist": "Talking Heads"},
+    )
+    return Context(file=file, genai_client=genai_client)
+
+
+def test_year_returns_none_without_genai_client():
+    assert year(_ctx_with_year_props(genai_client=None)) is None
+
+
+def test_year_returns_valid_year():
+    ctx = _ctx_with_year_props(_make_genai_client("1977"))
+    assert year(ctx) == "1977"
+
+
+@pytest.mark.parametrize("response", [
+    "The song was released in 1977.",
+    "circa 1970s",
+    "unknown",
+    "N/A",
+    "",
+    "   ",
+    "19777",
+    "77",
+    "abcd",
+])
+def test_year_rejects_garbage(response):
+    ctx = _ctx_with_year_props(_make_genai_client(response))
+    assert year(ctx) is None
