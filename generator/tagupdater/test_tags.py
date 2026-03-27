@@ -9,12 +9,16 @@ from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
     Tagger,
+    _parse_duration,
+    _run_llm_tags,
     approved_date,
+    duration,
     ready_to_play_date,
     status,
     tag,
     year,
     Context,
+    LlmTaggerConfig,
     SongSheetGoogleDocument,
 )
 
@@ -559,3 +563,170 @@ def test_status_date_not_overwritten_once_set(
 
     call_body = mock_drive_service.files.return_value.update.call_args[1]["body"]
     assert call_body["properties"]["approved_date"] == "2025-01-01T00:00:00Z"
+
+
+# --- year validator tests ---
+
+
+def _make_ctx() -> Context:
+    file = File(
+        id="1",
+        name="Psycho Killer - Talking Heads",
+        properties={"song": "Psycho Killer", "artist": "Talking Heads"},
+    )
+    return Context(file=file)
+
+
+def test_year_returns_valid_year():
+    assert year(_make_ctx(), "1977") == "1977"
+
+
+def test_year_returns_none_for_none_raw():
+    assert year(_make_ctx(), None) is None
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "The song was released in 1977.",
+        "circa 1970s",
+        "unknown",
+        "N/A",
+        "",
+        "   ",
+        "19777",
+        "77",
+        "abcd",
+    ],
+)
+def test_year_rejects_garbage(raw):
+    assert year(_make_ctx(), raw) is None
+
+
+# --- duration validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("3:45", "00:03:45"),
+        ("0:30", "00:00:30"),
+        ("65:00", "01:05:00"),
+        (None, None),
+        ("", None),
+        ("not a duration", None),
+        ("1:60", None),  # invalid seconds
+    ],
+)
+def test_duration_validator(raw, expected):
+    assert duration(_make_ctx(), raw) == expected
+
+
+# --- _run_llm_tags tests ---
+
+
+def _make_genai_client(response_json: str) -> Mock:
+    client = Mock()
+    client.models.generate_content.return_value.text = response_json
+    return client
+
+
+def test_run_llm_tags_returns_empty_without_client():
+    ctx = Context(file=File(id="1", name="test"), genai_client=None)
+    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    assert _run_llm_tags(ctx, [year_config]) == {}
+
+
+def test_run_llm_tags_returns_empty_for_no_taggers():
+    ctx = Context(file=File(id="1", name="test"), genai_client=_make_genai_client("{}"))
+    assert _run_llm_tags(ctx, []) == {}
+
+
+def test_run_llm_tags_batches_into_single_call():
+    client = _make_genai_client('{"year": "1977", "duration": "03:45"}')
+    file = File(
+        id="1",
+        name="test",
+        properties={"song": "Psycho Killer", "artist": "Talking Heads"},
+    )
+    ctx = Context(file=file, genai_client=client)
+
+    year_config = LlmTaggerConfig(
+        func=year,
+        prompt_fn=lambda ctx: "What year?",
+    )
+    duration_config = LlmTaggerConfig(
+        func=duration,
+        prompt_fn=lambda ctx: "What duration?",
+    )
+
+    results = _run_llm_tags(ctx, [year_config, duration_config])
+
+    # Only one LLM call was made
+    assert client.models.generate_content.call_count == 1
+    assert results["year"] == "1977"
+    assert results["duration"] == "00:03:45"
+
+
+def test_run_llm_tags_handles_invalid_json():
+    client = _make_genai_client("not valid json at all")
+    ctx = Context(file=File(id="1", name="test"), genai_client=client)
+    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+
+    results = _run_llm_tags(ctx, [year_config])
+
+    assert results == {}
+
+
+def test_run_llm_tags_strips_markdown_fences():
+    client = _make_genai_client('```json\n{"year": "1984"}\n```')
+    file = File(id="1", name="test", properties={"song": "1984", "artist": "Someone"})
+    ctx = Context(file=file, genai_client=client)
+    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+
+    results = _run_llm_tags(ctx, [year_config])
+
+    assert results == {"year": "1984"}
+
+
+def test_run_llm_tags_skips_null_values():
+    client = _make_genai_client('{"year": null, "duration": "03:45"}')
+    file = File(id="1", name="test", properties={"song": "test", "artist": "test"})
+    ctx = Context(file=file, genai_client=client)
+
+    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    duration_config = LlmTaggerConfig(
+        func=duration, prompt_fn=lambda ctx: "What duration?"
+    )
+
+    results = _run_llm_tags(ctx, [year_config, duration_config])
+
+    assert "year" not in results
+    assert results["duration"] == "00:03:45"
+
+
+def test_run_llm_tags_skips_invalid_values():
+    client = _make_genai_client('{"year": "not-a-year"}')
+    ctx = Context(file=File(id="1", name="test"), genai_client=client)
+    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+
+    results = _run_llm_tags(ctx, [year_config])
+
+    assert results == {}
+
+
+# --- _parse_duration tests ---
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("3:45", "00:03:45"),
+        ("0:30", "00:00:30"),
+        ("65:00", "01:05:00"),
+        ("1:60", None),
+        ("no time here", None),
+    ],
+)
+def test_parse_duration(raw, expected):
+    assert _parse_duration(raw) == expected

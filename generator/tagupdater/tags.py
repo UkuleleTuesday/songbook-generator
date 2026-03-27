@@ -89,8 +89,19 @@ class TaggerConfig:
     only_if_unset: bool = False
 
 
+@dataclass
+class LlmTaggerConfig:
+    """Configuration for an LLM-backed tagger function."""
+
+    func: Callable[["Context", Optional[str]], Optional[str]]
+    prompt_fn: Callable[["Context"], str]
+    only_if_unset: bool = False
+
+
 # A list to hold all tagged functions
 _TAGGERS: List[TaggerConfig] = []
+# A list to hold all LLM-backed tagged functions
+_LLM_TAGGERS: List[LlmTaggerConfig] = []
 tracer = get_tracer(__name__)
 
 # Folder IDs for status checking.
@@ -130,18 +141,93 @@ def tag(_func=None, *, only_if_unset: bool = False):
     return decorator(_func)
 
 
-def ask_llm(ctx: Context, prompt: str) -> Optional[str]:
-    """Call Gemini with Google Search grounding. Returns None if no client or empty response."""
-    if ctx.genai_client is None:
-        return None
+def llm_tag(
+    *,
+    prompt: Callable[["Context"], str],
+    only_if_unset: bool = False,
+):
+    """
+    Decorator to register a function as an LLM-backed tag generator.
+
+    All @llm_tag functions are batched into a single LLM call that requests
+    structured JSON output. The decorated function acts as a validator: it
+    receives the Context and the raw string value from the LLM response, and
+    returns the final tag value or None if the value is invalid.
+
+    Args:
+        prompt: Callable that takes a Context and returns the prompt string
+                for this field.
+        only_if_unset: If True, the tag will only be set if it's not
+                       already present on the file.
+    """
+
+    def decorator(
+        func: Callable[["Context", Optional[str]], Optional[str]],
+    ) -> Callable[["Context", Optional[str]], Optional[str]]:
+        _LLM_TAGGERS.append(
+            LlmTaggerConfig(func=func, prompt_fn=prompt, only_if_unset=only_if_unset)
+        )
+        return func
+
+    return decorator
+
+
+def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str, str]:
+    """
+    Execute all applicable LLM-backed taggers in a single batched LLM call.
+
+    Builds a compound prompt requesting a JSON object with one key per tagger,
+    calls the LLM once, parses the structured response, then validates each
+    value using its registered function.
+
+    Returns a dict of {tag_name: validated_value} for fields that passed
+    validation.
+    """
+    if not llm_taggers or ctx.genai_client is None:
+        return {}
+
+    fields = [config.func.__name__ for config in llm_taggers]
+    prompts_section = "\n".join(
+        f"- {config.func.__name__}: {config.prompt_fn(ctx)}" for config in llm_taggers
+    )
+    compound_prompt = (
+        "Please answer the following questions about this song. "
+        f"Return ONLY a valid JSON object with exactly these keys: "
+        f"{', '.join(repr(f) for f in fields)}. "
+        "Use a JSON null value for any field that is unknown.\n\n"
+        f"{prompts_section}"
+    )
+
     response = ctx.genai_client.models.generate_content(
         model=LLM_MODEL,
-        contents=prompt,
+        contents=compound_prompt,
         config=types.GenerateContentConfig(
             tools=[types.Tool(google_search=types.GoogleSearch())],
         ),
     )
-    return response.text.strip().rstrip(".") or None
+
+    raw_text = response.text.strip()
+    # Strip markdown code fences if present
+    raw_text = re.sub(r"^```[^\n]*\n", "", raw_text)
+    raw_text = raw_text.rstrip("`").strip()
+
+    try:
+        parsed = json.loads(raw_text)
+    except json.JSONDecodeError:
+        click.echo(f"LLM returned invalid JSON: {raw_text!r}", err=True)
+        return {}
+
+    results = {}
+    for config in llm_taggers:
+        field_name = config.func.__name__
+        raw_value = parsed.get(field_name)
+        if raw_value is not None:
+            raw_value = str(raw_value).strip()
+        validated = config.func(ctx, raw_value)
+        if validated is not None:
+            results[field_name] = validated
+
+    return results
 
 
 class Tagger:
@@ -165,6 +251,8 @@ class Tagger:
         the content of a Google Doc. It then calls each registered tagger
         function with this context. If a tagger returns a value, it's added
         to the file's properties.
+
+        LLM-backed tags (@llm_tag) are batched into a single LLM call.
         """
         with tracer.start_as_current_span(
             "update_tags",
@@ -201,6 +289,8 @@ class Tagger:
 
             new_properties = {}
             current_properties = file.properties.copy()
+
+            # Run regular (non-LLM) taggers
             for tagger_config in _TAGGERS:
                 tagger_func = tagger_config.func
                 tag_name = tagger_func.__name__
@@ -221,6 +311,28 @@ class Tagger:
                         )
                         continue
                     new_properties[tag_name] = value_str
+
+            # Collect applicable LLM taggers and run them in a single batched call
+            applicable_llm_taggers = [
+                config
+                for config in _LLM_TAGGERS
+                if not (
+                    config.only_if_unset and config.func.__name__ in current_properties
+                )
+            ]
+            llm_results = _run_llm_tags(context, applicable_llm_taggers)
+            for tag_name, tag_value in llm_results.items():
+                value_str = str(tag_value)
+                key_bytes = len(tag_name.encode("utf-8"))
+                value_bytes = len(value_str.encode("utf-8"))
+                if key_bytes + value_bytes > 124:
+                    click.echo(
+                        f"  WARNING: Tag '{tag_name}' is too long "
+                        f"({key_bytes + value_bytes} bytes > 124) and will be skipped.",
+                        err=True,
+                    )
+                    continue
+                new_properties[tag_name] = value_str
 
             click.echo(f"New properties: {json.dumps(new_properties)}")
             if new_properties:
@@ -435,15 +547,16 @@ def time_signature(ctx: Context) -> Optional[str]:
     return None
 
 
-@tag(only_if_unset=True)
-def year(ctx: Context) -> Optional[str]:
-    """Looks up the original release year of the song via Gemini + Google Search."""
-    raw = ask_llm(
-        ctx,
+@llm_tag(
+    prompt=lambda ctx: (
         f'What year was "{ctx.file.properties.get("song", ctx.file.name)}" '
         f"by {ctx.file.properties.get('artist', 'unknown artist')} originally released? "
-        "Reply with only the 4-digit year, or empty string if unknown.",
-    )
+        "Reply with only the 4-digit year, or null if unknown."
+    ),
+    only_if_unset=True,
+)
+def year(ctx: Context, raw: Optional[str]) -> Optional[str]:
+    """Looks up the original release year of the song via Gemini + Google Search."""
     if raw and re.fullmatch(r"\d{4}", raw):
         return raw
     return None
@@ -461,16 +574,17 @@ def _parse_duration(raw: str) -> Optional[str]:
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 
-@tag(only_if_unset=True)
-def duration(ctx: Context) -> Optional[str]:
-    """Looks up the original track duration via Gemini + Google Search."""
-    raw = ask_llm(
-        ctx,
+@llm_tag(
+    prompt=lambda ctx: (
         f'What is the duration of "{ctx.file.properties.get("song", ctx.file.name)}" '
         f"by {ctx.file.properties.get('artist', 'unknown artist')} "
         f"({ctx.file.properties.get('year', '')}) on its original studio release? "
-        "Reply with only the duration in MM:SS format, or empty string if unknown.",
-    )
+        "Reply with only the duration in MM:SS format, or null if unknown."
+    ),
+    only_if_unset=True,
+)
+def duration(ctx: Context, raw: Optional[str]) -> Optional[str]:
+    """Looks up the original track duration via Gemini + Google Search."""
     if not raw:
         return None
     return _parse_duration(raw)
