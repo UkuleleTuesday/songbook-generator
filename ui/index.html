@@ -574,8 +574,12 @@
           : songbookEdition;
         const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
         addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
-        // The generated PDF link appears in the history section below the card;
-        // no Open button needed in the actions row.
+        // Highlight the newly added history entry so the user can find the PDF
+        const activeCard = checkedRadio.closest('.edition-card');
+        if (activeCard) {
+          const firstHistoryItem = activeCard.querySelector('.edition-card-history-list li');
+          if (firstHistoryItem) firstHistoryItem.classList.add('edition-card-history-item--new');
+        }
 
       } catch (err) {
         if (err.name !== 'AbortError') {
