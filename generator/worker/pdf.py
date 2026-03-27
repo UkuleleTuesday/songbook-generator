@@ -13,6 +13,7 @@ from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from ..common import caching, config
+from ..common.fonts import resolve_font
 from .gcp import get_credentials
 from .exceptions import PdfCopyException, PdfCacheNotFound, PdfCacheMissException
 from ..common.filters import PropertyFilter, FilterGroup
@@ -178,6 +179,7 @@ def copy_pdfs(
     progress_step,
     add_page_numbers=True,
     toc_page_index: int = 0,
+    add_difficulty_wheels=True,
 ):
     """
     Copy pages from the merged PDF cache based on TOC entries for the selected files.
@@ -265,6 +267,10 @@ def copy_pdfs(
                         # Add page number if requested and it's the first page of the song
                         if add_page_numbers and page_offset_in_song == 0:
                             add_page_number(dest_page, current_page + 1)
+
+                        # Add difficulty wheel if requested and it's the first page of the song
+                        if add_difficulty_wheels and page_offset_in_song == 0:
+                            add_difficulty_wheel(dest_page, file)
 
                         # On the first page of the song, add a link from the title to the TOC
                         if page_offset_in_song == 0:
@@ -699,6 +705,12 @@ def generate_songbook(
         )
         span.set_attribute("add_page_numbers", add_page_numbers)
 
+        # Load environment variable for difficulty wheels
+        add_difficulty_wheels = (
+            os.getenv("GENERATOR_ADD_DIFFICULTY_WHEELS", "true").lower() == "true"
+        )
+        span.set_attribute("add_difficulty_wheels", add_difficulty_wheels)
+
         # Initialize page index tracking
         page_indices = {
             "cover": None,
@@ -826,6 +838,7 @@ def generate_songbook(
                             step,
                             add_page_numbers=add_page_numbers,
                             toc_page_index=toc_start_page,
+                            add_difficulty_wheels=add_difficulty_wheels,
                         )
                     except PdfCopyException as e:
                         click.echo(f"Error copying from cached PDF: {str(e)}", err=True)
@@ -1129,3 +1142,20 @@ def add_page_number(page, page_index):
     x = page.rect.width - 35
     y = 30
     page.insert_text((x, y), text, fontsize=11, color=(0, 0, 0))
+
+
+def add_difficulty_wheel(page, file):
+    difficulty_bin_str = file.properties.get("difficulty_bin")
+    if not difficulty_bin_str:
+        return
+    try:
+        difficulty_bin = int(difficulty_bin_str)
+    except (ValueError, TypeError):
+        return
+    symbol = toc.difficulty_symbol(difficulty_bin)
+    if not symbol:
+        return
+    font = resolve_font("RobotoCondensed-Regular.ttf")
+    tw = fitz.TextWriter(page.rect)
+    tw.append((20, 30), symbol, font=font, fontsize=11)
+    tw.write_text(page, color=(0, 0, 0))
