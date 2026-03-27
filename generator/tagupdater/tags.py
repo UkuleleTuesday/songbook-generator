@@ -96,6 +96,7 @@ class LlmTaggerConfig:
     func: Callable[["Context", Optional[str]], Optional[str]]
     prompt: str
     only_if_unset: bool = False
+    extra: Dict[str, Any] = field(default_factory=dict)
 
 
 # A list to hold all tagged functions
@@ -145,6 +146,7 @@ def llm_tag(
     *,
     prompt: str,
     only_if_unset: bool = False,
+    **extra: Any,
 ):
     """
     Decorator to register a function as an LLM-backed tag generator.
@@ -157,16 +159,21 @@ def llm_tag(
     Args:
         prompt: Template string for the LLM prompt. Supports {song}, {artist},
                 {year}, and {name} placeholders which are filled from the file's
-                properties at call time.
+                properties at call time. Any **extra kwargs are also available
+                as placeholders.
         only_if_unset: If True, the tag will only be set if it's not
                        already present on the file.
+        **extra: Additional keyword arguments made available as prompt template
+                 placeholders and passed through to the validator function.
     """
 
     def decorator(
         func: Callable[["Context", Optional[str]], Optional[str]],
     ) -> Callable[["Context", Optional[str]], Optional[str]]:
         _LLM_TAGGERS.append(
-            LlmTaggerConfig(func=func, prompt=prompt, only_if_unset=only_if_unset)
+            LlmTaggerConfig(
+                func=func, prompt=prompt, only_if_unset=only_if_unset, extra=extra
+            )
         )
         return func
 
@@ -187,7 +194,7 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
     if not llm_taggers or ctx.genai_client is None:
         return {}
 
-    template_vars = {
+    base_template_vars = {
         "song": ctx.file.properties.get("song", ctx.file.name),
         "artist": ctx.file.properties.get("artist", "unknown artist"),
         "year": ctx.file.properties.get("year", ""),
@@ -196,7 +203,8 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
 
     fields = [config.func.__name__ for config in llm_taggers]
     prompts_section = "\n".join(
-        f"- {config.func.__name__}: {config.prompt.format_map(template_vars)}"
+        f"- {config.func.__name__}: "
+        f"{config.prompt.format_map({**base_template_vars, **config.extra})}"
         for config in llm_taggers
     )
     compound_prompt = (
@@ -232,7 +240,7 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
         raw_value = parsed.get(field_name)
         if raw_value is not None:
             raw_value = str(raw_value).strip()
-        validated = config.func(ctx, raw_value)
+        validated = config.func(ctx, raw_value, **config.extra)
         if validated is not None:
             results[field_name] = validated
 
@@ -594,3 +602,20 @@ def duration(ctx: Context, raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None
     return _parse_duration(raw)
+
+
+@llm_tag(
+    prompt=(
+        'What are the musical genres of "{song}" by {artist}? '
+        "List up to {max_genres} genres as a comma-separated list "
+        '(e.g. "Rock,Pop"), or null if unknown.'
+    ),
+    only_if_unset=True,
+    max_genres=3,
+)
+def genre(ctx: Context, raw: Optional[str], *, max_genres: int = 3) -> Optional[str]:
+    """Looks up the genre(s) of the song via Gemini + Google Search."""
+    if not raw:
+        return None
+    parts = [g.strip() for g in raw.split(",") if g.strip()][:max_genres]
+    return ",".join(parts) if parts else None

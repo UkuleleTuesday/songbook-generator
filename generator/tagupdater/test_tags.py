@@ -13,6 +13,7 @@ from .tags import (
     _run_llm_tags,
     approved_date,
     duration,
+    genre,
     ready_to_play_date,
     status,
     tag,
@@ -728,3 +729,53 @@ def test_run_llm_tags_skips_invalid_values():
 )
 def test_parse_duration(raw, expected):
     assert _parse_duration(raw) == expected
+
+
+# --- genre validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        ("Rock", "Rock"),
+        ("Rock,Pop", "Rock,Pop"),
+        ("Rock, Pop, Folk", "Rock,Pop,Folk"),
+        ("Rock,Pop,Folk,Country", "Rock,Pop,Folk"),  # clips to max_genres=3
+        (None, None),
+        ("", None),
+        ("  ,  ", None),  # whitespace-only entries
+    ],
+)
+def test_genre_validator(raw, expected):
+    assert genre(_make_ctx(), raw) == expected
+
+
+def test_genre_validator_respects_max_genres():
+    assert genre(_make_ctx(), "Rock,Pop,Folk,Country", max_genres=2) == "Rock,Pop"
+
+
+def test_run_llm_tags_passes_extra_to_validator():
+    client = _make_genai_client('{"genre": "Rock,Pop,Folk,Jazz"}')
+    file = File(id="1", name="test", properties={"song": "test", "artist": "test"})
+    ctx = Context(file=file, genai_client=client)
+
+    genre_config = LlmTaggerConfig(
+        func=genre, prompt="What genres?", extra={"max_genres": 2}
+    )
+    results = _run_llm_tags(ctx, [genre_config])
+
+    assert results == {"genre": "Rock,Pop"}
+
+
+def test_run_llm_tags_interpolates_extra_in_prompt():
+    client = _make_genai_client('{"genre": "Rock"}')
+    file = File(id="1", name="test", properties={"song": "test", "artist": "test"})
+    ctx = Context(file=file, genai_client=client)
+
+    genre_config = LlmTaggerConfig(
+        func=genre, prompt="List up to {max_genres} genres.", extra={"max_genres": 2}
+    )
+    _run_llm_tags(ctx, [genre_config])
+
+    call_args = client.models.generate_content.call_args
+    assert "List up to 2 genres." in call_args.kwargs["contents"]
