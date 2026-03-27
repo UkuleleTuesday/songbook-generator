@@ -633,7 +633,7 @@ def _make_genai_client(response_json: str) -> Mock:
 
 def test_run_llm_tags_returns_empty_without_client():
     ctx = Context(file=File(id="1", name="test"), genai_client=None)
-    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    year_config = LlmTaggerConfig(func=year, prompt="What year?")
     assert _run_llm_tags(ctx, [year_config]) == {}
 
 
@@ -653,11 +653,11 @@ def test_run_llm_tags_batches_into_single_call():
 
     year_config = LlmTaggerConfig(
         func=year,
-        prompt_fn=lambda ctx: "What year?",
+        prompt="What year?",
     )
     duration_config = LlmTaggerConfig(
         func=duration,
-        prompt_fn=lambda ctx: "What duration?",
+        prompt="What duration?",
     )
 
     results = _run_llm_tags(ctx, [year_config, duration_config])
@@ -671,7 +671,7 @@ def test_run_llm_tags_batches_into_single_call():
 def test_run_llm_tags_handles_invalid_json():
     client = _make_genai_client("not valid json at all")
     ctx = Context(file=File(id="1", name="test"), genai_client=client)
-    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    year_config = LlmTaggerConfig(func=year, prompt="What year?")
 
     results = _run_llm_tags(ctx, [year_config])
 
@@ -682,7 +682,7 @@ def test_run_llm_tags_strips_markdown_fences():
     client = _make_genai_client('```json\n{"year": "1984"}\n```')
     file = File(id="1", name="test", properties={"song": "1984", "artist": "Someone"})
     ctx = Context(file=file, genai_client=client)
-    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    year_config = LlmTaggerConfig(func=year, prompt="What year?")
 
     results = _run_llm_tags(ctx, [year_config])
 
@@ -694,10 +694,8 @@ def test_run_llm_tags_skips_null_values():
     file = File(id="1", name="test", properties={"song": "test", "artist": "test"})
     ctx = Context(file=file, genai_client=client)
 
-    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
-    duration_config = LlmTaggerConfig(
-        func=duration, prompt_fn=lambda ctx: "What duration?"
-    )
+    year_config = LlmTaggerConfig(func=year, prompt="What year?")
+    duration_config = LlmTaggerConfig(func=duration, prompt="What duration?")
 
     results = _run_llm_tags(ctx, [year_config, duration_config])
 
@@ -708,7 +706,7 @@ def test_run_llm_tags_skips_null_values():
 def test_run_llm_tags_skips_invalid_values():
     client = _make_genai_client('{"year": "not-a-year"}')
     ctx = Context(file=File(id="1", name="test"), genai_client=client)
-    year_config = LlmTaggerConfig(func=year, prompt_fn=lambda ctx: "What year?")
+    year_config = LlmTaggerConfig(func=year, prompt="What year?")
 
     results = _run_llm_tags(ctx, [year_config])
 

@@ -94,7 +94,7 @@ class LlmTaggerConfig:
     """Configuration for an LLM-backed tagger function."""
 
     func: Callable[["Context", Optional[str]], Optional[str]]
-    prompt_fn: Callable[["Context"], str]
+    prompt: str
     only_if_unset: bool = False
 
 
@@ -143,7 +143,7 @@ def tag(_func=None, *, only_if_unset: bool = False):
 
 def llm_tag(
     *,
-    prompt: Callable[["Context"], str],
+    prompt: str,
     only_if_unset: bool = False,
 ):
     """
@@ -155,8 +155,9 @@ def llm_tag(
     returns the final tag value or None if the value is invalid.
 
     Args:
-        prompt: Callable that takes a Context and returns the prompt string
-                for this field.
+        prompt: Template string for the LLM prompt. Supports {song}, {artist},
+                {year}, and {name} placeholders which are filled from the file's
+                properties at call time.
         only_if_unset: If True, the tag will only be set if it's not
                        already present on the file.
     """
@@ -165,7 +166,7 @@ def llm_tag(
         func: Callable[["Context", Optional[str]], Optional[str]],
     ) -> Callable[["Context", Optional[str]], Optional[str]]:
         _LLM_TAGGERS.append(
-            LlmTaggerConfig(func=func, prompt_fn=prompt, only_if_unset=only_if_unset)
+            LlmTaggerConfig(func=func, prompt=prompt, only_if_unset=only_if_unset)
         )
         return func
 
@@ -186,9 +187,17 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
     if not llm_taggers or ctx.genai_client is None:
         return {}
 
+    template_vars = {
+        "song": ctx.file.properties.get("song", ctx.file.name),
+        "artist": ctx.file.properties.get("artist", "unknown artist"),
+        "year": ctx.file.properties.get("year", ""),
+        "name": ctx.file.name,
+    }
+
     fields = [config.func.__name__ for config in llm_taggers]
     prompts_section = "\n".join(
-        f"- {config.func.__name__}: {config.prompt_fn(ctx)}" for config in llm_taggers
+        f"- {config.func.__name__}: {config.prompt.format_map(template_vars)}"
+        for config in llm_taggers
     )
     compound_prompt = (
         "Please answer the following questions about this song. "
@@ -548,9 +557,8 @@ def time_signature(ctx: Context) -> Optional[str]:
 
 
 @llm_tag(
-    prompt=lambda ctx: (
-        f'What year was "{ctx.file.properties.get("song", ctx.file.name)}" '
-        f"by {ctx.file.properties.get('artist', 'unknown artist')} originally released? "
+    prompt=(
+        'What year was "{song}" by {artist} originally released? '
         "Reply with only the 4-digit year, or null if unknown."
     ),
     only_if_unset=True,
@@ -575,10 +583,8 @@ def _parse_duration(raw: str) -> Optional[str]:
 
 
 @llm_tag(
-    prompt=lambda ctx: (
-        f'What is the duration of "{ctx.file.properties.get("song", ctx.file.name)}" '
-        f"by {ctx.file.properties.get('artist', 'unknown artist')} "
-        f"({ctx.file.properties.get('year', '')}) on its original studio release? "
+    prompt=(
+        'What is the duration of "{song}" by {artist} ({year}) on its original studio release? '
         "Reply with only the duration in MM:SS format, or null if unknown."
     ),
     only_if_unset=True,
