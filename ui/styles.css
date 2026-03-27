@@ -135,6 +135,17 @@ body {
   font-size: 1rem;
 }
 
+.edition-cancel-btn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  color: #c62828 !important;
+}
+
+.edition-cancel-btn .material-icons {
+  font-size: 1rem;
+}
+
 .edition-edit-btn {
   display: inline-flex !important;
   align-items: center;
