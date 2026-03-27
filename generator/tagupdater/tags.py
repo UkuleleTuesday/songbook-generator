@@ -1,6 +1,7 @@
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import click
@@ -246,6 +247,26 @@ def status(ctx: Context) -> Optional[str]:
         return "APPROVED"
     if FOLDER_ID_READY_TO_PLAY in ctx.file.parents:
         return "READY_TO_PLAY"
+    return None
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@tag(only_if_unset=True)
+def ready_to_play_date(ctx: Context) -> Optional[str]:
+    """Records the datetime when a song was first marked as ready to play."""
+    if FOLDER_ID_READY_TO_PLAY in ctx.file.parents:
+        return _now_iso()
+    return None
+
+
+@tag(only_if_unset=True)
+def approved_date(ctx: Context) -> Optional[str]:
+    """Records the datetime when a song was first marked as approved."""
+    if FOLDER_ID_APPROVED in ctx.file.parents:
+        return _now_iso()
     return None
 
 
