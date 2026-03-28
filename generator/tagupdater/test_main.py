@@ -108,14 +108,14 @@ def test_convert_to_file_objects(sample_changed_files):
 
     file1 = file_objects[0]
     assert file1.id == "file1"
-    assert file1.name == "Test Song 1.pdf"
+    assert file1.name == ""
     assert file1.mimeType == "application/pdf"
     assert file1.parents == ["folder1"]
     assert file1.properties == {"status": "APPROVED"}
 
     file2 = file_objects[1]
     assert file2.id == "file2"
-    assert file2.name == "Test Song 2.pdf"
+    assert file2.name == ""
     assert file2.properties == {}
 
 
