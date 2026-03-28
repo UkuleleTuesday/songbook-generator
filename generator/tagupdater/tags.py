@@ -194,57 +194,68 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
     if not llm_taggers or ctx.genai_client is None:
         return {}
 
-    base_template_vars = {
-        "song": ctx.file.properties.get("song", ctx.file.name),
-        "artist": ctx.file.properties.get("artist", "unknown artist"),
-        "year": ctx.file.properties.get("year", ""),
-        "name": ctx.file.name,
-    }
+    with tracer.start_as_current_span("run_llm_tags") as span:
+        tagger_names = [config.func.__name__ for config in llm_taggers]
+        span.set_attribute("llm.model", LLM_MODEL)
+        span.set_attribute("llm.taggers_count", len(llm_taggers))
+        span.set_attribute("llm.tagger_names", ",".join(tagger_names))
 
-    fields = [config.func.__name__ for config in llm_taggers]
-    prompts_section = "\n".join(
-        f"- {config.func.__name__}: "
-        f"{config.prompt.format_map({**base_template_vars, **config.extra})}"
-        for config in llm_taggers
-    )
-    compound_prompt = (
-        "Please answer the following questions about this song. "
-        f"Return ONLY a valid JSON object with exactly these keys: "
-        f"{', '.join(repr(f) for f in fields)}. "
-        "Use a JSON null value for any field that is unknown.\n\n"
-        f"{prompts_section}"
-    )
+        base_template_vars = {
+            "song": ctx.file.properties.get("song", ctx.file.name),
+            "artist": ctx.file.properties.get("artist", "unknown artist"),
+            "year": ctx.file.properties.get("year", ""),
+            "name": ctx.file.name,
+        }
 
-    response = ctx.genai_client.models.generate_content(
-        model=LLM_MODEL,
-        contents=compound_prompt,
-        config=types.GenerateContentConfig(
-            tools=[types.Tool(google_search=types.GoogleSearch())],
-        ),
-    )
+        fields = [config.func.__name__ for config in llm_taggers]
+        prompts_section = "\n".join(
+            f"- {config.func.__name__}: "
+            f"{config.prompt.format_map({**base_template_vars, **config.extra})}"
+            for config in llm_taggers
+        )
+        compound_prompt = (
+            "Please answer the following questions about this song. "
+            f"Return ONLY a valid JSON object with exactly these keys: "
+            f"{', '.join(repr(f) for f in fields)}. "
+            "Use a JSON null value for any field that is unknown.\n\n"
+            f"{prompts_section}"
+        )
 
-    raw_text = response.text.strip()
-    # Strip markdown code fences if present
-    raw_text = re.sub(r"^```[^\n]*\n", "", raw_text)
-    raw_text = raw_text.rstrip("`").strip()
+        response = ctx.genai_client.models.generate_content(
+            model=LLM_MODEL,
+            contents=compound_prompt,
+            config=types.GenerateContentConfig(
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+            ),
+        )
 
-    try:
-        parsed = json.loads(raw_text)
-    except json.JSONDecodeError:
-        click.echo(f"LLM returned invalid JSON: {raw_text!r}", err=True)
-        return {}
+        raw_text = response.text.strip()
+        # Strip markdown code fences if present
+        raw_text = re.sub(r"^```[^\n]*\n", "", raw_text)
+        raw_text = raw_text.rstrip("`").strip()
 
-    results = {}
-    for config in llm_taggers:
-        field_name = config.func.__name__
-        raw_value = parsed.get(field_name)
-        if raw_value is not None:
-            raw_value = str(raw_value).strip()
-        validated = config.func(ctx, raw_value, **config.extra)
-        if validated is not None:
-            results[field_name] = validated
+        try:
+            parsed = json.loads(raw_text)
+        except json.JSONDecodeError:
+            click.echo(f"LLM returned invalid JSON: {raw_text!r}", err=True)
+            span.set_attribute("llm.parse_error", True)
+            span.set_attribute("llm.results_count", 0)
+            return {}
 
-    return results
+        results = {}
+        for config in llm_taggers:
+            field_name = config.func.__name__
+            raw_value = parsed.get(field_name)
+            if raw_value is not None:
+                raw_value = str(raw_value).strip()
+            validated = config.func(ctx, raw_value, **config.extra)
+            if validated is not None:
+                results[field_name] = validated
+
+        span.set_attribute("llm.results_count", len(results))
+        span.set_attribute("llm.validated_tags", ",".join(results.keys()))
+
+        return results
 
 
 class Tagger:
@@ -332,6 +343,7 @@ class Tagger:
                     new_properties[tag_name] = value_str
 
             # Collect applicable LLM taggers and run them in a single batched call
+            span.set_attribute("llm_tags.enabled", self.llm_tagging_enabled)
             if not self.llm_tagging_enabled:
                 click.echo("LLM tagging is disabled, skipping LLM tags.")
                 llm_results = {}
@@ -344,6 +356,9 @@ class Tagger:
                         and config.func.__name__ in current_properties
                     )
                 ]
+                span.set_attribute(
+                    "llm_tags.applicable_count", len(applicable_llm_taggers)
+                )
                 llm_results = _run_llm_tags(context, applicable_llm_taggers)
             for tag_name, tag_value in llm_results.items():
                 value_str = str(tag_value)
