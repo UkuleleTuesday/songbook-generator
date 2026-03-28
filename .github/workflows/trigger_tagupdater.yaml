@@ -7,29 +7,9 @@ on:
         description: 'PR number to target (sends to drive-file-changes-pr-{N} topic)'
         required: true
         type: string
-      file_id:
-        description: 'Google Drive file ID'
+      file_identifier:
+        description: 'Google Drive file ID or file name (partial match supported)'
         required: true
-        type: string
-      file_name:
-        description: 'File name (e.g. "My Song.pdf")'
-        required: false
-        default: 'Test Song.pdf'
-        type: string
-      folder_id:
-        description: 'Parent folder ID'
-        required: false
-        default: ''
-        type: string
-      mime_type:
-        description: 'MIME type of the file'
-        required: false
-        default: 'application/vnd.google-apps.document'
-        type: string
-      properties:
-        description: 'Existing file properties as JSON (e.g. {"status":"APPROVED"})'
-        required: false
-        default: '{}'
         type: string
 
 jobs:
@@ -46,51 +26,14 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Build and publish message
+    - name: Resolve file and write message
+      run: uv run python scripts/resolve_drive_file.py "${{ github.event.inputs.file_identifier }}" > /tmp/pubsub_message.json
+
+    - name: Publish to Pub/Sub
       run: |
-        PR_NUM="${{ github.event.inputs.pr_number }}"
-        TOPIC="${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}"
-
-        FILE_ID="${{ github.event.inputs.file_id }}"
-        FILE_NAME="${{ github.event.inputs.file_name }}"
-        FOLDER_ID="${{ github.event.inputs.folder_id }}"
-        MIME_TYPE="${{ github.event.inputs.mime_type }}"
-        PROPERTIES='${{ github.event.inputs.properties }}'
-
-        # Build parents array — empty if no folder_id provided
-        if [ -n "$FOLDER_ID" ]; then
-          PARENTS_JSON="[\"${FOLDER_ID}\"]"
-        else
-          PARENTS_JSON="[]"
-        fi
-
-        CHECK_TIME="$(date -u +%Y-%m-%dT%H:%M:%S)"
-
-        MESSAGE=$(jq -n \
-          --arg check_time "$CHECK_TIME" \
-          --arg file_id "$FILE_ID" \
-          --arg file_name "$FILE_NAME" \
-          --arg folder_id "$FOLDER_ID" \
-          --arg mime_type "$MIME_TYPE" \
-          --argjson parents "$PARENTS_JSON" \
-          --argjson properties "$PROPERTIES" \
-          '{
-            check_time: $check_time,
-            file_count: 1,
-            folders_checked: (if $folder_id != "" then [$folder_id] else [] end),
-            changed_files: [{
-              id: $file_id,
-              name: $file_name,
-              folder_id: $folder_id,
-              mime_type: $mime_type,
-              parents: $parents,
-              properties: $properties
-            }]
-          }')
-
+        TOPIC="${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${{ github.event.inputs.pr_number }}"
         echo "Publishing to topic: ${TOPIC}"
-        echo "Message: ${MESSAGE}"
-
+        echo "Message: $(cat /tmp/pubsub_message.json)"
         gcloud pubsub topics publish "${TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" \
-          --message="${MESSAGE}"
+          --message="$(cat /tmp/pubsub_message.json)"
