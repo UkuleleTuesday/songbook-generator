@@ -5,6 +5,8 @@ from .api.main import api_main
 from .worker.main import worker_main
 from .cache_updater.main import cache_updater_main
 from .drivewatcher.main import drivewatcher_main
+from .drivewatcher.watch import drivewatch_main
+from .drivewebhook.main import drivewebhook_main
 from .tagupdater.main import tagupdater_main
 
 
@@ -30,8 +32,20 @@ def cache_updater(cloud_event):
 
 @functions_framework.cloud_event
 def drivewatcher(cloud_event):
-    """CloudEvent Function for Google Drive change detection."""
+    """CloudEvent Function for Drive change detection (push-based consumer)."""
     return drivewatcher_main(cloud_event)
+
+
+@functions_framework.cloud_event
+def drivewatch(cloud_event):
+    """CloudEvent Function for Drive watch channel management (renewal)."""
+    return drivewatch_main(cloud_event)
+
+
+@functions_framework.http
+def drivewebhook(request):
+    """HTTP Cloud Function for receiving Google Drive push notifications."""
+    return drivewebhook_main(request)
 
 
 @functions_framework.cloud_event

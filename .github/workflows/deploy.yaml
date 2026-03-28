@@ -63,12 +63,14 @@ jobs:
         echo "CACHE_REFRESH_PUBSUB_TOPIC=${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC=${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
         echo "DRIVE_CHANGES_PUBSUB_TOPIC=${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
+        echo "DRIVE_WEBHOOK_PUBSUB_TOPIC=${{ env.DRIVE_WEBHOOK_PUBSUB_TOPIC }}-pr-${PR_NUM}" >> $GITHUB_ENV
 
         echo "PR environment variables set:"
         echo "- PUBSUB_TOPIC: ${{ env.PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- CACHE_REFRESH_PUBSUB_TOPIC: ${{ env.CACHE_REFRESH_PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC: ${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}"
         echo "- DRIVE_CHANGES_PUBSUB_TOPIC: ${{ env.DRIVE_CHANGES_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        echo "- DRIVE_WEBHOOK_PUBSUB_TOPIC: ${{ env.DRIVE_WEBHOOK_PUBSUB_TOPIC }}-pr-${PR_NUM}"
 
     - name: Create Pub/Sub topic
       run: |
@@ -82,6 +84,10 @@ jobs:
 
         echo "Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
         gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+        echo "Creating Pub/Sub topic ${DRIVE_WEBHOOK_PUBSUB_TOPIC}…"
+        gcloud pubsub topics create "${DRIVE_WEBHOOK_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
   deploy-api:
@@ -267,7 +273,7 @@ jobs:
           TAGUPDATER_TRIGGER_FIELD: "status"
 
   deploy-drivewatcher:
-    name: Deploy Drive Watcher
+    name: Deploy Drive Watcher (consumer)
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
@@ -282,21 +288,7 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Create Pub/Sub topics for drive watcher
-      run: |
-        DRIVE_CHANGES_PUBSUB_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_CHANGES_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_CHANGES_PUBSUB_TOPIC }}"
-        echo "Creating Pub/Sub topic ${DRIVE_CHANGES_PUBSUB_TOPIC}…"
-        gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
-          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
-
-        # Create separate topic for drivewatcher scheduling (separate from file changes)
-        DRIVEWATCHER_TRIGGER_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
-        echo "Creating Pub/Sub topic ${DRIVEWATCHER_TRIGGER_TOPIC}…"
-        gcloud pubsub topics create "${DRIVEWATCHER_TRIGGER_TOPIC}" \
-          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
-
     - name: Deploy Drive Watcher Cloud Function
-      id: deploy
       uses: ./.github/actions/deploy-cloud-function
       with:
         function_name: ${{ env.DRIVEWATCHER_FUNCTION_NAME }}
@@ -307,7 +299,7 @@ jobs:
         concurrency: 1
         max_instances: 1
         trigger_type: 'topic'
-        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_WEBHOOK_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_WEBHOOK_PUBSUB_TOPIC }}"
         env_vars: |
           SERVICE_NAME: "songbook-drivewatcher"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
@@ -324,15 +316,120 @@ jobs:
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
 
-    - name: Create Cloud Scheduler job
+  deploy-drivewebhook:
+    name: Deploy Drive Webhook Receiver
+    needs: [test, deploy-infrastructure]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Deploy Drive Webhook HTTP Cloud Function
+      id: deploy
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.DRIVEWEBHOOK_FUNCTION_NAME }}
+        entry_point: 'drivewebhook'
+        component_name: 'Drive Webhook Receiver'
+        memory: '256Mi'
+        cpu: '0.333'
+        concurrency: 10
+        max_instances: 5
+        trigger_type: 'http'
+        allow_unauthenticated: 'true'
+        env_vars: |
+          SERVICE_NAME: "songbook-drivewebhook"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          DRIVE_WEBHOOK_PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVE_WEBHOOK_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVE_WEBHOOK_PUBSUB_TOPIC }}"
+          VERIFY_TOKEN: "${{ secrets.DRIVE_WEBHOOK_VERIFY_TOKEN }}"
+          DEPLOY_VERSION: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}"
+          OTEL_SERVICE_NAME: "songbook-drivewebhook"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-drivewebhook"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
+          LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
+
+  deploy-drivewatch:
+    name: Deploy Drive Watch Manager
+    needs: [test, deploy-infrastructure, deploy-drivewebhook]
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Create Pub/Sub topic for watch renewal trigger
       run: |
-        DRIVEWATCHER_FN_NAME="${{ steps.deploy.outputs.function_name }}"
+        DRIVEWATCHER_TRIGGER_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
+        echo "Creating Pub/Sub topic ${DRIVEWATCHER_TRIGGER_TOPIC}…"
+        gcloud pubsub topics create "${DRIVEWATCHER_TRIGGER_TOPIC}" \
+          --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
+
+    - name: Get Drive Webhook URL
+      id: webhook-url
+      run: |
+        DRIVEWEBHOOK_FN_NAME="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWEBHOOK_FUNCTION_NAME, github.event.pull_request.number) || env.DRIVEWEBHOOK_FUNCTION_NAME }}"
+        WEBHOOK_URL=$(gcloud functions describe "$DRIVEWEBHOOK_FN_NAME" \
+          --region="${{ env.GCP_REGION }}" \
+          --format="value(serviceConfig.uri)")
+        echo "url=${WEBHOOK_URL}" >> "$GITHUB_OUTPUT"
+        echo "Drive Webhook URL: ${WEBHOOK_URL}"
+
+    - name: Deploy Drive Watch Manager Cloud Function
+      id: deploy
+      uses: ./.github/actions/deploy-cloud-function
+      with:
+        function_name: ${{ env.DRIVEWATCH_FUNCTION_NAME }}
+        entry_point: 'drivewatch'
+        component_name: 'Drive Watch Manager'
+        memory: '256Mi'
+        cpu: '0.333'
+        concurrency: 1
+        max_instances: 1
+        trigger_type: 'topic'
+        trigger_topic: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
+        env_vars: |
+          SERVICE_NAME: "songbook-drivewatch"
+          GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
+          GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          GCP_REGION: "${{ env.GCP_REGION }}"
+          GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
+          DRIVE_WEBHOOK_URL: "${{ steps.webhook-url.outputs.url }}"
+          VERIFY_TOKEN: "${{ secrets.DRIVE_WEBHOOK_VERIFY_TOKEN }}"
+          DEPLOY_VERSION: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('main-{0}', github.sha) }}"
+          OTEL_SERVICE_NAME: "songbook-drivewatch"
+          OTEL_RESOURCE_ATTRIBUTES: "gcp.project_id=${{ env.GCP_PROJECT_ID }},service.name=songbook-drivewatch"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "https://telemetry.googleapis.com"
+          OTEL_SDK_DISABLED: "false"
+          LOG_LEVEL: "info"
+          LOCAL_CACHE_ENABLED: "false"
+
+    - name: Create Cloud Scheduler job for watch renewal (every 23 hours)
+      run: |
         DRIVEWATCHER_TRIGGER_TOPIC="${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC, github.event.pull_request.number) || env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}"
 
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler-pr-${{ github.event.pull_request.number }}"
+          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCH_FUNCTION_NAME }}-scheduler-pr-${{ github.event.pull_request.number }}"
         else
-          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler"
+          SCHEDULER_JOB_NAME="${{ env.DRIVEWATCH_FUNCTION_NAME }}-scheduler"
         fi
 
         echo "Creating Cloud Scheduler job: ${SCHEDULER_JOB_NAME}"
@@ -343,15 +440,16 @@ jobs:
           --project="${{ env.GCP_PROJECT_ID }}" \
           --quiet || echo "Job may not exist, continuing..."
 
-        # Create the scheduler job to trigger every minute
+        # Create the scheduler job to trigger every 23 hours
+        # Drive watch channels expire after 24 hours; renew at 23 h for safety
         gcloud scheduler jobs create pubsub "${SCHEDULER_JOB_NAME}" \
           --location="${{ env.GCP_REGION }}" \
           --project="${{ env.GCP_PROJECT_ID }}" \
-          --schedule="* * * * *" \
+          --schedule="0 */23 * * *" \
           --topic="${DRIVEWATCHER_TRIGGER_TOPIC}" \
           --message-body='{"trigger": "scheduled", "source": "cloud-scheduler"}' \
           --attributes="source=cloud-scheduler" \
-          --description="Trigger drive watcher function every minute"
+          --description="Renew Drive watch channel every 23 hours"
 
   deploy-ui:
     name: Deploy UI
@@ -401,6 +499,8 @@ jobs:
         WORKER_FN_NAME="${{ env.WORKER_FUNCTION_NAME }}-pr-${PR_NUM}"
         CACHE_UPDATER_FN_NAME="${{ env.CACHE_UPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
         DRIVEWATCHER_FN_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-pr-${PR_NUM}"
+        DRIVEWEBHOOK_FN_NAME="${{ env.DRIVEWEBHOOK_FUNCTION_NAME }}-pr-${PR_NUM}"
+        DRIVEWATCH_FN_NAME="${{ env.DRIVEWATCH_FUNCTION_NAME }}-pr-${PR_NUM}"
         TAGUPDATER_FN_NAME="${{ env.TAGUPDATER_FUNCTION_NAME }}-pr-${PR_NUM}"
 
         echo "Cleaning up PR #${PR_NUM} resources..."
@@ -429,12 +529,28 @@ jobs:
           echo "Cache Updater function $CACHE_UPDATER_FN_NAME not found, skipping"
         fi
 
-        # Delete Drive Watcher function
+        # Delete Drive Watcher (consumer) function
         if gcloud functions describe "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
           echo "Deleting Drive Watcher function: $DRIVEWATCHER_FN_NAME"
           gcloud functions delete "$DRIVEWATCHER_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
         else
           echo "Drive Watcher function $DRIVEWATCHER_FN_NAME not found, skipping"
+        fi
+
+        # Delete Drive Webhook Receiver function
+        if gcloud functions describe "$DRIVEWEBHOOK_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Drive Webhook function: $DRIVEWEBHOOK_FN_NAME"
+          gcloud functions delete "$DRIVEWEBHOOK_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Drive Webhook function $DRIVEWEBHOOK_FN_NAME not found, skipping"
+        fi
+
+        # Delete Drive Watch Manager function
+        if gcloud functions describe "$DRIVEWATCH_FN_NAME" --region="${{ env.GCP_REGION }}" >/dev/null 2>&1; then
+          echo "Deleting Drive Watch Manager function: $DRIVEWATCH_FN_NAME"
+          gcloud functions delete "$DRIVEWATCH_FN_NAME" --region="${{ env.GCP_REGION }}" --quiet
+        else
+          echo "Drive Watch Manager function $DRIVEWATCH_FN_NAME not found, skipping"
         fi
 
         # Delete Tag Updater function
@@ -448,14 +564,14 @@ jobs:
     - name: Delete PR Cloud Scheduler jobs
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
-        DRIVEWATCHER_SCHEDULER_JOB_NAME="${{ env.DRIVEWATCHER_FUNCTION_NAME }}-scheduler-pr-${PR_NUM}"
+        DRIVEWATCH_SCHEDULER_JOB_NAME="${{ env.DRIVEWATCH_FUNCTION_NAME }}-scheduler-pr-${PR_NUM}"
 
-        # Delete Drive Watcher scheduler job
-        if gcloud scheduler jobs describe "$DRIVEWATCHER_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-          echo "Deleting Cloud Scheduler job: $DRIVEWATCHER_SCHEDULER_JOB_NAME"
-          gcloud scheduler jobs delete "$DRIVEWATCHER_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        # Delete Drive Watch Manager renewal scheduler job
+        if gcloud scheduler jobs describe "$DRIVEWATCH_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Cloud Scheduler job: $DRIVEWATCH_SCHEDULER_JOB_NAME"
+          gcloud scheduler jobs delete "$DRIVEWATCH_SCHEDULER_JOB_NAME" --location="${{ env.GCP_REGION }}" --project="${{ env.GCP_PROJECT_ID }}" --quiet
         else
-          echo "Scheduler job $DRIVEWATCHER_SCHEDULER_JOB_NAME not found, skipping"
+          echo "Scheduler job $DRIVEWATCH_SCHEDULER_JOB_NAME not found, skipping"
         fi
 
     - name: Delete PR Pub/Sub topics
@@ -484,6 +600,14 @@ jobs:
           gcloud pubsub topics delete "$DRIVE_CHANGES_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
         else
           echo "Pub/Sub topic $DRIVE_CHANGES_TOPIC_NAME not found, skipping"
+        fi
+
+        DRIVE_WEBHOOK_TOPIC_NAME="${{ env.DRIVE_WEBHOOK_PUBSUB_TOPIC }}-pr-${PR_NUM}"
+        if gcloud pubsub topics describe "$DRIVE_WEBHOOK_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+          echo "Deleting Pub/Sub topic: $DRIVE_WEBHOOK_TOPIC_NAME"
+          gcloud pubsub topics delete "$DRIVE_WEBHOOK_TOPIC_NAME" --project="${{ env.GCP_PROJECT_ID }}" --quiet
+        else
+          echo "Pub/Sub topic $DRIVE_WEBHOOK_TOPIC_NAME not found, skipping"
         fi
 
         DRIVEWATCHER_TRIGGER_TOPIC_NAME="${{ env.DRIVEWATCHER_TRIGGER_PUBSUB_TOPIC }}-pr-${PR_NUM}"
