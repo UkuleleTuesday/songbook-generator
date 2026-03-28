@@ -737,10 +737,10 @@ def test_parse_duration(raw, expected):
 @pytest.mark.parametrize(
     "raw, expected",
     [
-        ("Rock", "Rock"),
-        ("Rock,Pop", "Rock,Pop"),
-        ("Rock, Pop, Folk", "Rock,Pop,Folk"),
-        ("Rock,Pop,Folk,Country", "Rock,Pop,Folk"),  # clips to max_genres=3
+        ("Rock", "rock"),
+        ("Rock,Pop", "rock,pop"),
+        ("Rock, Pop, Folk", "rock,pop,folk"),
+        ("Rock,Pop,Folk,Country", "rock,pop,folk"),  # clips to max_genres=3
         (None, None),
         ("", None),
         ("  ,  ", None),  # whitespace-only entries
@@ -751,7 +751,7 @@ def test_genre_validator(raw, expected):
 
 
 def test_genre_validator_respects_max_genres():
-    assert genre(_make_ctx(), "Rock,Pop,Folk,Country", max_genres=2) == "Rock,Pop"
+    assert genre(_make_ctx(), "Rock,Pop,Folk,Country", max_genres=2) == "rock,pop"
 
 
 def test_run_llm_tags_passes_extra_to_validator():
@@ -764,7 +764,7 @@ def test_run_llm_tags_passes_extra_to_validator():
     )
     results = _run_llm_tags(ctx, [genre_config])
 
-    assert results == {"genre": "Rock,Pop"}
+    assert results == {"genre": "rock,pop"}
 
 
 def test_run_llm_tags_interpolates_extra_in_prompt():

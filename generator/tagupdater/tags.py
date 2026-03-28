@@ -655,5 +655,5 @@ def genre(ctx: Context, raw: Optional[str], *, max_genres: int = 3) -> Optional[
     """Looks up the genre(s) of the song via Gemini + Google Search."""
     if not raw:
         return None
-    parts = [g.strip() for g in raw.split(",") if g.strip()][:max_genres]
+    parts = [g.strip().lower() for g in raw.split(",") if g.strip()][:max_genres]
     return ",".join(parts) if parts else None
