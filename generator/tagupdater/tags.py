@@ -230,6 +230,7 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
         )
 
         raw_text = response.text.strip()
+        span.add_event("llm_response_received", {"response_length": len(raw_text)})
         # Strip markdown code fences if present
         raw_text = re.sub(r"^```[^\n]*\n", "", raw_text)
         raw_text = raw_text.rstrip("`").strip()
@@ -238,6 +239,7 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
             parsed = json.loads(raw_text)
         except json.JSONDecodeError:
             click.echo(f"LLM returned invalid JSON: {raw_text!r}", err=True)
+            span.add_event("json_parse_error", {"raw_text_preview": raw_text[:200]})
             span.set_attribute("llm.parse_error", True)
             span.set_attribute("llm.results_count", 0)
             return {}
@@ -339,6 +341,13 @@ class Tagger:
                             f"({key_bytes + value_bytes} bytes > 124) and will be skipped.",
                             err=True,
                         )
+                        span.add_event(
+                            "tag_skipped_too_long",
+                            {
+                                "tag_name": tag_name,
+                                "byte_count": key_bytes + value_bytes,
+                            },
+                        )
                         continue
                     new_properties[tag_name] = value_str
 
@@ -369,6 +378,10 @@ class Tagger:
                         f"  WARNING: Tag '{tag_name}' is too long "
                         f"({key_bytes + value_bytes} bytes > 124) and will be skipped.",
                         err=True,
+                    )
+                    span.add_event(
+                        "tag_skipped_too_long",
+                        {"tag_name": tag_name, "byte_count": key_bytes + value_bytes},
                     )
                     continue
                 new_properties[tag_name] = value_str
