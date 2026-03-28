@@ -44,9 +44,7 @@ def main():
         files = [result]
     else:
         if not folder_ids:
-            print(
-                "Error: GDRIVE_SONG_SHEETS_FOLDER_IDS is not set.", file=sys.stderr
-            )
+            print("Error: GDRIVE_SONG_SHEETS_FOLDER_IDS is not set.", file=sys.stderr)
             sys.exit(1)
         escaped = identifier.replace("'", "\\'")
         parent_clause = " or ".join(f"'{fid}' in parents" for fid in folder_ids)
@@ -54,7 +52,11 @@ def main():
         print(f"Searching Drive: {query}", file=sys.stderr)
         resp = (
             drive.files()
-            .list(q=query, pageSize=10, fields="files(id,name,mimeType,parents,properties)")
+            .list(
+                q=query,
+                pageSize=10,
+                fields="files(id,name,mimeType,parents,properties)",
+            )
             .execute()
         )
         files = resp.get("files", [])
