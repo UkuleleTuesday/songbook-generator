@@ -152,7 +152,15 @@ def delete_tag(file_identifier, key):
         "Overrides the config/env setting."
     ),
 )
-def update_tags(file_identifier, all, dry_run, trigger_field):
+@click.option(
+    "--llm-tagging/--no-llm-tagging",
+    default=None,
+    help=(
+        "Enable or disable LLM-backed tag enrichment (year, duration, genre). "
+        "Overrides the TAGUPDATER_LLM_TAGGING_ENABLED config/env setting (off by default)."
+    ),
+)
+def update_tags(file_identifier, all, dry_run, trigger_field, llm_tagging):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -199,16 +207,26 @@ def update_tags(file_identifier, all, dry_run, trigger_field):
         if trigger_field is not None
         else settings.tag_updater.trigger_field
     )
-    genai_client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud.project_id,
-        location=settings.caching.gcs.region or "us-central1",
+    effective_llm_tagging = (
+        llm_tagging
+        if llm_tagging is not None
+        else settings.tag_updater.llm_tagging_enabled
     )
+    if effective_llm_tagging:
+        genai_client = genai.Client(
+            vertexai=True,
+            project=settings.google_cloud.project_id,
+            location=settings.caching.gcs.region or "us-central1",
+        )
+    else:
+        genai_client = None
+        click.echo("LLM tagging disabled (use --llm-tagging to enable).")
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
         trigger_field=effective_trigger_field,
         genai_client=genai_client,
+        llm_tagging_enabled=effective_llm_tagging,
     )
     failed_updates = {}
 
