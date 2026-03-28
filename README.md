@@ -29,7 +29,7 @@ The application uses a microservices architecture deployed on Google Cloud:
 - **API Service** (`generator/api/main.py`): Handles job creation, queues work via Pub/Sub, and tracks job status in Firestore.
 - **Worker Service** (`generator/worker/main.py`): Processes PDF generation jobs asynchronously.
 - **Cache Updater Service** (`generator/cache_updater/main.py`): Periodically syncs song data and metadata from Google Drive to a GCS cache bucket (this way, the worker has very little work to do).
-- **Tag Updater Service** (`generator/tagupdater/main.py`): Processes individual file change events from Google Drive to update tags and metadata. This service is triggered by the Drive Watcher and ensures tags are kept up-to-date without causing timeouts. Supports optional LLM-backed tag enrichment (year, duration, genre) via Gemini — disabled by default, enabled with `TAGUPDATER_LLM_TAGGING_ENABLED=true`.
+- **Tag Updater Service** (`generator/tagupdater/main.py`): Processes individual file change events from Google Drive to update tags and metadata. This service is triggered by the Drive Watcher and ensures tags are kept up-to-date without causing timeouts. Supports LLM-backed tag enrichment (year, duration, genre) via Gemini — enabled by default, disabled with `TAGUPDATER_LLM_TAGGING_ENABLED=false`.
 - **Drive Watcher Service** (`generator/drivewatcher/main.py`): Monitors Google Drive for file changes and publishes change events to trigger the Tag Updater and cache refresh operations.
 - **CLI Tool** (`generator/cli/`): A standalone command-line interface for local development, testing, and utilities.
   It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
@@ -212,7 +212,7 @@ The Cloud Functions require these environment variables:
 
 - `TAGUPDATER_TRIGGER_FIELD`: Only write metadata when the value of this field changes (e.g. `status`).
 - `TAGUPDATER_DRY_RUN`: Set to `true` to compute tags without writing back to Drive. Automatically set on PR preview deployments.
-- `TAGUPDATER_LLM_TAGGING_ENABLED`: Set to `true` to enable experimental LLM-backed tags (year, duration, genre via Gemini + Google Search). Disabled by default.
+- `TAGUPDATER_LLM_TAGGING_ENABLED`: Set to `false` to disable LLM-backed tags (year, duration, genre via Gemini + Google Search). Enabled by default.
 
 ### Caching
 

@@ -179,7 +179,7 @@ def test_edition_empty_filters_allowed_without_folder_components():
 @pytest.mark.parametrize(
     "env_value, expected",
     [
-        (None, False),  # Off by default
+        (None, True),  # On by default
         ("true", True),
         ("True", True),
         ("1", True),

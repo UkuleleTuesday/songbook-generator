@@ -157,7 +157,7 @@ def delete_tag(file_identifier, key):
     default=None,
     help=(
         "Enable or disable LLM-backed tag enrichment (year, duration, genre). "
-        "Overrides the TAGUPDATER_LLM_TAGGING_ENABLED config/env setting (off by default)."
+        "Overrides the TAGUPDATER_LLM_TAGGING_ENABLED config/env setting (on by default)."
     ),
 )
 def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
