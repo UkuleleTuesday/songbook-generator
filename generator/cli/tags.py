@@ -153,14 +153,14 @@ def delete_tag(file_identifier, key):
     ),
 )
 @click.option(
-    "--llm-tagging/--no-llm-tagging",
+    "--with-llm-tags/--without-llm-tags",
     default=None,
     help=(
         "Enable or disable LLM-backed tag enrichment (year, duration, genre). "
         "Overrides the TAGUPDATER_LLM_TAGGING_ENABLED config/env setting (off by default)."
     ),
 )
-def update_tags(file_identifier, all, dry_run, trigger_field, llm_tagging):
+def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -208,8 +208,8 @@ def update_tags(file_identifier, all, dry_run, trigger_field, llm_tagging):
         else settings.tag_updater.trigger_field
     )
     effective_llm_tagging = (
-        llm_tagging
-        if llm_tagging is not None
+        with_llm_tags
+        if with_llm_tags is not None
         else settings.tag_updater.llm_tagging_enabled
     )
     if effective_llm_tagging:
@@ -220,7 +220,7 @@ def update_tags(file_identifier, all, dry_run, trigger_field, llm_tagging):
         )
     else:
         genai_client = None
-        click.echo("LLM tagging disabled (use --llm-tagging to enable).")
+        click.echo("LLM tagging disabled (use --with-llm-tags to enable).")
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
