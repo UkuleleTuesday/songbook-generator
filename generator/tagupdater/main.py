@@ -13,6 +13,7 @@ from typing import List
 
 import click
 from cloudevents.http import CloudEvent
+from google import genai
 from google.auth import default
 from googleapiclient.discovery import build
 
@@ -53,13 +54,31 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
+    if settings.tag_updater.llm_tagging_enabled:
+        genai_client = genai.Client(
+            vertexai=True,
+            project=settings.google_cloud.project_id,
+            location=settings.caching.gcs.region or "us-central1",
+        )
+    else:
+        genai_client = None
+        click.echo(
+            "LLM tagging is disabled (set TAGUPDATER_LLM_TAGGING_ENABLED=true to enable)."
+        )
+
+    if settings.tag_updater.dry_run:
+        click.echo("WARNING: dry_run=True — no writes will be made to Google Drive.")
+
     return {
         "tracer": tracer,
         "drive": drive_service,
+        "dry_run": settings.tag_updater.dry_run,
         "tagger": Tagger(
             drive_service,
             docs_service,
             trigger_field=settings.tag_updater.trigger_field,
+            genai_client=genai_client,
+            llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
         ),
     }
 
@@ -173,7 +192,10 @@ def tagupdater_main(cloud_event: CloudEvent):
                         click.echo(
                             f"Updating tags for {file_obj.name} (ID: {file_obj.id})"
                         )
-                        services["tagger"].update_tags(file_obj)
+                        services["tagger"].update_tags(
+                            file_obj,
+                            dry_run=services["dry_run"],
+                        )
                         processed_count += 1
 
                 except (OSError, ValueError, RuntimeError) as e:

@@ -139,6 +139,21 @@ class TagUpdater(BaseModel):
             "If unset, any property change triggers a write."
         ),
     )
+    dry_run: bool = Field(
+        default=False,
+        description=(
+            "When True, tags are computed but no writes are made to Google Drive. "
+            "Set TAGUPDATER_DRY_RUN=true for preview deployments."
+        ),
+    )
+    llm_tagging_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True, LLM-backed tags (@llm_tag) are computed. "
+            "Disabled by default as this is an experimental feature. "
+            "Set TAGUPDATER_LLM_TAGGING_ENABLED=true to enable."
+        ),
+    )
 
 
 class GoogleCloud(BaseModel):
@@ -269,6 +284,16 @@ class Settings(BaseSettings):
         # Handle tag updater settings
         if tagupdater_trigger_field_env := os.getenv("TAGUPDATER_TRIGGER_FIELD"):
             self.tag_updater.trigger_field = tagupdater_trigger_field_env
+        if (tagupdater_dry_run_env := os.getenv("TAGUPDATER_DRY_RUN")) is not None:
+            self.tag_updater.dry_run = tagupdater_dry_run_env.lower() in ("true", "1")
+        if (
+            tagupdater_llm_tagging_enabled_env := os.getenv(
+                "TAGUPDATER_LLM_TAGGING_ENABLED"
+            )
+        ) is not None:
+            self.tag_updater.llm_tagging_enabled = (
+                tagupdater_llm_tagging_enabled_env.lower() in ("true", "1")
+            )
 
         return self
 
