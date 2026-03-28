@@ -24,7 +24,7 @@ on:
       mime_type:
         description: 'MIME type of the file'
         required: false
-        default: 'application/pdf'
+        default: 'application/vnd.google-apps.document'
         type: string
       properties:
         description: 'Existing file properties as JSON (e.g. {"status":"APPROVED"})'
