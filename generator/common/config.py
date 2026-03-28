@@ -146,6 +146,14 @@ class TagUpdater(BaseModel):
             "Set TAGUPDATER_DRY_RUN=true for preview deployments."
         ),
     )
+    llm_tagging_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True, LLM-backed tags (@llm_tag) are computed. "
+            "Disabled by default as this is an experimental feature. "
+            "Set TAGUPDATER_LLM_TAGGING_ENABLED=true to enable."
+        ),
+    )
 
 
 class GoogleCloud(BaseModel):
@@ -278,6 +286,14 @@ class Settings(BaseSettings):
             self.tag_updater.trigger_field = tagupdater_trigger_field_env
         if (tagupdater_dry_run_env := os.getenv("TAGUPDATER_DRY_RUN")) is not None:
             self.tag_updater.dry_run = tagupdater_dry_run_env.lower() in ("true", "1")
+        if (
+            tagupdater_llm_tagging_enabled_env := os.getenv(
+                "TAGUPDATER_LLM_TAGGING_ENABLED"
+            )
+        ) is not None:
+            self.tag_updater.llm_tagging_enabled = (
+                tagupdater_llm_tagging_enabled_env.lower() in ("true", "1")
+            )
 
         return self
 

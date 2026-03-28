@@ -54,11 +54,17 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
-    genai_client = genai.Client(
-        vertexai=True,
-        project=settings.google_cloud.project_id,
-        location=settings.caching.gcs.region or "us-central1",
-    )
+    if settings.tag_updater.llm_tagging_enabled:
+        genai_client = genai.Client(
+            vertexai=True,
+            project=settings.google_cloud.project_id,
+            location=settings.caching.gcs.region or "us-central1",
+        )
+    else:
+        genai_client = None
+        click.echo(
+            "LLM tagging is disabled (set TAGUPDATER_LLM_TAGGING_ENABLED=true to enable)."
+        )
 
     if settings.tag_updater.dry_run:
         click.echo("WARNING: dry_run=True — no writes will be made to Google Drive.")
@@ -72,6 +78,7 @@ def _get_services():
             docs_service,
             trigger_field=settings.tag_updater.trigger_field,
             genai_client=genai_client,
+            llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
         ),
     }
 

@@ -254,11 +254,13 @@ class Tagger:
         docs_service: Any,
         trigger_field: Optional[str] = None,
         genai_client: Optional[genai.Client] = None,
+        llm_tagging_enabled: bool = False,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
         self.trigger_field = trigger_field
         self.genai_client = genai_client
+        self.llm_tagging_enabled = llm_tagging_enabled
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -330,14 +332,19 @@ class Tagger:
                     new_properties[tag_name] = value_str
 
             # Collect applicable LLM taggers and run them in a single batched call
-            applicable_llm_taggers = [
-                config
-                for config in _LLM_TAGGERS
-                if not (
-                    config.only_if_unset and config.func.__name__ in current_properties
-                )
-            ]
-            llm_results = _run_llm_tags(context, applicable_llm_taggers)
+            if not self.llm_tagging_enabled:
+                click.echo("LLM tagging is disabled, skipping LLM tags.")
+                llm_results = {}
+            else:
+                applicable_llm_taggers = [
+                    config
+                    for config in _LLM_TAGGERS
+                    if not (
+                        config.only_if_unset
+                        and config.func.__name__ in current_properties
+                    )
+                ]
+                llm_results = _run_llm_tags(context, applicable_llm_taggers)
             for tag_name, tag_value in llm_results.items():
                 value_str = str(tag_value)
                 key_bytes = len(tag_name.encode("utf-8"))

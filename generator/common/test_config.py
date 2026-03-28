@@ -176,6 +176,36 @@ def test_edition_empty_filters_allowed_without_folder_components():
     assert edition.filters == []
 
 
+@pytest.mark.parametrize(
+    "env_value, expected",
+    [
+        (None, False),  # Off by default
+        ("true", True),
+        ("True", True),
+        ("1", True),
+        ("false", False),
+        ("0", False),
+    ],
+)
+def test_tagupdater_llm_tagging_enabled_override(monkeypatch, env_value, expected):
+    """Test that TAGUPDATER_LLM_TAGGING_ENABLED controls llm_tagging_enabled."""
+    if env_value is not None:
+        monkeypatch.setenv("TAGUPDATER_LLM_TAGGING_ENABLED", env_value)
+    else:
+        monkeypatch.delenv("TAGUPDATER_LLM_TAGGING_ENABLED", raising=False)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.tag_updater.llm_tagging_enabled is expected
+
+
+def test_tagupdater_dry_run_default(monkeypatch):
+    """Test that dry_run defaults to False."""
+    monkeypatch.delenv("TAGUPDATER_DRY_RUN", raising=False)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.tag_updater.dry_run is False
+
+
 def test_edition_filters_and_folder_components_together():
     """filters can be provided alongside use_folder_components=True."""
     from generator.common.filters import PropertyFilter, FilterOperator

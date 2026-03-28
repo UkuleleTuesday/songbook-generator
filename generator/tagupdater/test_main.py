@@ -254,6 +254,7 @@ def test_tagupdater_main_parsing_error(mock_get_services):
     mock_span.set_attribute.assert_any_call("status", "error")
 
 
+@patch("generator.tagupdater.main.genai")
 @patch("generator.tagupdater.main.get_credentials")
 @patch("generator.tagupdater.main.build")
 @patch("generator.tagupdater.main.get_settings")
@@ -267,6 +268,7 @@ def test_get_services_success(
     mock_get_settings,
     mock_build,
     mock_get_credentials,
+    mock_genai,
 ):
     """Test successful creation of services with correct credential config."""
     # Clear the cache before testing
@@ -418,6 +420,7 @@ def test_get_services_tagger_instantiation(
         mock_docs_service,
         trigger_field=mock_get_settings.return_value.tag_updater.trigger_field,
         genai_client=mock_genai.Client.return_value,
+        llm_tagging_enabled=mock_get_settings.return_value.tag_updater.llm_tagging_enabled,
     )
 
     # Verify the tagger is returned
