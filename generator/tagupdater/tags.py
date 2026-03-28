@@ -76,6 +76,7 @@ class Context:
     """Context object passed to tagger functions."""
 
     file: File
+    file_name: str = ""
     document: Optional[SongSheetGoogleDocument] = None
     owner_name: Optional[str] = None
     genai_client: Optional[genai.Client] = None
@@ -201,10 +202,10 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
         span.set_attribute("llm.tagger_names", ",".join(tagger_names))
 
         base_template_vars = {
-            "song": ctx.file.properties.get("song", ctx.file.name),
+            "song": ctx.file.properties.get("song", ctx.file_name),
             "artist": ctx.file.properties.get("artist", "unknown artist"),
             "year": ctx.file.properties.get("year", ""),
-            "name": ctx.file.name,
+            "name": ctx.file_name,
         }
 
         fields = [config.func.__name__ for config in llm_taggers]
@@ -290,7 +291,6 @@ class Tagger:
             "update_tags",
             attributes={
                 "file.id": file.id,
-                "file.name": file.name,
                 **({"trigger_field": self.trigger_field} if self.trigger_field else {}),
             },
         ) as span:
@@ -302,18 +302,21 @@ class Tagger:
                 )
                 document = SongSheetGoogleDocument(json=doc_json)
 
-            # Fetch file owner to get the tabber
+            # Fetch file name and owner from Drive
             file_meta = (
                 self.drive_service.files()
-                .get(fileId=file.id, fields="owners(displayName)")
+                .get(fileId=file.id, fields="name,owners(displayName)")
                 .execute()
             )
+            file_name = file_meta.get("name", "")
+            span.set_attribute("file.name", file_name)
             owner_name = None
             if "owners" in file_meta and file_meta["owners"]:
                 owner_name = file_meta["owners"][0].get("displayName")
 
             context = Context(
                 file=file,
+                file_name=file_name,
                 document=document,
                 owner_name=owner_name,
                 genai_client=self.genai_client,

@@ -135,7 +135,7 @@ def _convert_to_file_objects(changed_files: List[dict]) -> List[File]:
     for file_data in changed_files:
         file_obj = File(
             id=file_data["id"],
-            name=file_data["name"],
+            name="",
             properties=file_data.get("properties", {}),
             mimeType=file_data.get("mime_type"),
             parents=file_data.get("parents", []),
@@ -187,11 +187,9 @@ def tagupdater_main(cloud_event: CloudEvent):
                 try:
                     with services["tracer"].start_as_current_span(
                         "update_file_tags",
-                        attributes={"file.id": file_obj.id, "file.name": file_obj.name},
+                        attributes={"file.id": file_obj.id},
                     ):
-                        click.echo(
-                            f"Updating tags for {file_obj.name} (ID: {file_obj.id})"
-                        )
+                        click.echo(f"Updating tags for file ID: {file_obj.id}")
                         services["tagger"].update_tags(
                             file_obj,
                             dry_run=services["dry_run"],
@@ -200,7 +198,7 @@ def tagupdater_main(cloud_event: CloudEvent):
 
                 except (OSError, ValueError, RuntimeError) as e:
                     click.echo(
-                        f"Error updating tags for {file_obj.name}: {e}", err=True
+                        f"Error updating tags for file ID {file_obj.id}: {e}", err=True
                     )
                     error_count += 1
 
