@@ -171,9 +171,24 @@ def worker_main(cloud_event):
                                 f"Edition '{edition_id}' not found in configuration "
                                 f"and could not be loaded from Drive: {e}"
                             ) from e
-                    else:
+                        gen_span.set_attribute("edition.source", "drive")
+                        gen_span.set_attribute("edition.drive_folder_id", edition_id)
                         gen_span.add_event(
-                            "edition_resolved_from_config", {"edition_id": edition_id}
+                            "edition_resolved_from_drive",
+                            {"edition_id": edition_id, "drive_folder_id": edition_id},
+                        )
+                    else:
+                        gen_span.set_attribute("edition.source", "config")
+                        if selected_edition.source_file:
+                            gen_span.set_attribute(
+                                "edition.config_file", selected_edition.source_file
+                            )
+                        gen_span.add_event(
+                            "edition_resolved_from_config",
+                            {
+                                "edition_id": edition_id,
+                                "config_file": selected_edition.source_file or "",
+                            },
                         )
 
                     gen_span.set_attribute("edition.id", selected_edition.id)

@@ -89,6 +89,7 @@ class Edition(BaseModel):
     filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
     table_of_contents: Optional[Toc] = None
     use_folder_components: bool = False
+    source_file: Optional[str] = None
 
     @model_validator(mode="after")
     def filters_required_without_folder_components(self) -> "Edition":
@@ -231,6 +232,7 @@ class Settings(BaseSettings):
                     with open(filepath, "r") as f:
                         edition = yaml.safe_load(f)
                         if edition:
+                            edition["source_file"] = filepath
                             editions_data.append(edition)
             if editions_data:
                 values["editions"] = editions_data
