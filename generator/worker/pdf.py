@@ -105,7 +105,8 @@ def collect_and_sort_files(
         )
         span.set_attribute("source_folder_ids", json.dumps(source_folders or []))
         span.set_attribute(
-            "filter", json.dumps(client_filter.model_dump(mode="json")) if client_filter else ""
+            "filter",
+            json.dumps(client_filter.model_dump(mode="json")) if client_filter else "",
         )
 
         files = gdrive_client.query_drive_files_with_client_filter(
@@ -683,7 +684,9 @@ def generate_songbook(
                         )
                     else:
                         click.echo(f"No files found in folders {source_folders}.")
-                    span.add_event("no_files_found", {"source_folders": str(source_folders)})
+                    span.add_event(
+                        "no_files_found", {"source_folders": str(source_folders)}
+                    )
                     return
 
                 filter_msg = " (with client-side filter)" if client_filter else ""
@@ -760,7 +763,9 @@ def generate_songbook(
                 with reporter.step(1, "Generating cover..."):
                     with tracer.start_as_current_span("generate_cover") as cover_span:
                         cover_span.set_attribute("cover_file_id", cover_file_id or "")
-                        cover_span.set_attribute("cover_requested", cover_file_id is not None)
+                        cover_span.set_attribute(
+                            "cover_requested", cover_file_id is not None
+                        )
                         settings = config.get_settings()
                         credential_config = settings.google_cloud.credentials.get(
                             "songbook-generator"
@@ -784,13 +789,17 @@ def generate_songbook(
                             cover_config=config.get_settings().cover,
                         )
                         cover_pdf = cover_generator.generate_cover(cover_file_id)
-                        cover_span.set_attribute("cover_generated", cover_pdf is not None)
+                        cover_span.set_attribute(
+                            "cover_generated", cover_pdf is not None
+                        )
                         if cover_pdf is not None:
                             cover_span.set_attribute("cover_page_count", len(cover_pdf))
 
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
-                    with tracer.start_as_current_span("precalculate_toc") as pretoc_span:
+                    with tracer.start_as_current_span(
+                        "precalculate_toc"
+                    ) as pretoc_span:
                         toc_pdf, toc_entries = toc.build_table_of_contents(
                             files, 0, edition_toc_config
                         )  # Temporary offset
@@ -856,7 +865,9 @@ def generate_songbook(
                         toc_pdf, toc_entries = toc.build_table_of_contents(
                             files, page_offset, edition_toc_config
                         )
-                        gen_toc_span.set_attribute("toc_entries_count", len(toc_entries))
+                        gen_toc_span.set_attribute(
+                            "toc_entries_count", len(toc_entries)
+                        )
                         gen_toc_span.set_attribute("toc_page_count", len(toc_pdf))
                         gen_toc_span.set_attribute("page_offset", page_offset)
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts

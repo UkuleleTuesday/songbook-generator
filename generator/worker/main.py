@@ -155,7 +155,10 @@ def worker_main(cloud_event):
                             f"Edition '{edition_id}' not found in configuration, "
                             "trying as Drive folder ID..."
                         )
-                        gen_span.add_event("edition_not_in_config_trying_drive_folder", {"edition_id": edition_id})
+                        gen_span.add_event(
+                            "edition_not_in_config_trying_drive_folder",
+                            {"edition_id": edition_id},
+                        )
                         gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
                         try:
                             selected_edition, songs_files = (
@@ -169,15 +172,23 @@ def worker_main(cloud_event):
                                 f"and could not be loaded from Drive: {e}"
                             ) from e
                     else:
-                        gen_span.add_event("edition_resolved_from_config", {"edition_id": edition_id})
+                        gen_span.add_event(
+                            "edition_resolved_from_config", {"edition_id": edition_id}
+                        )
 
                     gen_span.set_attribute("edition.id", selected_edition.id)
-                    gen_span.set_attribute("edition.description", selected_edition.description or "")
+                    gen_span.set_attribute(
+                        "edition.description", selected_edition.description or ""
+                    )
                     if selected_edition.filters:
-                        gen_span.set_attribute("edition.filters_count", len(selected_edition.filters))
+                        gen_span.set_attribute(
+                            "edition.filters_count", len(selected_edition.filters)
+                        )
                     if songs_files is not None:
                         gen_span.set_attribute("edition.songs_pre_supplied", True)
-                        gen_span.set_attribute("edition.songs_pre_supplied_count", len(songs_files))
+                        gen_span.set_attribute(
+                            "edition.songs_pre_supplied_count", len(songs_files)
+                        )
                     logger.info(
                         f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
                     )
@@ -220,16 +231,28 @@ def worker_main(cloud_event):
                     )
                 gen_span.set_attribute("output_path", str(out_path))
                 generation_end_time = datetime.now(timezone.utc)
-                generation_duration_seconds = (generation_end_time - generation_start_time).total_seconds()
-                gen_span.set_attribute("generation_duration_seconds", generation_duration_seconds)
-                gen_span.set_attribute("generated_files_count", len(generation_info.get("files", [])))
+                generation_duration_seconds = (
+                    generation_end_time - generation_start_time
+                ).total_seconds()
+                gen_span.set_attribute(
+                    "generation_duration_seconds", generation_duration_seconds
+                )
+                gen_span.set_attribute(
+                    "generated_files_count", len(generation_info.get("files", []))
+                )
                 gen_span.set_attribute("pdf.title", generation_info.get("title") or "")
-                gen_span.set_attribute("pdf.subject", generation_info.get("subject") or "")
+                gen_span.set_attribute(
+                    "pdf.subject", generation_info.get("subject") or ""
+                )
                 page_indices = generation_info.get("page_indices") or {}
                 body_indices = page_indices.get("body")
                 if body_indices:
-                    gen_span.set_attribute("pdf.body_first_page", body_indices["first_page"])
-                    gen_span.set_attribute("pdf.body_last_page", body_indices["last_page"])
+                    gen_span.set_attribute(
+                        "pdf.body_first_page", body_indices["first_page"]
+                    )
+                    gen_span.set_attribute(
+                        "pdf.body_last_page", body_indices["last_page"]
+                    )
                 gen_span.add_event(
                     "generation_complete",
                     {
