@@ -7,6 +7,7 @@ from generator.cache_updater.main import (
     _download_blobs,
     _merge_pdfs_with_toc,
     _parse_cloud_event,
+    cache_updater_main,
 )
 
 
@@ -66,6 +67,120 @@ def test_parse_cloud_event_no_message(mock_cloud_event):
     event = mock_cloud_event(data={})
     result = _parse_cloud_event(event)
     assert result["force_sync"] is False
+
+
+def test_parse_cloud_event_rebuild_only_true(mock_cloud_event):
+    event = mock_cloud_event(attributes={"rebuild_only": "true"})
+    result = _parse_cloud_event(event)
+    assert result["rebuild_only"] is True
+    assert result["force_sync"] is False
+
+
+def test_parse_cloud_event_rebuild_only_false_by_default(mock_cloud_event):
+    event = mock_cloud_event(attributes={})
+    result = _parse_cloud_event(event)
+    assert result["rebuild_only"] is False
+
+
+def test_parse_cloud_event_rebuild_only_case_insensitive(mock_cloud_event):
+    event = mock_cloud_event(attributes={"rebuild_only": "True"})
+    result = _parse_cloud_event(event)
+    assert result["rebuild_only"] is True
+
+
+# ---------------------------------------------------------------------------
+# cache_updater_main – rebuild_only behaviour
+# ---------------------------------------------------------------------------
+
+
+def _make_cloud_event(attributes=None):
+    event = Mock(spec=CloudEvent)
+    event.get_attributes.return_value = {}
+    event.get_data.return_value = {"message": {"attributes": attributes or {}}}
+    return event
+
+
+def test_cache_updater_main_rebuild_only_skips_sync(mocker):
+    """When rebuild_only=true, sync_cache must not be called."""
+    mock_sync = mocker.patch("generator.cache_updater.main.sync.sync_cache")
+    mock_merge = mocker.patch(
+        "generator.cache_updater.main.fetch_and_merge_pdfs", return_value="/tmp/out.pdf"
+    )
+    mocker.patch(
+        "generator.cache_updater.main._get_services",
+        return_value={
+            "tracer": _make_noop_tracer(),
+            "cache_bucket": Mock(),
+            "drive": Mock(),
+        },
+    )
+
+    event = _make_cloud_event({"rebuild_only": "true"})
+    cache_updater_main(event)
+
+    mock_sync.assert_not_called()
+    mock_merge.assert_called_once()
+
+
+def test_cache_updater_main_rebuild_only_ignores_force(mocker):
+    """rebuild_only=true skips sync even when force=true is also set."""
+    mock_sync = mocker.patch("generator.cache_updater.main.sync.sync_cache")
+    mocker.patch(
+        "generator.cache_updater.main.fetch_and_merge_pdfs", return_value="/tmp/out.pdf"
+    )
+    mocker.patch(
+        "generator.cache_updater.main._get_services",
+        return_value={
+            "tracer": _make_noop_tracer(),
+            "cache_bucket": Mock(),
+            "drive": Mock(),
+        },
+    )
+
+    event = _make_cloud_event({"rebuild_only": "true", "force": "true"})
+    cache_updater_main(event)
+
+    mock_sync.assert_not_called()
+
+
+def test_cache_updater_main_normal_run_still_syncs(mocker):
+    """Without rebuild_only, sync_cache is still called (existing behaviour)."""
+    mock_sync = mocker.patch(
+        "generator.cache_updater.main.sync.sync_cache", return_value=1
+    )
+    mocker.patch(
+        "generator.cache_updater.main.fetch_and_merge_pdfs", return_value="/tmp/out.pdf"
+    )
+    mocker.patch("generator.cache_updater.main._get_last_merge_time", return_value=None)
+    mocker.patch(
+        "generator.cache_updater.main.get_settings"
+    ).return_value.song_sheets.folder_ids = ["folder1"]
+    mocker.patch(
+        "generator.cache_updater.main._get_services",
+        return_value={
+            "tracer": _make_noop_tracer(),
+            "cache_bucket": Mock(),
+            "drive": Mock(),
+        },
+    )
+
+    event = _make_cloud_event({})
+    cache_updater_main(event)
+
+    mock_sync.assert_called_once()
+
+
+def _make_noop_tracer():
+    """Return a tracer mock whose spans are no-ops."""
+    span = Mock()
+    span.set_attribute = Mock()
+    span.add_event = Mock()
+    cm = Mock()
+    cm.__enter__ = Mock(return_value=span)
+    cm.__exit__ = Mock(return_value=False)
+    tracer = Mock()
+    tracer.start_as_current_span = Mock(return_value=cm)
+    return tracer
 
 
 # ---------------------------------------------------------------------------
