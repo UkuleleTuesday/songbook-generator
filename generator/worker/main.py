@@ -7,6 +7,7 @@ from pathlib import Path
 from google.cloud import firestore, storage
 import traceback
 from loguru import logger
+from opentelemetry import trace
 from ..common.filters import parse_filters
 
 from .pdf import (
@@ -144,6 +145,7 @@ def worker_main(cloud_event):
                 edition_id = params.get("edition")
 
                 if edition_id:
+                    gen_span.set_attribute("edition_id", edition_id)
                     selected_edition = next(
                         (e for e in settings.editions if e.id == edition_id), None
                     )
@@ -153,6 +155,7 @@ def worker_main(cloud_event):
                             f"Edition '{edition_id}' not found in configuration, "
                             "trying as Drive folder ID..."
                         )
+                        gen_span.add_event("edition_not_in_config_trying_drive_folder", {"edition_id": edition_id})
                         gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
                         try:
                             selected_edition, songs_files = (
@@ -165,7 +168,16 @@ def worker_main(cloud_event):
                                 f"Edition '{edition_id}' not found in configuration "
                                 f"and could not be loaded from Drive: {e}"
                             ) from e
+                    else:
+                        gen_span.add_event("edition_resolved_from_config", {"edition_id": edition_id})
 
+                    gen_span.set_attribute("edition.id", selected_edition.id)
+                    gen_span.set_attribute("edition.description", selected_edition.description or "")
+                    if selected_edition.filters:
+                        gen_span.set_attribute("edition.filters_count", len(selected_edition.filters))
+                    if songs_files is not None:
+                        gen_span.set_attribute("edition.songs_pre_supplied", True)
+                        gen_span.set_attribute("edition.songs_pre_supplied_count", len(songs_files))
                     logger.info(
                         f"Generating songbook for edition: {selected_edition.id} - {selected_edition.description}"
                     )
@@ -208,6 +220,31 @@ def worker_main(cloud_event):
                     )
                 gen_span.set_attribute("output_path", str(out_path))
                 generation_end_time = datetime.now(timezone.utc)
+                generation_duration_seconds = (generation_end_time - generation_start_time).total_seconds()
+                gen_span.set_attribute("generation_duration_seconds", generation_duration_seconds)
+                gen_span.set_attribute("generated_files_count", len(generation_info.get("files", [])))
+                gen_span.set_attribute("pdf.title", generation_info.get("title") or "")
+                gen_span.set_attribute("pdf.subject", generation_info.get("subject") or "")
+                page_indices = generation_info.get("page_indices") or {}
+                body_indices = page_indices.get("body")
+                if body_indices:
+                    gen_span.set_attribute("pdf.body_first_page", body_indices["first_page"])
+                    gen_span.set_attribute("pdf.body_last_page", body_indices["last_page"])
+                gen_span.add_event(
+                    "generation_complete",
+                    {
+                        "files_count": len(generation_info.get("files", [])),
+                        "duration_seconds": generation_duration_seconds,
+                        "has_cover": page_indices.get("cover") is not None,
+                        "has_preface": page_indices.get("preface") is not None,
+                        "has_toc": page_indices.get("table_of_contents") is not None,
+                        "has_postface": page_indices.get("postface") is not None,
+                    },
+                )
+                logger.info(
+                    f"Generation complete for job {job_id}: "
+                    f"{len(generation_info.get('files', []))} files in {generation_duration_seconds:.1f}s"
+                )
 
             # 3.5) Generate manifest.json
             with services["tracer"].start_as_current_span(
@@ -244,13 +281,16 @@ def worker_main(cloud_event):
                 "upload_to_gcs"
             ) as upload_span:
                 blob = services["cdn_bucket"].blob(f"{job_id}/songbook.pdf")
+                pdf_size_bytes = os.path.getsize(out_path_str)
                 logger.info(
-                    f"Uploading generated songbook to GCS bucket: {services['gcs_cdn_bucket_name']}"
+                    f"Uploading generated songbook to GCS bucket: {services['gcs_cdn_bucket_name']} "
+                    f"(size: {pdf_size_bytes} bytes)"
                 )
                 blob.upload_from_filename(out_path_str, content_type="application/pdf")
                 result_url = blob.public_url  # or use signed URL if you need auth
                 upload_span.set_attribute("gcs_bucket", services["gcs_cdn_bucket_name"])
                 upload_span.set_attribute("blob_name", f"{job_id}/songbook.pdf")
+                upload_span.set_attribute("pdf_size_bytes", pdf_size_bytes)
 
                 # Upload manifest.json alongside the PDF
                 manifest_blob = services["cdn_bucket"].blob(f"{job_id}/manifest.json")
@@ -284,20 +324,26 @@ def worker_main(cloud_event):
                 complete_span.set_attribute("status", "COMPLETED")
                 complete_span.set_attribute("result_url", result_url)
 
-        except Exception:  # noqa: BLE001 - Top level error handler
+        except Exception as exc:  # noqa: BLE001 - Top level error handler
             # on any failure, mark FAILED
+            exc_info = traceback.format_exc()
+            error_type = type(exc).__name__
+            error_message = str(exc)
+
             main_span.set_attribute("status", "FAILED")
+            main_span.set_attribute("error.type", error_type)
+            main_span.set_attribute("error.message", error_message)
+            main_span.set_attribute("error.stack_trace", exc_info)
+            main_span.set_status(trace.StatusCode.ERROR, error_message)
+            main_span.record_exception(exc)
 
             job_ref.update(
                 {
                     "status": "FAILED",
                     "completed_at": firestore.SERVER_TIMESTAMP,
-                    "error": "Internal error during songbook generation",
+                    "error": f"{error_type}: {error_message}",
                 }
             )
-            logger.error(f"Job failed: {job_id}")
-            logger.error("Error details:")
-            exc_info = traceback.format_exc()
+            logger.error(f"Job {job_id} failed with {error_type}: {error_message}")
             logger.error(f"{exc_info}")
-            main_span.set_attribute("error.stack_trace", exc_info)
             raise
