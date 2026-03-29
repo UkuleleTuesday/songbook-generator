@@ -93,7 +93,7 @@ def _download_blobs(pdf_blobs, temp_dir, services):
             blob_metadata = blob.metadata or {}
             song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
             # Extract file ID from the blob name (format: song-sheets/{file_id}.pdf)
-            file_id = blob.name[len("song-sheets/"):-len(".pdf")]
+            file_id = blob.name[len("song-sheets/") : -len(".pdf")]
             file_metadata.append({"path": local_path, "name": song_name, "id": file_id})
         span.set_attribute("downloaded_count", len(file_metadata))
         return file_metadata

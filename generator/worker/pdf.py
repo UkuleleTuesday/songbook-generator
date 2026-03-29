@@ -257,7 +257,6 @@ def copy_pdfs(
             copied_pages = 0
 
             for file_number, file in enumerate(files):
-
                 source_page = toc_map[file.id]
 
                 # Determine how many pages this song has

@@ -1,5 +1,3 @@
-import os
-import tempfile
 from unittest.mock import Mock
 import fitz
 import pytest
@@ -143,10 +141,12 @@ def test_merge_pdfs_with_toc_uses_file_id_as_toc_title(tmp_path):
 
     file_metadata = [{"path": pdf_path, "name": "Amazing Grace", "id": "abc123"}]
 
-    merged_path, toc_entries = _merge_pdfs_with_toc(file_metadata, str(tmp_path), services)
+    merged_path, toc_entries = _merge_pdfs_with_toc(
+        file_metadata, str(tmp_path), services
+    )
 
     assert len(toc_entries) == 1
-    assert toc_entries[0][1] == "abc123"   # title is the file ID
+    assert toc_entries[0][1] == "abc123"  # title is the file ID
     assert toc_entries[0][1] != "Amazing Grace"
 
 
