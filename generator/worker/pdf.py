@@ -105,7 +105,7 @@ def collect_and_sort_files(
         )
         span.set_attribute("source_folder_ids", json.dumps(source_folders or []))
         span.set_attribute(
-            "filter", json.dumps(client_filter.model_dump()) if client_filter else ""
+            "filter", json.dumps(client_filter.model_dump(mode="json")) if client_filter else ""
         )
 
         files = gdrive_client.query_drive_files_with_client_filter(
