@@ -162,7 +162,7 @@ def download_cache_command(with_metadata, **kwargs):
         raise click.Abort()
 
 
-@click.command(name="merge-pdfs")
+@cache.command("merge-pdfs")
 @global_options
 @click.option(
     "--output",

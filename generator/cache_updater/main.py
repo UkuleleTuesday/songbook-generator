@@ -92,7 +92,9 @@ def _download_blobs(pdf_blobs, temp_dir, services):
                 blob.download_to_filename(local_path)
             blob_metadata = blob.metadata or {}
             song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
-            file_metadata.append({"path": local_path, "name": song_name})
+            # Extract file ID from the blob name (format: song-sheets/{file_id}.pdf)
+            file_id = blob.name[len("song-sheets/") : -len(".pdf")]
+            file_metadata.append({"path": local_path, "name": song_name, "id": file_id})
         span.set_attribute("downloaded_count", len(file_metadata))
         return file_metadata
 
@@ -108,7 +110,7 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
             with open(file_info["path"], "rb") as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
                 page_count = len(pdf_reader.pages)
-            toc_entries.append([1, file_info["name"], current_page + 1])
+            toc_entries.append([1, file_info["id"], current_page + 1])
             current_page += page_count
             merger.append(file_info["path"])
         temp_merged_path = os.path.join(temp_dir, "merged.pdf")
@@ -228,11 +230,13 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
     message = data.get("message", {})
     attributes = message.get("attributes", {})
 
-    # The 'force' attribute will be a string 'true' or 'false'.
+    # Attributes are strings ('true' / 'false').
     force_sync = attributes.get("force", "false").lower() == "true"
+    rebuild_only = attributes.get("rebuild_only", "false").lower() == "true"
 
     return {
         "force_sync": force_sync,
+        "rebuild_only": rebuild_only,
     }
 
 
@@ -251,43 +255,56 @@ def cache_updater_main(cloud_event: CloudEvent):
         try:
             event_params = _parse_cloud_event(cloud_event)
             force_sync = event_params["force_sync"]
+            rebuild_only = event_params["rebuild_only"]
 
-            source_folders = get_settings().song_sheets.folder_ids
-
-            if not source_folders:
-                click.echo("Error: No source folders specified.", err=True)
-                main_span.set_attribute("status", "failed_no_source_folders")
-                raise ValueError("No source folders specified in configuration.")
-
-            # Add source_folders to span attributes for tracing
-            main_span.set_attribute("source_folders", ",".join(source_folders))
             main_span.set_attribute("force_sync", str(force_sync))
+            main_span.set_attribute("rebuild_only", str(rebuild_only))
 
-            # Get the modification time of the last merged PDF to use as a cutoff
-            last_merge_time = None
-            if not force_sync:
-                last_merge_time = _get_last_merge_time(
-                    services["cache_bucket"], main_span
+            if rebuild_only:
+                # Skip Drive sync entirely — just rebuild the merged PDF from
+                # whatever is already in the GCS cache.  Useful after a code
+                # change that affects the merged PDF's structure (e.g. switching
+                # TOC keys from file names to file IDs) without any song changes.
+                click.echo(
+                    "rebuild_only flag set. Skipping Drive sync; rebuilding merged PDF only."
                 )
             else:
-                click.echo("Force flag set. Performing a full sync.")
-                main_span.set_attribute("last_merge_time", "None (forced)")
+                source_folders = get_settings().song_sheets.folder_ids
 
-            with services["tracer"].start_as_current_span(
-                "sync_operation"
-            ) as sync_span:
-                click.echo(f"Syncing folders: {source_folders}")
-                # Sync files and their metadata before merging.
-                synced_files_count = sync.sync_cache(
-                    source_folders, services, modified_after=last_merge_time
-                )
-                sync_span.set_attribute("synced_files_count", synced_files_count)
-                click.echo("Sync complete.")
+                if not source_folders:
+                    click.echo("Error: No source folders specified.", err=True)
+                    main_span.set_attribute("status", "failed_no_source_folders")
+                    raise ValueError("No source folders specified in configuration.")
 
-            if not force_sync and synced_files_count == 0:
-                click.echo("No files were updated since the last merge. Nothing to do.")
-                main_span.set_attribute("status", "skipped_no_changes")
-                return
+                main_span.set_attribute("source_folders", ",".join(source_folders))
+
+                # Get the modification time of the last merged PDF to use as a cutoff
+                last_merge_time = None
+                if not force_sync:
+                    last_merge_time = _get_last_merge_time(
+                        services["cache_bucket"], main_span
+                    )
+                else:
+                    click.echo("Force flag set. Performing a full sync.")
+                    main_span.set_attribute("last_merge_time", "None (forced)")
+
+                with services["tracer"].start_as_current_span(
+                    "sync_operation"
+                ) as sync_span:
+                    click.echo(f"Syncing folders: {source_folders}")
+                    # Sync files and their metadata before merging.
+                    synced_files_count = sync.sync_cache(
+                        source_folders, services, modified_after=last_merge_time
+                    )
+                    sync_span.set_attribute("synced_files_count", synced_files_count)
+                    click.echo("Sync complete.")
+
+                if not force_sync and synced_files_count == 0:
+                    click.echo(
+                        "No files were updated since the last merge. Nothing to do."
+                    )
+                    main_span.set_attribute("status", "skipped_no_changes")
+                    return
 
             click.echo("Starting PDF merge operation")
 

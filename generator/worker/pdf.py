@@ -222,14 +222,22 @@ def copy_pdfs(
                 span.set_attribute("no_toc", True)
                 raise PdfCopyException("Cached PDF has no table of contents")
 
-            # Create a mapping from song names to TOC entries
+            # Create a mapping from file ID to page number.
+            # TOC entry titles are Drive file IDs (written by the cache updater),
+            # so we key by ID rather than name — same-named files with different IDs
+            # (e.g. custom versions in a drive-edition Songs/ folder) correctly miss
+            # the cache and fall through to individual downloads.
             toc_map = {}
             for level, title, page_num in cached_toc:
                 # Page numbers in TOC are 1-based, convert to 0-based
                 toc_map[title] = page_num - 1
 
-            # Check upfront which requested files are missing from the cache TOC
-            missing_files = [f.name for f in files if f.name not in toc_map]
+            # Check upfront which requested files are missing from the cache TOC.
+            # Raise before the loop so that no pages are inserted into the destination
+            # PDF — this keeps the caller's document in a clean state and allows a
+            # safe fallback to individual downloads.
+            # Keep file names in the error message so it stays human-readable.
+            missing_files = [f.name for f in files if f.id not in toc_map]
             if missing_files:
                 span.set_attribute("missing_from_cache_count", len(missing_files))
                 span.set_attribute("missing_from_cache", json.dumps(missing_files))
@@ -241,20 +249,15 @@ def copy_pdfs(
                         "total_requested": len(files),
                     },
                 )
+                raise PdfCacheMissException(
+                    f"{len(missing_files)} file(s) not found in merged cache: {missing_files}"
+                )
 
             current_page = page_offset
             copied_pages = 0
 
             for file_number, file in enumerate(files):
-                # Look for this file in the cached PDF's TOC
-                if file.name not in toc_map:
-                    span.add_event(
-                        "cache_miss_for_file",
-                        {"file_name": file.name, "file_id": file.id},
-                    )
-                    raise PdfCacheMissException(f"File ${file.name} not found in cache")
-
-                source_page = toc_map[file.name]
+                source_page = toc_map[file.id]
 
                 # Determine how many pages this song has
                 # Find the next song's page or use the last page
@@ -263,7 +266,7 @@ def copy_pdfs(
 
                 # Find current song in TOC to determine page range
                 for i, (level, title, page_num) in enumerate(cached_toc):
-                    if title == file.name:
+                    if title == file.id:
                         current_toc_index = i
                         break
 
@@ -325,6 +328,84 @@ def copy_pdfs(
 
             span.set_attribute("copied_pages", copied_pages)
             span.set_attribute("final_page_count", current_page)
+
+
+def _download_songs_individually(
+    destination_pdf,
+    files: List[File],
+    gdrive_client: GoogleDriveClient,
+    page_offset: int,
+    progress_step,
+    add_page_numbers: bool = True,
+    toc_page_index: int = 0,
+    add_difficulty_wheels: bool = True,
+):
+    """
+    Download each song from Drive and insert its pages into *destination_pdf*.
+
+    This is the fallback path used when the merged-PDF cache is unavailable or
+    does not contain all requested files (e.g. non-shortcut files placed
+    directly in a drive-edition ``Songs/`` subfolder).
+
+    The function mirrors the decoration logic of :func:`copy_pdfs`:
+    page numbers and difficulty wheels are stamped on the first page of each
+    song, and a link back to the TOC is inserted if the song title is found on
+    that first page.
+
+    Args:
+        destination_pdf: PyMuPDF document to append pages to.
+        files: Ordered list of song files to download and insert.
+        gdrive_client: Authenticated :class:`~generator.common.gdrive.GoogleDriveClient`.
+        page_offset: 0-based index of the first body page in the final document
+            (used for page-number stamps).
+        progress_step: Progress reporter step to increment after each file.
+        add_page_numbers: Whether to stamp page numbers on the first page.
+        toc_page_index: 0-based page index of the TOC page in *destination_pdf*
+            (used for back-links from song titles).
+        add_difficulty_wheels: Whether to add difficulty wheel annotations.
+    """
+    with tracer.start_as_current_span("download_songs_individually") as span:
+        files_count = len(files)
+        span.set_attribute("files_count", files_count)
+        current_page = page_offset
+
+        for file_number, file in enumerate(files):
+            with gdrive_client.download_file_stream(file) as pdf_stream:
+                with fitz.open(stream=pdf_stream) as song_pdf:
+                    song_page_count = len(song_pdf)
+
+                    for page_num_in_song in range(song_page_count):
+                        source_page = song_pdf[page_num_in_song]
+                        dest_page = destination_pdf.new_page(
+                            width=source_page.rect.width,
+                            height=source_page.rect.height,
+                        )
+                        dest_page.show_pdf_page(
+                            dest_page.rect, song_pdf, page_num_in_song
+                        )
+
+                        if page_num_in_song == 0:
+                            if add_page_numbers:
+                                add_page_number(dest_page, current_page + 1)
+                            if add_difficulty_wheels:
+                                add_difficulty_wheel(dest_page, file)
+                            text_instances = dest_page.search_for(file.name)
+                            if text_instances:
+                                dest_page.insert_link(
+                                    {
+                                        "kind": fitz.LINK_GOTO,
+                                        "from": text_instances[0],
+                                        "page": toc_page_index,
+                                    }
+                                )
+
+                    current_page += song_page_count
+
+            progress_step.increment(
+                1, f"Downloaded song sheet {file_number + 1}/{files_count}..."
+            )
+
+        span.set_attribute("final_page_count", current_page)
 
 
 FOLDER_COMPONENT_NAMES = {
@@ -894,8 +975,21 @@ def generate_songbook(
                             add_difficulty_wheels=add_difficulty_wheels,
                         )
                     except PdfCopyException as e:
-                        click.echo(f"Error copying from cached PDF: {str(e)}", err=True)
-                        raise
+                        click.echo(
+                            f"Merged-PDF cache unavailable ({e}); "
+                            "falling back to individual song downloads.",
+                            err=True,
+                        )
+                        _download_songs_individually(
+                            songbook_pdf,
+                            files,
+                            gdrive_client,
+                            page_offset,
+                            step,
+                            add_page_numbers=add_page_numbers,
+                            toc_page_index=toc_start_page,
+                            add_difficulty_wheels=add_difficulty_wheels,
+                        )
                 current_page = len(songbook_pdf)
                 if files:  # Only set if there are actual song files
                     page_indices["body"] = {

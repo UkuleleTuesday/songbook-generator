@@ -7,7 +7,7 @@ import logging
 
 import click
 
-from .cache import cache, merge_pdfs
+from .cache import cache
 from .editions import editions
 from .generate import generate
 from .misc import print_settings, validate_pdf_cli
@@ -32,7 +32,6 @@ def cli(ctx, log_level: str):
 cli.add_command(generate)
 cli.add_command(songs)
 cli.add_command(cache)
-cli.add_command(merge_pdfs)
 cli.add_command(print_settings)
 cli.add_command(validate_pdf_cli)
 cli.add_command(specialbooks)
