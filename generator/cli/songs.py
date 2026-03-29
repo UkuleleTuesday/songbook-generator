@@ -83,14 +83,16 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwarg
 @click.argument("file_identifier")
 def search_song(file_identifier):
     """Resolve a file ID or name and print its metadata as JSON."""
-    from google.auth import default
-    from googleapiclient.discovery import build
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
 
-    from ..common.caching import init_cache
-
-    creds, _ = default(scopes=["https://www.googleapis.com/auth/drive.readonly"])
-    drive = build("drive", "v3", credentials=creds)
-    cache = init_cache()
+    drive, cache = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
     files = gdrive_client.get_files_metadata_by_ids([file_id])
