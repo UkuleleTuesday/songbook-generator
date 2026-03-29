@@ -92,7 +92,9 @@ def _download_blobs(pdf_blobs, temp_dir, services):
                 blob.download_to_filename(local_path)
             blob_metadata = blob.metadata or {}
             song_name = blob_metadata.get("gdrive-file-name", "Unknown Song")
-            file_metadata.append({"path": local_path, "name": song_name})
+            # Extract file ID from the blob name (format: song-sheets/{file_id}.pdf)
+            file_id = blob.name[len("song-sheets/"):-len(".pdf")]
+            file_metadata.append({"path": local_path, "name": song_name, "id": file_id})
         span.set_attribute("downloaded_count", len(file_metadata))
         return file_metadata
 
@@ -108,7 +110,7 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
             with open(file_info["path"], "rb") as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
                 page_count = len(pdf_reader.pages)
-            toc_entries.append([1, file_info["name"], current_page + 1])
+            toc_entries.append([1, file_info["id"], current_page + 1])
             current_page += page_count
             merger.append(file_info["path"])
         temp_merged_path = os.path.join(temp_dir, "merged.pdf")

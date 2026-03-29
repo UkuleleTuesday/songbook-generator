@@ -222,7 +222,11 @@ def copy_pdfs(
                 span.set_attribute("no_toc", True)
                 raise PdfCopyException("Cached PDF has no table of contents")
 
-            # Create a mapping from song names to TOC entries
+            # Create a mapping from file ID to page number.
+            # TOC entry titles are Drive file IDs (written by the cache updater),
+            # so we key by ID rather than name — same-named files with different IDs
+            # (e.g. custom versions in a drive-edition Songs/ folder) correctly miss
+            # the cache and fall through to individual downloads.
             toc_map = {}
             for level, title, page_num in cached_toc:
                 # Page numbers in TOC are 1-based, convert to 0-based
@@ -232,7 +236,8 @@ def copy_pdfs(
             # Raise before the loop so that no pages are inserted into the destination
             # PDF — this keeps the caller's document in a clean state and allows a
             # safe fallback to individual downloads.
-            missing_files = [f.name for f in files if f.name not in toc_map]
+            # Keep file names in the error message so it stays human-readable.
+            missing_files = [f.name for f in files if f.id not in toc_map]
             if missing_files:
                 span.set_attribute("missing_from_cache_count", len(missing_files))
                 span.set_attribute("missing_from_cache", json.dumps(missing_files))
@@ -253,7 +258,7 @@ def copy_pdfs(
 
             for file_number, file in enumerate(files):
 
-                source_page = toc_map[file.name]
+                source_page = toc_map[file.id]
 
                 # Determine how many pages this song has
                 # Find the next song's page or use the last page
@@ -262,7 +267,7 @@ def copy_pdfs(
 
                 # Find current song in TOC to determine page range
                 for i, (level, title, page_num) in enumerate(cached_toc):
-                    if title == file.name:
+                    if title == file.id:
                         current_toc_index = i
                         break
 

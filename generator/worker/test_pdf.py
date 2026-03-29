@@ -8,6 +8,7 @@ from .pdf import (
     add_page_number,
     categorize_folder_files,
     collect_and_sort_files,
+    copy_pdfs,
     generate_songbook,
     generate_songbook_from_drive_folder,
     generate_songbook_from_edition,
@@ -15,6 +16,7 @@ from .pdf import (
     load_edition_from_drive_folder,
     resolve_folder_components,
 )
+from .exceptions import PdfCacheMissException, PdfCacheNotFound
 from ..common.filters import PropertyFilter, FilterOperator, FilterGroup
 from .models import File
 
@@ -1421,3 +1423,97 @@ def test_generate_songbook_from_edition_without_files_passes_none(mocker):
 
     call_kwargs = mock_generate.call_args.kwargs
     assert call_kwargs["files"] is None
+
+
+# ---------------------------------------------------------------------------
+# copy_pdfs – ID-based TOC lookup
+# ---------------------------------------------------------------------------
+
+
+def _make_merged_pdf_with_toc(file_id: str) -> bytes:
+    """Build a minimal single-page merged PDF whose TOC entry uses *file_id*."""
+    doc = fitz.open()
+    doc.new_page()
+    doc.set_toc([[1, file_id, 1]])
+    buf = doc.tobytes()
+    doc.close()
+    return buf
+
+
+def test_copy_pdfs_looks_up_by_file_id(mocker):
+    """copy_pdfs succeeds when the TOC entry title matches file.id."""
+    cached_pdf_bytes = _make_merged_pdf_with_toc("song_file_id_123")
+
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = cached_pdf_bytes
+
+    mock_step = mocker.Mock()
+
+    dest = fitz.open()
+
+    files = [File(id="song_file_id_123", name="Amazing Grace")]
+
+    # Should not raise — ID is found in the TOC
+    copy_pdfs(dest, files, mock_cache, page_offset=0, progress_step=mock_step)
+    dest.close()
+
+
+def test_copy_pdfs_misses_when_id_absent_even_if_name_matches(mocker):
+    """A file whose ID is not in the TOC raises PdfCacheMissException,
+    even if the TOC happens to contain the file's name as an entry title
+    (i.e. an old name-keyed cache must not be used)."""
+    # TOC keyed by name (simulates an old-style cache)
+    cached_pdf_bytes = _make_merged_pdf_with_toc("Amazing Grace")
+
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = cached_pdf_bytes
+
+    mock_step = mocker.Mock()
+    dest = fitz.open()
+
+    files = [File(id="song_file_id_123", name="Amazing Grace")]
+
+    with pytest.raises(PdfCacheMissException):
+        copy_pdfs(dest, files, mock_cache, page_offset=0, progress_step=mock_step)
+
+    dest.close()
+
+
+def test_copy_pdfs_custom_file_with_same_name_misses_cache(mocker):
+    """A custom drive-edition file with the same name as a cached original
+    misses the cache because its ID differs, triggering the fallback."""
+    original_id = "original_id_abc"
+    custom_id = "custom_id_xyz"
+
+    # Merged cache only knows the original file's ID
+    cached_pdf_bytes = _make_merged_pdf_with_toc(original_id)
+
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = cached_pdf_bytes
+
+    mock_step = mocker.Mock()
+    dest = fitz.open()
+
+    # The pre-supplied file has the same name but a different ID
+    files = [File(id=custom_id, name="Amazing Grace")]
+
+    with pytest.raises(PdfCacheMissException):
+        copy_pdfs(dest, files, mock_cache, page_offset=0, progress_step=mock_step)
+
+    dest.close()
+
+
+def test_copy_pdfs_raises_when_no_merged_cache(mocker):
+    """PdfCacheNotFound is raised when the merged PDF is absent from cache."""
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = None
+
+    mock_step = mocker.Mock()
+    dest = fitz.open()
+
+    files = [File(id="any_id", name="Any Song")]
+
+    with pytest.raises(PdfCacheNotFound):
+        copy_pdfs(dest, files, mock_cache, page_offset=0, progress_step=mock_step)
+
+    dest.close()
