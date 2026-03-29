@@ -1,10 +1,12 @@
+import json
+
 import click
 
 from ..common.config import get_settings
 from ..common.filters import parse_filters
 from ..common.gdrive import GoogleDriveClient
 from ..worker.pdf import collect_and_sort_files, init_services
-from .utils import SubcmdGroup, global_options
+from .utils import SubcmdGroup, _resolve_file_id, global_options
 
 
 @click.group(cls=SubcmdGroup)
@@ -75,3 +77,40 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwarg
 
     for file in files:
         click.echo(file.name)
+
+
+@songs.command("search")
+@click.argument("file_identifier")
+def search_song(file_identifier):
+    """Resolve a file ID or name and print its metadata as JSON."""
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get("songbook-generator")
+    if not credential_config:
+        click.echo("Error: credential config 'songbook-generator' not found.", err=True)
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes,
+        target_principal=credential_config.principal,
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    file_id = _resolve_file_id(gdrive_client, file_identifier)
+    files = gdrive_client.get_files_metadata_by_ids([file_id])
+    if not files:
+        click.echo(
+            f"Error: Could not retrieve metadata for '{file_identifier}'.", err=True
+        )
+        raise click.Abort()
+
+    f = files[0]
+    click.echo(
+        json.dumps(
+            {
+                "id": f.id,
+                "name": f.name,
+                "mimeType": f.mimeType,
+                "parents": f.parents,
+                "properties": f.properties,
+            }
+        )
+    )
