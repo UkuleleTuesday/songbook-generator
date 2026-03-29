@@ -1,5 +1,6 @@
 import fitz
 import click
+import json
 import os
 import yaml
 from datetime import datetime, timezone
@@ -102,7 +103,11 @@ def collect_and_sort_files(
         span.set_attribute(
             "source_folders_count", len(source_folders) if source_folders else 0
         )
-        span.set_attribute("filter", client_filter)
+        span.set_attribute("source_folder_ids", json.dumps(source_folders or []))
+        span.set_attribute(
+            "filter",
+            json.dumps(client_filter.model_dump(mode="json")) if client_filter else "",
+        )
 
         files = gdrive_client.query_drive_files_with_client_filter(
             source_folders, client_filter
@@ -116,6 +121,7 @@ def collect_and_sort_files(
         # Sort files alphabetically by name after aggregating from all folders
         sorted_files = _sort_titles(files)
         span.set_attribute("total_files_found", len(files))
+        span.set_attribute("file_names", json.dumps([f.name for f in sorted_files]))
         return sorted_files
 
 
@@ -210,6 +216,7 @@ def copy_pdfs(
         with fitz.open(stream=cached_pdf_data) as cached_pdf:
             cached_toc = cached_pdf.get_toc()
             span.set_attribute("cached_toc_entries", len(cached_toc))
+            span.set_attribute("cached_pdf_page_count", len(cached_pdf))
 
             if not cached_toc:
                 span.set_attribute("no_toc", True)
@@ -221,12 +228,30 @@ def copy_pdfs(
                 # Page numbers in TOC are 1-based, convert to 0-based
                 toc_map[title] = page_num - 1
 
+            # Check upfront which requested files are missing from the cache TOC
+            missing_files = [f.name for f in files if f.name not in toc_map]
+            if missing_files:
+                span.set_attribute("missing_from_cache_count", len(missing_files))
+                span.set_attribute("missing_from_cache", json.dumps(missing_files))
+                span.add_event(
+                    "files_missing_from_cache",
+                    {
+                        "missing_count": len(missing_files),
+                        "missing_files": json.dumps(missing_files),
+                        "total_requested": len(files),
+                    },
+                )
+
             current_page = page_offset
             copied_pages = 0
 
             for file_number, file in enumerate(files):
                 # Look for this file in the cached PDF's TOC
                 if file.name not in toc_map:
+                    span.add_event(
+                        "cache_miss_for_file",
+                        {"file_name": file.name, "file_id": file.id},
+                    )
                     raise PdfCacheMissException(f"File ${file.name} not found in cache")
 
                 source_page = toc_map[file.name]
@@ -642,8 +667,13 @@ def generate_songbook(
 
                 # Apply limit after collecting files from all folders
                 if limit and len(files) > limit:
+                    original_count = len(files)
                     click.echo(
-                        f"Limiting to {limit} files out of {len(files)} total files found"
+                        f"Limiting to {limit} files out of {original_count} total files found"
+                    )
+                    span.add_event(
+                        "limit_applied",
+                        {"original_count": original_count, "limited_to": limit},
                     )
                     files = files[:limit]
 
@@ -654,6 +684,9 @@ def generate_songbook(
                         )
                     else:
                         click.echo(f"No files found in folders {source_folders}.")
+                    span.add_event(
+                        "no_files_found", {"source_folders": str(source_folders)}
+                    )
                     return
 
                 filter_msg = " (with client-side filter)" if client_filter else ""
@@ -668,6 +701,8 @@ def generate_songbook(
             )
 
         span.set_attribute("final_files_count", len(files))
+        span.set_attribute("song_file_names", json.dumps([f.name for f in files]))
+        span.set_attribute("song_file_ids", json.dumps([f.id for f in files]))
 
         # Get preface and postface files
         preface_files = []
@@ -726,7 +761,11 @@ def generate_songbook(
 
                 # Generate cover first to know if we need to adjust page offset
                 with reporter.step(1, "Generating cover..."):
-                    with tracer.start_as_current_span("generate_cover"):
+                    with tracer.start_as_current_span("generate_cover") as cover_span:
+                        cover_span.set_attribute("cover_file_id", cover_file_id or "")
+                        cover_span.set_attribute(
+                            "cover_requested", cover_file_id is not None
+                        )
                         settings = config.get_settings()
                         credential_config = settings.google_cloud.credentials.get(
                             "songbook-generator"
@@ -750,14 +789,23 @@ def generate_songbook(
                             cover_config=config.get_settings().cover,
                         )
                         cover_pdf = cover_generator.generate_cover(cover_file_id)
+                        cover_span.set_attribute(
+                            "cover_generated", cover_pdf is not None
+                        )
+                        if cover_pdf is not None:
+                            cover_span.set_attribute("cover_page_count", len(cover_pdf))
 
                 # We need to calculate TOC size first to properly set page offsets
                 with reporter.step(1, "Pre-calculating table of contents..."):
-                    with tracer.start_as_current_span("precalculate_toc"):
+                    with tracer.start_as_current_span(
+                        "precalculate_toc"
+                    ) as pretoc_span:
                         toc_pdf, toc_entries = toc.build_table_of_contents(
                             files, 0, edition_toc_config
                         )  # Temporary offset
                         toc_page_count = len(toc_pdf)
+                        pretoc_span.set_attribute("toc_page_count", toc_page_count)
+                        pretoc_span.set_attribute("toc_entries_count", len(toc_entries))
                         toc_pdf.close()  # Close temporary TOC
 
                 # Calculate page offset based on cover + preface pages + TOC pages
@@ -813,10 +861,15 @@ def generate_songbook(
                 # Generate TOC with correct page offset and track page indices
                 toc_start = current_page
                 with reporter.step(1, "Generating table of contents..."):
-                    with tracer.start_as_current_span("generate_toc"):
+                    with tracer.start_as_current_span("generate_toc") as gen_toc_span:
                         toc_pdf, toc_entries = toc.build_table_of_contents(
                             files, page_offset, edition_toc_config
                         )
+                        gen_toc_span.set_attribute(
+                            "toc_entries_count", len(toc_entries)
+                        )
+                        gen_toc_span.set_attribute("toc_page_count", len(toc_pdf))
+                        gen_toc_span.set_attribute("page_offset", page_offset)
                         toc_start_page = len(songbook_pdf)  # Remember where TOC starts
                         songbook_pdf.insert_pdf(toc_pdf)
                 current_page = len(songbook_pdf)
@@ -916,14 +969,28 @@ def generate_songbook(
                 with reporter.step(1, "Exporting generated PDF..."):
                     with tracer.start_as_current_span("save_pdf") as save_span:
                         destination_path.parent.mkdir(parents=True, exist_ok=True)
+                        final_page_count = len(songbook_pdf)
                         songbook_pdf.ez_save(destination_path)  # Save the merged PDF
-                        save_span.set_attribute(
-                            "output_file_size", os.path.getsize(destination_path)
-                        )
                         if not os.path.exists(destination_path):
                             raise FileNotFoundError(
                                 f"Failed to save master PDF at {destination_path}"
                             )
+                        output_file_size = os.path.getsize(destination_path)
+                        save_span.set_attribute("output_file_size", output_file_size)
+                        save_span.set_attribute("final_page_count", final_page_count)
+
+                pdf_span.set_attribute("final_page_count", final_page_count)
+                pdf_span.add_event(
+                    "pdf_assembled",
+                    {
+                        "final_page_count": final_page_count,
+                        "song_count": len(files),
+                        "has_cover": page_indices.get("cover") is not None,
+                        "has_preface": page_indices.get("preface") is not None,
+                        "has_toc": page_indices.get("table_of_contents") is not None,
+                        "has_postface": page_indices.get("postface") is not None,
+                    },
+                )
         click.echo(f"SUCCESS: Completed generated PDF at {destination_path}.")
 
         # Return generation information for manifest creation
