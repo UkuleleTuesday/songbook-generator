@@ -41,5 +41,4 @@ jobs:
         echo "Publishing sync message to ${CACHE_REFRESH_PUBSUB_TOPIC} with force=${{ github.event.inputs.force }}"
         gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
           --message="Triggering cache sync and merge" \
-          --attribute="force=${{ github.event.inputs.force }}" \
-          --attribute="rebuild_only=${{ github.event.inputs.rebuild_only }}"
+          --attribute="force=${{ github.event.inputs.force }},rebuild_only=${{ github.event.inputs.rebuild_only }}"
