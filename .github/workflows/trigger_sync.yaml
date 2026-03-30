@@ -20,6 +20,11 @@ on:
         required: false
         default: false
         type: boolean
+      edition_folder_id:
+        description: 'Drive folder ID of the edition to prime cache for (syncs its Songs/ subfolder)'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   trigger-sync:
@@ -42,4 +47,5 @@ jobs:
         gcloud pubsub topics publish "$CACHE_REFRESH_PUBSUB_TOPIC" \
           --message="Triggering cache sync and merge" \
           --attribute="force=${{ github.event.inputs.force }}" \
-          --attribute="rebuild_only=${{ github.event.inputs.rebuild_only }}"
+          --attribute="rebuild_only=${{ github.event.inputs.rebuild_only }}" \
+          --attribute="edition_folder_id=${{ github.event.inputs.edition_folder_id }}"

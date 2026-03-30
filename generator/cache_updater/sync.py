@@ -8,6 +8,8 @@ from ..common.caching import init_cache
 from ..common.gdrive import GoogleDriveClient
 from ..worker.models import File
 
+_SONGS_SUBFOLDER_NAME = "Songs"
+
 
 def _sync_gcs_metadata_from_drive(
     source_folders: List[str], cache, drive_service, cache_bucket, tracer
@@ -166,3 +168,121 @@ def download_gcs_cache_to_local(
                 local_cache.put_metadata(blob.name, blob.metadata)
 
         click.echo("Download complete.")
+
+
+def _sync_gcs_metadata_for_files(files: List[File], cache_bucket, tracer):
+    """
+    Update GCS blob metadata for a specific list of File objects.
+
+    Unlike _sync_gcs_metadata_from_drive, no Drive query is performed;
+    the caller supplies the File objects directly. Does a targeted
+    blob.reload() per file ID rather than listing all blobs.
+    """
+    with tracer.start_as_current_span("_sync_gcs_metadata_for_files") as span:
+        click.echo("Syncing GCS metadata for edition files...")
+        file_map = {f.id: f for f in files}
+        span.set_attribute("files_count", len(file_map))
+
+        prefix = "song-sheets/"
+        updated_count, skipped_count, error_count = 0, 0, 0
+
+        for file_id, drive_file in file_map.items():
+            blob_name = f"{prefix}{file_id}.pdf"
+            blob = cache_bucket.blob(blob_name)
+            try:
+                blob.reload()
+            except gcp_exceptions.NotFound:
+                skipped_count += 1
+                continue
+
+            expected_name = drive_file.name
+            current_metadata = blob.metadata or {}
+            if current_metadata.get(
+                "gdrive-file-id"
+            ) == file_id and current_metadata.get("gdrive-file-name") == str(
+                expected_name
+            ):
+                continue
+
+            new_metadata = dict(current_metadata)
+            new_metadata["gdrive-file-id"] = file_id
+            new_metadata["gdrive-file-name"] = expected_name
+            try:
+                blob.metadata = new_metadata
+                blob.patch()
+                click.echo(f"  UPDATE: {blob_name} metadata updated.")
+                updated_count += 1
+            except gcp_exceptions.GoogleAPICallError as e:
+                click.echo(f"  ERROR: Failed to update {blob_name}: {e}", err=True)
+                error_count += 1
+
+        click.echo(
+            f"Edition metadata sync: {updated_count} updated, "
+            f"{skipped_count} skipped, {error_count} errors."
+        )
+        span.set_attribute("updated_count", updated_count)
+        span.set_attribute("skipped_count", skipped_count)
+        span.set_attribute("error_count", error_count)
+
+
+def sync_cache_for_edition_folder(edition_folder_id: str, services) -> int:
+    """
+    Prime the GCS cache with all songs from an edition's Songs/ subfolder.
+
+    Resolves shortcuts so that shortcut entries pointing at source-folder
+    files are stored under the *real* file ID — matching the key that
+    copy_pdfs looks up in the merged PDF index.
+
+    Returns:
+        Number of files synced.  0 if the Songs/ subfolder is missing or empty.
+    """
+    with services["tracer"].start_as_current_span(
+        "sync_cache_for_edition_folder"
+    ) as span:
+        span.set_attribute("edition_folder_id", edition_folder_id)
+
+        cache = init_cache()
+        gdrive_client = GoogleDriveClient(cache=cache, drive=services["drive"])
+
+        songs_folder_id = gdrive_client.find_subfolder_by_name(
+            edition_folder_id, _SONGS_SUBFOLDER_NAME
+        )
+        if not songs_folder_id:
+            click.echo(
+                f"Warning: No '{_SONGS_SUBFOLDER_NAME}' subfolder found in edition "
+                f"folder {edition_folder_id}. Nothing to sync.",
+                err=True,
+            )
+            span.set_attribute("songs_subfolder_found", False)
+            return 0
+
+        span.set_attribute("songs_subfolder_found", True)
+        span.set_attribute("songs_folder_id", songs_folder_id)
+
+        files = gdrive_client.list_folder_contents(
+            songs_folder_id, resolve_shortcuts=True
+        )
+        span.set_attribute("files_found", len(files))
+
+        if not files:
+            click.echo(
+                f"Warning: '{_SONGS_SUBFOLDER_NAME}' subfolder {songs_folder_id} "
+                "is empty. Nothing to sync."
+            )
+            return 0
+
+        click.echo(
+            f"Syncing {len(files)} file(s) from edition "
+            f"'{_SONGS_SUBFOLDER_NAME}/' subfolder..."
+        )
+        for file in files:
+            with services["tracer"].start_as_current_span("sync_edition_file"):
+                click.echo(f"  Syncing {file.name} (ID: {file.id})")
+                gdrive_client.download_file_stream(file, use_cache=True)
+
+        _sync_gcs_metadata_for_files(
+            files, services["cache_bucket"], services["tracer"]
+        )
+
+        span.set_attribute("synced_count", len(files))
+        return len(files)

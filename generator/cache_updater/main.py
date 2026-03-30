@@ -233,10 +233,13 @@ def _parse_cloud_event(cloud_event: CloudEvent) -> dict:
     # Attributes are strings ('true' / 'false').
     force_sync = attributes.get("force", "false").lower() == "true"
     rebuild_only = attributes.get("rebuild_only", "false").lower() == "true"
+    # Normalise empty string (GitHub Actions default) to None.
+    edition_folder_id = attributes.get("edition_folder_id") or None
 
     return {
         "force_sync": force_sync,
         "rebuild_only": rebuild_only,
+        "edition_folder_id": edition_folder_id,
     }
 
 
@@ -256,9 +259,11 @@ def cache_updater_main(cloud_event: CloudEvent):
             event_params = _parse_cloud_event(cloud_event)
             force_sync = event_params["force_sync"]
             rebuild_only = event_params["rebuild_only"]
+            edition_folder_id = event_params["edition_folder_id"]
 
             main_span.set_attribute("force_sync", str(force_sync))
             main_span.set_attribute("rebuild_only", str(rebuild_only))
+            main_span.set_attribute("edition_folder_id", edition_folder_id or "")
 
             if rebuild_only:
                 # Skip Drive sync entirely — just rebuild the merged PDF from
@@ -299,12 +304,27 @@ def cache_updater_main(cloud_event: CloudEvent):
                     sync_span.set_attribute("synced_files_count", synced_files_count)
                     click.echo("Sync complete.")
 
-                if not force_sync and synced_files_count == 0:
+                if not force_sync and synced_files_count == 0 and not edition_folder_id:
                     click.echo(
                         "No files were updated since the last merge. Nothing to do."
                     )
                     main_span.set_attribute("status", "skipped_no_changes")
                     return
+
+            if edition_folder_id:
+                click.echo(
+                    f"edition_folder_id set. Syncing edition from folder: {edition_folder_id}"
+                )
+                with services["tracer"].start_as_current_span(
+                    "edition_sync_operation"
+                ) as esync_span:
+                    edition_synced = sync.sync_cache_for_edition_folder(
+                        edition_folder_id, services
+                    )
+                    esync_span.set_attribute("edition_synced_count", edition_synced)
+                    click.echo(
+                        f"Edition sync complete. {edition_synced} file(s) synced."
+                    )
 
             click.echo("Starting PDF merge operation")
 
