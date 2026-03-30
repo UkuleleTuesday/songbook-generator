@@ -57,6 +57,11 @@ def cache():
     default=False,
     help="Sync to the local cache instead of GCS.",
 )
+@click.option(
+    "--edition-folder",
+    default=None,
+    help="Drive folder ID of the edition to prime cache for (syncs its Songs/ subfolder).",
+)
 def sync_cache_command(
     ctx,
     source_folder,
@@ -65,6 +70,7 @@ def sync_cache_command(
     update_tags_only,
     update_tags,
     local,
+    edition_folder,
     **kwargs,
 ):
     """Sync files and metadata from Google Drive to the cache."""
@@ -117,6 +123,13 @@ def sync_cache_command(
             modified_after=last_merge_time,
         )
         click.echo("Cache synchronization complete.")
+
+        if edition_folder:
+            click.echo(f"Syncing edition cache for folder: {edition_folder}")
+            from ..cache_updater.sync import sync_cache_for_edition_folder
+
+            edition_synced = sync_cache_for_edition_folder(edition_folder, services)
+            click.echo(f"Edition sync complete. {edition_synced} file(s) synced.")
 
     except click.Abort:
         # click.Abort is raised on purpose, so just re-raise.
