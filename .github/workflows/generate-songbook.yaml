@@ -27,6 +27,8 @@ jobs:
     concurrency:
       group: generate-songbook-${{ inputs.edition }}
       cancel-in-progress: false
+    outputs:
+      effective_edition: ${{ steps.set-output-names.outputs.effective_edition }}
     steps:
     - name: Checkout repository
       id: checkout
@@ -52,12 +54,6 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
-
-    - name: Set output PDF name
-      run: |
-        PDF_BASENAME="ukulele-tuesday-songbook-${{ inputs.edition }}-$(date -u +%Y-%m-%d)"
-        echo "OUTPUT_PDF=${PDF_BASENAME}.pdf" >> $GITHUB_ENV
-        echo "OUTPUT_MANIFEST=${PDF_BASENAME}.manifest.json" >> $GITHUB_ENV
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
@@ -112,6 +108,25 @@ jobs:
           exit 1
         fi
 
+    - name: Download Manifest
+      run: |
+        MANIFEST_GCS_PATH="${{ steps.trigger-and-poll.outputs.manifest_gcs_path }}"
+        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH}"
+        gcloud storage cp "${MANIFEST_GCS_PATH}" manifest.json
+
+    - name: Set output names from manifest
+      id: set-output-names
+      run: |
+        EDITION_ID=$(jq -r '.edition.id // empty' manifest.json)
+        if [[ -z "$EDITION_ID" ]]; then
+          EDITION_ID="${{ inputs.edition }}"
+        fi
+        PDF_BASENAME="ukulele-tuesday-songbook-${EDITION_ID}-$(date -u +%Y-%m-%d)"
+        echo "OUTPUT_PDF=${PDF_BASENAME}.pdf" >> $GITHUB_ENV
+        echo "OUTPUT_MANIFEST=${PDF_BASENAME}.manifest.json" >> $GITHUB_ENV
+        echo "effective_edition=${EDITION_ID}" >> $GITHUB_OUTPUT
+        mv manifest.json "${PDF_BASENAME}.manifest.json"
+
     - name: Install Ghostscript
       if: env.USE_GHOSTSCRIPT_COMPRESSION == 'true'
       id: install-ghostscript
@@ -146,12 +161,6 @@ jobs:
           -dNOPAUSE -dBATCH \
           -sOutputFile="${{ env.OUTPUT_PDF }}" \
           "${INPUT_PDF}"
-
-    - name: Download Manifest
-      run: |
-        MANIFEST_GCS_PATH="${{ steps.trigger-and-poll.outputs.manifest_gcs_path }}"
-        echo "Downloading generation manifest from ${MANIFEST_GCS_PATH} to ${{ env.OUTPUT_MANIFEST }}"
-        gcloud storage cp "${MANIFEST_GCS_PATH}" "${{ env.OUTPUT_MANIFEST }}"
 
     - name: Validate Generated PDF
       run: |
@@ -214,7 +223,7 @@ jobs:
       id: upload-pdf
       run: |
         set -e
-        EDITION="${{ inputs.edition }}"
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
         PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
         if [ -f "$PDF_FILE" ]; then
           FILENAME=$(basename "$PDF_FILE")
@@ -229,7 +238,7 @@ jobs:
     - name: Upload Manifest to GCS and create latest.json
       run: |
         set -e
-        EDITION="${{ inputs.edition }}"
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
         PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
         PDF_FILENAME=$(basename "$PDF_FILE")
         MANIFEST_FILE=$(find ./songbooks -name '*.manifest.json' -print -quit)
