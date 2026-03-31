@@ -90,6 +90,7 @@ class Edition(BaseModel):
     table_of_contents: Optional[Toc] = None
     use_folder_components: bool = False
     source_file: Optional[str] = None
+    inherit_metadata_from_edition: Optional[str] = None
 
     @model_validator(mode="after")
     def filters_required_without_folder_components(self) -> "Edition":
