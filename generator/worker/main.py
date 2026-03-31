@@ -216,6 +216,7 @@ def worker_main(cloud_event):
                         limit=limit,
                         on_progress=progress_callback,
                         files=songs_files,
+                        all_editions=settings.editions,
                     )
                 else:
                     # Legacy mode: Parse filters parameter

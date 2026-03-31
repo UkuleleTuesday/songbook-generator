@@ -635,6 +635,18 @@ def load_edition_from_drive_folder(
     return edition, songs_files
 
 
+def _enrich_missing_difficulty(files: List[File], reference_files: List[File]) -> None:
+    """Backfill missing 'difficulty' property from reference_files, matched by filename."""
+    ref_by_name = {
+        f.name: f.properties["difficulty"]
+        for f in reference_files
+        if "difficulty" in f.properties
+    }
+    for f in files:
+        if "difficulty" not in f.properties and f.name in ref_by_name:
+            f.properties["difficulty"] = ref_by_name[f.name]
+
+
 def generate_songbook_from_edition(
     drive,
     cache,
@@ -644,6 +656,7 @@ def generate_songbook_from_edition(
     limit: int,
     on_progress=None,
     files: Optional[List[File]] = None,
+    all_editions: Optional[List[config.Edition]] = None,
 ):
     """
     Generate a songbook based on a predefined Edition configuration.
@@ -685,6 +698,29 @@ def generate_songbook_from_edition(
         if files is not None:
             span.set_attribute("songs_pre_supplied", True)
             span.set_attribute("songs_files_count", len(files))
+
+        if edition.inherit_metadata_from_edition and files is not None and all_editions:
+            ref_edition = next(
+                (
+                    e
+                    for e in all_editions
+                    if e.id == edition.inherit_metadata_from_edition
+                ),
+                None,
+            )
+            if ref_edition:
+                gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+                ref_filter = None
+                if ref_edition.filters:
+                    ref_filter = (
+                        ref_edition.filters[0]
+                        if len(ref_edition.filters) == 1
+                        else FilterGroup(operator="AND", filters=ref_edition.filters)
+                    )
+                ref_files = collect_and_sort_files(
+                    gdrive_client, source_folders, ref_filter
+                )
+                _enrich_missing_difficulty(files, ref_files)
 
         return generate_songbook(
             drive=drive,
