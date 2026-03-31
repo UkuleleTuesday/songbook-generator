@@ -173,12 +173,12 @@ jobs:
           --manifest "${{ env.OUTPUT_MANIFEST }}" \
           --verbose
 
-        echo "✅ PDF validation passed for ${{ inputs.edition }} edition"
+        echo "✅ PDF validation passed for ${{ steps.set-output-names.outputs.effective_edition }} edition"
 
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: songbook-artifact-${{ inputs.edition }}
+        name: songbook-artifact-${{ steps.set-output-names.outputs.effective_edition }}
         path: |
           ${{ env.OUTPUT_PDF }}
           ${{ env.OUTPUT_MANIFEST }}
@@ -217,7 +217,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: ./songbooks
-        name: songbook-artifact-${{ inputs.edition }}
+        name: songbook-artifact-${{ needs.generate-songbook.outputs.effective_edition }}
 
     - name: Upload PDF to GCS
       id: upload-pdf
