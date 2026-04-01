@@ -657,3 +657,18 @@ def genre(ctx: Context, raw: Optional[str], *, max_genres: int = 3) -> Optional[
         return None
     parts = [g.strip().lower() for g in raw.split(",") if g.strip()][:max_genres]
     return ",".join(parts) if parts else None
+
+
+@llm_tag(
+    prompt=(
+        'What language is "{song}" by {artist} performed in? '
+        'Reply with only the language name in lowercase (e.g. "english", "irish", "french"), '
+        "or null if unknown."
+    ),
+    only_if_unset=True,
+)
+def language(ctx: Context, raw: Optional[str]) -> Optional[str]:
+    """Looks up the language the song is performed in via Gemini + Google Search."""
+    if not raw:
+        return None
+    return raw.strip().lower() or None
