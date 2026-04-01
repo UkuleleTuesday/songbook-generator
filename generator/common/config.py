@@ -1,7 +1,7 @@
 import os
 import yaml
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -79,10 +79,16 @@ class Toc(BaseModel):
         return v
 
 
+class PublishConfig(BaseModel):
+    visibility: Literal["public", "unlisted"] = "public"
+    pinned: bool = False
+
+
 class Edition(BaseModel):
     id: str
     title: str
     description: str
+    publish: "PublishConfig" = Field(default_factory=PublishConfig)
     cover_file_id: Optional[str] = None
     preface_file_ids: Optional[List[str]] = None
     postface_file_ids: Optional[List[str]] = None

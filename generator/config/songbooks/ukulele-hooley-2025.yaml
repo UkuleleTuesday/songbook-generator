@@ -1,6 +1,8 @@
 id: "ukulele-hooley-2025"
 title: "Ukulele Hooley 2025"
 description: "The official songbook for the 2025 Ukulele Hooley Friday jam."
+publish:
+  visibility: unlisted
 cover_file_id: "1jpZvqrpNF7HjX5_gpjH8FG8DLHKP63JjRU1gWbVpSg8"
 preface_file_ids:
   - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"

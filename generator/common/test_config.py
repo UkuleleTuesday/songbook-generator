@@ -219,3 +219,76 @@ def test_edition_filters_and_folder_components_together():
         filters=[f],
     )
     assert edition.filters == [f]
+
+
+def test_publish_config_defaults():
+    """PublishConfig defaults to public visibility and not pinned."""
+    publish = config.PublishConfig()
+    assert publish.visibility == "public"
+    assert publish.pinned is False
+
+
+def test_publish_config_unlisted():
+    """PublishConfig accepts unlisted visibility."""
+    publish = config.PublishConfig(visibility="unlisted")
+    assert publish.visibility == "unlisted"
+
+
+def test_publish_config_pinned():
+    """PublishConfig accepts pinned=True."""
+    publish = config.PublishConfig(pinned=True)
+    assert publish.pinned is True
+
+
+def test_publish_config_invalid_visibility():
+    """PublishConfig rejects invalid visibility values."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        config.PublishConfig(visibility="private")
+
+
+def test_edition_publish_defaults():
+    """Edition.publish defaults to public visibility and not pinned."""
+    edition = config.Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        filters=[],
+    )
+    assert edition.publish.visibility == "public"
+    assert edition.publish.pinned is False
+
+
+def test_edition_publish_unlisted():
+    """Edition.publish can be set to unlisted."""
+    edition = config.Edition(
+        id="test",
+        title="Test",
+        description="Test",
+        filters=[],
+        publish=config.PublishConfig(visibility="unlisted"),
+    )
+    assert edition.publish.visibility == "unlisted"
+
+
+def test_unlisted_editions_in_config():
+    """womens-2026 and ukulele-hooley-2025 are unlisted."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    edition_map = {e.id: e for e in settings.editions}
+    for edition_id in ("womens-2026", "ukulele-hooley-2025"):
+        assert edition_map[edition_id].publish.visibility == "unlisted", (
+            f"{edition_id} should be unlisted"
+        )
+
+
+def test_public_editions_in_config():
+    """current, complete and wexford-2026 are public."""
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    edition_map = {e.id: e for e in settings.editions}
+    for edition_id in ("current", "complete", "wexford-2026"):
+        assert edition_map[edition_id].publish.visibility == "public", (
+            f"{edition_id} should be public"
+        )

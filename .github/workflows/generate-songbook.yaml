@@ -252,11 +252,34 @@ jobs:
 
           echo "Generating latest.json"
           LATEST_JSON_FILE="latest.json"
+          EDITION_YAML="generator/config/songbooks/${EDITION}.yaml"
+
+          PUBLISH_VARS=$(python3 -c "
+import yaml, sys
+try:
+    with open('$EDITION_YAML') as f:
+        cfg = yaml.safe_load(f)
+    pub = cfg.get('publish', {})
+    visibility = pub.get('visibility', 'public')
+    pinned = 'true' if pub.get('pinned', False) else 'false'
+except Exception:
+    visibility = 'public'
+    pinned = 'false'
+print(visibility)
+print(pinned)
+" 2>/dev/null || printf 'public\nfalse\n')
+          VISIBILITY=$(echo "$PUBLISH_VARS" | sed -n '1p')
+          PINNED=$(echo "$PUBLISH_VARS" | sed -n '2p')
+          VISIBILITY=${VISIBILITY:-public}
+          PINNED=${PINNED:-false}
+
           jq -n \
             --arg pdf_filename "$PDF_FILENAME" \
             --arg manifest_filename "$MANIFEST_FILENAME" \
             --arg generated_at "$(date -u --iso-8601=seconds)" \
-            '{pdf_filename: $pdf_filename, manifest_filename: $manifest_filename, generated_at: $generated_at}' \
+            --arg visibility "$VISIBILITY" \
+            --argjson pinned "$PINNED" \
+            '{pdf_filename: $pdf_filename, manifest_filename: $manifest_filename, generated_at: $generated_at, visibility: $visibility, pinned: $pinned}' \
             > "$LATEST_JSON_FILE"
 
           cat "$LATEST_JSON_FILE"
