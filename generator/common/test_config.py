@@ -273,22 +273,22 @@ def test_edition_publish_unlisted():
 
 
 def test_unlisted_editions_in_config():
-    """current, womens-2026, and ukulele-hooley-2025 are unlisted."""
+    """womens-2026 and ukulele-hooley-2025 are unlisted."""
     config.get_settings.cache_clear()
     settings = config.get_settings()
     edition_map = {e.id: e for e in settings.editions}
-    for edition_id in ("current", "womens-2026", "ukulele-hooley-2025"):
+    for edition_id in ("womens-2026", "ukulele-hooley-2025"):
         assert edition_map[edition_id].publish.visibility == "unlisted", (
             f"{edition_id} should be unlisted"
         )
 
 
 def test_public_editions_in_config():
-    """complete and wexford-2026 are public."""
+    """current, complete and wexford-2026 are public."""
     config.get_settings.cache_clear()
     settings = config.get_settings()
     edition_map = {e.id: e for e in settings.editions}
-    for edition_id in ("complete", "wexford-2026"):
+    for edition_id in ("current", "complete", "wexford-2026"):
         assert edition_map[edition_id].publish.visibility == "public", (
             f"{edition_id} should be public"
         )
