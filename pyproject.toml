@@ -40,6 +40,7 @@ dependencies = [
     "fontra>=0.5.2",
     "loguru>=0.7.0",
     "google-genai>=1.68.0",
+    "tenacity>=9.1.4",
 ]
 
 [project.scripts]
