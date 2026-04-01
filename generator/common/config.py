@@ -149,11 +149,11 @@ class TagUpdater(BaseModel):
         ),
     )
     llm_tagging_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
             "When True, LLM-backed tags (@llm_tag) are computed. "
-            "Disabled by default as this is an experimental feature. "
-            "Set TAGUPDATER_LLM_TAGGING_ENABLED=true to enable."
+            "Enabled by default. "
+            "Set TAGUPDATER_LLM_TAGGING_ENABLED=false to disable."
         ),
     )
 
