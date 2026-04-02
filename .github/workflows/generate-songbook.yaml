@@ -237,42 +237,6 @@ jobs:
 
     - name: Upload Manifest to GCS and create latest.json
       run: |
-        set -e
-        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
-        PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
-        PDF_FILENAME=$(basename "$PDF_FILE")
-        MANIFEST_FILE=$(find ./songbooks -name '*.manifest.json' -print -quit)
-        MANIFEST_FILENAME=$(basename "$MANIFEST_FILE")
-
-        if [ -f "$MANIFEST_FILE" ]; then
-          DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${MANIFEST_FILENAME}"
-          echo "Uploading '${MANIFEST_FILENAME}' to '${DEST_GCS_PATH}'"
-          gcloud storage cp "$MANIFEST_FILE" "$DEST_GCS_PATH" --cache-control="public, max-age=600"
-          echo "✅ Successfully uploaded manifest"
-
-          echo "Generating latest.json"
-          LATEST_JSON_FILE="latest.json"
-          EDITION_YAML="generator/config/songbooks/${EDITION}.yaml"
-
-          PUBLISH_VARS=$(uv run .github/scripts/get-edition-publish-vars.py "$EDITION_YAML")
-          VISIBILITY=$(echo "$PUBLISH_VARS" | jq -r '.visibility')
-          PINNED=$(echo "$PUBLISH_VARS" | jq -r '.pinned')
-
-          jq -n \
-            --arg pdf_filename "$PDF_FILENAME" \
-            --arg manifest_filename "$MANIFEST_FILENAME" \
-            --arg generated_at "$(date -u --iso-8601=seconds)" \
-            --arg visibility "$VISIBILITY" \
-            --argjson pinned "$PINNED" \
-            '{pdf_filename: $pdf_filename, manifest_filename: $manifest_filename, generated_at: $generated_at, visibility: $visibility, pinned: $pinned}' \
-            > "$LATEST_JSON_FILE"
-
-          cat "$LATEST_JSON_FILE"
-          DEST_LATEST_JSON_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json"
-          echo "Uploading latest.json to ${DEST_LATEST_JSON_PATH}"
-          gcloud storage cp "$LATEST_JSON_FILE" "$DEST_LATEST_JSON_PATH" --cache-control="public, max-age=60"
-          echo "✅ Successfully uploaded latest.json"
-        else
-          echo "Manifest file not found, skipping upload."
-          exit 1
-        fi
+        uv run .github/scripts/upload-manifest-and-latest.py \
+          "${{ needs.generate-songbook.outputs.effective_edition }}" \
+          ./songbooks
