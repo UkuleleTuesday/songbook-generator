@@ -254,24 +254,8 @@ jobs:
           LATEST_JSON_FILE="latest.json"
           EDITION_YAML="generator/config/songbooks/${EDITION}.yaml"
 
-          PUBLISH_VARS=$(python3 -c "
-import yaml, sys
-try:
-    with open('$EDITION_YAML') as f:
-        cfg = yaml.safe_load(f)
-    pub = cfg.get('publish', {})
-    visibility = pub.get('visibility', 'public')
-    pinned = 'true' if pub.get('pinned', False) else 'false'
-except Exception:
-    visibility = 'public'
-    pinned = 'false'
-print(visibility)
-print(pinned)
-" 2>/dev/null || printf 'public\nfalse\n')
-          VISIBILITY=$(echo "$PUBLISH_VARS" | sed -n '1p')
-          PINNED=$(echo "$PUBLISH_VARS" | sed -n '2p')
-          VISIBILITY=${VISIBILITY:-public}
-          PINNED=${PINNED:-false}
+          VISIBILITY=$(python3 -c "import yaml; cfg=yaml.safe_load(open('$EDITION_YAML')); print(cfg.get('publish',{}).get('visibility','public'))" 2>/dev/null || echo "public")
+          PINNED=$(python3 -c "import yaml; cfg=yaml.safe_load(open('$EDITION_YAML')); print('true' if cfg.get('publish',{}).get('pinned',False) else 'false')" 2>/dev/null || echo "false")
 
           jq -n \
             --arg pdf_filename "$PDF_FILENAME" \
