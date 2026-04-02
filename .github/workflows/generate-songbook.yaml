@@ -254,8 +254,9 @@ jobs:
           LATEST_JSON_FILE="latest.json"
           EDITION_YAML="generator/config/songbooks/${EDITION}.yaml"
 
-          VISIBILITY=$(python3 -c "import yaml; cfg=yaml.safe_load(open('$EDITION_YAML')); print(cfg.get('publish',{}).get('visibility','public'))" 2>/dev/null || echo "public")
-          PINNED=$(python3 -c "import yaml; cfg=yaml.safe_load(open('$EDITION_YAML')); print('true' if cfg.get('publish',{}).get('pinned',False) else 'false')" 2>/dev/null || echo "false")
+          PUBLISH_VARS=$(uv run .github/scripts/get-edition-publish-vars.py "$EDITION_YAML")
+          VISIBILITY=$(echo "$PUBLISH_VARS" | jq -r '.visibility')
+          PINNED=$(echo "$PUBLISH_VARS" | jq -r '.pinned')
 
           jq -n \
             --arg pdf_filename "$PDF_FILENAME" \
