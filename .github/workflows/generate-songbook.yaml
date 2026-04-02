@@ -235,8 +235,22 @@ jobs:
           exit 1
         fi
 
-    - name: Upload Manifest to GCS and create latest.json
+    - name: Generate latest.json
       run: |
-        uv run .github/scripts/upload-manifest-and-latest.py \
+        uv run .github/scripts/generate-latest-json.py \
           "${{ needs.generate-songbook.outputs.effective_edition }}" \
           ./songbooks
+
+    - name: Upload Manifest and latest.json to GCS
+      run: |
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
+        gcloud storage cp \
+          "./songbooks/${OUTPUT_MANIFEST}" \
+          "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${OUTPUT_MANIFEST}" \
+          --cache-control="public, max-age=600"
+        echo "✅ Successfully uploaded manifest"
+        gcloud storage cp \
+          latest.json \
+          "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json" \
+          --cache-control="public, max-age=60"
+        echo "✅ Successfully uploaded latest.json"
