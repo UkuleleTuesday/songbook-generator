@@ -243,12 +243,20 @@ jobs:
 
     - name: Upload Manifest and latest.json to GCS
       run: |
+        set -e
         EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
-        gcloud storage cp \
-          "./songbooks/${OUTPUT_MANIFEST}" \
-          "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${OUTPUT_MANIFEST}" \
-          --cache-control="public, max-age=600"
-        echo "✅ Successfully uploaded manifest"
+        MANIFEST_FILE=$(find ./songbooks -name '*.manifest.json' -print -quit)
+        if [ -f "$MANIFEST_FILE" ]; then
+          MANIFEST_FILENAME=$(basename "$MANIFEST_FILE")
+          DEST_MANIFEST_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${MANIFEST_FILENAME}"
+          echo "Uploading '${MANIFEST_FILENAME}' to '${DEST_MANIFEST_PATH}'"
+          gcloud storage cp "$MANIFEST_FILE" "$DEST_MANIFEST_PATH" \
+            --cache-control="public, max-age=600"
+          echo "✅ Successfully uploaded manifest"
+        else
+          echo "No manifest file found in artifact."
+          exit 1
+        fi
         gcloud storage cp \
           latest.json \
           "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json" \
