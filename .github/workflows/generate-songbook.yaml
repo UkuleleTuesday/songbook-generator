@@ -7,11 +7,19 @@ on:
         description: "The songbook edition to generate (e.g., 'current')"
         type: string
         required: true
+      api_url:
+        description: "Optional API URL override for triggering generation"
+        type: string
+        required: false
   workflow_call:
     inputs:
       edition:
         description: "The songbook edition to generate"
         required: true
+        type: string
+      api_url:
+        description: "Optional API URL override for triggering generation"
+        required: false
         type: string
 
 permissions:
@@ -60,7 +68,12 @@ jobs:
       run: |
         PAYLOAD=$(jq -n --arg edition "${{ inputs.edition }}" '{ edition: $edition }')
         echo "Triggering songbook generation with payload: $PAYLOAD"
-        API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
+        API_URL_INPUT="${{ inputs.api_url }}"
+        if [[ -n "$API_URL_INPUT" ]]; then
+          API_URL="$API_URL_INPUT"
+        else
+          API_URL="https://${{ env.GCP_REGION }}-${{ env.GCP_PROJECT_ID }}.cloudfunctions.net/${{ env.API_FUNCTION_NAME }}"
+        fi
 
         RESPONSE=$(curl -s -f -X POST -H "Content-Type: application/json" -d "$PAYLOAD" "$API_URL")
         echo "API Response: $RESPONSE"
