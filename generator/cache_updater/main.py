@@ -10,7 +10,6 @@ import shutil
 from datetime import datetime
 import click
 import logging
-import json
 
 
 from google.auth import default
