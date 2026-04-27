@@ -9,6 +9,8 @@ import traceback
 import shutil
 from datetime import datetime
 import click
+import logging
+import json
 
 
 from google.auth import default
@@ -24,6 +26,8 @@ from ..worker.gcp import get_credentials
 
 # Initialize tracing
 from ..common.tracing import get_tracer, setup_tracing
+
+logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -82,7 +86,8 @@ def _download_blobs(pdf_blobs, temp_dir, services):
     """Download PDF blobs to a temporary directory and extract metadata."""
     with services["tracer"].start_as_current_span("download_files") as span:
         file_metadata = []
-        for blob in pdf_blobs:
+        logger.info(f"Downloading {len(pdf_blobs)} PDF blobs")
+        for i, blob in enumerate(pdf_blobs):
             filename = blob.name.replace("/", "_")
             local_path = os.path.join(temp_dir, filename)
             click.echo(f"Downloading {blob.name} to {filename}")
@@ -95,6 +100,9 @@ def _download_blobs(pdf_blobs, temp_dir, services):
             # Extract file ID from the blob name (format: song-sheets/{file_id}.pdf)
             file_id = blob.name[len("song-sheets/") : -len(".pdf")]
             file_metadata.append({"path": local_path, "name": song_name, "id": file_id})
+            logger.debug(
+                f"Blob {i}: extracted_file_id={file_id}, song_name={song_name}"
+            )
             span.add_event(
                 "file_downloaded",
                 {
@@ -104,11 +112,11 @@ def _download_blobs(pdf_blobs, temp_dir, services):
                 },
             )
         span.set_attribute("downloaded_count", len(file_metadata))
+        logger.info(f"Download complete: {len(file_metadata)} files")
         span.add_event(
             "download_complete",
             {
                 "total_files": len(file_metadata),
-                "sample_file_id": file_metadata[0]["id"] if file_metadata else "none",
             },
         )
         return file_metadata
@@ -118,15 +126,19 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
     """Merge PDFs and generate TOC entries."""
     with services["tracer"].start_as_current_span("merge_pdfs") as span:
         click.echo(f"Merging {len(file_metadata)} PDF files...")
+        logger.info(f"Starting merge of {len(file_metadata)} PDF files")
         merger = PyPDF2.PdfMerger()
         toc_entries = []
         current_page = 0
-        for file_info in file_metadata:
+        for i, file_info in enumerate(file_metadata):
             with open(file_info["path"], "rb") as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
                 page_count = len(pdf_reader.pages)
             toc_entry = [1, file_info["id"], current_page + 1]
             toc_entries.append(toc_entry)
+            logger.debug(
+                f"TOC entry {i}: file_id={file_info['id']}, file_name={file_info['name']}, page={current_page + 1}"
+            )
             span.add_event(
                 "toc_entry_created",
                 {
@@ -144,11 +156,11 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
         span.set_attribute("temp_merged_path", temp_merged_path)
         span.set_attribute("merged_files", len(file_metadata))
         span.set_attribute("toc_entries", len(toc_entries))
+        logger.info(f"Merge complete: {len(toc_entries)} TOC entries created")
         span.add_event(
             "merge_complete",
             {
                 "total_toc_entries": len(toc_entries),
-                "first_toc_entry_id": toc_entries[0][1] if toc_entries else "none",
             },
         )
         click.echo(f"Successfully created merged PDF: {temp_merged_path}")
