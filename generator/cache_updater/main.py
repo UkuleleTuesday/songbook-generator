@@ -95,7 +95,22 @@ def _download_blobs(pdf_blobs, temp_dir, services):
             # Extract file ID from the blob name (format: song-sheets/{file_id}.pdf)
             file_id = blob.name[len("song-sheets/") : -len(".pdf")]
             file_metadata.append({"path": local_path, "name": song_name, "id": file_id})
+            span.add_event(
+                "file_downloaded",
+                {
+                    "blob_name": blob.name,
+                    "extracted_file_id": file_id,
+                    "song_name": song_name,
+                },
+            )
         span.set_attribute("downloaded_count", len(file_metadata))
+        span.add_event(
+            "download_complete",
+            {
+                "total_files": len(file_metadata),
+                "sample_file_id": file_metadata[0]["id"] if file_metadata else "none",
+            },
+        )
         return file_metadata
 
 
@@ -110,7 +125,17 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
             with open(file_info["path"], "rb") as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
                 page_count = len(pdf_reader.pages)
-            toc_entries.append([1, file_info["id"], current_page + 1])
+            toc_entry = [1, file_info["id"], current_page + 1]
+            toc_entries.append(toc_entry)
+            span.add_event(
+                "toc_entry_created",
+                {
+                    "file_id": file_info["id"],
+                    "file_name": file_info["name"],
+                    "page_num": current_page + 1,
+                    "page_count": page_count,
+                },
+            )
             current_page += page_count
             merger.append(file_info["path"])
         temp_merged_path = os.path.join(temp_dir, "merged.pdf")
@@ -119,6 +144,13 @@ def _merge_pdfs_with_toc(file_metadata, temp_dir, services):
         span.set_attribute("temp_merged_path", temp_merged_path)
         span.set_attribute("merged_files", len(file_metadata))
         span.set_attribute("toc_entries", len(toc_entries))
+        span.add_event(
+            "merge_complete",
+            {
+                "total_toc_entries": len(toc_entries),
+                "first_toc_entry_id": toc_entries[0][1] if toc_entries else "none",
+            },
+        )
         click.echo(f"Successfully created merged PDF: {temp_merged_path}")
         return temp_merged_path, toc_entries
 
