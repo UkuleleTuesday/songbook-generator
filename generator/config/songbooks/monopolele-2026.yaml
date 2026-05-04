@@ -3,6 +3,7 @@ title: "Monopolele 2026"
 description: "The official songbook for the 2026 Monopolele event."
 publish:
   visibility: unlisted
+include_difficulty_wheels: false
 preface_file_ids: []
 table_of_contents:
   include_difficulty: false
