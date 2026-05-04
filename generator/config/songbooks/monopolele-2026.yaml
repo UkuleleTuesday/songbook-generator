@@ -11,8 +11,8 @@ table_of_contents:
   column_width: 360
   margin_left: 120
   margin_right: 120
-  text_fontsize: 14
-  line_spacing: 15
+  text_fontsize: 15
+  line_spacing: 20
 filters:
   - key: "name"
     operator: "in"
