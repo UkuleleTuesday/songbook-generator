@@ -1,0 +1,21 @@
+id: "monopolele-2026"
+title: "Monopolele 2026"
+description: "The official songbook for the 2026 Monopolele event."
+publish:
+  visibility: unlisted
+cover_file_id: "REPLACE_WITH_COVER_FILE_ID"
+preface_file_ids: []
+table_of_contents:
+  include_difficulty: false
+  include_wip_marker: false
+  columns_per_page: 1
+  column_width: 360
+  margin_left: 120
+  margin_right: 120
+  text_fontsize: 12
+  line_spacing: 15
+filters:
+  - key: "name"
+    operator: "in"
+    value:
+      - "REPLACE WITH SONG NAME - Artist"

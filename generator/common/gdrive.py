@@ -213,7 +213,7 @@ class GoogleDriveClient:
         # Apply client-side filtering
         filtered_files = []
         for file in all_files:
-            if client_filter.matches(file.properties):
+            if client_filter.matches({**file.properties, "name": file.name}):
                 filtered_files.append(file)
 
         click.echo(

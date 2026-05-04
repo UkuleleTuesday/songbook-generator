@@ -312,6 +312,25 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
     assert client_filter.matches.call_count == 2
 
 
+def test_query_drive_files_with_client_filter_passes_name_to_filter(
+    mock_drive_client, mocker
+):
+    """Test that file name is passed as 'name' key alongside properties."""
+    mock_file = Mock(properties={"artist": "Beatles"})
+    mock_file.name = "Hey Jude"
+    mocker.patch.object(
+        mock_drive_client, "query_drive_files", return_value=[mock_file]
+    )
+    client_filter = Mock()
+    client_filter.matches.return_value = True
+
+    mock_drive_client.query_drive_files_with_client_filter(["folder1"], client_filter)
+
+    client_filter.matches.assert_called_once_with(
+        {"artist": "Beatles", "name": "Hey Jude"}
+    )
+
+
 # ---------------------------------------------------------------------------
 # list_folder_contents tests
 # ---------------------------------------------------------------------------
