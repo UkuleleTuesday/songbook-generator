@@ -9,7 +9,11 @@ from pathlib import Path
 
 def get_edition_song_names(edition_id: str) -> list[str]:
     config_path = (
-        Path(__file__).parent.parent / "generator" / "config" / "songbooks" / f"{edition_id}.yaml"
+        Path(__file__).parent.parent
+        / "generator"
+        / "config"
+        / "songbooks"
+        / f"{edition_id}.yaml"
     )
     with open(config_path) as f:
         config = yaml.safe_load(f)
@@ -24,7 +28,17 @@ def get_edition_song_names(edition_id: str) -> list[str]:
 
 def get_matched_names(edition_id: str) -> set[str]:
     result = subprocess.run(
-        ["uv", "run", "songbook-tools", "--log-level", "error", "songs", "list", "--edition", edition_id],
+        [
+            "uv",
+            "run",
+            "songbook-tools",
+            "--log-level",
+            "error",
+            "songs",
+            "list",
+            "--edition",
+            edition_id,
+        ],
         capture_output=True,
         text=True,
     )
