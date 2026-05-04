@@ -133,3 +133,9 @@ def test_not_contains_operator_with_multiple_filters():
     # Should not match if contains "regular"
     properties_with_regular = {"gender": "female", "specialbooks": "regular,womens"}
     assert not result.matches(properties_with_regular)
+
+
+def test_filter_by_name_equals():
+    f = PropertyFilter(key="name", operator=FilterOperator.EQUALS, value="Hey Jude")
+    assert f.matches({"name": "Hey Jude"})
+    assert not f.matches({"name": "Yellow Submarine"})

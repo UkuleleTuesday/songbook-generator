@@ -195,7 +195,9 @@ class TocGenerator:
         ]
         title_pos = fitz.Point(
             self.config.margin_left,
-            self.config.margin_top + self.config.title_height - 20,
+            self.config.margin_top
+            + self.config.title_height
+            - self.config.title_margin_bottom,
         )
         tw.append(
             title_pos,

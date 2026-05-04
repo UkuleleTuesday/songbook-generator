@@ -58,6 +58,7 @@ class Toc(BaseModel):
     margin_left: int = 25
     margin_right: int = 25
     title_height: int = 50
+    title_margin_bottom: int = 20
     line_spacing: int = 12
     text_font: str = "RobotoCondensed-Regular.ttf"
     page_number_font: str = "RobotoCondensed-SemiBold.ttf"
@@ -94,6 +95,7 @@ class Edition(BaseModel):
     postface_file_ids: Optional[List[str]] = None
     filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
     table_of_contents: Optional[Toc] = None
+    include_difficulty_wheels: bool = True
     use_folder_components: bool = False
     source_file: Optional[str] = None
     inherit_metadata_from_edition: Optional[str] = None
