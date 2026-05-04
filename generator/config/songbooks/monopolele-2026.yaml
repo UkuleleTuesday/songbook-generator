@@ -13,6 +13,7 @@ table_of_contents:
   margin_right: 120
   text_fontsize: 15
   title_fontsize: 19
+  title_margin_bottom: 35
   line_spacing: 20
 filters:
   - key: "name"
