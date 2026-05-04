@@ -95,6 +95,7 @@ class Edition(BaseModel):
     postface_file_ids: Optional[List[str]] = None
     filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
     table_of_contents: Optional[Toc] = None
+    include_difficulty_wheels: bool = True
     use_folder_components: bool = False
     source_file: Optional[str] = None
     inherit_metadata_from_edition: Optional[str] = None

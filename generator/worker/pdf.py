@@ -736,6 +736,7 @@ def generate_songbook_from_edition(
             title=edition.title,
             subject=edition.description,
             edition_toc_config=edition.table_of_contents,
+            edition_include_difficulty_wheels=edition.include_difficulty_wheels,
             files=files,
         )
 
@@ -754,6 +755,7 @@ def generate_songbook(
     title: Optional[str] = None,
     subject: Optional[str] = None,
     edition_toc_config: Optional[config.Toc] = None,
+    edition_include_difficulty_wheels: bool = True,
     files: Optional[List[File]] = None,
 ):
     with tracer.start_as_current_span("generate_songbook") as span:
@@ -857,9 +859,10 @@ def generate_songbook(
         )
         span.set_attribute("add_page_numbers", add_page_numbers)
 
-        # Load environment variable for difficulty wheels
+        # Load environment variable for difficulty wheels; edition config can also disable them
         add_difficulty_wheels = (
             os.getenv("GENERATOR_ADD_DIFFICULTY_WHEELS", "true").lower() == "true"
+            and edition_include_difficulty_wheels
         )
         span.set_attribute("add_difficulty_wheels", add_difficulty_wheels)
 
