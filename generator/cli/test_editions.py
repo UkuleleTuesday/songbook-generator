@@ -23,11 +23,13 @@ _EDITION_DESCRIPTION = "Test edition"
 
 def test_editions_list_shows_config_and_drive_editions(runner, mocker):
     """editions list shows both config and drive-detected editions."""
-    config_edition = Edition(
-        id="current",
-        title="Current Songbook",
-        description=_EDITION_DESCRIPTION,
-        filters=_EDITION_FILTERS,
+    config_edition = Edition.model_validate(
+        {
+            "id": "current",
+            "title": "Current Songbook",
+            "description": _EDITION_DESCRIPTION,
+            "filters": _EDITION_FILTERS,
+        }
     )
     mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
@@ -45,11 +47,13 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
         "generator.cli.editions.init_services",
         return_value=(mocker.Mock(), mocker.Mock()),
     )
-    drive_edition = Edition(
-        id="drive-ed",
-        title="Drive Songbook",
-        description=_EDITION_DESCRIPTION,
-        filters=_EDITION_FILTERS,
+    drive_edition = Edition.model_validate(
+        {
+            "id": "drive-ed",
+            "title": "Drive Songbook",
+            "description": _EDITION_DESCRIPTION,
+            "filters": _EDITION_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.scan_drive_editions",
@@ -67,11 +71,13 @@ def test_editions_list_shows_config_and_drive_editions(runner, mocker):
 
 def test_editions_list_no_drive_editions(runner, mocker):
     """editions list reports when no drive editions are found."""
-    config_edition = Edition(
-        id="current",
-        title="Current Songbook",
-        description=_EDITION_DESCRIPTION,
-        filters=_EDITION_FILTERS,
+    config_edition = Edition.model_validate(
+        {
+            "id": "current",
+            "title": "Current Songbook",
+            "description": _EDITION_DESCRIPTION,
+            "filters": _EDITION_FILTERS,
+        }
     )
     mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
@@ -100,11 +106,13 @@ def test_editions_list_no_drive_editions(runner, mocker):
 
 def test_editions_list_drive_scan_http_error(runner, mocker):
     """editions list degrades gracefully when Drive scan raises HttpError."""
-    config_edition = Edition(
-        id="current",
-        title="Current Songbook",
-        description=_EDITION_DESCRIPTION,
-        filters=_EDITION_FILTERS,
+    config_edition = Edition.model_validate(
+        {
+            "id": "current",
+            "title": "Current Songbook",
+            "description": _EDITION_DESCRIPTION,
+            "filters": _EDITION_FILTERS,
+        }
     )
     mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
@@ -160,11 +168,13 @@ def test_editions_list_shows_drive_edition_errors(runner, mocker):
     """editions list shows error entries for misconfigured drive editions."""
     from ..common.editions import DriveEditionError
 
-    config_edition = Edition(
-        id="current",
-        title="Current Songbook",
-        description=_EDITION_DESCRIPTION,
-        filters=_EDITION_FILTERS,
+    config_edition = Edition.model_validate(
+        {
+            "id": "current",
+            "title": "Current Songbook",
+            "description": _EDITION_DESCRIPTION,
+            "filters": _EDITION_FILTERS,
+        }
     )
     mocker.patch("generator.cli.editions.get_settings").return_value = mocker.Mock(
         editions=[config_edition],
@@ -222,11 +232,13 @@ def _make_convert_settings(mocker, edition, folder_ids=None):
 
 def test_convert_edition_success(runner, mocker):
     """editions convert creates a Drive folder and uploads .songbook.yaml."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -275,11 +287,13 @@ def test_convert_edition_success(runner, mocker):
 
 def test_convert_edition_custom_folder_name(runner, mocker):
     """editions convert uses --folder-name when provided."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -332,11 +346,13 @@ def test_convert_edition_unknown_edition(runner, mocker):
 
 def test_convert_edition_no_target_folder_no_config(runner, mocker):
     """editions convert aborts when no --target-folder and no config folder."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -350,11 +366,13 @@ def test_convert_edition_no_target_folder_no_config(runner, mocker):
 
 def test_convert_edition_no_target_folder_multiple_config(runner, mocker):
     """editions convert aborts when multiple config folders and no --target-folder."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -370,11 +388,13 @@ def test_convert_edition_no_target_folder_multiple_config(runner, mocker):
 
 def test_convert_edition_uses_single_config_folder(runner, mocker):
     """editions convert auto-selects target when exactly one folder is configured."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -402,14 +422,16 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
     """editions convert creates Cover/Preface/Postface/Songs subfolders with shortcuts."""
     from ..worker.models import File as DriveFile
 
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
-        cover_file_id="cover_id",
-        preface_file_ids=["preface_id"],
-        postface_file_ids=["post1_id", "post2_id"],
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+            "cover_file_id": "cover_id",
+            "preface_file_ids": ["preface_id"],
+            "postface_file_ids": ["post1_id", "post2_id"],
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -476,13 +498,15 @@ def test_convert_edition_creates_shortcuts(runner, mocker):
 
 def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     """editions convert sets use_folder_components=true when shortcuts are created."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
-        cover_file_id="cover_id",
-        preface_file_ids=["preface_id"],
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+            "cover_file_id": "cover_id",
+            "preface_file_ids": ["preface_id"],
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -515,20 +539,24 @@ def test_convert_edition_yaml_has_use_folder_components(runner, mocker):
     parsed = pyyaml.safe_load(uploaded_content["content"].decode("utf-8"))
     # use_folder_components must be set when --create-shortcuts is on
     assert parsed.get("use_folder_components") is True
-    # Explicit file IDs must NOT be in the YAML (subfolders will provide them)
-    assert "cover_file_id" not in parsed
-    assert "preface_file_ids" not in parsed
+    # Explicit file-ID section keys must NOT be in the YAML
+    # (subfolders will provide them)
+    sections = parsed.get("sections", {})
+    assert "cover" not in sections
+    assert "preface" not in sections
 
 
 def test_convert_edition_creates_songs_subfolder(runner, mocker):
     """editions convert creates a Songs subfolder with shortcuts for each song file."""
     from ..worker.models import File as DriveFile
 
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -586,11 +614,13 @@ def test_convert_edition_creates_songs_subfolder(runner, mocker):
 
 def test_convert_edition_collects_songs_with_filter(runner, mocker):
     """editions convert calls collect_and_sort_files with the edition's filters."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -625,11 +655,13 @@ def test_convert_edition_collects_songs_with_filter(runner, mocker):
 
 def test_convert_edition_delete_config(runner, mocker, tmp_path):
     """editions convert removes the original YAML file when --delete-config is set."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -670,11 +702,13 @@ def test_convert_edition_delete_config(runner, mocker, tmp_path):
 
 def test_convert_edition_notes_original_config(runner, mocker, tmp_path):
     """editions convert prints note about original config file when not deleted."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -714,19 +748,21 @@ def test_convert_edition_notes_original_config(runner, mocker, tmp_path):
 
 def test_convert_edition_warns_complex_filters(runner, mocker):
     """editions convert warns when the edition uses FilterGroup."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=[
-            {
-                "operator": "OR",
-                "filters": [
-                    {"key": "status", "operator": "equals", "value": "A"},
-                    {"key": "status", "operator": "equals", "value": "B"},
-                ],
-            }
-        ],
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": [
+                {
+                    "operator": "OR",
+                    "filters": [
+                        {"key": "status", "operator": "equals", "value": "A"},
+                        {"key": "status", "operator": "equals", "value": "B"},
+                    ],
+                }
+            ],
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -759,11 +795,13 @@ def test_convert_edition_warns_complex_filters(runner, mocker):
 
 def test_convert_edition_drive_init_failure(runner, mocker):
     """editions convert aborts gracefully on Drive init failure."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -792,12 +830,14 @@ def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
     """The .songbook.yaml uploaded can be parsed back as a valid Edition."""
     from ..common.config import Edition as CfgEdition
 
-    edition = Edition(
-        id="roundtrip-ed",
-        title="Roundtrip Edition",
-        description="Testing round-trip serialization",
-        filters=_CONVERT_FILTERS,
-        cover_file_id="cover123",
+    edition = Edition.model_validate(
+        {
+            "id": "roundtrip-ed",
+            "title": "Roundtrip Edition",
+            "description": "Testing round-trip serialization",
+            "filters": _CONVERT_FILTERS,
+            "cover_file_id": "cover123",
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -841,11 +881,13 @@ def test_convert_edition_yaml_serialization_roundtrip(runner, mocker):
 
 def test_convert_edition_dry_run_no_drive_calls(runner, mocker):
     """--dry-run makes no Drive API calls and exits cleanly."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -875,11 +917,13 @@ def test_convert_edition_dry_run_no_drive_calls(runner, mocker):
 
 def test_convert_edition_dry_run_shows_folder_and_yaml(runner, mocker):
     """--dry-run prints the folder name, target folder, and .songbook.yaml content."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -908,14 +952,16 @@ def test_convert_edition_dry_run_shows_folder_and_yaml(runner, mocker):
 
 def test_convert_edition_dry_run_shows_shortcuts(runner, mocker):
     """--dry-run lists shortcut names and targets when --create-shortcuts is on."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
-        cover_file_id="cover_id",
-        preface_file_ids=["preface_id"],
-        postface_file_ids=["post1_id", "post2_id"],
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+            "cover_file_id": "cover_id",
+            "preface_file_ids": ["preface_id"],
+            "postface_file_ids": ["post1_id", "post2_id"],
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -951,11 +997,13 @@ def test_convert_edition_dry_run_shows_shortcuts(runner, mocker):
 
 def test_convert_edition_dry_run_shows_delete_config(runner, mocker, tmp_path):
     """--dry-run with --delete-config shows which file would be deleted."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"
@@ -988,11 +1036,13 @@ def test_convert_edition_dry_run_shows_delete_config(runner, mocker, tmp_path):
 
 def test_convert_edition_dry_run_shows_keep_config(runner, mocker, tmp_path):
     """--dry-run without --delete-config shows which file would be kept."""
-    edition = Edition(
-        id="test-ed",
-        title="Test Edition",
-        description=_CONVERT_DESCRIPTION,
-        filters=_CONVERT_FILTERS,
+    edition = Edition.model_validate(
+        {
+            "id": "test-ed",
+            "title": "Test Edition",
+            "description": _CONVERT_DESCRIPTION,
+            "filters": _CONVERT_FILTERS,
+        }
     )
     mocker.patch(
         "generator.cli.editions.get_settings"

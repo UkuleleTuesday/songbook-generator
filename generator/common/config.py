@@ -85,26 +85,98 @@ class PublishConfig(BaseModel):
     pinned: bool = False
 
 
+class CoverSection(BaseModel):
+    """Configuration for the cover section of a songbook edition."""
+
+    file_id: Optional[str] = None
+
+
+class PrefaceSection(BaseModel):
+    """Configuration for the preface section of a songbook edition."""
+
+    file_ids: Optional[List[str]] = None
+
+
+class PostfaceSection(BaseModel):
+    """Configuration for the postface section of a songbook edition."""
+
+    file_ids: Optional[List[str]] = None
+
+
+class SongsSection(BaseModel):
+    """Configuration for the songs section of a songbook edition."""
+
+    filters: List[Union[FilterGroup, PropertyFilter]] = Field(default_factory=list)
+
+
+class EditionSections(BaseModel):
+    """Section-based configuration blocks for a songbook edition."""
+
+    cover: Optional[CoverSection] = None
+    preface: Optional[PrefaceSection] = None
+    table_of_contents: Optional[Toc] = None
+    songs: SongsSection = Field(default_factory=SongsSection)
+    postface: Optional[PostfaceSection] = None
+
+
 class Edition(BaseModel):
     id: str
     title: str
     description: str
     publish: "PublishConfig" = Field(default_factory=PublishConfig)
-    cover_file_id: Optional[str] = None
-    preface_file_ids: Optional[List[str]] = None
-    postface_file_ids: Optional[List[str]] = None
-    filters: Optional[List[Union[FilterGroup, PropertyFilter]]] = None
-    table_of_contents: Optional[Toc] = None
+    sections: EditionSections = Field(default_factory=EditionSections)
     include_difficulty_wheels: bool = True
     use_folder_components: bool = False
     source_file: Optional[str] = None
     inherit_metadata_from_edition: Optional[str] = None
 
-    @model_validator(mode="after")
-    def filters_required_without_folder_components(self) -> "Edition":
-        if not self.use_folder_components and self.filters is None:
-            raise ValueError("filters is required when use_folder_components is False")
-        return self
+    @property
+    def cover_file_id(self) -> Optional[str]:
+        """Convenience accessor for sections.cover.file_id."""
+        return self.sections.cover.file_id if self.sections.cover else None
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_legacy_format(cls, data: object) -> object:
+        """Migrate flat legacy fields to the new sections-based format.
+
+        Accepts the old flat structure (``cover_file_id``, ``filters``,
+        ``preface_file_ids``, ``postface_file_ids``, ``table_of_contents``
+        at the top level) and converts it to the new ``sections``-based
+        structure so that existing ``.songbook.yaml`` files hosted in Google
+        Drive remain fully backward-compatible without any manual migration.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        sections: dict = data.pop("sections", {})
+        if isinstance(sections, dict):
+            sections = dict(sections)
+
+        cover_file_id = data.pop("cover_file_id", None)
+        if cover_file_id is not None and "cover" not in sections:
+            sections["cover"] = {"file_id": cover_file_id}
+
+        preface_ids = data.pop("preface_file_ids", None)
+        if preface_ids is not None and "preface" not in sections:
+            sections["preface"] = {"file_ids": preface_ids}
+
+        postface_ids = data.pop("postface_file_ids", None)
+        if postface_ids is not None and "postface" not in sections:
+            sections["postface"] = {"file_ids": postface_ids}
+
+        toc = data.pop("table_of_contents", None)
+        if toc is not None and "table_of_contents" not in sections:
+            sections["table_of_contents"] = toc
+
+        filters = data.pop("filters", None)
+        if filters is not None and "songs" not in sections:
+            sections["songs"] = {"filters": filters}
+
+        if sections:
+            data["sections"] = sections
+
+        return data
 
 
 class CachingGcs(BaseModel):
