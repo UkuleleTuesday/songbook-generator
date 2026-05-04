@@ -195,9 +195,10 @@ def worker_main(cloud_event):
                     gen_span.set_attribute(
                         "edition.description", selected_edition.description or ""
                     )
-                    if selected_edition.filters:
+                    if selected_edition.sections.songs.filters:
                         gen_span.set_attribute(
-                            "edition.filters_count", len(selected_edition.filters)
+                            "edition.filters_count",
+                            len(selected_edition.sections.songs.filters),
                         )
                     if songs_files is not None:
                         gen_span.set_attribute("edition.songs_pre_supplied", True)
