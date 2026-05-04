@@ -85,6 +85,8 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.deploy-api-fn.outputs.function_url }}
 
     steps:
     - name: Checkout repository
@@ -97,6 +99,7 @@ jobs:
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
     - name: Deploy API Cloud Function
+      id: deploy-api-fn
       uses: ./.github/actions/deploy-cloud-function
       with:
         function_name: ${{ env.API_FUNCTION_NAME }}
@@ -524,7 +527,7 @@ jobs:
 
   regenerate-changed-editions:
     name: Regenerate (${{ matrix.edition }})
-    needs: detect-changed-editions
+    needs: [deploy-api, detect-changed-editions]
     if: >-
       needs.detect-changed-editions.outputs.editions != '[]' &&
       needs.detect-changed-editions.outputs.editions != ''
@@ -535,6 +538,7 @@ jobs:
     uses: ./.github/workflows/generate-songbook.yaml
     with:
       edition: ${{ matrix.edition }}
+      api_url: ${{ needs.deploy-api.outputs.api_url }}
     secrets: inherit
 
   notify-pr-songbook-preview:
