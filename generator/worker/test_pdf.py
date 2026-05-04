@@ -990,13 +990,13 @@ def test_generate_from_drive_folder_no_cover_or_preface(mocker):
 
 def _make_edition_with_folder_components(**kwargs):
     """Helper: build a minimal Edition with use_folder_components=True."""
-    defaults: dict = dict(
-        id="test",
-        title="Test",
-        description="Test",
-        use_folder_components=True,
-        filters=[{"key": "status", "operator": "equals", "value": "APPROVED"}],
-    )
+    defaults: dict = {
+        "id": "test",
+        "title": "Test",
+        "description": "Test",
+        "use_folder_components": True,
+        "filters": [{"key": "status", "operator": "equals", "value": "APPROVED"}],
+    }
     defaults.update(kwargs)
     return Edition.model_validate(defaults)
 

@@ -232,10 +232,10 @@ def _create_component_shortcuts(
             )
 
     preface_ids: List[str] = (
-        edition.sections.preface.file_ids
+        edition.sections.preface.file_ids or []
         if edition.sections.preface is not None
         else []
-    ) or []
+    )
     if preface_ids:
         try:
             preface_subfolder_id = gdrive_client.create_folder(
@@ -266,10 +266,10 @@ def _create_component_shortcuts(
             )
 
     postface_ids: List[str] = (
-        edition.sections.postface.file_ids
+        edition.sections.postface.file_ids or []
         if edition.sections.postface is not None
         else []
-    ) or []
+    )
     if postface_ids:
         try:
             postface_subfolder_id = gdrive_client.create_folder(
@@ -575,10 +575,10 @@ def _dry_run_convert_edition(
                 f"cover shortcut → {edition.cover_file_id}"
             )
         preface_ids: List[str] = (
-            edition.sections.preface.file_ids
+            edition.sections.preface.file_ids or []
             if edition.sections.preface is not None
             else []
-        ) or []
+        )
         if preface_ids:
             names = (
                 ["preface"]
@@ -590,10 +590,10 @@ def _dry_run_convert_edition(
                     f"{FOLDER_COMPONENT_NAMES['preface']}/ → {name} shortcut → {fid}"
                 )
         postface_ids: List[str] = (
-            edition.sections.postface.file_ids
+            edition.sections.postface.file_ids or []
             if edition.sections.postface is not None
             else []
-        ) or []
+        )
         if postface_ids:
             names = (
                 ["postface"]

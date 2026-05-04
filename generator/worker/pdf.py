@@ -458,7 +458,7 @@ def resolve_folder_components(
     with tracer.start_as_current_span("resolve_folder_components") as span:
         span.set_attribute("folder_id", folder_id)
 
-        sections_updates: dict = {}
+        section_updates: dict = {}
 
         # --- Cover ---
         if edition.cover_file_id is None:
@@ -468,7 +468,7 @@ def resolve_folder_components(
             if cover_folder_id:
                 cover_files = gdrive_client.list_folder_contents(cover_folder_id)
                 if cover_files:
-                    sections_updates["cover"] = CoverSection(file_id=cover_files[0].id)
+                    section_updates["cover"] = CoverSection(file_id=cover_files[0].id)
                     click.echo(f"Found cover from subfolder: {cover_files[0].name}")
                     span.set_attribute("cover_resolved_from_folder", True)
                 else:
@@ -489,7 +489,7 @@ def resolve_folder_components(
             if preface_folder_id:
                 preface_files = gdrive_client.list_folder_contents(preface_folder_id)
                 if preface_files:
-                    sections_updates["preface"] = PrefaceSection(
+                    section_updates["preface"] = PrefaceSection(
                         file_ids=[f.id for f in preface_files]
                     )
                     click.echo(
@@ -515,7 +515,7 @@ def resolve_folder_components(
             if postface_folder_id:
                 postface_files = gdrive_client.list_folder_contents(postface_folder_id)
                 if postface_files:
-                    sections_updates["postface"] = PostfaceSection(
+                    section_updates["postface"] = PostfaceSection(
                         file_ids=[f.id for f in postface_files]
                     )
                     click.echo(
@@ -533,8 +533,8 @@ def resolve_folder_components(
         else:
             span.set_attribute("postface_from_yaml", True)
 
-        if sections_updates:
-            new_sections = edition.sections.model_copy(update=sections_updates)
+        if section_updates:
+            new_sections = edition.sections.model_copy(update=section_updates)
             return edition.model_copy(update={"sections": new_sections})
         return edition
 
