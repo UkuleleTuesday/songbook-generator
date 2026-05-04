@@ -12,7 +12,7 @@ table_of_contents:
   column_width: 360
   margin_left: 120
   margin_right: 120
-  text_fontsize: 12
+  text_fontsize: 14
   line_spacing: 15
 filters:
   - key: "name"
