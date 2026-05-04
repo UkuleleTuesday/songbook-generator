@@ -5,18 +5,22 @@ description: >
   for the 2026 women's edition.
 publish:
   visibility: unlisted
-cover_file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"
-preface_file_ids:
-  - "1TCzHDdBMwlKm1tA82r_jsqS35VWS8sBX3shdnrUZ3y4"
-table_of_contents:
-  columns_per_page: 1
-  column_width: 360
-  margin_left: 120
-  margin_right: 120
-  margin_top: 10
-  margin_bottom: 10
-  postfixes: []
-filters:
-  - key: "specialbooks"
-    operator: "contains"
-    value: "womens-2026"
+sections:
+  cover:
+    file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"
+  preface:
+    file_ids:
+      - "1TCzHDdBMwlKm1tA82r_jsqS35VWS8sBX3shdnrUZ3y4"
+  table_of_contents:
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    margin_top: 10
+    margin_bottom: 10
+    postfixes: []
+  songs:
+    filters:
+      - key: "specialbooks"
+        operator: "contains"
+        value: "womens-2026"

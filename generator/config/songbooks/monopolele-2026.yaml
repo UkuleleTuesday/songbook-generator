@@ -4,52 +4,55 @@ description: "The official songbook for the 2026 Monopolele event."
 publish:
   visibility: unlisted
 include_difficulty_wheels: false
-preface_file_ids: []
-table_of_contents:
-  include_difficulty: false
-  include_wip_marker: false
-  columns_per_page: 1
-  column_width: 360
-  margin_left: 120
-  margin_right: 120
-  text_fontsize: 15
-  title_fontsize: 19
-  title_margin_bottom: 35
-  line_spacing: 20
-filters:
-  - key: "name"
-    operator: "in"
-    value:
-      - "All The Small Things - Blink-182"
-      - "Bad Moon Rising - Creedence Clearwater Revival"
-      - "Brown Eyed Girl - Van Morrison"
-      - "Creep - Radiohead"
-      - "Dirty Old Town - The Pogues"
-      - "Dog Days Are Over - Florence + The Machine"
-      - "Don't Look Back In Anger - Oasis"
-      - "Ex's & Oh's - Elle King"
-      - "Friday I'm In Love - The Cure"
-      - "Hanno ucciso l'Uomo Ragno - 883"
-      - "Ho Hey - The Lumineers"
-      - "Hotel Yorba - The White Stripes"
-      - "I Will Survive - Gloria Gaynor"
-      - "Little Lion Man - Mumford and Sons"
-      - "Love Me Do - The Beatles"
-      - "One - U2"
-      - "Pedro - Raffaella Carrà"
-      - "Proud Mary - Tina Turner"
-      - "Psycho Killer - Talking Heads"
-      - "Red Wine Supernova - Chappell Roan"
-      - "Sarà Perché Ti Amo - Ricchi E Poveri"
-      - "Shake It Off - Taylor Swift"
-      - "Should I Stay or Should I Go - The Clash"
-      - "Spice Up Your Life - Spice Girls"
-      - "Tarantella napoletana - Andrea Colombari"
-      - "The Best (Edit) - Tina Turner"
-      - "vampire - Olivia Rodrigo"
-      - "Waterloo - ABBA"
-      - "What's Up? - 4 Non Blondes"
-      - "Whiskey in the Jar - Thin Lizzy"
-      - "With Or Without You - U2"
-      - "You're So Vain - Carly Simon"
-      - "Zombie - The Cranberries"
+sections:
+  preface:
+    file_ids: []
+  table_of_contents:
+    include_difficulty: false
+    include_wip_marker: false
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    text_fontsize: 15
+    title_fontsize: 19
+    title_margin_bottom: 35
+    line_spacing: 20
+  songs:
+    filters:
+      - key: "name"
+        operator: "in"
+        value:
+          - "All The Small Things - Blink-182"
+          - "Bad Moon Rising - Creedence Clearwater Revival"
+          - "Brown Eyed Girl - Van Morrison"
+          - "Creep - Radiohead"
+          - "Dirty Old Town - The Pogues"
+          - "Dog Days Are Over - Florence + The Machine"
+          - "Don't Look Back In Anger - Oasis"
+          - "Ex's & Oh's - Elle King"
+          - "Friday I'm In Love - The Cure"
+          - "Hanno ucciso l'Uomo Ragno - 883"
+          - "Ho Hey - The Lumineers"
+          - "Hotel Yorba - The White Stripes"
+          - "I Will Survive - Gloria Gaynor"
+          - "Little Lion Man - Mumford and Sons"
+          - "Love Me Do - The Beatles"
+          - "One - U2"
+          - "Pedro - Raffaella Carrà"
+          - "Proud Mary - Tina Turner"
+          - "Psycho Killer - Talking Heads"
+          - "Red Wine Supernova - Chappell Roan"
+          - "Sarà Perché Ti Amo - Ricchi E Poveri"
+          - "Shake It Off - Taylor Swift"
+          - "Should I Stay or Should I Go - The Clash"
+          - "Spice Up Your Life - Spice Girls"
+          - "Tarantella napoletana - Andrea Colombari"
+          - "The Best (Edit) - Tina Turner"
+          - "vampire - Olivia Rodrigo"
+          - "Waterloo - ABBA"
+          - "What's Up? - 4 Non Blondes"
+          - "Whiskey in the Jar - Thin Lizzy"
+          - "With Or Without You - U2"
+          - "You're So Vain - Carly Simon"
+          - "Zombie - The Cranberries"

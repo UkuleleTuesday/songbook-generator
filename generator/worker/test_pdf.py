@@ -39,15 +39,19 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     """Test generating a songbook from an edition with a single filter."""
     mock_drive = mocker.Mock()
     mock_cache = mocker.Mock()
-    edition = Edition(
-        id="test-edition",
-        title="Test Edition",
-        description="A test edition",
-        filters=[
-            PropertyFilter(
-                key="specialbooks", operator=FilterOperator.CONTAINS, value="test"
-            )
-        ],
+    edition = Edition.model_validate(
+        {
+            "id": "test-edition",
+            "title": "Test Edition",
+            "description": "A test edition",
+            "filters": [
+                {
+                    "key": "specialbooks",
+                    "operator": "contains",
+                    "value": "test",
+                }
+            ],
+        }
     )
 
     generate_songbook_from_edition(
@@ -62,7 +66,7 @@ def test_generate_songbook_from_edition_simple(mock_generate_songbook, mocker):
     mock_generate_songbook.assert_called_once()
     call_args = mock_generate_songbook.call_args[1]
     assert call_args["drive"] == mock_drive
-    assert call_args["client_filter"] == edition.filters[0]
+    assert call_args["client_filter"] == edition.sections.songs.filters[0]
     assert call_args["limit"] == 10
     assert call_args["title"] == "Test Edition"
     assert call_args["subject"] == "A test edition"
@@ -74,21 +78,19 @@ def test_generate_songbook_from_edition_composite_filter(
     """Test an edition with multiple filters gets combined into a FilterGroup."""
     mock_drive = mocker.Mock()
     mock_cache = mocker.Mock()
-    edition = Edition(
-        id="composite-edition",
-        title="Composite Edition",
-        description="A test edition",
-        filters=[
-            PropertyFilter(
-                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
-            ),
-            PropertyFilter(
-                key="year", operator=FilterOperator.GREATER_EQUAL, value=2000
-            ),
-        ],
-        cover_file_id="cover123",
-        preface_file_ids=["preface123"],
-        table_of_contents={"include_difficulty": False},
+    edition = Edition.model_validate(
+        {
+            "id": "composite-edition",
+            "title": "Composite Edition",
+            "description": "A test edition",
+            "filters": [
+                {"key": "status", "operator": "equals", "value": "APPROVED"},
+                {"key": "year", "operator": "gte", "value": 2000},
+            ],
+            "cover_file_id": "cover123",
+            "preface_file_ids": ["preface123"],
+            "table_of_contents": {"include_difficulty": False},
+        }
     )
 
     generate_songbook_from_edition(
@@ -494,16 +496,14 @@ def test_generate_manifest(tmp_path):
         File(name="Song 1.pdf", id="file1"),
         File(name="Song 2.pdf", id="file2"),
     ]
-    edition = Edition(
-        id="current",
-        title="Test Edition",
-        description="A test edition",
-        cover_file_id="cover123",
-        filters=[
-            PropertyFilter(
-                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
-            )
-        ],
+    edition = Edition.model_validate(
+        {
+            "id": "current",
+            "title": "Test Edition",
+            "description": "A test edition",
+            "cover_file_id": "cover123",
+            "filters": [{"key": "status", "operator": "equals", "value": "APPROVED"}],
+        }
     )
     title = "Test Songbook"
     subject = "Test Subject"
@@ -990,19 +990,15 @@ def test_generate_from_drive_folder_no_cover_or_preface(mocker):
 
 def _make_edition_with_folder_components(**kwargs):
     """Helper: build a minimal Edition with use_folder_components=True."""
-    defaults = dict(
+    defaults: dict = dict(
         id="test",
         title="Test",
         description="Test",
         use_folder_components=True,
-        filters=[
-            PropertyFilter(
-                key="status", operator=FilterOperator.EQUALS, value="APPROVED"
-            )
-        ],
+        filters=[{"key": "status", "operator": "equals", "value": "APPROVED"}],
     )
     defaults.update(kwargs)
-    return Edition(**defaults)
+    return Edition.model_validate(defaults)
 
 
 def test_resolve_folder_components_disabled_returns_edition_unchanged(mocker):
@@ -1013,7 +1009,6 @@ def test_resolve_folder_components_disabled_returns_edition_unchanged(mocker):
         title="Test",
         description="Test",
         use_folder_components=False,
-        filters=[],
     )
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
     assert result is edition
@@ -1034,8 +1029,8 @@ def test_resolve_folder_components_cover_from_subfolder(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_file_id"
-    assert result.preface_file_ids is None
-    assert result.postface_file_ids is None
+    assert result.sections.preface is None
+    assert result.sections.postface is None
     # Original edition not mutated
     assert edition.cover_file_id is None
 
@@ -1054,9 +1049,9 @@ def test_resolve_folder_components_preface_from_subfolder(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.preface_file_ids == ["preface_1", "preface_2"]
+    assert result.sections.preface.file_ids == ["preface_1", "preface_2"]
     assert result.cover_file_id is None
-    assert result.postface_file_ids is None
+    assert result.sections.postface is None
 
 
 def test_resolve_folder_components_postface_from_subfolder(mocker):
@@ -1072,9 +1067,9 @@ def test_resolve_folder_components_postface_from_subfolder(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.postface_file_ids == ["postface_1"]
+    assert result.sections.postface.file_ids == ["postface_1"]
     assert result.cover_file_id is None
-    assert result.preface_file_ids is None
+    assert result.sections.preface is None
 
 
 def test_resolve_folder_components_yaml_cover_takes_precedence(mocker):
@@ -1107,7 +1102,7 @@ def test_resolve_folder_components_yaml_preface_takes_precedence(mocker):
 
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
-    assert result.preface_file_ids == ["yaml_preface_id"]
+    assert result.sections.preface.file_ids == ["yaml_preface_id"]
     calls = [
         c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
     ]
@@ -1135,8 +1130,8 @@ def test_resolve_folder_components_no_subfolders(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id is None
-    assert result.preface_file_ids is None
-    assert result.postface_file_ids is None
+    assert result.sections.preface is None
+    assert result.sections.postface is None
 
 
 def test_resolve_folder_components_all_resolved(mocker):
@@ -1165,8 +1160,8 @@ def test_resolve_folder_components_all_resolved(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_id"
-    assert result.preface_file_ids == ["pre_1", "pre_2"]
-    assert result.postface_file_ids == ["post_1"]
+    assert result.sections.preface.file_ids == ["pre_1", "pre_2"]
+    assert result.sections.postface.file_ids == ["post_1"]
 
 
 def test_load_edition_from_drive_folder_resolves_components(mocker):
@@ -1353,8 +1348,8 @@ def test_resolve_folder_components_all_three_resolved(mocker):
     result = resolve_folder_components(mock_gdrive, "folder_id", edition)
 
     assert result.cover_file_id == "cover_id"
-    assert result.preface_file_ids == ["pre_1"]
-    assert result.postface_file_ids == ["post_1"]
+    assert result.sections.preface.file_ids == ["pre_1"]
+    assert result.sections.postface.file_ids == ["post_1"]
     # Songs are no longer part of resolve_folder_components
     calls = [
         c.args[1].lower() for c in mock_gdrive.find_subfolder_by_name.call_args_list
@@ -1381,7 +1376,6 @@ def test_generate_songbook_from_edition_with_pre_supplied_files(mocker):
         id="test",
         title="Test",
         description="Test",
-        filters=[],
     )
 
     generate_songbook_from_edition(
@@ -1409,7 +1403,6 @@ def test_generate_songbook_from_edition_without_files_passes_none(mocker):
         id="test",
         title="Test",
         description="Test",
-        filters=[],
     )
 
     generate_songbook_from_edition(

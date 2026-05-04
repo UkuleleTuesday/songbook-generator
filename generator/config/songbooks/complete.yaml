@@ -2,31 +2,34 @@ id: "complete"
 title: "Ukulele Tuesday - Complete Songbook"
 description: >
   The complete collection of all available Ukulele Tuesday songs sheets.
-cover_file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
-filters:
-  - operator: "OR"
+sections:
+  cover:
+    file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
+  table_of_contents:
+    # Include a pumpkin for songs tagged as `halloween`
+    postfixes:
+      - postfix: " 🎃"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "halloween"
+      - postfix: " 🎄"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "xmas"
+      - postfix: " ☘"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "ireland"
+  songs:
     filters:
-      - key: "status"
-        operator: "equals"
-        value: "READY_TO_PLAY"
-      - key: "status"
-        operator: "equals"
-        value: "APPROVED"
-table_of_contents:
-  # Include a pumpkin for songs tagged as `halloween`
-  postfixes:
-    - postfix: " 🎃"
-      filters:
-        - key: "specialbooks"
-          operator: "contains"
-          value: "halloween"
-    - postfix: " 🎄"
-      filters:
-        - key: "specialbooks"
-          operator: "contains"
-          value: "xmas"
-    - postfix: " ☘"
-      filters:
-        - key: "specialbooks"
-          operator: "contains"
-          value: "ireland"
+      - operator: "OR"
+        filters:
+          - key: "status"
+            operator: "equals"
+            value: "READY_TO_PLAY"
+          - key: "status"
+            operator: "equals"
+            value: "APPROVED"

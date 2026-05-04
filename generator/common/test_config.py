@@ -150,30 +150,25 @@ def test_edition_filters_optional_when_use_folder_components():
         description="Test",
         use_folder_components=True,
     )
-    assert edition.filters is None
+    assert edition.sections.songs.filters == []
 
 
-def test_edition_filters_required_without_folder_components():
-    """filters is required when use_folder_components is False (the default)."""
-    import pydantic
-
-    with pytest.raises(pydantic.ValidationError, match="filters is required"):
-        config.Edition(
-            id="test",
-            title="Test",
-            description="Test",
-        )
-
-
-def test_edition_empty_filters_allowed_without_folder_components():
-    """An explicit empty filters list is valid even without use_folder_components."""
+def test_edition_no_filters_allowed():
+    """An edition without filters is valid; sections.songs.filters defaults to []."""
     edition = config.Edition(
         id="test",
         title="Test",
         description="Test",
-        filters=[],
     )
-    assert edition.filters == []
+    assert edition.sections.songs.filters == []
+
+
+def test_edition_empty_filters_allowed_without_folder_components():
+    """An explicit empty filters list is valid even without use_folder_components."""
+    edition = config.Edition.model_validate(
+        {"id": "test", "title": "Test", "description": "Test", "filters": []}
+    )
+    assert edition.sections.songs.filters == []
 
 
 @pytest.mark.parametrize(
@@ -211,14 +206,16 @@ def test_edition_filters_and_folder_components_together():
     from generator.common.filters import PropertyFilter, FilterOperator
 
     f = PropertyFilter(key="status", operator=FilterOperator.EQUALS, value="active")
-    edition = config.Edition(
-        id="test",
-        title="Test",
-        description="Test",
-        use_folder_components=True,
-        filters=[f],
+    edition = config.Edition.model_validate(
+        {
+            "id": "test",
+            "title": "Test",
+            "description": "Test",
+            "use_folder_components": True,
+            "filters": [f.model_dump()],
+        }
     )
-    assert edition.filters == [f]
+    assert edition.sections.songs.filters == [f]
 
 
 def test_publish_config_defaults():
@@ -254,7 +251,6 @@ def test_edition_publish_defaults():
         id="test",
         title="Test",
         description="Test",
-        filters=[],
     )
     assert edition.publish.visibility == "public"
     assert edition.publish.pinned is False
@@ -266,7 +262,6 @@ def test_edition_publish_unlisted():
         id="test",
         title="Test",
         description="Test",
-        filters=[],
         publish=config.PublishConfig(visibility="unlisted"),
     )
     assert edition.publish.visibility == "unlisted"
