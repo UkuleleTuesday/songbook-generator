@@ -5,6 +5,7 @@ from pathlib import Path
 from ..common.config import Edition
 from .pdf import (
     _resolve_songs_from_folder,
+    _find_title_on_page,
     add_page_number,
     categorize_folder_files,
     collect_and_sort_files,
@@ -1508,5 +1509,110 @@ def test_copy_pdfs_raises_when_no_merged_cache(mocker):
 
     with pytest.raises(PdfCacheNotFound):
         copy_pdfs(dest, files, mock_cache, page_offset=0, progress_step=mock_step)
+
+    dest.close()
+
+
+# ---------------------------------------------------------------------------
+# _find_title_on_page – apostrophe normalisation
+# ---------------------------------------------------------------------------
+
+
+def _make_page_with_text(text: str) -> fitz.Page:
+    """Return a single-page document whose first page contains *text*.
+
+    Plain ASCII text (no Unicode beyond Latin-1) can be inserted with the
+    default font.  Use ``_make_page_with_unicode_text`` for characters such
+    as the RIGHT SINGLE QUOTATION MARK (U+2019) that the default PDF font
+    cannot encode.
+    """
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 100), text, fontsize=14)
+    return page
+
+
+def _make_page_with_unicode_text(text: str) -> fitz.Page:
+    """Return a page rendered via insert_htmlbox so that U+2019 is preserved.
+
+    The standard PDF Type-1 fonts (used by insert_text) map U+2019 to the
+    middle-dot glyph.  insert_htmlbox embeds a proper Unicode font and keeps
+    the original code-point, which matches what PDF viewers extract from a
+    Google-Docs-exported PDF.
+    """
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_htmlbox(
+        fitz.Rect(0, 0, page.rect.width, 200),
+        f"<p style='font-size:14pt'>{text}</p>",
+    )
+    return page
+
+
+def test_find_title_on_page_exact_match():
+    """Exact title match returns a non-empty list."""
+    page = _make_page_with_text("Imagine - John Lennon")
+    assert _find_title_on_page(page, "Imagine - John Lennon")
+
+
+def test_find_title_on_page_no_match():
+    """Completely unrelated title returns an empty list."""
+    page = _make_page_with_text("Imagine - John Lennon")
+    assert not _find_title_on_page(page, "Bohemian Rhapsody - Queen")
+
+
+def test_find_title_on_page_smart_apostrophe_in_pdf():
+    """Title found when PDF uses smart apostrophe (U+2019) but file name uses plain apostrophe."""
+    # PDF rendered with RIGHT SINGLE QUOTATION MARK (U+2019)
+    page = _make_page_with_unicode_text("Hanno ucciso l\u2019Uomo Ragno")
+    # file.name uses plain ASCII apostrophe (U+0027)
+    assert _find_title_on_page(page, "Hanno ucciso l'Uomo Ragno")
+
+
+def test_find_title_on_page_plain_apostrophe_in_pdf():
+    """Title found when PDF uses plain apostrophe (U+0027) but file name uses smart apostrophe."""
+    page = _make_page_with_text("Hanno ucciso l'Uomo Ragno")
+    assert _find_title_on_page(page, "Hanno ucciso l\u2019Uomo Ragno")
+
+
+def test_copy_pdfs_inserts_toc_link_despite_smart_apostrophe(mocker):
+    """copy_pdfs inserts a ToC back-link even when the PDF page title uses a
+    smart apostrophe (U+2019) that differs from the plain apostrophe in file.name."""
+    # Build a cached merged PDF whose page contains the smart-apostrophe title
+    # rendered with insert_htmlbox so the U+2019 code-point is preserved.
+    cached_doc = fitz.open()
+    page = cached_doc.new_page()
+    page.insert_htmlbox(
+        fitz.Rect(0, 0, page.rect.width, 200),
+        "<p style='font-size:14pt'>Hanno ucciso l\u2019Uomo Ragno</p>",
+    )
+    file_id = "song_id_hanno"
+    cached_doc.set_toc([[1, file_id, 1]])
+    cached_pdf_bytes = cached_doc.tobytes()
+    cached_doc.close()
+
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = cached_pdf_bytes
+    mock_step = mocker.Mock()
+
+    dest = fitz.open()
+    # file.name uses plain ASCII apostrophe
+    files = [File(id=file_id, name="Hanno ucciso l'Uomo Ragno")]
+
+    copy_pdfs(
+        dest,
+        files,
+        mock_cache,
+        page_offset=0,
+        progress_step=mock_step,
+        toc_page_index=0,
+    )
+
+    # Verify that a link was inserted on the first (and only) page
+    assert len(dest) == 1
+    links = dest[0].get_links()
+    assert any(lnk.get("kind") == fitz.LINK_GOTO for lnk in links), (
+        "Expected a LINK_GOTO back-link but none was found"
+    )
 
     dest.close()

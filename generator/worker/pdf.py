@@ -82,6 +82,53 @@ def _sort_titles(files: List[File]) -> List[File]:
     return natsorted(files, key=_create_song_sort_key)
 
 
+# Unicode apostrophe-like characters that may appear in PDF text or file names
+# when the source document was created in a word processor (e.g. Google Docs)
+# that auto-replaces plain apostrophes with typographic variants.
+_APOSTROPHE_VARIANTS = [
+    "\u2019",  # RIGHT SINGLE QUOTATION MARK
+    "\u2018",  # LEFT SINGLE QUOTATION MARK
+    "\u02bc",  # MODIFIER LETTER APOSTROPHE
+    "'",  # APOSTROPHE (plain ASCII)
+]
+
+
+def _find_title_on_page(page: fitz.Page, title: str) -> list:
+    """Search for a title on a page, trying different apostrophe variants.
+
+    Some PDFs (e.g. exported from Google Docs) use typographic apostrophes
+    such as U+2019 RIGHT SINGLE QUOTATION MARK while Google Drive file names
+    may store a plain ASCII apostrophe (U+0027), or vice versa.  Trying all
+    common apostrophe variants ensures the back-link to the ToC is inserted
+    regardless of which character was used when the PDF was authored.
+
+    Args:
+        page: PyMuPDF page to search.
+        title: Song title to search for.
+
+    Returns:
+        List of matching rectangles, or an empty list when not found.
+    """
+    instances = page.search_for(title)
+    if instances:
+        return instances
+
+    # Determine which apostrophe characters appear in the title so we can
+    # build substitute variants to try.
+    for original_apos in _APOSTROPHE_VARIANTS:
+        if original_apos not in title:
+            continue
+        for replacement_apos in _APOSTROPHE_VARIANTS:
+            if replacement_apos == original_apos:
+                continue
+            variant = title.replace(original_apos, replacement_apos)
+            instances = page.search_for(variant)
+            if instances:
+                return instances
+
+    return []
+
+
 def collect_and_sort_files(
     gdrive_client: GoogleDriveClient,
     source_folders: List[str],
@@ -306,8 +353,10 @@ def copy_pdfs(
                             # Use the full filename as the song title for searching
                             song_title = file.name
 
-                            # Search for the title on the page
-                            text_instances = dest_page.search_for(song_title)
+                            # Search for the title on the page, trying apostrophe
+                            # variants to handle mismatches between file name and
+                            # PDF text (e.g. U+0027 vs U+2019).
+                            text_instances = _find_title_on_page(dest_page, song_title)
 
                             if text_instances:
                                 # Add a link over the first occurrence of the title
@@ -390,7 +439,10 @@ def _download_songs_individually(
                                 add_page_number(dest_page, current_page + 1)
                             if add_difficulty_wheels:
                                 add_difficulty_wheel(dest_page, file)
-                            text_instances = dest_page.search_for(file.name)
+                            # Search for the title, trying apostrophe variants
+                            # to handle mismatches between file name and PDF text
+                            # (e.g. U+0027 vs U+2019).
+                            text_instances = _find_title_on_page(dest_page, file.name)
                             if text_instances:
                                 dest_page.insert_link(
                                     {
