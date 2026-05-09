@@ -570,7 +570,7 @@ jobs:
               edition=$(basename "$dir" | sed 's/^songbook-artifact-//')
               url=$(cat "$dir/pdf_url.txt" 2>/dev/null | tr -d '\n\r' || echo "")
               if [ -n "$url" ]; then
-                url_map=$(echo "$url_map" | jq --arg e "$edition" --arg u "$url" '. + {($e): $u}')
+                url_map=$(echo "$url_map" | jq -c --arg e "$edition" --arg u "$url" '. + {($e): $u}')
               fi
             fi
           done
