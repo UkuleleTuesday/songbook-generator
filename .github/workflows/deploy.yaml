@@ -562,7 +562,29 @@ jobs:
             const editions = ${{ needs.detect-changed-editions.outputs.editions }};
             const generateResult = '${{ needs.regenerate-changed-editions.result }}';
 
-            const editionList = editions.map(e => `- **${e}**`).join('\n');
+            // Build a map from edition name to its artifact download URL
+            const artifactMap = {};
+            if (generateResult === 'success') {
+              const { data: { artifacts } } = await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: context.runId,
+              });
+              // Artifact names follow the format "songbook-artifact-{edition}"
+              // as uploaded by the generate-songbook workflow
+              for (const artifact of artifacts) {
+                const match = artifact.name.match(/^songbook-artifact-(.+)$/);
+                if (match) {
+                  const artifactUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${artifact.id}`;
+                  artifactMap[match[1]] = artifactUrl;
+                }
+              }
+            }
+
+            const editionList = editions.map(e => {
+              const url = artifactMap[e];
+              return url ? `- [**${e}**](${url})` : `- **${e}**`;
+            }).join('\n');
 
             let statusLine;
             if (generateResult === 'success') {
