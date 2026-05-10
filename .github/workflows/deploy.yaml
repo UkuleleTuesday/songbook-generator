@@ -552,7 +552,30 @@ jobs:
       needs.detect-changed-editions.outputs.editions != ''
     permissions:
       pull-requests: write
+      actions: read
     steps:
+      - name: Download songbook artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: songbook-artifact-*
+          path: ./artifacts
+        continue-on-error: true
+
+      - name: Build PDF URL map
+        id: pdf-urls
+        run: |
+          url_map='{}'
+          for dir in ./artifacts/songbook-artifact-*/; do
+            if [ -d "$dir" ]; then
+              edition=$(basename "$dir" | sed 's/^songbook-artifact-//')
+              url=$(cat "$dir/pdf_url.txt" 2>/dev/null | tr -d '\n\r' || echo "")
+              if [ -n "$url" ]; then
+                url_map=$(echo "$url_map" | jq -c --arg e "$edition" --arg u "$url" '. + {($e): $u}')
+              fi
+            fi
+          done
+          echo "url_map=$url_map" >> $GITHUB_OUTPUT
+
       - name: Post or update PR comment
         uses: actions/github-script@v7
         with:
@@ -562,7 +585,14 @@ jobs:
             const editions = ${{ needs.detect-changed-editions.outputs.editions }};
             const generateResult = '${{ needs.regenerate-changed-editions.result }}';
 
-            const editionList = editions.map(e => `- **${e}**`).join('\n');
+            // Map from edition name to its public GCS PDF URL, written into
+            // each artifact as pdf_url.txt by the generate-songbook workflow
+            const pdfUrls = ${{ steps.pdf-urls.outputs.url_map || '{}' }};
+
+            const editionList = editions.map(e => {
+              const url = pdfUrls[e];
+              return url ? `- [**${e}**](${url})` : `- **${e}**`;
+            }).join('\n');
 
             let statusLine;
             if (generateResult === 'success') {

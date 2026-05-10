@@ -97,8 +97,10 @@ jobs:
             echo "✅ Songbook generation completed successfully!"
             SOURCE_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/songbook.pdf"
             MANIFEST_GCS_PATH="gs://${GCS_CDN_BUCKET}/${JOB_ID}/manifest.json"
+            RESULT_URL=$(echo "$STATUS_RESPONSE" | jq -r '.result_url // ""')
             echo "source_gcs_path=${SOURCE_GCS_PATH}" >> $GITHUB_OUTPUT
             echo "manifest_gcs_path=${MANIFEST_GCS_PATH}" >> $GITHUB_OUTPUT
+            echo "result_url=${RESULT_URL}" >> $GITHUB_OUTPUT
             break
           elif [[ "$STATUS" == "failed" ]]; then
             echo "❌ Songbook generation failed"
@@ -179,6 +181,10 @@ jobs:
 
         echo "✅ PDF validation passed for ${{ steps.set-output-names.outputs.effective_edition }} edition"
 
+    - name: Write PDF URL to artifact
+      run: |
+        echo "${{ steps.trigger-and-poll.outputs.result_url }}" > pdf_url.txt
+
     - name: Upload Songbook Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -186,6 +192,7 @@ jobs:
         path: |
           ${{ env.OUTPUT_PDF }}
           ${{ env.OUTPUT_MANIFEST }}
+          pdf_url.txt
 
   publish-songbooks:
     name: Publish Songbook and Manifest
