@@ -2,7 +2,7 @@ id: "monopolele-2026"
 title: "Monopolele 2026"
 description: "The official songbook for the 2026 Monopolele event."
 publish:
-  visibility: unlisted
+  visibility: public
 include_difficulty_wheels: false
 sections:
   preface:
