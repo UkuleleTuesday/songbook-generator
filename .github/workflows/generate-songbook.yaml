@@ -57,7 +57,7 @@ jobs:
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
     - name: Trigger and poll for completion
       id: trigger-and-poll
@@ -222,7 +222,7 @@ jobs:
       run: gcloud config set project ${{ env.GCP_PROJECT_ID }}
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v5
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
     - name: Download songbook artifact
       uses: actions/download-artifact@v4
