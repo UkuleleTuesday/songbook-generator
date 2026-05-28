@@ -376,6 +376,30 @@ class GoogleDriveClient:
         with self.download_file_stream(file, use_cache=use_cache) as stream:
             return stream.getvalue()
 
+    def export_as_plain_text(self, file: File) -> str:
+        """
+        Export a Google Doc as plain text (UTF-8).
+
+        This always downloads fresh from Drive (no caching) so that the
+        returned text reflects the current document state.
+
+        Args:
+            file: A File whose mimeType should be a Google Docs document.
+
+        Returns:
+            The plain-text content of the document.
+
+        Raises:
+            HttpError: If the Drive API call fails.
+        """
+        request = self.drive.files().export_media(fileId=file.id, mimeType="text/plain")
+        buffer = io.BytesIO()
+        downloader = MediaIoBaseDownload(buffer, request)
+        done = False
+        while not done:
+            _, done = downloader.next_chunk()
+        return buffer.getvalue().decode("utf-8", errors="replace")
+
     def list_folder_contents(
         self,
         folder_id: str,
