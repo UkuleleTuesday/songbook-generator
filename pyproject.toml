@@ -40,6 +40,7 @@ dependencies = [
     "fontra>=0.5.2",
     "loguru>=0.7.0",
     "google-genai>=1.68.0",
+    "python-pptx>=1.0.2",
 ]
 
 [project.scripts]
@@ -65,6 +66,7 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "generator" = ["fonts/RobotoCondensed-*.ttf"]
+"generator.templates" = ["*.pptx"]
 
 [tool.ruff.lint]
 extend-select = ["BLE001"] # Catch all exceptions are the plague
