@@ -1,4 +1,3 @@
-import math
 import re
 from pathlib import Path
 
@@ -161,7 +160,15 @@ def generate_song_chordpro(
     detect_sections: bool = False,
 ) -> None:
     """Generate a ChordPro file from a Google Drive song document."""
-    text = gdrive_client.export_file_as_text(file_id, cache_prefix="song-chordpro")
+    raw = gdrive_client.download_file(
+        file_id=file_id,
+        file_name=file_name,
+        cache_prefix="song-chordpro",
+        mime_type="text/plain",
+        export=True,
+        use_cache=False,
+    )
+    text = raw.decode("utf-8")
 
     title, sections = parse_doc_text(text, include_annotations=include_annotations)
     metadata = parse_metadata(text)
