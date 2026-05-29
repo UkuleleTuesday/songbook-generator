@@ -1,5 +1,3 @@
-import pytest
-
 from .chordpro import (
     build_chordpro,
     cells_per_bar,
@@ -313,5 +311,5 @@ def test_build_chordpro_3_4_grid():
     )
     assert "{start_of_grid}" in chordpro
     lines = chordpro.split("\n")
-    grid_lines = [l for l in lines if "|" in l]
+    grid_lines = [line for line in lines if "|" in line]
     assert len(grid_lines) == 2
