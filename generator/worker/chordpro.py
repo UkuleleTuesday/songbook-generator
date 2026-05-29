@@ -163,27 +163,43 @@ def parse_doc_json(
 
         runs = [el for el in para.get("elements", []) if "textRun" in el]
         content_runs = [r for r in runs if r["textRun"].get("content", "").strip()]
-
-        # All bold → chord-only paragraph → grid
-        # Space between chord groups = bar boundary; no space = beats within same bar
-        if content_runs and all(_is_bold(r) for r in content_runs):
-            bars = _parse_chord_bars(plain, time_sig)
-            if bars:
-                grid_line = "| " + " | ".join(" ".join(bar) for bar in bars) + " |"
-                current_lines.append("{start_of_grid}")
-                current_lines.append(grid_line)
-                current_lines.append("{end_of_grid}")
-                continue
+        italic_runs = [r for r in content_runs if _is_italic(r)]
+        non_italic_runs = [r for r in content_runs if not _is_italic(r)]
 
         # All italic → standalone annotation paragraph
-        if content_runs and all(_is_italic(r) for r in content_runs):
+        if content_runs and not non_italic_runs:
             if include_annotations:
                 annotation_text = plain.strip("[]() \t")
                 current_lines.append(f"{{comment: {annotation_text}}}")
             continue
 
-        # Mixed paragraph: process run by run
+        # All non-italic content is bold → chord-only paragraph (possibly with italic annotation prefix)
+        # Consecutive bold runs are merged before regex matching to handle chords split across runs
+        if non_italic_runs and all(_is_bold(r) for r in non_italic_runs):
+            if include_annotations and italic_runs:
+                annotation_text = "".join(
+                    r["textRun"].get("content", "") for r in italic_runs
+                ).strip("[]() \t")
+                if annotation_text:
+                    current_lines.append(f"{{comment: {annotation_text}}}")
+
+            bold_text = "".join(
+                r["textRun"].get("content", "").rstrip("\n")
+                for r in runs
+                if _is_bold(r)
+            )
+            bars = _parse_chord_bars(bold_text.strip(), time_sig)
+            if bars:
+                grid_line = "| " + " | ".join(" ".join(bar) for bar in bars) + " |"
+                current_lines.append("{start_of_grid}")
+                current_lines.append(grid_line)
+                current_lines.append("{end_of_grid}")
+            continue
+
+        # Mixed paragraph: merge consecutive bold runs before chord conversion
+        # to handle chords split across run boundaries (e.g. "(" in one run, "Em)" in next)
         line_parts = []
+        bold_buffer = ""
         for run in runs:
             text_run = run["textRun"]
             run_content = text_run.get("content", "").rstrip("\n")
@@ -192,11 +208,16 @@ def parse_doc_json(
             style = text_run.get("textStyle", {})
 
             if style.get("bold"):
-                line_parts.append(convert_chords_to_chordpro(run_content))
-            elif style.get("italic"):
-                pass  # inline annotations don't map cleanly to ChordPro
+                bold_buffer += run_content
             else:
-                line_parts.append(run_content)
+                if bold_buffer:
+                    line_parts.append(convert_chords_to_chordpro(bold_buffer))
+                    bold_buffer = ""
+                if not style.get("italic"):
+                    line_parts.append(run_content)
+
+        if bold_buffer:
+            line_parts.append(convert_chords_to_chordpro(bold_buffer))
 
         line = "".join(line_parts).strip()
         if line:

@@ -310,6 +310,47 @@ def test_parse_doc_json_inline_italic_stripped():
     assert "lyrics" in sections[0]
 
 
+def test_parse_doc_json_chord_split_across_runs():
+    # '(' in one run, 'Em)' in next — both bold — should still convert
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(
+                    _text_run("(", bold=True),
+                    _text_run("Em) ", bold=True),
+                    _text_run("(", bold=True),
+                    _text_run("C)\n", bold=True),
+                ),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc, time_sig="4/4")
+    full = "\n".join(sections)
+    assert "| Em . . . | C . . . |" in full
+
+
+def test_parse_doc_json_italic_annotation_prefix_with_chord_only():
+    # Italic annotation + bold chords → comment + grid
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(
+                    _text_run("[ukes only] ", italic=True),
+                    _text_run("(Em) ", bold=True),
+                    _text_run("(C)\n", bold=True),
+                ),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc, include_annotations=True, time_sig="4/4")
+    full = "\n".join(sections)
+    assert "{comment: ukes only}" in full
+    assert "{start_of_grid}" in full
+    assert "| Em . . . | C . . . |" in full
+
+
 def test_parse_doc_json_section_split_on_empty_para():
     doc = {
         "body": {
