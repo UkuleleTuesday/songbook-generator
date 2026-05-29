@@ -11,6 +11,7 @@ from .cache import cache
 from .editions import editions
 from .generate import generate
 from .misc import print_settings, validate_pdf_cli
+from .pptx import generate_pptx
 from .songs import songs
 from .specialbooks import specialbooks
 from .tags import tags
@@ -30,6 +31,7 @@ def cli(ctx, log_level: str):
 
 
 cli.add_command(generate)
+cli.add_command(generate_pptx)
 cli.add_command(songs)
 cli.add_command(cache)
 cli.add_command(print_settings)
