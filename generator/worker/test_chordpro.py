@@ -7,54 +7,105 @@ from .chordpro import (
     detect_chord_only_line,
     format_as_grid,
     generate_song_chordpro,
+    parse_doc_json,
     parse_metadata,
+    parse_metadata_from_json,
     strip_annotations,
 )
 
-LOVE_ME_DO_TEXT = """\
-Love Me Do - The Beatles
 
-(Backing vocals)    Harmonies    148bpm    4/4    swing
+def _text_run(content, bold=False, italic=False):
+    style = {}
+    if bold:
+        style["bold"] = True
+    if italic:
+        style["italic"] = True
+    return {"textRun": {"content": content, "textStyle": style}}
 
-[harmonica]
 
-(G) (C) (G) (C)
-(G)Love, love me do (C)
-You (G)know I love you (C)
-I'll (G)always be true (C)
-"""
+def _para(*runs):
+    return {"paragraph": {"elements": list(runs)}}
+
+
+# Minimal Docs API JSON fixture for Love Me Do
+LOVE_ME_DO_DOC = {
+    "body": {
+        "content": [
+            _para(_text_run("Love Me Do - The Beatles\n")),
+            _para(
+                _text_run("(Backing vocals)    ", italic=True),
+                _text_run("Harmonies    148bpm    4/4    swing\n"),
+            ),
+            _para(_text_run("[harmonica]\n", italic=True)),
+            _para(_text_run("\n")),
+            _para(
+                _text_run("(G) ", bold=True),
+                _text_run("(C) ", bold=True),
+                _text_run("(G) ", bold=True),
+                _text_run("(C)\n", bold=True),
+            ),
+            _para(
+                _text_run("(G)", bold=True),
+                _text_run("Love, love me do "),
+                _text_run("(C)\n", bold=True),
+            ),
+            _para(
+                _text_run("You "),
+                _text_run("(G)", bold=True),
+                _text_run("know I love you "),
+                _text_run("(C)\n", bold=True),
+            ),
+        ]
+    }
+}
 
 
 # --- parse_metadata ---
 
 
 def test_parse_metadata_bpm():
-    metadata = parse_metadata(LOVE_ME_DO_TEXT)
+    metadata = parse_metadata("148bpm    4/4    swing")
     assert metadata["tempo"] == 148
 
 
 def test_parse_metadata_time_sig():
-    metadata = parse_metadata(LOVE_ME_DO_TEXT)
+    metadata = parse_metadata("148bpm    4/4    swing")
     assert metadata["time_sig"] == "4/4"
 
 
 def test_parse_metadata_missing_bpm():
-    text = "Song Title\n\n4/4"
-    metadata = parse_metadata(text)
+    metadata = parse_metadata("4/4")
     assert metadata["tempo"] is None
     assert metadata["time_sig"] == "4/4"
 
 
 def test_parse_metadata_missing_time_sig():
-    text = "Song Title\n\n120bpm"
-    metadata = parse_metadata(text)
+    metadata = parse_metadata("120bpm")
     assert metadata["tempo"] == 120
     assert metadata["time_sig"] is None
 
 
 def test_parse_metadata_both_missing():
-    text = "Song Title\n\nJust lyrics"
-    metadata = parse_metadata(text)
+    metadata = parse_metadata("Just lyrics")
+    assert metadata["tempo"] is None
+    assert metadata["time_sig"] is None
+
+
+# --- parse_metadata_from_json ---
+
+
+def test_parse_metadata_from_json_bpm():
+    metadata = parse_metadata_from_json(LOVE_ME_DO_DOC)
+    assert metadata["tempo"] == 148
+
+
+def test_parse_metadata_from_json_time_sig():
+    metadata = parse_metadata_from_json(LOVE_ME_DO_DOC)
+    assert metadata["time_sig"] == "4/4"
+
+
+def test_parse_metadata_from_json_empty_doc():
+    metadata = parse_metadata_from_json({"body": {"content": []}})
     assert metadata["tempo"] is None
     assert metadata["time_sig"] is None
 
@@ -197,6 +248,106 @@ def test_strip_annotations_multiple():
     assert result == "(G) (C)"
 
 
+# --- parse_doc_json ---
+
+
+def test_parse_doc_json_title():
+    title, _ = parse_doc_json(LOVE_ME_DO_DOC)
+    assert title == "Love Me Do"
+
+
+def test_parse_doc_json_skips_metadata_paragraph():
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC)
+    full = "\n".join(sections)
+    assert "148bpm" not in full
+    assert "4/4" not in full
+
+
+def test_parse_doc_json_chord_only_becomes_grid():
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC)
+    full = "\n".join(sections)
+    assert "{start_of_grid}" in full
+    assert "| G C G C |" in full
+    assert "{end_of_grid}" in full
+
+
+def test_parse_doc_json_annotation_paragraph_kept():
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC, include_annotations=True)
+    full = "\n".join(sections)
+    assert "{comment: harmonica}" in full
+
+
+def test_parse_doc_json_annotation_paragraph_stripped():
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC, include_annotations=False)
+    full = "\n".join(sections)
+    assert "harmonica" not in full
+
+
+def test_parse_doc_json_inline_chords():
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC)
+    full = "\n".join(sections)
+    assert "[G]Love, love me do [C]" in full
+    assert "You [G]know I love you [C]" in full
+
+
+def test_parse_doc_json_inline_italic_stripped():
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(
+                    _text_run("(G)", bold=True),
+                    _text_run("do ", italic=True),
+                    _text_run("lyrics"),
+                ),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc)
+    assert "do" not in sections[0]
+    assert "[G]" in sections[0]
+    assert "lyrics" in sections[0]
+
+
+def test_parse_doc_json_section_split_on_empty_para():
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(_text_run("(G)", bold=True), _text_run("first\n")),
+                _para(_text_run("\n")),
+                _para(_text_run("(C)", bold=True), _text_run("second\n")),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc)
+    assert len(sections) == 2
+
+
+def test_parse_doc_json_empty_doc():
+    title, sections = parse_doc_json({"body": {"content": []}})
+    assert title == "Untitled"
+    assert sections == []
+
+
+def test_parse_doc_json_time_sig_used_for_grid():
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(
+                    _text_run("(G) ", bold=True),
+                    _text_run("(C) ", bold=True),
+                    _text_run("(G)\n", bold=True),
+                ),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc, time_sig="3/4")
+    full = "\n".join(sections)
+    assert "| G C G |" in full
+
+
 # --- build_chordpro ---
 
 
@@ -204,9 +355,8 @@ def test_build_chordpro_basic():
     chordpro = build_chordpro(
         "Love Me Do",
         "The Beatles",
-        ["(G)Love, love me do (C)"],
+        ["[G]Love, love me do [C]"],
         {"tempo": 148, "time_sig": "4/4"},
-        include_annotations=True,
     )
     assert "{title: Love Me Do}" in chordpro
     assert "{artist: The Beatles}" in chordpro
@@ -216,117 +366,54 @@ def test_build_chordpro_basic():
 
 
 def test_build_chordpro_no_artist():
-    chordpro = build_chordpro(
-        "Untitled",
-        "",
-        ["(G)Some lyrics"],
-        {},
-        include_annotations=True,
-    )
+    chordpro = build_chordpro("Untitled", "", ["[G]Some lyrics"], {})
     assert "{title: Untitled}" in chordpro
     assert "{artist:" not in chordpro
 
 
-def test_build_chordpro_chord_only_line():
-    chordpro = build_chordpro(
-        "Test Song",
-        "Artist",
-        ["(G) (C) (G) (C)"],
-        {"time_sig": "4/4"},
-        include_annotations=True,
-    )
+def test_build_chordpro_pre_formatted_grid():
+    section = "{start_of_grid}\n| G C G C |\n{end_of_grid}"
+    chordpro = build_chordpro("Test", "Artist", [section], {"time_sig": "4/4"})
     assert "{start_of_grid}" in chordpro
-    assert "{end_of_grid}" in chordpro
     assert "| G C G C |" in chordpro
-
-
-def test_build_chordpro_strip_annotations():
-    chordpro = build_chordpro(
-        "Test",
-        "Artist",
-        ["[verse]\n(G)Love me do (C)"],
-        {"time_sig": "4/4"},
-        include_annotations=False,
-    )
-    assert "[verse]" not in chordpro
-    assert "[G]Love me do [C]" in chordpro
-
-
-def test_build_chordpro_keep_annotations():
-    chordpro = build_chordpro(
-        "Test",
-        "Artist",
-        ["[harmonica]\n(G)Love me do (C)"],
-        {"time_sig": "4/4"},
-        include_annotations=True,
-    )
-    assert "{comment: harmonica}" in chordpro
-    assert "[G]Love me do [C]" in chordpro
+    assert "{end_of_grid}" in chordpro
 
 
 def test_build_chordpro_multiple_sections():
     sections = [
-        "(G)First verse (C)",
-        "(D)Second verse (A)",
-        "(G) (C) (G) (C)",
+        "[G]First verse [C]",
+        "[D]Second verse [A]",
+        "{start_of_grid}\n| G C G C |\n{end_of_grid}",
     ]
-    chordpro = build_chordpro(
-        "Multi",
-        "Artist",
-        sections,
-        {"time_sig": "4/4"},
-        include_annotations=True,
-    )
+    chordpro = build_chordpro("Multi", "Artist", sections, {"time_sig": "4/4"})
     assert "[G]First verse [C]" in chordpro
     assert "[D]Second verse [A]" in chordpro
     assert "{start_of_grid}" in chordpro
 
 
 def test_build_chordpro_ends_with_newline():
-    chordpro = build_chordpro(
-        "Test",
-        "Artist",
-        [],
-        {},
-        include_annotations=True,
-    )
+    chordpro = build_chordpro("Test", "Artist", [], {})
     assert chordpro.endswith("\n")
 
 
-def test_build_chordpro_empty_sections():
+def test_build_chordpro_empty_sections_skipped():
     chordpro = build_chordpro(
-        "Test",
-        "Artist",
-        ["", "(G)Verse (C)", ""],
-        {"time_sig": "4/4"},
-        include_annotations=True,
+        "Test", "Artist", ["", "[G]Verse [C]", ""], {"time_sig": "4/4"}
     )
     assert "[G]Verse [C]" in chordpro
-
-
-def test_build_chordpro_3_4_grid():
-    chordpro = build_chordpro(
-        "Waltz",
-        "Artist",
-        ["(G) (C) (G) (C) (D)"],
-        {"time_sig": "3/4"},
-        include_annotations=True,
-    )
-    assert "{start_of_grid}" in chordpro
-    lines = chordpro.split("\n")
-    grid_lines = [line for line in lines if "|" in line]
-    assert len(grid_lines) == 2
 
 
 # --- generate_song_chordpro ---
 
 
 def test_generate_song_chordpro_artist_from_file_name(tmp_path):
-    gdrive_client = MagicMock()
-    gdrive_client.download_file.return_value = LOVE_ME_DO_TEXT.encode("utf-8")
+    docs_service = MagicMock()
+    docs_service.documents().get(
+        documentId="file-id"
+    ).execute.return_value = LOVE_ME_DO_DOC
 
     dest = tmp_path / "love_me_do.cho"
-    generate_song_chordpro(gdrive_client, "file-id", "Love Me Do - The Beatles", dest)
+    generate_song_chordpro(docs_service, "file-id", "Love Me Do - The Beatles", dest)
 
     content = dest.read_text()
     assert "{title: Love Me Do}" in content
@@ -334,11 +421,43 @@ def test_generate_song_chordpro_artist_from_file_name(tmp_path):
 
 
 def test_generate_song_chordpro_no_artist_when_no_dash(tmp_path):
-    gdrive_client = MagicMock()
-    gdrive_client.download_file.return_value = b"Untitled\n\n(G)Some lyrics\n"
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Untitled\n")),
+                _para(_text_run("(G)", bold=True), _text_run("Some lyrics\n")),
+            ]
+        }
+    }
+    docs_service = MagicMock()
+    docs_service.documents().get(documentId="file-id").execute.return_value = doc
 
     dest = tmp_path / "untitled.cho"
-    generate_song_chordpro(gdrive_client, "file-id", "Untitled", dest)
+    generate_song_chordpro(docs_service, "file-id", "Untitled", dest)
 
     content = dest.read_text()
     assert "{artist:" not in content
+
+
+def test_generate_song_chordpro_uses_time_sig_for_grid(tmp_path):
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Waltz\n")),
+                _para(_text_run("3/4    90bpm\n")),
+                _para(
+                    _text_run("(G) ", bold=True),
+                    _text_run("(C) ", bold=True),
+                    _text_run("(G)\n", bold=True),
+                ),
+            ]
+        }
+    }
+    docs_service = MagicMock()
+    docs_service.documents().get(documentId="file-id").execute.return_value = doc
+
+    dest = tmp_path / "waltz.cho"
+    generate_song_chordpro(docs_service, "file-id", "Waltz", dest)
+
+    content = dest.read_text()
+    assert "| G C G |" in content

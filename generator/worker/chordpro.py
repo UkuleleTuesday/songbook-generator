@@ -1,19 +1,32 @@
 import re
 from pathlib import Path
 
-from ..common.gdrive import GoogleDriveClient
-from .pptx import parse_doc_text
-
 _METADATA_RE = re.compile(r"\bbpm\b|\b\d+/\d+\b", re.IGNORECASE)
 _CHORD_PATTERN = re.compile(r"\(([^)]+)\)")
 _ANNOTATION_PATTERN = re.compile(r"\s*\[.*?\]")
+
+
+def _para_plain_text(para: dict) -> str:
+    return "".join(
+        run["textRun"].get("content", "")
+        for run in para.get("elements", [])
+        if "textRun" in run
+    )
+
+
+def _is_bold(run: dict) -> bool:
+    return run.get("textRun", {}).get("textStyle", {}).get("bold", False)
+
+
+def _is_italic(run: dict) -> bool:
+    return run.get("textRun", {}).get("textStyle", {}).get("italic", False)
 
 
 def parse_metadata(text: str) -> dict:
     """Extract BPM and time signature from song text."""
     metadata = {"tempo": None, "time_sig": None}
 
-    lines = text.split("\n")[:5]  # Check first few lines
+    lines = text.split("\n")[:5]
     for line in lines:
         bpm_match = re.search(r"\b(\d+)\s*bpm\b", line, re.IGNORECASE)
         if bpm_match:
@@ -24,6 +37,17 @@ def parse_metadata(text: str) -> dict:
             metadata["time_sig"] = time_match.group(1)
 
     return metadata
+
+
+def parse_metadata_from_json(doc_json: dict) -> dict:
+    """Extract BPM and time signature from a Docs API document."""
+    for element in doc_json.get("body", {}).get("content", []):
+        if "paragraph" not in element:
+            continue
+        text = _para_plain_text(element["paragraph"])
+        if _METADATA_RE.search(text):
+            return parse_metadata(text)
+    return {"tempo": None, "time_sig": None}
 
 
 def cells_per_bar(time_sig: str) -> int:
@@ -80,6 +104,86 @@ def strip_annotations(text: str) -> str | None:
     return result if result else None
 
 
+def parse_doc_json(
+    doc_json: dict,
+    include_annotations: bool = True,
+    time_sig: str = "4/4",
+) -> tuple[str, list[str]]:
+    """Parse a Google Docs API JSON document into (title, ChordPro-formatted sections).
+
+    Uses text run formatting to distinguish chords (bold) from annotations (italic)
+    and lyrics (regular), avoiding the ambiguity of plain-text heuristics.
+    """
+    content = doc_json.get("body", {}).get("content", [])
+    paragraphs = [el["paragraph"] for el in content if "paragraph" in el]
+
+    if not paragraphs:
+        return "Untitled", []
+
+    title_line = _para_plain_text(paragraphs[0]).strip()
+    title = title_line.split(" - ")[0].strip() or "Untitled"
+
+    sections: list[str] = []
+    current_lines: list[str] = []
+
+    for para in paragraphs[1:]:
+        plain = _para_plain_text(para).strip()
+
+        if _METADATA_RE.search(plain):
+            continue
+
+        if not plain:
+            if current_lines:
+                sections.append("\n".join(current_lines))
+                current_lines = []
+            continue
+
+        runs = [el for el in para.get("elements", []) if "textRun" in el]
+        content_runs = [r for r in runs if r["textRun"].get("content", "").strip()]
+
+        # All bold → chord-only paragraph → grid
+        if content_runs and all(_is_bold(r) for r in content_runs):
+            chords = _CHORD_PATTERN.findall(plain)
+            if chords:
+                grid = format_as_grid(chords, time_sig)
+                current_lines.append("{start_of_grid}")
+                current_lines.extend(grid.split("\n"))
+                current_lines.append("{end_of_grid}")
+                continue
+
+        # All italic → standalone annotation paragraph
+        if content_runs and all(_is_italic(r) for r in content_runs):
+            if include_annotations:
+                annotation_text = plain.strip("[]() \t")
+                current_lines.append(f"{{comment: {annotation_text}}}")
+            continue
+
+        # Mixed paragraph: process run by run
+        line_parts = []
+        for run in runs:
+            text_run = run["textRun"]
+            run_content = text_run.get("content", "").rstrip("\n")
+            if not run_content:
+                continue
+            style = text_run.get("textStyle", {})
+
+            if style.get("bold"):
+                line_parts.append(convert_chords_to_chordpro(run_content))
+            elif style.get("italic"):
+                pass  # inline annotations don't map cleanly to ChordPro
+            else:
+                line_parts.append(run_content)
+
+        line = "".join(line_parts).strip()
+        if line:
+            current_lines.append(line)
+
+    if current_lines:
+        sections.append("\n".join(current_lines))
+
+    return title, sections
+
+
 def build_chordpro(
     title: str,
     artist: str,
@@ -88,7 +192,7 @@ def build_chordpro(
     include_annotations: bool = True,
     detect_sections: bool = False,
 ) -> str:
-    """Build a complete ChordPro file from song components."""
+    """Assemble a ChordPro file from pre-formatted sections."""
     lines = []
 
     lines.append(f"{{title: {title}}}")
@@ -103,56 +207,15 @@ def build_chordpro(
     lines.append("")
 
     for section in sections:
-        if not section.strip():
+        if section.strip():
+            lines.append(section)
             lines.append("")
-            continue
-
-        section_lines = section.split("\n")
-        for line in section_lines:
-            if not line.strip():
-                lines.append("")
-                continue
-
-            is_chord_only, chords = detect_chord_only_line(line)
-
-            if is_chord_only:
-                time_sig = metadata.get("time_sig", "4/4")
-                grid = format_as_grid(chords, time_sig)
-                lines.append("{start_of_grid}")
-                lines.extend(grid.split("\n"))
-                lines.append("{end_of_grid}")
-            else:
-                if not include_annotations:
-                    stripped = strip_annotations(line)
-                    if stripped is None:
-                        continue
-                    processed_line = convert_chords_to_chordpro(stripped)
-                else:
-                    annotation_match = re.match(r"^(\[.*?\])\s*(.*)", line)
-                    if annotation_match:
-                        annotation, rest = annotation_match.groups()
-                        annotation_text = annotation[1:-1]
-                        if rest:
-                            processed_line = (
-                                f"{{comment: {annotation_text}}}\n"
-                                f"{convert_chords_to_chordpro(rest)}"
-                            )
-                        else:
-                            processed_line = f"{{comment: {annotation_text}}}"
-                    else:
-                        processed_line = convert_chords_to_chordpro(line)
-
-                for processed in processed_line.split("\n"):
-                    if processed.strip():
-                        lines.append(processed)
-
-        lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"
 
 
 def generate_song_chordpro(
-    gdrive_client: GoogleDriveClient,
+    docs_service,
     file_id: str,
     file_name: str,
     destination_path: Path,
@@ -160,18 +223,16 @@ def generate_song_chordpro(
     detect_sections: bool = False,
 ) -> None:
     """Generate a ChordPro file from a Google Drive song document."""
-    raw = gdrive_client.download_file(
-        file_id=file_id,
-        file_name=file_name,
-        cache_prefix="song-chordpro",
-        mime_type="text/plain",
-        export=True,
-        use_cache=False,
-    )
-    text = raw.decode("utf-8")
+    doc_json = docs_service.documents().get(documentId=file_id).execute()
 
-    title, sections = parse_doc_text(text, include_annotations=include_annotations)
-    metadata = parse_metadata(text)
+    metadata = parse_metadata_from_json(doc_json)
+    time_sig = metadata.get("time_sig") or "4/4"
+
+    title, sections = parse_doc_json(
+        doc_json,
+        include_annotations=include_annotations,
+        time_sig=time_sig,
+    )
 
     artist = ""
     if " - " in file_name:
@@ -182,8 +243,6 @@ def generate_song_chordpro(
         artist,
         sections,
         metadata,
-        include_annotations=include_annotations,
-        detect_sections=detect_sections,
     )
 
     destination_path.parent.mkdir(parents=True, exist_ok=True)

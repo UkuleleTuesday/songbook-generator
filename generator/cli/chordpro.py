@@ -1,11 +1,13 @@
 from pathlib import Path
 
 import click
+from googleapiclient.discovery import build
 
+from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 from ..worker.chordpro import generate_song_chordpro
-from ..worker.pdf import init_services
+from ..worker.gcp import get_credentials
 from .utils import _resolve_file_id, global_options
 
 
@@ -50,11 +52,14 @@ def generate_chordpro(
         click.echo("Error: credential config 'songbook-generator' not found.", err=True)
         raise click.Abort()
 
-    drive, cache = init_services(
+    creds = get_credentials(
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    drive_service = build("drive", "v3", credentials=creds)
+    docs_service = build("docs", "v1", credentials=creds)
+    cache = init_cache()
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
     file_id = _resolve_file_id(gdrive_client, song_identifier)
 
@@ -69,7 +74,7 @@ def generate_chordpro(
 
     click.echo(f"Generating ChordPro for: {file_name}")
     generate_song_chordpro(
-        gdrive_client,
+        docs_service,
         file_id,
         file_name,
         destination_path,
