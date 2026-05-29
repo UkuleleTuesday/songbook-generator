@@ -9,9 +9,7 @@ from ..worker.pdf import init_services
 from ..worker.pptx import generate_song_pptx
 from .utils import _resolve_file_id, global_options
 
-_DEFAULT_TEMPLATE = (
-    files("generator.templates").joinpath("song_slide_template.pptx")
-)
+_DEFAULT_TEMPLATE = files("generator.templates").joinpath("song_slide_template.pptx")
 
 
 def _default_template_path() -> Path:

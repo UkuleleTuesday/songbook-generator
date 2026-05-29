@@ -17,7 +17,7 @@ _R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 # Run properties matching the Love_Me_Do.pptx template (Open Sans, 48.99pt, white, centred)
 _RUN_PROPS_NORMAL = (
     '<a:rPr xmlns:a="{ns}" lang="en-US" sz="4899">'
-    "<a:solidFill><a:srgbClr val=\"FFFFFF\"/></a:solidFill>"
+    '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>'
     '<a:latin typeface="Open Sans"/>'
     '<a:ea typeface="Open Sans"/>'
     '<a:cs typeface="Open Sans"/>'
@@ -27,7 +27,7 @@ _RUN_PROPS_NORMAL = (
 
 _RUN_PROPS_BOLD = (
     '<a:rPr xmlns:a="{ns}" lang="en-US" sz="4899" b="true">'
-    "<a:solidFill><a:srgbClr val=\"FFFFFF\"/></a:solidFill>"
+    '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>'
     '<a:latin typeface="Open Sans Bold"/>'
     '<a:ea typeface="Open Sans Bold"/>'
     '<a:cs typeface="Open Sans Bold"/>'
@@ -36,9 +36,7 @@ _RUN_PROPS_BOLD = (
 ).format(ns=_A_NS)
 
 _PARA_PR = (
-    '<a:pPr xmlns:a="{ns}" algn="ctr">'
-    "<a:lnSpc><a:spcPts val=\"6859\"/></a:lnSpc>"
-    "</a:pPr>"
+    '<a:pPr xmlns:a="{ns}" algn="ctr"><a:lnSpc><a:spcPts val="6859"/></a:lnSpc></a:pPr>'
 ).format(ns=_A_NS)
 
 _METADATA_RE = re.compile(r"\bbpm\b|\b\d+/\d+\b", re.IGNORECASE)
@@ -47,7 +45,7 @@ _ANNOTATION_RE = re.compile(r"\s*\[.*?\]")
 # Slide layout constants derived from template measurements:
 #   text box actual width = 658pt, font = 49pt Open Sans
 #   line spacing = 68.59pt exact, text box height = 743pt
-_CHARS_PER_LINE = 28   # empirical chars per visual line at 49pt in 658pt box
+_CHARS_PER_LINE = 28  # empirical chars per visual line at 49pt in 658pt box
 _MAX_LINES_PER_SLIDE = 9  # floor(743/68.59)=10, minus 1 safety margin
 
 
@@ -147,9 +145,7 @@ def _make_blank_paragraph() -> etree._Element:
 
 
 def _escape(text: str) -> str:
-    return (
-        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _find_textbox(slide) -> etree._Element | None:
@@ -192,9 +188,7 @@ def _copy_template_slide(prs: Presentation, template_slide) -> object:
 
     # Replace the new slide's spTree and background with the template's
     new_sp_tree = new_slide.shapes._spTree
-    tmpl_sp_tree = xml_copy.find(
-        f".//{{{_P_NS}}}spTree", namespaces={"p": _P_NS}
-    )
+    tmpl_sp_tree = xml_copy.find(f".//{{{_P_NS}}}spTree", namespaces={"p": _P_NS})
     if tmpl_sp_tree is None:
         # Try without namespace prefix
         tmpl_sp_tree = xml_copy.find(".//{%s}spTree" % _P_NS)

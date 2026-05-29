@@ -4,6 +4,7 @@ Creates generator/templates/song_slide_template.pptx from scratch.
 
 Run once with: uv run scripts/create_pptx_template.py
 """
+
 import io
 from pathlib import Path
 

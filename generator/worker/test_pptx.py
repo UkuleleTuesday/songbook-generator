@@ -91,7 +91,9 @@ def test_parse_no_annotations_keeps_chords():
 
 
 def test_parse_no_annotations_drops_pure_annotation_sections():
-    _, sections = parse_doc_text("My Song\n\n[intro]\n\nVerse one", include_annotations=False)
+    _, sections = parse_doc_text(
+        "My Song\n\n[intro]\n\nVerse one", include_annotations=False
+    )
     assert all("[intro]" not in s for s in sections)
 
 
@@ -189,7 +191,9 @@ def test_build_creates_valid_pptx():
 
 
 def test_build_slide_count_matches_sections():
-    data = build_pptx("Title", ["Section one", "Section two", "Section three"], TEMPLATE_PATH)
+    data = build_pptx(
+        "Title", ["Section one", "Section two", "Section three"], TEMPLATE_PATH
+    )
     assert len(Presentation(io.BytesIO(data)).slides) == 3
 
 
