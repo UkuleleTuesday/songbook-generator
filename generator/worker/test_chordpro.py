@@ -267,7 +267,8 @@ def test_parse_doc_json_chord_only_becomes_grid():
     _, sections = parse_doc_json(LOVE_ME_DO_DOC)
     full = "\n".join(sections)
     assert "{start_of_grid}" in full
-    assert "| G C G C |" in full
+    # Each space-separated chord token is its own bar
+    assert "| G | C | G | C |" in full
     assert "{end_of_grid}" in full
 
 
@@ -330,7 +331,7 @@ def test_parse_doc_json_empty_doc():
     assert sections == []
 
 
-def test_parse_doc_json_time_sig_used_for_grid():
+def test_parse_doc_json_space_separated_chords_become_separate_bars():
     doc = {
         "body": {
             "content": [
@@ -343,9 +344,37 @@ def test_parse_doc_json_time_sig_used_for_grid():
             ]
         }
     }
-    _, sections = parse_doc_json(doc, time_sig="3/4")
+    _, sections = parse_doc_json(doc)
     full = "\n".join(sections)
-    assert "| G C G |" in full
+    assert "| G | C | G |" in full
+
+
+def test_parse_doc_json_no_space_chords_become_one_bar():
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(_text_run("(X)(X)(X)(X)\n", bold=True)),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc)
+    full = "\n".join(sections)
+    assert "| X X X X |" in full
+
+
+def test_parse_doc_json_mixed_spacing():
+    doc = {
+        "body": {
+            "content": [
+                _para(_text_run("Song\n")),
+                _para(_text_run("(C) (X)(X)(X)(X) (F)\n", bold=True)),
+            ]
+        }
+    }
+    _, sections = parse_doc_json(doc)
+    full = "\n".join(sections)
+    assert "| C | X X X X | F |" in full
 
 
 # --- build_chordpro ---
@@ -439,7 +468,7 @@ def test_generate_song_chordpro_no_artist_when_no_dash(tmp_path):
     assert "{artist:" not in content
 
 
-def test_generate_song_chordpro_uses_time_sig_for_grid(tmp_path):
+def test_generate_song_chordpro_uses_space_as_bar_boundary(tmp_path):
     doc = {
         "body": {
             "content": [
@@ -460,4 +489,4 @@ def test_generate_song_chordpro_uses_time_sig_for_grid(tmp_path):
     generate_song_chordpro(docs_service, "file-id", "Waltz", dest)
 
     content = dest.read_text()
-    assert "| G C G |" in content
+    assert "| G | C | G |" in content

@@ -104,6 +104,21 @@ def strip_annotations(text: str) -> str | None:
     return result if result else None
 
 
+def _parse_chord_bars(text: str) -> list[list[str]]:
+    """Split chord-only text into bars using whitespace as bar boundaries.
+
+    '(C) (G)' → two bars [['C'], ['G']]
+    '(X)(X)(X)(X)' → one bar [['X', 'X', 'X', 'X']]
+    '(C) (X)(X)(X)(X) (F)' → three bars [['C'], ['X','X','X','X'], ['F']]
+    """
+    bars = []
+    for token in text.strip().split():
+        chords = _CHORD_PATTERN.findall(token)
+        if chords:
+            bars.append(chords)
+    return bars
+
+
 def parse_doc_json(
     doc_json: dict,
     include_annotations: bool = True,
@@ -142,12 +157,13 @@ def parse_doc_json(
         content_runs = [r for r in runs if r["textRun"].get("content", "").strip()]
 
         # All bold → chord-only paragraph → grid
+        # Space between chord groups = bar boundary; no space = beats within same bar
         if content_runs and all(_is_bold(r) for r in content_runs):
-            chords = _CHORD_PATTERN.findall(plain)
-            if chords:
-                grid = format_as_grid(chords, time_sig)
+            bars = _parse_chord_bars(plain)
+            if bars:
+                grid_line = "| " + " | ".join(" ".join(bar) for bar in bars) + " |"
                 current_lines.append("{start_of_grid}")
-                current_lines.extend(grid.split("\n"))
+                current_lines.append(grid_line)
                 current_lines.append("{end_of_grid}")
                 continue
 
