@@ -5,7 +5,6 @@ import pytest
 from pptx import Presentation
 
 from .pptx import (
-    _CHARS_PER_LINE,
     _MAX_LINES_PER_SLIDE,
     _estimate_visual_lines,
     _split_section,
