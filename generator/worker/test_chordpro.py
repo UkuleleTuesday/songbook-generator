@@ -264,11 +264,11 @@ def test_parse_doc_json_skips_metadata_paragraph():
 
 
 def test_parse_doc_json_chord_only_becomes_grid():
-    _, sections = parse_doc_json(LOVE_ME_DO_DOC)
+    _, sections = parse_doc_json(LOVE_ME_DO_DOC, time_sig="4/4")
     full = "\n".join(sections)
     assert "{start_of_grid}" in full
-    # Each space-separated chord token is its own bar
-    assert "| G | C | G | C |" in full
+    # Single-chord bars are padded with dots; each space-separated token = one bar
+    assert "| G . . . | C . . . | G . . . | C . . . |" in full
     assert "{end_of_grid}" in full
 
 
@@ -344,9 +344,9 @@ def test_parse_doc_json_space_separated_chords_become_separate_bars():
             ]
         }
     }
-    _, sections = parse_doc_json(doc)
+    _, sections = parse_doc_json(doc, time_sig="4/4")
     full = "\n".join(sections)
-    assert "| G | C | G |" in full
+    assert "| G . . . | C . . . | G . . . |" in full
 
 
 def test_parse_doc_json_no_space_chords_become_one_bar():
@@ -358,7 +358,7 @@ def test_parse_doc_json_no_space_chords_become_one_bar():
             ]
         }
     }
-    _, sections = parse_doc_json(doc)
+    _, sections = parse_doc_json(doc, time_sig="4/4")
     full = "\n".join(sections)
     assert "| X X X X |" in full
 
@@ -372,9 +372,9 @@ def test_parse_doc_json_mixed_spacing():
             ]
         }
     }
-    _, sections = parse_doc_json(doc)
+    _, sections = parse_doc_json(doc, time_sig="4/4")
     full = "\n".join(sections)
-    assert "| C | X X X X | F |" in full
+    assert "| C . . . | X X X X | F . . . |" in full
 
 
 # --- build_chordpro ---
@@ -489,4 +489,5 @@ def test_generate_song_chordpro_uses_space_as_bar_boundary(tmp_path):
     generate_song_chordpro(docs_service, "file-id", "Waltz", dest)
 
     content = dest.read_text()
-    assert "| G | C | G |" in content
+    # Single-chord bars padded to 3 beats for 3/4
+    assert "| G . . | C . . | G . . |" in content

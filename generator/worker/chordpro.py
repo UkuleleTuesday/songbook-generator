@@ -104,17 +104,25 @@ def strip_annotations(text: str) -> str | None:
     return result if result else None
 
 
-def _parse_chord_bars(text: str) -> list[list[str]]:
+def _parse_chord_bars(text: str, time_sig: str = "4/4") -> list[list[str]]:
     """Split chord-only text into bars using whitespace as bar boundaries.
 
-    '(C) (G)' → two bars [['C'], ['G']]
-    '(X)(X)(X)(X)' → one bar [['X', 'X', 'X', 'X']]
-    '(C) (X)(X)(X)(X) (F)' → three bars [['C'], ['X','X','X','X'], ['F']]
+    A single chord per token is padded with dots to fill the bar (per ChordPro spec,
+    cells determine duration; '.' = sustain/empty beat).
+
+    '(C) (G)' in 4/4 → [['C','.','.','.''], ['G','.','.','.']]
+    '(X)(X)(X)(X)' in 4/4 → [['X','X','X','X']]
+    '(C) (X)(X)(X)(X) (F)' in 4/4 → [['C','.','.','.''], ['X','X','X','X'], ['F','.','.','.']]
     """
+    cpb = cells_per_bar(time_sig)
     bars = []
     for token in text.strip().split():
         chords = _CHORD_PATTERN.findall(token)
-        if chords:
+        if not chords:
+            continue
+        if len(chords) == 1:
+            bars.append(chords + ["."] * (cpb - 1))
+        else:
             bars.append(chords)
     return bars
 
@@ -159,7 +167,7 @@ def parse_doc_json(
         # All bold → chord-only paragraph → grid
         # Space between chord groups = bar boundary; no space = beats within same bar
         if content_runs and all(_is_bold(r) for r in content_runs):
-            bars = _parse_chord_bars(plain)
+            bars = _parse_chord_bars(plain, time_sig)
             if bars:
                 grid_line = "| " + " | ".join(" ".join(bar) for bar in bars) + " |"
                 current_lines.append("{start_of_grid}")
