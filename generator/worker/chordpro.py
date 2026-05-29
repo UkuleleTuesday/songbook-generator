@@ -174,8 +174,8 @@ def generate_song_chordpro(
     metadata = parse_metadata(text)
 
     artist = ""
-    if " - " in title:
-        title, artist = title.split(" - ", 1)
+    if " - " in file_name:
+        artist = file_name.split(" - ", 1)[1]
 
     chordpro_content = build_chordpro(
         title,

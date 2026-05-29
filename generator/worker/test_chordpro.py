@@ -1,9 +1,12 @@
+from unittest.mock import MagicMock
+
 from .chordpro import (
     build_chordpro,
     cells_per_bar,
     convert_chords_to_chordpro,
     detect_chord_only_line,
     format_as_grid,
+    generate_song_chordpro,
     parse_metadata,
     strip_annotations,
 )
@@ -313,3 +316,29 @@ def test_build_chordpro_3_4_grid():
     lines = chordpro.split("\n")
     grid_lines = [line for line in lines if "|" in line]
     assert len(grid_lines) == 2
+
+
+# --- generate_song_chordpro ---
+
+
+def test_generate_song_chordpro_artist_from_file_name(tmp_path):
+    gdrive_client = MagicMock()
+    gdrive_client.download_file.return_value = LOVE_ME_DO_TEXT.encode("utf-8")
+
+    dest = tmp_path / "love_me_do.cho"
+    generate_song_chordpro(gdrive_client, "file-id", "Love Me Do - The Beatles", dest)
+
+    content = dest.read_text()
+    assert "{title: Love Me Do}" in content
+    assert "{artist: The Beatles}" in content
+
+
+def test_generate_song_chordpro_no_artist_when_no_dash(tmp_path):
+    gdrive_client = MagicMock()
+    gdrive_client.download_file.return_value = b"Untitled\n\n(G)Some lyrics\n"
+
+    dest = tmp_path / "untitled.cho"
+    generate_song_chordpro(gdrive_client, "file-id", "Untitled", dest)
+
+    content = dest.read_text()
+    assert "{artist:" not in content
