@@ -76,7 +76,7 @@ jobs:
         fi
         echo "Created job with ID: $JOB_ID"
 
-        TIMEOUT=200
+        TIMEOUT=300
         ELAPSED=0
         POLL_INTERVAL=1
         SOURCE_GCS_PATH=""
