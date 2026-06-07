@@ -230,6 +230,41 @@ jobs:
         path: ./songbooks
         name: songbook-artifact-${{ needs.generate-songbook.outputs.effective_edition }}
 
+    - name: Fetch previous published manifest
+      id: fetch-previous
+      run: |
+        set -e
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
+        LATEST_GCS="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json"
+        PREV_MANIFEST_PATH="none"
+        PREV_MANIFEST_NAME=""
+        # Download the current latest.json (absent on a first-ever publish).
+        if gcloud storage cp "$LATEST_GCS" ./prev-latest.json 2>/dev/null; then
+          PREV_MANIFEST_NAME=$(jq -r '.manifest_filename // empty' ./prev-latest.json)
+          if [ -n "$PREV_MANIFEST_NAME" ]; then
+            PREV_GCS="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${PREV_MANIFEST_NAME}"
+            if gcloud storage cp "$PREV_GCS" ./prev-manifest.json 2>/dev/null; then
+              PREV_MANIFEST_PATH="./prev-manifest.json"
+            fi
+          fi
+        fi
+        echo "prev_manifest_path=${PREV_MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
+        echo "prev_manifest_name=${PREV_MANIFEST_NAME}" >> "$GITHUB_OUTPUT"
+        echo "Previous manifest: ${PREV_MANIFEST_PATH} (name: ${PREV_MANIFEST_NAME:-<none>})"
+
+    - name: Enrich manifest with changelog
+      run: |
+        set -e
+        NEW_MANIFEST=$(find ./songbooks -name '*.manifest.json' -print -quit)
+        if [ -z "$NEW_MANIFEST" ]; then
+          echo "No manifest file found in artifact."
+          exit 1
+        fi
+        uv run .github/scripts/compute-changelog.py \
+          "$NEW_MANIFEST" \
+          "${{ steps.fetch-previous.outputs.prev_manifest_path }}" \
+          "${{ steps.fetch-previous.outputs.prev_manifest_name }}"
+
     - name: Upload PDF to GCS
       id: upload-pdf
       run: |
