@@ -1271,6 +1271,10 @@ def generate_manifest(
 ) -> Dict[str, Any]:
     """Generate manifest data for a PDF generation job.
 
+    Note: the publish pipeline may inject an optional top-level ``changelog``
+    object (added/removed songs vs. the previously published edition) into the
+    manifest after generation. The worker itself does not compute it.
+
     Args:
         job_id: Unique identifier for the generation job
         params: Original job parameters
