@@ -87,7 +87,8 @@ def test_main_enriches_manifest_in_place(tmp_path, monkeypatch):
     _write_manifest(old, ["A", "C", "D"], generated_at="2026-05-31T03:00:00+00:00")
 
     monkeypatch.setattr(
-        ccl.sys, "argv",
+        ccl.sys,
+        "argv",
         ["compute-changelog.py", str(new), str(old), "old-name.manifest.json"],
     )
     ccl.main()
@@ -122,7 +123,9 @@ def test_main_missing_previous_degrades(tmp_path, monkeypatch):
     _write_manifest(new, ["A", "B"])
     missing = tmp_path / "does-not-exist.json"
 
-    monkeypatch.setattr(ccl.sys, "argv", ["compute-changelog.py", str(new), str(missing)])
+    monkeypatch.setattr(
+        ccl.sys, "argv", ["compute-changelog.py", str(new), str(missing)]
+    )
     ccl.main()
 
     result = json.loads(new.read_text())

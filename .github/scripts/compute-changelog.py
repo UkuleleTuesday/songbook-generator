@@ -76,7 +76,10 @@ def main() -> None:
     try:
         new_manifest = _load_manifest(new_manifest_path)
     except (OSError, ValueError) as e:
-        print(f"Error: could not read new manifest {new_manifest_path}: {e}", file=sys.stderr)
+        print(
+            f"Error: could not read new manifest {new_manifest_path}: {e}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     old_names: Optional[list[str]] = None
