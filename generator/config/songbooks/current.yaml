@@ -13,7 +13,12 @@ sections:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
-    postfixes: []
+    postfixes:
+      - postfix: " 🌈"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "pride"
     # postfixes:
     #   - postfix: " ☘"
     #     filters:
@@ -50,6 +55,7 @@ sections:
           - "Complicated - Avril Lavigne"
           - "Crazy World - Aslan"
           - "Creep - Radiohead"
+          - "Crocodile Rock - Elton John"
           - "Dirty Old Town - The Pogues"
           - "Dog Days Are Over - Florence + The Machine"
           - "Don't Look Back In Anger - Oasis"
@@ -60,9 +66,7 @@ sections:
           - "Ex's & Oh's - Elle King"
           - "Faith - George Michael"
           - "Flowers - Miley Cyrus"
-          - "Folsom Prison Blues - Johnny Cash"
           - "Friday I'm In Love - The Cure"
-          - "Fuck You - Cee Lo Green"
           - "Gangsta's Paradise - Coolio, L.V."
           - "Grace Kelly - MIKA"
           - "Hand in My Pocket - Alanis Morissette"
@@ -79,8 +83,8 @@ sections:
           - "House Of Gold - Twenty One Pilots"
           - "House of the Rising Sun - The Animals"
           - "I Feel Love - Donna Summer"
-          - "I Kissed A Girl - Katy Perry"
           - "I Love It (feat. Charli XCX) - Icona Pop"
+          - "I Want to Break Free - Queen"
           - "Imagine - John Lennon"
           - "In Bloom - Nirvana"
           - "I Only Want To Be With You - Dusty Springfield"
@@ -129,6 +133,7 @@ sections:
           - "Take A Chance On Me - ABBA"
           - "Take on Me - a-ha"
           - "The Best (Edit) - Tina Turner"
+          - "The Edge Of Glory (Radio Edit) - Lady Gaga"
           - "The Lion Sleeps Tonight - The Tokens"
           - "Torn - Natalie Imbruglia"
           - "Toxic - Britney Spears"
