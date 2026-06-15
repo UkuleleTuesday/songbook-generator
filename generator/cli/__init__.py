@@ -8,6 +8,7 @@ import logging
 import click
 
 from .cache import cache
+from .changelog import backfill_changelog, update_changelog
 from .editions import editions
 from .generate import generate
 from .misc import print_settings, validate_pdf_cli
@@ -39,6 +40,8 @@ cli.add_command(validate_pdf_cli)
 cli.add_command(specialbooks)
 cli.add_command(editions)
 cli.add_command(tags)
+cli.add_command(update_changelog)
+cli.add_command(backfill_changelog)
 
 if __name__ == "__main__":
     cli()
