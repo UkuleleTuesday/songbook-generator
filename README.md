@@ -194,6 +194,11 @@ title-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
 title-fontsize = 16
 ```
 
+The cover Google Doc (configured via `[cover] file-id`) may contain text placeholders that are substituted at generation time and reverted afterwards:
+
+- `{{DATE}}` — the date the songbook is generated.
+- `{{NEXT_TUESDAY}}` — the date of the upcoming Tuesday, or the current day when generated on a Tuesday. This lets a songbook be published ahead of the session while still showing the correct session date.
+
 It's definitely not complete at this stage though and doesn't expose all possible config options.
 
 #### Cloud Functions Environment

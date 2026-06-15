@@ -9,6 +9,17 @@ from .exceptions import CoverGenerationException
 from .gcp import get_credentials
 
 
+def _next_tuesday(when):
+    """Date of the upcoming Tuesday, or `when` itself if it is already a Tuesday.
+
+    This lets a cover be generated ahead of a session while still showing the
+    coming Tuesday's date.
+    """
+    # arrow/datetime weekday(): Monday=0, Tuesday=1, ... Sunday=6.
+    # Python's modulo keeps the shift non-negative: Mon=+1, Tue=+0, Wed=+6, Sun=+2.
+    return when.shift(days=(1 - when.weekday()) % 7)
+
+
 class CoverGenerator:
     def __init__(
         self,
@@ -25,18 +36,21 @@ class CoverGenerator:
     def _apply_template_replacements(self, document_id: str, replacement_map: dict):
         """
         Applies text replacements to a Google Doc.
-        If it fails, it logs an error and continues gracefully.
+
+        Returns a mapping of each placeholder to the number of occurrences that
+        were replaced (0 when the placeholder is absent). If the update fails, it
+        logs an error, continues gracefully, and returns an empty mapping.
         """
-        requests = []
-        for placeholder, new_text in replacement_map.items():
-            requests.append(
-                {
-                    "replaceAllText": {
-                        "containsText": {"text": placeholder, "matchCase": True},
-                        "replaceText": new_text,
-                    }
+        placeholders = list(replacement_map.keys())
+        requests = [
+            {
+                "replaceAllText": {
+                    "containsText": {"text": placeholder, "matchCase": True},
+                    "replaceText": replacement_map[placeholder],
                 }
-            )
+            }
+            for placeholder in placeholders
+        ]
 
         try:
             result = (
@@ -53,22 +67,21 @@ class CoverGenerator:
                 f"Error: {e}",
                 err=True,
             )
-            return
-        total = 0
+            return {}
+
+        # Replies are returned in the same order as the requests we sent.
         replies = result.get("replies", []) if isinstance(result, dict) else []
-        for reply in replies:
-            if reply is None:
+        counts = {placeholder: 0 for placeholder in placeholders}
+        for placeholder, reply in zip(placeholders, replies):
+            if not isinstance(reply, dict):
                 continue
-            try:
-                replace_all_text = reply.get("replaceAllText")
-                if replace_all_text is not None and isinstance(replace_all_text, dict):
-                    occurrences = replace_all_text.get("occurrencesChanged")
-                    if isinstance(occurrences, int):
-                        total += occurrences
-            except (KeyError, TypeError, AttributeError):
-                # Skip replies that have malformed structure
-                pass
-        click.echo(f"Replaced {total} occurrences in the copy.")
+            replace_all_text = reply.get("replaceAllText")
+            if isinstance(replace_all_text, dict):
+                occurrences = replace_all_text.get("occurrencesChanged")
+                if isinstance(occurrences, int):
+                    counts[placeholder] = occurrences
+        click.echo(f"Replaced {sum(counts.values())} occurrences in the copy.")
+        return counts
 
     def generate_cover(self, cover_file_id=None):
         if not cover_file_id:
@@ -79,9 +92,11 @@ class CoverGenerator:
 
         if self.enable_templating:
             today = arrow.now()
-            formatted_date = today.format("Do MMMM YYYY")
-            replacement_map = {"{{DATE}}": formatted_date}
-            self._apply_template_replacements(cover_file_id, replacement_map)
+            replacement_map = {
+                "{{DATE}}": today.format("Do MMMM YYYY"),
+                "{{NEXT_TUESDAY}}": _next_tuesday(today).format("Do MMMM YYYY"),
+            }
+            counts = self._apply_template_replacements(cover_file_id, replacement_map)
 
             try:
                 pdf_data = self.gdrive_client.download_file(
@@ -97,9 +112,19 @@ class CoverGenerator:
                     "Downloaded cover file is corrupted. Please check the file on Google Drive."
                 ) from e
             finally:
-                # Revert changes
-                revert_map = {v: k for k, v in replacement_map.items()}
-                self._apply_template_replacements(cover_file_id, revert_map)
+                # Revert only the placeholders that were actually present. On a
+                # Tuesday {{DATE}} and {{NEXT_TUESDAY}} format to the same string,
+                # so inverting the whole map would rewrite the source doc's
+                # {{DATE}} into {{NEXT_TUESDAY}} (or vice-versa). A cover uses one
+                # placeholder or the other, never both, so reverting the present
+                # ones restores the document exactly.
+                revert_map = {
+                    replacement_map[p]: p
+                    for p in replacement_map
+                    if counts.get(p, 0) > 0
+                }
+                if revert_map:
+                    self._apply_template_replacements(cover_file_id, revert_map)
         else:
             # No templating, just download the file
             pdf_data = self.gdrive_client.download_file(
