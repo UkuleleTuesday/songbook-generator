@@ -354,3 +354,115 @@ def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
     toc.build_table_of_contents(files)
 
     mock_assign_bins.assert_called_once_with(files)
+
+
+def _toc_entry(target_page, toc_page_index, title, text="display"):
+    """Build a TocEntry for outline tests (geometry is irrelevant here)."""
+    return toc.TocEntry(
+        page_number=target_page + 1,
+        target_page=target_page,
+        text=text,
+        rect=fitz.Rect(0, 0, 10, 10),
+        toc_page_index=toc_page_index,
+        title=title,
+    )
+
+
+def test_add_toc_entry_stores_full_title_for_outline(mock_toc_generator):
+    """The full, untruncated song name is kept for bookmarks even when the
+    displayed TOC text is shortened."""
+    generator = mock_toc_generator
+    generator.config.max_toc_entry_length = 20
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    long_name = "A Really Quite Long Song Title - The Artist Band"
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=3,
+        page_offset=10,
+        file=File(id="1", name=long_name),
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    entry = generator.get_toc_entries()[-1]
+    assert entry.title == long_name  # full title preserved
+    assert len(entry.text) < len(long_name)  # displayed text truncated
+    assert entry.target_page == 3
+    assert entry.page_number == 14  # file_index + 1 + page_offset
+
+
+def test_build_pdf_outline_page_math_and_titles():
+    """Outline pages are 1-based and account for cover/preface + TOC pages."""
+    entries = [
+        _toc_entry(0, 0, "Song A - Artist"),
+        _toc_entry(1, 0, "Song B - Artist"),
+        _toc_entry(2, 1, ""),  # empty title falls back to display text
+    ]
+    entries[2].text = "Song C short"
+
+    # toc_page_offset=2 (cover+preface), 2 distinct TOC pages -> songs start at
+    # 0-based index 4, so 1-based pages 5, 6, 7.
+    outline = toc.build_pdf_outline(entries, toc_page_offset=2)
+    assert outline == [
+        [1, "Song A - Artist", 5],
+        [1, "Song B - Artist", 6],
+        [1, "Song C short", 7],
+    ]
+
+
+def test_build_pdf_outline_skips_out_of_range_pages():
+    entries = [_toc_entry(i, 0, f"Song {i}") for i in range(3)]
+    # 1 TOC page, offset 2 -> 0-based targets 3, 4, 5. page_count=5 drops the last.
+    outline = toc.build_pdf_outline(entries, toc_page_offset=2, page_count=5)
+    assert [o[2] for o in outline] == [4, 5]
+
+
+def test_build_pdf_outline_skips_empty_titles():
+    entry = _toc_entry(0, 0, "", text="")
+    assert toc.build_pdf_outline([entry], toc_page_offset=0) == []
+
+
+def test_set_pdf_outline_sets_bookmarks_on_document():
+    doc = fitz.open()
+    for _ in range(8):
+        doc.new_page()
+    entries = [
+        _toc_entry(0, 0, "Song A - Artist"),
+        _toc_entry(1, 0, "Song B - Artist"),
+    ]
+    # offset 1 (cover) + 1 TOC page -> 0-based targets 2, 3 -> 1-based pages 3, 4.
+    applied = toc.set_pdf_outline(doc, entries, toc_page_offset=1)
+    expected = [[1, "Song A - Artist", 3], [1, "Song B - Artist", 4]]
+    assert applied == expected
+    assert doc.get_toc() == expected
+    doc.close()
+
+
+def test_set_pdf_outline_no_entries_is_noop():
+    doc = fitz.open()
+    doc.new_page()
+    assert toc.set_pdf_outline(doc, [], toc_page_offset=0) == []
+    assert doc.get_toc() == []
+    doc.close()
+
+
+def test_outline_and_links_resolve_to_the_same_pages():
+    """Bookmarks and clickable TOC links must point at identical pages."""
+    doc = fitz.open()
+    for _ in range(10):
+        doc.new_page()
+    entries = [_toc_entry(i, 0, f"Song {i}") for i in range(3)]
+    toc_page_offset = 2  # cover + preface
+
+    toc.add_toc_links_to_merged_pdf(doc, entries, toc_page_offset)
+    outline = toc.set_pdf_outline(doc, entries, toc_page_offset)
+
+    toc_page = doc[toc_page_offset]  # all entries are on the first TOC page
+    link_pages = sorted(
+        ln["page"] for ln in toc_page.get_links() if ln.get("kind") == fitz.LINK_GOTO
+    )
+    outline_pages = sorted(o[2] - 1 for o in outline)  # 1-based -> 0-based
+    assert link_pages == outline_pages == [3, 4, 5]
+    doc.close()

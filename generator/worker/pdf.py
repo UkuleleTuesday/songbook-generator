@@ -1105,6 +1105,12 @@ def generate_songbook(
                             songbook_pdf, toc_entries, toc_start_page
                         )
 
+                # Set a native PDF outline (bookmarks) so readers show a
+                # navigable song sidebar indexed by page.
+                with reporter.step(1, "Adding PDF bookmarks..."):
+                    with tracer.start_as_current_span("set_pdf_outline"):
+                        toc.set_pdf_outline(songbook_pdf, toc_entries, toc_start_page)
+
                 with reporter.step(1, "Setting PDF metadata..."):
                     with tracer.start_as_current_span("set_metadata"):
                         metadata = {
