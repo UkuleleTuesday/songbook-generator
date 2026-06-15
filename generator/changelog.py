@@ -19,6 +19,8 @@ handles reading/writing files and the publish pipeline handles GCS transfer.
 
 from typing import Any, Optional
 
+from .common.titles import generate_short_title
+
 DEFAULT_MAX_ENTRIES = 50
 
 
@@ -113,6 +115,73 @@ def update_history(
     entries.insert(0, entry)
     history["entries"] = entries[:max_entries]
     return history
+
+
+def short_key(raw: str, max_length: Optional[int] = None) -> str:
+    """Canonical, comparison-friendly form of a song title.
+
+    Runs the title through the same deterministic shortener the TOC uses
+    (:func:`generate_short_title`) and casefolds it, so a manifest's full
+    ``file_names`` entry and the (already shortened) title parsed from a rendered
+    TOC page collapse to the same key. This is what lets the changelog diff span
+    the manifest era and the TOC-reconstructed era without spurious churn.
+    """
+    title = generate_short_title(raw or "", max_length=max_length)
+    if title.endswith("*"):
+        title = title[:-1].rstrip()
+    return title.casefold()
+
+
+def diff_keyed(new: dict[str, str], old: dict[str, str]) -> tuple[list[str], list[str]]:
+    """Diff two ``{key: label}`` song maps, returning sorted added/removed labels.
+
+    Comparison is on the canonical keys; the human-readable labels come from the
+    side that holds the song (added → ``new``, removed → ``old``), so recent
+    entries keep full names while historical ones use the shortened TOC titles.
+    """
+    added_keys, removed_keys = diff_songs(list(new), list(old))
+    added = sorted(new[k] for k in added_keys)
+    removed = sorted(old[k] for k in removed_keys)
+    return added, removed
+
+
+def build_timeline(
+    publishes: list[dict[str, Any]],
+    edition: str,
+    max_entries: int = DEFAULT_MAX_ENTRIES,
+) -> dict[str, Any]:
+    """Build a full ``changes.json`` from a list of publishes (newest first).
+
+    Each publish is ``{"date", "source", "filename", "songs": {key: label}}``.
+    Publishes are ordered by date, consecutive song sets are diffed (empty diffs
+    skipped), and each recorded entry is tagged with its ``source``
+    (``"manifest"`` or ``"toc-page"``). Unlike :func:`update_history` (which
+    merges one new publish at a time), this rebuilds the whole history at once.
+    """
+    pubs = sorted(publishes, key=lambda p: p["date"])
+    entries: list[dict[str, Any]] = []
+    previous: Optional[dict[str, Any]] = None
+    for pub in pubs:
+        if previous is not None:
+            added, removed = diff_keyed(pub["songs"], previous["songs"])
+            if added or removed:
+                entries.append(
+                    {
+                        "generated_at": pub.get("generated_at", pub["date"]),
+                        "date": pub["date"],
+                        "source": pub["source"],
+                        "filename": pub["filename"],
+                        "previous_filename": previous["filename"],
+                        "previous_date": previous["date"],
+                        "added": added,
+                        "removed": removed,
+                        "added_count": len(added),
+                        "removed_count": len(removed),
+                    }
+                )
+        previous = pub
+    entries.reverse()  # newest first
+    return {"edition": edition, "entries": entries[:max_entries]}
 
 
 def backfill_history(

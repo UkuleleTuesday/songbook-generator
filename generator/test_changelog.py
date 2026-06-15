@@ -1,9 +1,12 @@
 from .changelog import (
     backfill_history,
     build_entry,
+    build_timeline,
+    diff_keyed,
     diff_songs,
     empty_history,
     load_file_names,
+    short_key,
     update_history,
 )
 
@@ -118,6 +121,59 @@ def test_update_history_starts_fresh_when_existing_none():
     history = update_history(None, {"manifest_filename": "m.json"}, "current")
     assert history["edition"] == "current"
     assert len(history["entries"]) == 1
+
+
+def test_short_key_matches_full_and_shortened_titles():
+    # Full manifest name and its TOC-shortened render collapse to one key.
+    full = "Crocodile Rock (Radio Edit) - Elton John"
+    rendered = "Crocodile Rock - Elton John"  # as the TOC would show it
+    assert short_key(full, max_length=52) == short_key(rendered, max_length=52)
+
+
+def test_short_key_casefolds_and_strips_marker():
+    assert short_key("Hey Jude - The Beatles*") == short_key("hey jude - the beatles")
+
+
+def test_diff_keyed_uses_keys_but_returns_labels():
+    new = {"a": "Song A - Artist", "b": "Song B - Artist"}
+    old = {"a": "Song A - Artist", "c": "Song C - Artist"}
+    added, removed = diff_keyed(new, old)
+    assert added == ["Song B - Artist"]
+    assert removed == ["Song C - Artist"]
+
+
+def _pub(date, source, filename, songs):
+    return {"date": date, "source": source, "filename": filename, "songs": songs}
+
+
+def test_build_timeline_orders_diffs_and_tags_source():
+    publishes = [
+        _pub("2025-09-27", "toc-page", "old.pdf", {"a": "A - X", "b": "B - Y"}),
+        # New era, same two songs but full-name labels -> no spurious diff.
+        _pub("2026-02-06", "manifest", "m1.json", {"a": "A - X (Mono)", "b": "B - Y"}),
+        _pub("2026-06-09", "manifest", "m2.json", {"a": "A - X (Mono)", "c": "C - Z"}),
+    ]
+    history = build_timeline(publishes, "current")
+    assert history["edition"] == "current"
+    # Only the 09-27->02-06 boundary is a no-op; one real change recorded.
+    assert len(history["entries"]) == 1
+    entry = history["entries"][0]
+    assert entry["date"] == "2026-06-09"
+    assert entry["source"] == "manifest"
+    assert entry["added"] == ["C - Z"]
+    assert entry["removed"] == ["B - Y"]
+    assert entry["previous_filename"] == "m1.json"
+
+
+def test_build_timeline_newest_first_and_capped():
+    publishes = [
+        _pub("2026-01-01", "toc-page", "p0.pdf", {"a": "A - X"}),
+        _pub("2026-01-02", "toc-page", "p1.pdf", {"a": "A - X", "b": "B - Y"}),
+        _pub("2026-01-03", "toc-page", "p2.pdf", {"b": "B - Y"}),
+    ]
+    history = build_timeline(publishes, "current", max_entries=1)
+    assert len(history["entries"]) == 1
+    assert history["entries"][0]["date"] == "2026-01-03"  # newest kept
 
 
 def test_backfill_history_filters_sorts_and_diffs():

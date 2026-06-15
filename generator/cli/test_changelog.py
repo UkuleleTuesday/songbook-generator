@@ -1,9 +1,12 @@
 import json
 
+import fitz
 import pytest
 from click.testing import CliRunner
 
 from ..cli import cli
+from ..worker import toc as tocmod
+from ..worker.models import File
 
 
 @pytest.fixture
@@ -170,3 +173,62 @@ def test_backfill_changelog_builds_history(runner, tmp_path):
     ]
     assert history["entries"][0]["added"] == ["C"]
     assert history["entries"][0]["removed"] == ["B"]
+
+
+def _write_songbook_pdf(path, names, cover_preface=2):
+    """Render a real TOC and assemble a songbook-like PDF on disk."""
+    files = [File(id=str(i), name=n) for i, n in enumerate(names)]
+    tp, _ = tocmod.build_table_of_contents(files, 0)
+    offset = cover_preface + len(tp)
+    tp.close()
+    tp, _ = tocmod.build_table_of_contents(files, offset)
+    doc = fitz.open()
+    for _ in range(cover_preface):
+        doc.new_page()
+    doc.insert_pdf(tp)
+    for _ in files:
+        doc.new_page()
+    doc.save(str(path))
+    doc.close()
+
+
+def test_backfill_changelog_from_pdfs_builds_full_history(runner, tmp_path):
+    pdfs = tmp_path / "pdfs"
+    pdfs.mkdir()
+    # Two historical (pre-manifest) publishes with a real song change between them.
+    _write_songbook_pdf(
+        pdfs / "ukulele-tuesday-songbook-current-2025-09-27.pdf",
+        ["Angels - Robbie Williams", "Jolene - Dolly Parton"],
+    )
+    _write_songbook_pdf(
+        pdfs / "ukulele-tuesday-songbook-current-2025-10-04.pdf",
+        ["Angels - Robbie Williams", "Hey Jude - The Beatles"],
+    )
+    # A stray different-edition PDF that must be ignored.
+    _write_songbook_pdf(
+        pdfs / "ukulele-tuesday-songbook-complete-2025-10-04.pdf",
+        ["Some Other Song - Nobody"],
+    )
+    out = tmp_path / "changes.json"
+
+    result = runner.invoke(
+        cli,
+        [
+            "backfill-changelog-from-pdfs",
+            "--pdfs-dir",
+            str(pdfs),
+            "--edition",
+            "current",
+            "--output",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    history = json.loads(out.read_text())
+    assert history["edition"] == "current"
+    assert len(history["entries"]) == 1
+    entry = history["entries"][0]
+    assert entry["date"] == "2025-10-04"
+    assert entry["source"] == "toc-page"
+    assert entry["added"] == ["Hey Jude - The Beatles"]
+    assert entry["removed"] == ["Jolene - Dolly Parton"]
