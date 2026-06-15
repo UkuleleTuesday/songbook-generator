@@ -10,7 +10,6 @@ text-extraction ordering quirks.
 
 import logging
 import re
-import unicodedata
 from typing import Any, Optional
 
 import fitz
@@ -22,7 +21,6 @@ from .worker.toc import difficulty_symbol
 # symbols/emoji (So, Sk) and format joiners / variation selectors (Cf). Song
 # titles never legitimately end in these, but historical editions appended
 # themed postfixes we don't have config for, so strip them generically.
-_MARKER_CATEGORIES = {"So", "Sk", "Cf"}
 _ASCII_ALNUM = re.compile(r"[A-Za-z0-9]")
 
 logger = logging.getLogger(__name__)
@@ -30,6 +28,19 @@ logger = logging.getLogger(__name__)
 # Glyphs that prefix every TOC entry (difficulty bins 1-5); see difficulty_symbol.
 DIFFICULTY_GLYPHS = "".join(difficulty_symbol(b) for b in range(1, 6))
 _HEADER = "table of contents"
+_ELLIPSES = ("...", "…")
+
+
+def _is_themed_marker(ch: str) -> bool:
+    """True for the exotic glyphs historical editions append as themed postfixes.
+
+    Covers emoji / supplementary symbols (codepoint >= U+1F000) and the Greek
+    Extended block (U+1F00-U+1FFF), where observed markers like ``Ἴ``/``Ἳ`` live.
+    Deliberately excludes BMP symbols (♥ ★ ♪) and the difficulty glyphs (U+25xx)
+    so legitimate title characters are left alone.
+    """
+    o = ord(ch)
+    return o >= 0x1F000 or 0x1F00 <= o <= 0x1FFF
 
 
 def find_toc_pages(
@@ -62,13 +73,29 @@ def find_toc_pages(
 
 
 def _clean_entry(text: str, postfixes: list[str]) -> str:
-    """Remove the trailing WIP marker (``*``), any configured postfix, and any
-    trailing emoji/symbol marker — in any order/combination. The leading
-    difficulty glyph is stripped by the caller."""
+    """Reduce a raw TOC entry to a clean (shortened) song title.
+
+    The leading difficulty glyph is stripped by the caller. Here we:
+    1. Cut everything from the first themed-marker glyph onward — this removes
+       trailing postfixes like ``Ἴ`` and the page number that can render glued to
+       them (e.g. ``- John Lennon, Yoko Ono Ἴ104`` -> ``- John Lennon, Yoko Ono``).
+    2. Strip trailing truncation ellipses, the WIP ``*`` marker, configured
+       postfixes, and short non-ASCII decorative tokens, in any combination.
+    Note: a page number glued on *without* a marker (e.g. ``- Ramones172``) is
+    left intact here; the caller's prefix matching tolerates that trailing junk.
+    """
     text = text.strip()
+    for i, ch in enumerate(text):
+        if _is_themed_marker(ch):
+            text = text[:i].rstrip()
+            break
     changed = True
     while changed:
         changed = False
+        for suf in _ELLIPSES:
+            if text.endswith(suf):
+                text = text[: -len(suf)].rstrip()
+                changed = True
         if text.endswith("*"):
             text = text[:-1].rstrip()
             changed = True
@@ -76,15 +103,6 @@ def _clean_entry(text: str, postfixes: list[str]) -> str:
             if p and text.endswith(p):
                 text = text[: -len(p)].rstrip()
                 changed = True
-        while text and (
-            unicodedata.category(text[-1]) in _MARKER_CATEGORIES
-            or 0xFE00 <= ord(text[-1]) <= 0xFE0F  # variation selectors
-        ):
-            text = text[:-1].rstrip()
-            changed = True
-        # Drop a short trailing decorative token (a themed postfix glyph that
-        # carries no ASCII letters/digits, e.g. "... - Artist Ἳ"). Length-capped
-        # so genuine non-ASCII title words aren't eaten.
         head, _, last = text.rpartition(" ")
         if head and 0 < len(last) <= 2 and not _ASCII_ALNUM.search(last):
             text = head.rstrip()

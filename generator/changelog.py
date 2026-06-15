@@ -132,6 +132,58 @@ def short_key(raw: str, max_length: Optional[int] = None) -> str:
     return title.casefold()
 
 
+def canon(raw: str) -> str:
+    """Truncation-insensitive canonical form of a song title for matching.
+
+    Normalizes via :func:`generate_short_title` (drops ``feat.``/version parens
+    the TOC also dropped, *no* truncation), strips trailing decorations
+    (``*``/ellipsis/whitespace), and casefolds. Used as a prefix-matching anchor
+    so a song renders to the same canonical regardless of how a given TOC era
+    truncated or decorated it.
+    """
+    s = generate_short_title(raw or "", max_length=None).strip()
+    changed = True
+    while changed:
+        changed = False
+        for suffix in ("...", "…", "*"):
+            if s.endswith(suffix):
+                s = s[: -len(suffix)].rstrip()
+                changed = True
+    return " ".join(s.split()).casefold()
+
+
+def build_vocabulary(names: list[str]) -> dict[str, str]:
+    """Map ``canon(name) -> name`` for a reference catalogue of full song names."""
+    return {canon(n): n for n in names if canon(n)}
+
+
+def resolve(
+    stem: str, vocabulary: dict[str, str], min_overlap: int = 6
+) -> Optional[str]:
+    """Resolve a (possibly truncated/glued) TOC title to a catalogue full name.
+
+    Matches when ``canon(stem)`` and a vocabulary key are prefix-compatible (one
+    is a prefix of the other) — exactly how the drifting renders relate:
+    truncation makes the TOC string a prefix of the real name; a glued page number
+    makes the real name a prefix of the TOC string. Prefers an exact hit, else the
+    longest overlap (deterministic tiebreak). Returns ``None`` when nothing clears
+    ``min_overlap`` (e.g. a song that predates the catalogue).
+    """
+    key = canon(stem)
+    if not key:
+        return None
+    if key in vocabulary:
+        return vocabulary[key]
+    best: Optional[str] = None
+    best_overlap = -1
+    for vkey, name in vocabulary.items():
+        if vkey.startswith(key) or key.startswith(vkey):
+            overlap = min(len(vkey), len(key))
+            if overlap > best_overlap or (overlap == best_overlap and name < best):
+                best, best_overlap = name, overlap
+    return best if best_overlap >= min_overlap else None
+
+
 def diff_keyed(new: dict[str, str], old: dict[str, str]) -> tuple[list[str], list[str]]:
     """Diff two ``{key: label}`` song maps, returning sorted added/removed labels.
 

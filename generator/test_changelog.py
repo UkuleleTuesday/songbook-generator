@@ -2,10 +2,13 @@ from .changelog import (
     backfill_history,
     build_entry,
     build_timeline,
+    build_vocabulary,
+    canon,
     diff_keyed,
     diff_songs,
     empty_history,
     load_file_names,
+    resolve,
     short_key,
     update_history,
 )
@@ -142,8 +145,77 @@ def test_diff_keyed_uses_keys_but_returns_labels():
     assert removed == ["Song C - Artist"]
 
 
+def test_canon_strips_decorations_and_versions():
+    assert canon("Crocodile Rock (Radio Edit) - Elton John*") == canon(
+        "crocodile rock - elton john"
+    )
+    assert canon("Merry Christmas (I Don't Want to Fight...") == canon(
+        "Merry Christmas (I Don't Want to Fight"
+    )
+
+
+_VOCAB = build_vocabulary(
+    [
+        "Merry Christmas (I Don't Want to Fight Tonight) - Ramones",
+        "Happy Xmas (War is Over) - John Lennon, Yoko Ono",
+        "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien",
+    ]
+)
+
+
+def test_resolve_truncated_title_to_full_catalogue_name():
+    assert (
+        resolve("Merry Christmas (I Don't Want to Fight", _VOCAB)
+        == "Merry Christmas (I Don't Want to Fight Tonight) - Ramones"
+    )
+
+
+def test_resolve_glued_page_number_title():
+    # The clean catalogue name is a prefix of the junk-suffixed TOC string.
+    assert (
+        resolve("Happy Xmas (War is Over) - John Lennon, Yoko Ono104", _VOCAB)
+        == "Happy Xmas (War is Over) - John Lennon, Yoko Ono"
+    )
+
+
+def test_resolve_returns_none_for_non_catalogue_song():
+    assert resolve("Some Forgotten B-Side - Nobody At All", _VOCAB) is None
+
+
 def _pub(date, source, filename, songs):
     return {"date": date, "source": source, "filename": filename, "songs": songs}
+
+
+def test_build_timeline_no_churn_across_drifting_renders():
+    """The same songs rendered full / truncated / truncated-shorter across
+    publishes resolve to one catalogue name each -> no spurious add/remove."""
+
+    def songs(titles):
+        out = {}
+        for t in titles:
+            r = resolve(t, _VOCAB) or t
+            out[canon(r)] = r
+        return out
+
+    full = [
+        "Merry Christmas (I Don't Want to Fight Tonight) - Ramones",
+        "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien",
+    ]
+    truncated = [
+        "Merry Christmas (I Don't Want to Fight Tonight)",
+        "Time Warp - Little Nell, Patricia Quinn, Richard",
+    ]
+    shorter = [
+        "Merry Christmas (I Don't Want to Fight",
+        "Time Warp - Little Nell, Patricia Quinn,",
+    ]
+    publishes = [
+        _pub("2025-09-27", "toc-page", "a.pdf", songs(full)),
+        _pub("2025-10-07", "toc-page", "b.pdf", songs(truncated)),
+        _pub("2025-10-27", "toc-page", "c.pdf", songs(shorter)),
+    ]
+    history = build_timeline(publishes, "complete")
+    assert history["entries"] == []  # stable set despite drifting renders
 
 
 def test_build_timeline_orders_diffs_and_tags_source():

@@ -11,8 +11,10 @@ from ..changelog import (
     backfill_history,
     build_entry,
     build_timeline,
+    build_vocabulary,
+    canon,
     empty_history,
-    short_key,
+    resolve,
     update_history,
 )
 from .utils import global_options
@@ -220,13 +222,6 @@ def backfill_changelog(
 )
 @click.option("--edition", required=True, help="Edition id, e.g. 'current'.")
 @click.option(
-    "--max-title-length",
-    type=int,
-    default=None,
-    help="TOC max title length used for canonical matching "
-    "(defaults to the configured Toc.max_toc_entry_length).",
-)
-@click.option(
     "--output",
     type=click.Path(path_type=Path),
     default=Path("changes.json"),
@@ -242,7 +237,6 @@ def backfill_changelog_from_pdfs(
     pdfs_dir: Path,
     manifests_dir: Optional[Path],
     edition: str,
-    max_title_length: Optional[int],
     output: Path,
     max_entries: int,
     **kwargs,
@@ -255,20 +249,14 @@ def backfill_changelog_from_pdfs(
     matched on a canonical shortened-title key so the eras stitch together
     cleanly. Filenames must follow ``ukulele-tuesday-songbook-<edition>-DATE.*``.
     """
-    # Lazy imports: fitz / settings are heavy and only needed here.
+    # Lazy import: fitz is heavy and only needed here.
     import fitz
 
-    from ..common.config import get_settings
     from ..toc_parse import parse_toc_songs
-
-    max_len = (
-        max_title_length
-        if max_title_length is not None
-        else get_settings().toc.max_toc_entry_length
-    )
 
     # date -> publish record; manifests win over PDFs for the same date.
     publishes: dict[str, dict[str, Any]] = {}
+    catalogue: set[str] = set()  # full song names seen across the manifest era
 
     if manifests_dir:
         for path in sorted(manifests_dir.glob("*.manifest.json")):
@@ -278,20 +266,30 @@ def backfill_changelog_from_pdfs(
             except (OSError, ValueError) as e:
                 click.echo(f"Skipping unreadable manifest {path}: {e}", err=True)
                 continue
+            names = manifest.get("content_info", {}).get("file_names") or []
+            # Every manifest's names enrich the resolution vocabulary, even from
+            # other editions (a richer catalogue only improves matching). Pass a
+            # broader --manifests-dir to give rotated-out songs full-name labels.
+            catalogue.update(names)
             ed = (manifest.get("edition") or {}).get("id") or (
                 parsed[0] if parsed else None
             )
             if ed != edition or not parsed:
                 continue
-            names = manifest.get("content_info", {}).get("file_names") or []
             publishes[parsed[1]] = {
                 "date": parsed[1],
                 "generated_at": manifest.get("generated_at", parsed[1]),
                 "source": "manifest",
                 "filename": path.name,
-                "songs": {short_key(n, max_len): n for n in names},
+                "songs": {canon(n): n for n in names},
             }
 
+    # Reference vocabulary of real, full song names. Drifting TOC titles
+    # (truncated / glued page numbers / themed markers) are resolved against it so
+    # the same song collapses to one key regardless of how a TOC era rendered it.
+    vocabulary = build_vocabulary(sorted(catalogue))
+
+    unresolved = 0
     for path in sorted(pdfs_dir.glob("*.pdf")):
         parsed = _parse_edition_date(path.name)
         if not parsed or parsed[0] != edition:
@@ -308,12 +306,20 @@ def backfill_changelog_from_pdfs(
         if not titles:
             click.echo(f"No TOC songs parsed from {path.name}; skipping.", err=True)
             continue
+        songs: dict[str, str] = {}
+        for title in titles:
+            resolved = resolve(title, vocabulary)
+            if resolved is not None:
+                songs[canon(resolved)] = resolved  # clean full-name label
+            else:
+                unresolved += 1
+                songs[canon(title)] = title  # best-effort: predates the catalogue
         publishes[date] = {
             "date": date,
             "generated_at": date,
             "source": "toc-page",
             "filename": path.name,
-            "songs": {short_key(t, max_len): t for t in titles},
+            "songs": songs,
         }
 
     if not publishes:
@@ -327,7 +333,9 @@ def backfill_changelog_from_pdfs(
     click.echo(
         f"✅ Backfilled {len(history['entries'])} changelog entries for "
         f"'{edition}' from {len(publishes)} publishes "
-        f"({n_manifest} manifest, {n_toc} toc-page) -> {output}"
+        f"({n_manifest} manifest, {n_toc} toc-page; "
+        f"{len(vocabulary)} catalogue names, {unresolved} unresolved TOC titles) "
+        f"-> {output}"
     )
 
 

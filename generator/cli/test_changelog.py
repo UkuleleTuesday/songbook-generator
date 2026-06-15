@@ -176,8 +176,14 @@ def test_backfill_changelog_builds_history(runner, tmp_path):
 
 
 def _write_songbook_pdf(path, names, cover_preface=2):
-    """Render a real TOC and assemble a songbook-like PDF on disk."""
-    files = [File(id=str(i), name=n) for i, n in enumerate(names)]
+    """Render a real TOC and assemble a songbook-like PDF on disk.
+
+    Files carry a 'difficulty' so the TOC renders difficulty glyphs, matching
+    real songbooks (and making long/truncated entries detectable)."""
+    files = [
+        File(id=str(i), name=n, properties={"difficulty": str((i % 5) + 1)})
+        for i, n in enumerate(names)
+    ]
     tp, _ = tocmod.build_table_of_contents(files, 0)
     offset = cover_preface + len(tp)
     tp.close()
@@ -232,3 +238,48 @@ def test_backfill_changelog_from_pdfs_builds_full_history(runner, tmp_path):
     assert entry["source"] == "toc-page"
     assert entry["added"] == ["Hey Jude - The Beatles"]
     assert entry["removed"] == ["Jolene - Dolly Parton"]
+
+
+def test_backfill_from_pdfs_resolves_truncated_toc_title_via_manifest(runner, tmp_path):
+    # A long title is truncated in the historical TOC, but resolves to the full
+    # manifest name -> it must NOT show up as added/removed.
+    long_name = (
+        "This Is An Extremely Long Song Title That Exceeds The Limit - The Verbose Band"
+    )
+    pdfs = tmp_path / "pdfs"
+    pdfs.mkdir()
+    manifests = tmp_path / "manifests"
+    manifests.mkdir()
+    _write_songbook_pdf(
+        pdfs / "ukulele-tuesday-songbook-current-2025-09-27.pdf",
+        [long_name, "Short Song - Artist"],
+    )
+    _write_manifest(
+        manifests / "ukulele-tuesday-songbook-current-2026-02-06.manifest.json",
+        [long_name, "Short Song - Artist", "New Song - X"],
+        generated_at="2026-02-06T00:00:00+00:00",
+        edition_id="current",
+    )
+    out = tmp_path / "changes.json"
+
+    result = runner.invoke(
+        cli,
+        [
+            "backfill-changelog-from-pdfs",
+            "--pdfs-dir",
+            str(pdfs),
+            "--manifests-dir",
+            str(manifests),
+            "--edition",
+            "current",
+            "--output",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    history = json.loads(out.read_text())
+    # Only the genuinely new song changed; the truncated long title resolved.
+    assert len(history["entries"]) == 1
+    entry = history["entries"][0]
+    assert entry["added"] == ["New Song - X"]
+    assert entry["removed"] == []

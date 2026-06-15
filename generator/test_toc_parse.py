@@ -46,6 +46,19 @@ def test_extract_strips_themed_letter_postfix_token():
     assert songs == ["Creep - Radiohead", "Candy - Paolo Nutini"]
 
 
+def test_extract_cuts_marker_with_glued_page_number():
+    # The themed marker can render with the page number glued on (no space).
+    lines = ["◑ Happy Xmas (War is Over) - John Lennon, Yoko Ono Ἴ104"]
+    songs = toc_parse.extract_songs_from_lines(lines, postfixes=[])
+    assert songs == ["Happy Xmas (War is Over) - John Lennon, Yoko Ono"]
+
+
+def test_extract_cuts_truncation_ellipsis_and_marker():
+    lines = ["◔ Merry Christmas (I Don't Want to Fight... Ἴ"]
+    songs = toc_parse.extract_songs_from_lines(lines, postfixes=[])
+    assert songs == ["Merry Christmas (I Don't Want to Fight"]
+
+
 def test_extract_keeps_real_non_ascii_words():
     # Don't eat legitimate accented/foreign title words.
     lines = ["○ Ça plan pour moi - Plastic Bertrand", "○ 99 Luftballons - Nena"]
