@@ -35,6 +35,8 @@ class TocEntry:
     text: str
     rect: fitz.Rect
     toc_page_index: int
+    title: str = ""
+    """Full, untruncated song title, used for the native PDF outline/bookmarks."""
 
 
 class TocGenerator:
@@ -168,6 +170,7 @@ class TocGenerator:
                 text=shortened_title,
                 rect=link_rect,
                 toc_page_index=current_page_index,
+                title=file.name,
             )
         )
 
@@ -291,6 +294,62 @@ def build_table_of_contents(
         return toc_pdf, generator.get_toc_entries()
 
 
+def _target_page_index(
+    toc_entries: List[TocEntry], entry: TocEntry, toc_page_offset: int
+) -> int:
+    """Absolute 0-based index of an entry's song page in the merged PDF.
+
+    Songs sit immediately after the cover/preface (``toc_page_offset``) and the
+    TOC pages, hence ``+ number of TOC pages + the file's index``. This is the
+    same arithmetic used to place the clickable TOC links, so bookmarks and
+    links always resolve to the same page.
+    """
+    num_toc_pages = len({e.toc_page_index for e in toc_entries})
+    return toc_page_offset + num_toc_pages + entry.target_page
+
+
+def build_pdf_outline(
+    toc_entries: List[TocEntry],
+    toc_page_offset: int,
+    page_count: Optional[int] = None,
+) -> List[list]:
+    """Build a PyMuPDF outline (``[[level, title, page], ...]``) from TOC entries.
+
+    Pages are 1-based, as required by :meth:`fitz.Document.set_toc`. When
+    ``page_count`` is given, entries whose target page falls outside the document
+    are skipped (mirrors the bounds check used when inserting TOC links).
+    """
+    outline: List[list] = []
+    for entry in toc_entries:
+        target_page_index = _target_page_index(toc_entries, entry, toc_page_offset)
+        if page_count is not None and target_page_index >= page_count:
+            continue
+        title = entry.title or entry.text
+        if not title:
+            continue
+        outline.append([1, title, target_page_index + 1])
+    return outline
+
+
+def set_pdf_outline(
+    merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int
+) -> List[list]:
+    """Set a native PDF outline (bookmarks) on the merged PDF from TOC entries.
+
+    One top-level bookmark per song pointing at its page, so PDF readers show a
+    navigable sidebar. Returns the outline that was applied (empty if there were
+    no entries).
+    """
+    with tracer.start_as_current_span("set_pdf_outline") as span:
+        outline = build_pdf_outline(
+            toc_entries, toc_page_offset, page_count=len(merged_pdf)
+        )
+        span.set_attribute("toc.outline.count", len(outline))
+        if outline:
+            merged_pdf.set_toc(outline)
+        return outline
+
+
 def add_toc_links_to_merged_pdf(
     merged_pdf: fitz.Document, toc_entries: List[TocEntry], toc_page_offset: int
 ):
@@ -312,13 +371,9 @@ def add_toc_links_to_merged_pdf(
 
             toc_page = merged_pdf[toc_page_index]
 
-            # Calculate the target page in the merged PDF
-            # The target page is after all TOC pages plus the file's index
-            target_page_index = (
-                toc_page_offset
-                + len({e.toc_page_index for e in toc_entries})
-                + entry.target_page
-            )
+            # Calculate the target page in the merged PDF (shared with the native
+            # outline so links and bookmarks always point to the same page).
+            target_page_index = _target_page_index(toc_entries, entry, toc_page_offset)
             if target_page_index >= len(merged_pdf):
                 continue
 
