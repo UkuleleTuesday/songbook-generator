@@ -1,3 +1,5 @@
+import json
+import arrow
 import pytest
 from unittest.mock import Mock, patch
 import fitz
@@ -33,6 +35,7 @@ def test_generate_cover_with_templating(mock_apply_replacements, mock_download_f
     mock_gdrive_client = Mock(spec=cover.GoogleDriveClient)
     mock_docs = Mock()
     mock_download_file.return_value = b"fake-pdf-content"  # Fix for fitz.open
+    mock_apply_replacements.return_value = {"{{DATE}}": 1, "{{NEXT_TUESDAY}}": 1}
     mock_config = config.Cover(file_id="cover123")
 
     generator = cover.CoverGenerator(
@@ -166,6 +169,7 @@ def test_generate_cover_uses_provided_cover_id(
     mock_gdrive_client = Mock(spec=cover.GoogleDriveClient)
     mock_docs = Mock()
     mock_download_file.return_value = b"fake-pdf-content"
+    mock_apply_replacements.return_value = {"{{NEXT_TUESDAY}}": 1}
 
     generator = cover.CoverGenerator(
         mock_gdrive_client, mock_docs, mock_config, enable_templating=True
@@ -179,3 +183,87 @@ def test_generate_cover_uses_provided_cover_id(
     mock_gdrive_client.download_file.assert_called_once()
     called_kwargs = mock_gdrive_client.download_file.call_args[1]
     assert called_kwargs["file_id"] == "provided_cover_id"
+
+
+@pytest.mark.parametrize(
+    "today, expected",
+    [
+        ("2026-06-15", "2026-06-16"),  # Monday -> the coming Tuesday
+        ("2026-06-16", "2026-06-16"),  # Tuesday -> the same day
+        ("2026-06-17", "2026-06-23"),  # Wednesday -> the following Tuesday
+        ("2026-06-21", "2026-06-23"),  # Sunday -> the following Tuesday
+    ],
+)
+def test_next_tuesday(today, expected):
+    """_next_tuesday returns the upcoming Tuesday, or today if today is Tuesday."""
+    result = cover._next_tuesday(arrow.get(today))
+    assert result.format("YYYY-MM-DD") == expected
+
+
+@patch("generator.common.gdrive.GoogleDriveClient.download_file")
+@patch("generator.worker.cover.CoverGenerator._apply_template_replacements")
+@patch("generator.worker.cover.arrow.now")
+def test_generate_cover_templates_date_and_next_tuesday(
+    mock_now, mock_apply_replacements, mock_download_file
+):
+    """The forward replacement maps both {{DATE}} and {{NEXT_TUESDAY}}."""
+    # Monday 2026-06-15; the coming Tuesday is 2026-06-16.
+    mock_now.return_value = arrow.get("2026-06-15")
+    mock_apply_replacements.return_value = {"{{DATE}}": 1, "{{NEXT_TUESDAY}}": 1}
+    mock_download_file.return_value = b"fake-pdf-content"
+    mock_config = config.Cover(file_id="cover123")
+
+    generator = cover.CoverGenerator(
+        Mock(spec=cover.GoogleDriveClient),
+        Mock(),
+        mock_config,
+        enable_templating=True,
+    )
+    with patch("fitz.open"):
+        generator.generate_cover("cover123")
+
+    forward_map = mock_apply_replacements.call_args_list[0].args[1]
+    assert forward_map == {
+        "{{DATE}}": "15th June 2026",
+        "{{NEXT_TUESDAY}}": "16th June 2026",
+    }
+
+
+def test_apply_template_replacements_returns_counts():
+    """Returns per-placeholder occurrence counts from the batchUpdate replies."""
+    response_body = json.dumps(
+        {
+            "replies": [
+                {"replaceAllText": {"occurrencesChanged": 2}},
+                {"replaceAllText": {}},  # placeholder not present in the doc
+            ]
+        }
+    )
+    docs_http = HttpMockSequence([({"status": "200"}, response_body)])
+    docs = build("docs", "v1", http=docs_http)
+    generator = cover.CoverGenerator(
+        gdrive_client=Mock(spec=cover.GoogleDriveClient),
+        docs_service=docs,
+        cover_config=config.Cover(file_id="doc123"),
+    )
+
+    counts = generator._apply_template_replacements(
+        "doc123", {"{{DATE}}": "a", "{{NEXT_TUESDAY}}": "b"}
+    )
+
+    assert counts == {"{{DATE}}": 2, "{{NEXT_TUESDAY}}": 0}
+
+
+def test_apply_template_replacements_permission_error_returns_empty():
+    """A failed update returns an empty mapping so nothing is reverted."""
+    docs_http = HttpMockSequence([({"status": "403"}, "Permission denied")])
+    docs = build("docs", "v1", http=docs_http)
+    generator = cover.CoverGenerator(
+        gdrive_client=Mock(spec=cover.GoogleDriveClient),
+        docs_service=docs,
+        cover_config=config.Cover(file_id="doc123"),
+    )
+
+    counts = generator._apply_template_replacements("doc123", {"{{DATE}}": "value"})
+
+    assert counts == {}
