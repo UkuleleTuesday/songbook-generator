@@ -252,18 +252,27 @@ jobs:
         echo "prev_manifest_name=${PREV_MANIFEST_NAME}" >> "$GITHUB_OUTPUT"
         echo "Previous manifest: ${PREV_MANIFEST_PATH} (name: ${PREV_MANIFEST_NAME:-<none>})"
 
-    - name: Enrich manifest with changelog
+    - name: Update changelog history
       run: |
         set -e
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
         NEW_MANIFEST=$(find ./songbooks -name '*.manifest.json' -print -quit)
         if [ -z "$NEW_MANIFEST" ]; then
           echo "No manifest file found in artifact."
           exit 1
         fi
-        uv run .github/scripts/compute-changelog.py \
-          "$NEW_MANIFEST" \
-          "${{ steps.fetch-previous.outputs.prev_manifest_path }}" \
-          "${{ steps.fetch-previous.outputs.prev_manifest_name }}"
+        # Download the existing changes.json history (absent on a first publish).
+        CHANGES_GCS="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/changes.json"
+        gcloud storage cp "$CHANGES_GCS" ./changes.json 2>/dev/null \
+          || echo "No existing changes.json; starting a fresh history."
+        uv run songbook-tools update-changelog \
+          --new-manifest "$NEW_MANIFEST" \
+          --previous-manifest "${{ steps.fetch-previous.outputs.prev_manifest_path }}" \
+          --previous-manifest-filename "${{ steps.fetch-previous.outputs.prev_manifest_name }}" \
+          --changes ./changes.json \
+          --edition "$EDITION" \
+          --manifest-filename "$(basename "$NEW_MANIFEST")" \
+          --output ./changes.json
 
     - name: Upload PDF to GCS
       id: upload-pdf
@@ -308,3 +317,10 @@ jobs:
           "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/latest.json" \
           --cache-control="public, max-age=60"
         echo "✅ Successfully uploaded latest.json"
+        if [ -f changes.json ]; then
+          gcloud storage cp \
+            changes.json \
+            "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/changes.json" \
+            --cache-control="public, max-age=60"
+          echo "✅ Successfully uploaded changes.json"
+        fi
