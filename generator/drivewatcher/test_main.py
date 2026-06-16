@@ -1,21 +1,32 @@
-"""Tests for the drivewatcher module."""
+"""Tests for the refactored drivewatcher consumer module."""
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
-from google.api_core.exceptions import NotFound
-
 from generator.drivewatcher.main import (
-    _detect_changes,
-    _get_last_check_time,
+    _fetch_changes,
+    _filter_changes_by_folders,
     _get_watched_folders,
     _publish_changes,
-    _save_check_time,
     drivewatcher_main,
 )
-from generator.worker.models import File
+
+
+def _make_tracer():
+    mock_span = Mock()
+    mock_tracer = Mock()
+    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
+        return_value=mock_span
+    )
+    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+    return mock_tracer, mock_span
+
+
+# ---------------------------------------------------------------------------
+# _get_watched_folders
+# ---------------------------------------------------------------------------
 
 
 def test_get_watched_folders_from_env():
@@ -27,355 +38,367 @@ def test_get_watched_folders_from_env():
 
 def test_get_watched_folders_from_config(monkeypatch):
     """Test getting watched folders from config when env var not set."""
-    # Clear the environment variable
     monkeypatch.delenv("DRIVE_WATCHED_FOLDERS", raising=False)
 
-    # Mock the settings
     mock_settings = Mock()
-    mock_settings.song_sheets.folder_ids = ["config_folder1", "config_folder2"]
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
+    mock_settings.song_sheets.folder_ids = [
+        "config_folder1",
+        "config_folder2",
+    ]
+    with patch(
+        "generator.drivewatcher.main.get_settings",
+        return_value=mock_settings,
+    ):
         folders = _get_watched_folders()
         assert folders == ["config_folder1", "config_folder2"]
 
 
 def test_get_watched_folders_strips_whitespace():
     """Test that folder IDs are stripped of whitespace."""
-    with patch.dict(os.environ, {"DRIVE_WATCHED_FOLDERS": " folder1 , folder2 ,  "}):
+    with patch.dict(
+        os.environ,
+        {"DRIVE_WATCHED_FOLDERS": " folder1 , folder2 ,  "},
+    ):
         folders = _get_watched_folders()
         assert folders == ["folder1", "folder2"]
 
 
-@patch("generator.drivewatcher.main.init_cache")
-@patch("generator.drivewatcher.main.GoogleDriveClient")
-def test_detect_changes(mock_gdrive_client, mock_init_cache):
-    """Test the change detection logic."""
-    # Mock the tracer and services
-    mock_span = Mock()
-    mock_tracer = Mock()
-    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
-        return_value=mock_span
-    )
-    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+# ---------------------------------------------------------------------------
+# _fetch_changes
+# ---------------------------------------------------------------------------
 
-    services = {
-        "tracer": mock_tracer,
-        "drive": Mock(),
+
+def test_fetch_changes_returns_new_start_token():
+    """Test that the new start token is returned when all pages consumed."""
+    mock_drive = Mock()
+    mock_drive.changes.return_value.list.return_value.execute.return_value = {
+        "newStartPageToken": "new-tok",
+        "changes": [{"changeType": "file", "fileId": "f1"}],
+    }
+    services = {"drive": mock_drive}
+
+    changes, token = _fetch_changes(services, "old-tok")
+
+    assert token == "new-tok"
+    assert len(changes) == 1
+    assert changes[0]["fileId"] == "f1"
+
+
+def test_fetch_changes_paginates():
+    """Test that multiple pages are collected before the final token."""
+    page1 = {
+        "nextPageToken": "page2-tok",
+        "changes": [{"changeType": "file", "fileId": "f1"}],
+    }
+    page2 = {
+        "newStartPageToken": "final-tok",
+        "changes": [{"changeType": "file", "fileId": "f2"}],
     }
 
-    # Mock the Google Drive client
-    mock_client_instance = Mock()
-    mock_gdrive_client.return_value = mock_client_instance
+    mock_list = Mock()
+    mock_list.execute.side_effect = [page1, page2]
+    mock_drive = Mock()
+    mock_drive.changes.return_value.list.return_value = mock_list
+    services = {"drive": mock_drive}
 
-    # Create mock files
-    mock_files = [
-        File(
-            id="file1",
-            name="Test File 1.pdf",
-            mimeType="application/pdf",
-            parents=["folder1"],
-            properties={},
-        ),
-        File(
-            id="file2",
-            name="Test File 2.pdf",
-            mimeType="application/pdf",
-            parents=["folder1"],
-            properties={},
-        ),
+    changes, token = _fetch_changes(services, "start-tok")
+
+    assert token == "final-tok"
+    assert len(changes) == 2
+    assert changes[0]["fileId"] == "f1"
+    assert changes[1]["fileId"] == "f2"
+
+
+def test_fetch_changes_no_new_token_falls_back():
+    """Test that the original token is returned if API returns no new token."""
+    mock_drive = Mock()
+    mock_drive.changes.return_value.list.return_value.execute.return_value = {
+        "changes": []
+    }
+    services = {"drive": mock_drive}
+
+    changes, token = _fetch_changes(services, "same-tok")
+
+    assert token == "same-tok"
+    assert changes == []
+
+
+# ---------------------------------------------------------------------------
+# _filter_changes_by_folders
+# ---------------------------------------------------------------------------
+
+
+def test_filter_changes_includes_matching_folder():
+    """Test that changes in watched folders are kept."""
+    changes = [
+        {
+            "changeType": "file",
+            "fileId": "f1",
+            "file": {
+                "id": "f1",
+                "name": "Song.pdf",
+                "parents": ["watched-folder"],
+                "trashed": False,
+                "mimeType": "application/pdf",
+                "properties": {"key": "val"},
+            },
+        }
     ]
 
-    mock_client_instance.query_drive_files.return_value = mock_files
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    # Test the function
-    since_time = datetime.utcnow() - timedelta(hours=1)
-    changed_files = _detect_changes(services, ["folder1"], since_time)
-
-    # Verify the results
-    assert len(changed_files) == 2
-    assert changed_files[0]["id"] == "file1"
-    assert changed_files[0]["name"] == "Test File 1.pdf"
-    assert changed_files[1]["id"] == "file2"
-    assert changed_files[1]["name"] == "Test File 2.pdf"
-
-    # Verify the Google Drive client was called correctly
-    mock_client_instance.query_drive_files.assert_called_once_with(
-        ["folder1"], modified_after=since_time
-    )
+    assert len(result) == 1
+    assert result[0]["id"] == "f1"
+    assert result[0]["name"] == "Song.pdf"
+    assert result[0]["folder_id"] == "watched-folder"
+    assert result[0]["mime_type"] == "application/pdf"
+    assert result[0]["properties"] == {"key": "val"}
+    assert result[0]["parents"] == ["watched-folder"]
 
 
-def test_get_last_check_time_no_blob():
-    """Test getting last check time when no previous check exists."""
-    mock_bucket = Mock()
-    mock_bucket.get_blob.return_value = None
+def test_filter_changes_excludes_unrelated_folder():
+    """Test that changes outside watched folders are dropped."""
+    changes = [
+        {
+            "changeType": "file",
+            "fileId": "f1",
+            "file": {
+                "id": "f1",
+                "name": "Other.pdf",
+                "parents": ["other-folder"],
+                "trashed": False,
+                "mimeType": "application/pdf",
+                "properties": {},
+            },
+        }
+    ]
 
-    mock_storage_client = Mock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    mock_settings = Mock()
-    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
-
-    services = {"storage_client": mock_storage_client}
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
-        result = _get_last_check_time(services)
-
-        # Should return approximately 1 hour ago
-        now = datetime.utcnow()
-        expected = now - timedelta(hours=1)
-        assert (
-            abs((result - expected).total_seconds()) < 60
-        )  # Within 1 minute tolerance
-
-        # Verify it looked for the correct file
-        mock_bucket.get_blob.assert_called_once_with("drivewatcher/metadata.json")
+    assert result == []
 
 
-def test_get_last_check_time_with_existing_blob():
-    """Test getting last check time when a previous check time exists."""
-    test_time = datetime(2023, 1, 1, 12, 0, 0)
+def test_filter_changes_excludes_trashed_files():
+    """Test that trashed files are not included."""
+    changes = [
+        {
+            "changeType": "file",
+            "fileId": "f1",
+            "file": {
+                "id": "f1",
+                "name": "Trashed.pdf",
+                "parents": ["watched-folder"],
+                "trashed": True,
+                "mimeType": "application/pdf",
+                "properties": {},
+            },
+        }
+    ]
 
-    mock_blob = Mock()
-    metadata = {"last_check_time": test_time.isoformat()}
-    mock_blob.download_as_text.return_value = json.dumps(metadata)
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    mock_bucket = Mock()
-    mock_bucket.get_blob.return_value = mock_blob
-
-    mock_storage_client = Mock()
-    mock_storage_client.bucket.return_value = mock_bucket
-
-    mock_settings = Mock()
-    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
-
-    services = {"storage_client": mock_storage_client}
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
-        result = _get_last_check_time(services)
-
-        assert result == test_time
-        mock_bucket.get_blob.assert_called_once_with("drivewatcher/metadata.json")
+    assert result == []
 
 
-def test_get_last_check_time_malformed_json():
-    """Test getting last check time when JSON metadata is malformed."""
-    mock_blob = Mock()
-    mock_blob.download_as_text.return_value = "invalid json"
+def test_filter_changes_excludes_non_file_changes():
+    """Test that drive-level (non-file) changes are skipped."""
+    changes = [{"changeType": "drive", "driveId": "shared-drive"}]
 
-    mock_bucket = Mock()
-    mock_bucket.get_blob.return_value = mock_blob
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    mock_storage_client = Mock()
-    mock_storage_client.bucket.return_value = mock_bucket
-
-    mock_settings = Mock()
-    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
-
-    services = {"storage_client": mock_storage_client}
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
-        result = _get_last_check_time(services)
-
-        # Should fallback to 1 hour ago when JSON is malformed
-        now = datetime.utcnow()
-        expected = now - timedelta(hours=1)
-        assert (
-            abs((result - expected).total_seconds()) < 60
-        )  # Within 1 minute tolerance
+    assert result == []
 
 
-def test_get_last_check_time_not_found_exception():
-    """Test getting last check time when blob download raises NotFound."""
-    mock_blob = Mock()
-    mock_blob.download_as_text.side_effect = NotFound("No such object")
+def test_filter_changes_excludes_files_with_no_data():
+    """Test that changes with no file object are skipped."""
+    changes = [{"changeType": "file", "fileId": "f1", "removed": True}]
 
-    mock_bucket = Mock()
-    mock_bucket.get_blob.return_value = mock_blob
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    mock_storage_client = Mock()
-    mock_storage_client.bucket.return_value = mock_bucket
-
-    mock_settings = Mock()
-    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
-
-    services = {"storage_client": mock_storage_client}
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
-        result = _get_last_check_time(services)
-
-        # Should fallback to 1 hour ago when NotFound is raised
-        now = datetime.utcnow()
-        expected = now - timedelta(hours=1)
-        assert (
-            abs((result - expected).total_seconds()) < 60
-        )  # Within 1 minute tolerance
+    assert result == []
 
 
-def test_save_check_time():
-    """Test saving the check time."""
-    test_time = datetime(2023, 1, 1, 12, 0, 0)
+def test_filter_changes_multiple_files_mixed():
+    """Test filtering a mix of matching and non-matching changes."""
+    changes = [
+        {
+            "changeType": "file",
+            "fileId": "f1",
+            "file": {
+                "id": "f1",
+                "name": "Kept.pdf",
+                "parents": ["watched-folder"],
+                "trashed": False,
+                "mimeType": "application/pdf",
+                "properties": {},
+            },
+        },
+        {
+            "changeType": "file",
+            "fileId": "f2",
+            "file": {
+                "id": "f2",
+                "name": "Dropped.pdf",
+                "parents": ["other-folder"],
+                "trashed": False,
+                "mimeType": "application/pdf",
+                "properties": {},
+            },
+        },
+    ]
 
-    mock_blob = Mock()
-    mock_bucket = Mock()
-    mock_bucket.blob.return_value = mock_blob
+    result = _filter_changes_by_folders(changes, ["watched-folder"])
 
-    mock_storage_client = Mock()
-    mock_storage_client.bucket.return_value = mock_bucket
+    assert len(result) == 1
+    assert result[0]["id"] == "f1"
 
-    mock_settings = Mock()
-    mock_settings.caching.gcs.worker_cache_bucket = "test-bucket"
 
-    services = {"storage_client": mock_storage_client}
-
-    with patch("generator.drivewatcher.main.get_settings", return_value=mock_settings):
-        _save_check_time(services, test_time)
-
-        # Verify the blob was created and uploaded correctly
-        mock_bucket.blob.assert_called_once_with("drivewatcher/metadata.json")
-
-        # Check that JSON was uploaded with correct structure
-        call_args = mock_blob.upload_from_string.call_args
-        uploaded_data = call_args[0][0]
-        uploaded_metadata = json.loads(uploaded_data)
-
-        assert uploaded_metadata["last_check_time"] == test_time.isoformat()
-        assert call_args[1]["content_type"] == "application/json"
+# ---------------------------------------------------------------------------
+# _publish_changes
+# ---------------------------------------------------------------------------
 
 
 def test_publish_changes():
     """Test publishing changes to Pub/Sub."""
-    check_time = datetime(2023, 1, 1, 12, 0, 0)
+    check_time = datetime(2024, 1, 1, 12, 0, 0)
     changed_files = [
-        {"id": "file1", "name": "Test File 1.pdf", "folder_id": "folder1"},
-        {"id": "file2", "name": "Test File 2.pdf", "folder_id": "folder1"},
+        {"id": "f1", "name": "Test.pdf", "folder_id": "folder1"},
+        {"id": "f2", "name": "Other.pdf", "folder_id": "folder1"},
     ]
 
     mock_future = Mock()
     mock_future.result.return_value = None
-
     mock_publisher = Mock()
     mock_publisher.publish.return_value = mock_future
-
-    mock_span = Mock()
-    mock_tracer = Mock()
-    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
-        return_value=mock_span
-    )
-    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+    mock_tracer, _ = _make_tracer()
 
     services = {
         "tracer": mock_tracer,
         "publisher": mock_publisher,
-        "topic_path": "projects/test-project/topics/test-topic",
+        "topic_path": "projects/test/topics/drive-changes",
     }
 
     with patch(
-        "generator.drivewatcher.main._get_watched_folders", return_value=["folder1"]
+        "generator.drivewatcher.main._get_watched_folders",
+        return_value=["folder1"],
     ):
         _publish_changes(services, changed_files, check_time)
 
-    # Verify the message was published
     mock_publisher.publish.assert_called_once()
     call_args = mock_publisher.publish.call_args
 
-    assert call_args[0][0] == "projects/test-project/topics/test-topic"  # topic path
-
-    # Parse the message data
-    message_data = json.loads(call_args[0][1].decode("utf-8"))
-    assert message_data["check_time"] == check_time.isoformat()
-    assert message_data["file_count"] == 2
-    assert message_data["changed_files"] == changed_files
-    assert message_data["folders_checked"] == ["folder1"]
-
-    # Check the attributes
+    assert call_args[0][0] == "projects/test/topics/drive-changes"
+    message = json.loads(call_args[0][1].decode("utf-8"))
+    assert message["check_time"] == check_time.isoformat()
+    assert message["file_count"] == 2
+    assert message["changed_files"] == changed_files
+    assert message["folders_checked"] == ["folder1"]
     assert call_args[1]["source"] == "drivewatcher"
     assert call_args[1]["change_count"] == "2"
 
 
 def test_publish_changes_empty_list():
-    """Test that nothing is published when there are no changes."""
+    """Test that nothing is published when the changes list is empty."""
     services = {"tracer": Mock(), "publisher": Mock()}
-
-    _publish_changes(services, [], datetime.utcnow())
-
-    # Verify no publish call was made
+    _publish_changes(services, [], datetime.now(timezone.utc))
     services["publisher"].publish.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# drivewatcher_main integration
+# ---------------------------------------------------------------------------
+
+
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
-@patch("generator.drivewatcher.main._get_last_check_time")
-@patch("generator.drivewatcher.main._detect_changes")
+@patch("generator.drivewatcher.main.get_page_token")
+@patch("generator.drivewatcher.main._fetch_changes")
+@patch("generator.drivewatcher.main._filter_changes_by_folders")
 @patch("generator.drivewatcher.main._publish_changes")
-@patch("generator.drivewatcher.main._save_check_time")
+@patch("generator.drivewatcher.main.save_page_token")
 def test_drivewatcher_main_with_changes(
-    mock_save_check_time,
-    mock_publish_changes,
-    mock_detect_changes,
-    mock_get_last_check_time,
-    mock_get_watched_folders,
+    mock_save_token,
+    mock_publish,
+    mock_filter,
+    mock_fetch,
+    mock_get_token,
+    mock_get_folders,
     mock_get_services,
 ):
-    """Test the main drivewatcher function when changes are detected."""
-    # Mock the services
-    mock_span = Mock()
-    mock_tracer = Mock()
-    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
-        return_value=mock_span
-    )
-    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
-
+    """Test drivewatcher_main end-to-end when changes are found."""
+    mock_tracer, _ = _make_tracer()
     mock_get_services.return_value = {"tracer": mock_tracer}
-
-    # Mock the watched folders
-    mock_get_watched_folders.return_value = ["folder1", "folder2"]
-
-    # Mock the last check time
-    last_check_time = datetime.utcnow() - timedelta(hours=1)
-    mock_get_last_check_time.return_value = last_check_time
-
-    # Mock detecting changes
-    changed_files = [{"id": "file1", "name": "Test File.pdf"}]
-    mock_detect_changes.return_value = changed_files
-
-    # Mock cloud event
-    cloud_event = Mock()
-
-    # Call the function
-    drivewatcher_main(cloud_event)
-
-    # Verify all functions were called
-    mock_get_watched_folders.assert_called_once()
-    mock_get_last_check_time.assert_called_once()
-    mock_detect_changes.assert_called_once_with(
-        mock_get_services.return_value, ["folder1", "folder2"], last_check_time
+    mock_get_folders.return_value = ["folder1", "folder2"]
+    mock_get_token.return_value = "current-tok"
+    mock_fetch.return_value = (
+        [{"changeType": "file", "fileId": "f1"}],
+        "new-tok",
     )
-    mock_publish_changes.assert_called_once()
-    mock_save_check_time.assert_called_once()
+    mock_filter.return_value = [{"id": "f1", "name": "Song.pdf"}]
+
+    drivewatcher_main(Mock())
+
+    mock_fetch.assert_called_once_with(mock_get_services.return_value, "current-tok")
+    mock_publish.assert_called_once()
+    mock_save_token.assert_called_once_with(mock_get_services.return_value, "new-tok")
 
 
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
-def test_drivewatcher_main_no_folders(mock_get_watched_folders, mock_get_services):
-    """Test the main drivewatcher function when no folders are configured."""
-    # Mock the services
-    mock_span = Mock()
-    mock_tracer = Mock()
-    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
-        return_value=mock_span
-    )
-    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
-
+def test_drivewatcher_main_no_folders(mock_get_folders, mock_get_services):
+    """Test that drivewatcher_main exits early with no folders configured."""
+    mock_tracer, mock_span = _make_tracer()
     mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_folders.return_value = []
 
-    # Mock no watched folders
-    mock_get_watched_folders.return_value = []
+    drivewatcher_main(Mock())
 
-    # Mock cloud event
-    cloud_event = Mock()
-
-    # Call the function
-    drivewatcher_main(cloud_event)
-
-    # Verify status was set to failed
     mock_span.set_attribute.assert_any_call("status", "failed_no_folders")
+
+
+@patch("generator.drivewatcher.main._get_services")
+@patch("generator.drivewatcher.main._get_watched_folders")
+@patch("generator.drivewatcher.main.get_page_token")
+def test_drivewatcher_main_no_page_token(
+    mock_get_token, mock_get_folders, mock_get_services
+):
+    """Test that drivewatcher_main exits early when no page token exists."""
+    mock_tracer, mock_span = _make_tracer()
+    mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_folders.return_value = ["folder1"]
+    mock_get_token.return_value = None
+
+    drivewatcher_main(Mock())
+
+    mock_span.set_attribute.assert_any_call("status", "no_page_token")
+
+
+@patch("generator.drivewatcher.main._get_services")
+@patch("generator.drivewatcher.main._get_watched_folders")
+@patch("generator.drivewatcher.main.get_page_token")
+@patch("generator.drivewatcher.main._fetch_changes")
+@patch("generator.drivewatcher.main._filter_changes_by_folders")
+@patch("generator.drivewatcher.main._publish_changes")
+@patch("generator.drivewatcher.main.save_page_token")
+def test_drivewatcher_main_no_relevant_changes(
+    mock_save_token,
+    mock_publish,
+    mock_filter,
+    mock_fetch,
+    mock_get_token,
+    mock_get_folders,
+    mock_get_services,
+):
+    """Test that publish is skipped when no files match watched folders."""
+    mock_tracer, mock_span = _make_tracer()
+    mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_folders.return_value = ["folder1"]
+    mock_get_token.return_value = "current-tok"
+    mock_fetch.return_value = ([], "new-tok")
+    mock_filter.return_value = []
+
+    drivewatcher_main(Mock())
+
+    mock_publish.assert_not_called()
+    mock_save_token.assert_called_once_with(mock_get_services.return_value, "new-tok")
+    mock_span.set_attribute.assert_any_call("status", "no_relevant_changes")
