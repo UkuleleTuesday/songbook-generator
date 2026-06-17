@@ -1,0 +1,51 @@
+id: "pride-candidates"
+title: "Ukulele Tuesday - Pride Candidates"
+description: >
+  Candidate songs for the Ukulele Tuesday Pridepocalypse special edition.
+  These are songs from the complete catalogue that are Pride-relevant but
+  not currently in the regular Tuesday songbook (those make it in by default).
+  This book is used as a reference for the curation poll.
+sections:
+  cover:
+    file_id: "1l0YGV0UD-ZxTrsuaY8WcMlHybrhz3BdpgIKqhTEyRLY"
+  table_of_contents:
+    postfixes:
+      - postfix: " 🌈"
+        filters:
+          - key: "specialbooks"
+            operator: "contains"
+            value: "pride"
+  songs:
+    filters:
+      - key: "name"
+        operator: "in"
+        value:
+          # Already tagged pride
+          - "A Little Respect - Erasure"
+          - "All The Things She Said - t.A.T.u."
+          - "Anyone Else But You - The Moldy Peaches"
+          - "Boom, Boom, Boom, Boom!! - Vengaboys"
+          - "Express Yourself - Madonna"
+          - "Fast Car - Tracy Chapman"
+          - "Freedom! '90 (Edit) - George Michael"
+          - "I Think We're Alone Now - Tommy James & The Shondells"
+          - "Lola - The Kinks"
+          - "Radio Gaga - Queen"
+          - "Roar - Katy Perry"
+          - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"
+          - "Tragedy - Bee Gees"
+          - "True Colors - Cindy Lauper"
+          - "True Trans Soul Rebel - Against Me!"
+          - "Truly Madly Deeply - Savage Garden"
+          - "Twist in My Sobriety - Tanita Tikaram"
+          - "We Are Family - Sister Sledge"
+          - "We Are Young - fun. (feat. Janelle Monáe)"
+          # Additional candidates
+          - "Danger! High Voltage (Soulchild Radio Mix) - Electric 6"
+          - "Don't You Want Me - The Human League"
+          - "Get the Party Started - P!nk"
+          - "Happier Than Ever - Billie Eilish"
+          - "I Love You Always Forever - Donna Lewis"
+          - "Le Banana Split - Lio"
+          - "Mamma Mia - ABBA"
+          - "Self Control - Laura Branigan"
