@@ -10,7 +10,7 @@ sections:
   table_of_contents:
     postfixes:
       - postfix: " ✓"
-        color: [0.6, 0.6, 0.6]
+        color: [0.4, 0.4, 0.4]
         filters:
           - key: "name"
             operator: "in"
@@ -19,7 +19,6 @@ sections:
               - "Can't Get You out of My Head - Kylie Minogue"
               - "Crocodile Rock - Elton John"
               - "Grace Kelly - MIKA"
-              - "Hey Jude - The Beatles"
               - "I Feel Love - Donna Summer"
               - "I Want to Break Free - Queen"
               - "Nancy Boy - Placebo"
@@ -76,11 +75,6 @@ sections:
               - "What's Up? - 4 Non Blondes"
               - "Wrecking Ball - Miley Cyrus"
               - "You've Got The Love - Florence + The Machine"
-      - postfix: " 🌈"
-        filters:
-          - key: "specialbooks"
-            operator: "contains"
-            value: "pride"
   songs:
     filters:
       - key: "name"
@@ -101,7 +95,6 @@ sections:
           - "Grace Kelly - MIKA"
           - "Hand in My Pocket - Alanis Morissette"
           - "Heroes (single version) - David Bowie"
-          - "Hey Jude - The Beatles"
           - "Holding Out for a Hero - Bonnie Tyler"
           - "Hot Stuff (Single Version) - Donna Summer"
           - "I Feel Love - Donna Summer"

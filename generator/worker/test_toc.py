@@ -146,13 +146,22 @@ def mock_toc_generator(mocker):
     return generator
 
 
+PAGE_RECT = fitz.Rect(0, 0, 595, 842)
+
+
+def _writers(mock_tw):
+    """Helper: writers dict with mock as the default (None-color) writer."""
+    return {None: mock_tw}
+
+
 def test_add_toc_entry(mock_toc_generator):
     """Test that _add_toc_entry correctly formats and adds a TOC entry."""
     generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=File(id="1", name="A Short Title - Artist"),
@@ -189,7 +198,8 @@ def test_add_toc_entry_title_truncation(mock_toc_generator):
     long_title = "This is a very long song title that will definitely need to be truncated - The Long Winded Singers"
     generator.config.max_toc_entry_length = 50
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=File(id="1", name=long_title),
@@ -214,7 +224,8 @@ def test_add_toc_entry_with_difficulty(mock_toc_generator):
     )
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=file_with_difficulty,
@@ -252,7 +263,8 @@ def test_add_toc_entry_ready_to_play_status(mock_toc_generator):
     file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=file,
@@ -280,7 +292,8 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
     file = File(id="1", name="Monster Mash", properties={"tags": "halloween"})
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=file,
@@ -307,7 +320,8 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
     file = File(id="1", name="Jingle Bells", properties={"tags": "christmas"})
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=file,
@@ -330,7 +344,8 @@ def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
     file = File(id="1", name="Ready Song", properties={"status": "READY_TO_PLAY"})
 
     generator._add_toc_entry(
-        tw=mock_tw,
+        writers=_writers(mock_tw),
+        page_rect=PAGE_RECT,
         file_index=0,
         page_offset=0,
         file=file,
@@ -344,8 +359,30 @@ def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
     assert appended_title == "Ready Song"
 
 
+def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
+    """Test that postfix filters can match on the file name (not just properties)."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    name_filter = PropertyFilter(key="name", operator="in", value=["Confirmed Song"])
+    postfix_config = TocPostfix(postfix=" ✓", filters=[name_filter], color=(0.6, 0.6, 0.6))
+    generator.config.postfixes = [postfix_config]
+
+    # Confirmed song: routes to a dedicated color writer, not mock_tw
+    writers = _writers(mock_tw)
+    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Confirmed Song", properties={}), 25, 70, 0)
+    assert (0.6, 0.6, 0.6) in writers
+    mock_tw.append.assert_not_called()
+
+    # Candidate song: routes to the default writer
+    writers2 = _writers(mock_tw)
+    generator._add_toc_entry(writers2, PAGE_RECT, 1, 0, File(id="2", name="Candidate Song", properties={}), 25, 70, 0)
+    assert (0.6, 0.6, 0.6) not in writers2
+    assert " ✓" not in mock_tw.append.call_args_list[0].args[1]
+
+
 def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
-    """Test that a matching postfix color is applied to the entire TOC row."""
+    """Test that a matching postfix color routes the entry to a dedicated writer."""
     generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
@@ -356,25 +393,17 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     )
     generator.config.postfixes = [postfix_config]
 
-    file = File(id="1", name="Confirmed Song", properties={})
+    writers = _writers(mock_tw)
+    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Confirmed Song", properties={}), 25, 70, 0)
 
-    generator._add_toc_entry(
-        tw=mock_tw,
-        file_index=0,
-        page_offset=0,
-        file=file,
-        x_start=25,
-        y_pos=70,
-        current_page_index=0,
-    )
-
-    # All tw.append calls should carry the postfix color
-    for call in mock_tw.append.call_args_list:
-        assert call.kwargs.get("color") == (0.6, 0.6, 0.6)
+    # A separate writer keyed by color was created
+    assert (0.6, 0.6, 0.6) in writers
+    # The default writer was not used for this colored entry
+    mock_tw.append.assert_not_called()
 
 
 def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocker):
-    """Test that color is NOT applied when the postfix filter doesn't match."""
+    """Test that an unmatched entry uses the default writer (no color routing)."""
     generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
@@ -385,25 +414,16 @@ def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocke
     )
     generator.config.postfixes = [postfix_config]
 
-    file = File(id="1", name="Candidate Song", properties={})
+    writers = _writers(mock_tw)
+    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Candidate Song", properties={}), 25, 70, 0)
 
-    generator._add_toc_entry(
-        tw=mock_tw,
-        file_index=0,
-        page_offset=0,
-        file=file,
-        x_start=25,
-        y_pos=70,
-        current_page_index=0,
-    )
-
-    # No color kwarg should be passed when filter doesn't match
-    for call in mock_tw.append.call_args_list:
-        assert "color" not in call.kwargs
+    # No color writer created; only the default None key remains
+    assert list(writers.keys()) == [None]
+    mock_tw.append.assert_called()
 
 
 def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
-    """Test that the first matched postfix color wins when multiple postfixes match."""
+    """Test that when multiple postfixes match, only the first color's writer is used."""
     generator = mock_toc_generator
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
@@ -418,21 +438,14 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     )
     generator.config.postfixes = [postfix_first, postfix_second]
 
-    file = File(id="1", name="Double Match", properties={})
+    writers = _writers(mock_tw)
+    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Double Match", properties={}), 25, 70, 0)
 
-    generator._add_toc_entry(
-        tw=mock_tw,
-        file_index=0,
-        page_offset=0,
-        file=file,
-        x_start=25,
-        y_pos=70,
-        current_page_index=0,
-    )
-
-    title_call = mock_tw.append.call_args_list[0]
-    assert title_call.kwargs.get("color") == (0.6, 0.6, 0.6)
-    assert " ✓ 🌈" in title_call.args[1]
+    # Only the first matched color's writer should be created
+    assert (0.6, 0.6, 0.6) in writers
+    assert (1.0, 0.0, 0.5) not in writers
+    # Default writer not used
+    mock_tw.append.assert_not_called()
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
