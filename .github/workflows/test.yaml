@@ -12,6 +12,7 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -43,6 +44,7 @@ jobs:
   lint:
     name: Run Linting
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

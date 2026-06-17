@@ -28,6 +28,7 @@ jobs:
   generate-songbook:
     name: Generate Songbook (${{ inputs.edition }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     concurrency:
       group: generate-songbook-${{ inputs.edition }}
       cancel-in-progress: false
@@ -197,6 +198,7 @@ jobs:
   publish-songbooks:
     name: Publish Songbook and Manifest
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [generate-songbook]
     if: github.ref == 'refs/heads/main'
     steps:
