@@ -365,18 +365,38 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
     mock_tw = MagicMock(spec=fitz.TextWriter)
 
     name_filter = PropertyFilter(key="name", operator="in", value=["Confirmed Song"])
-    postfix_config = TocPostfix(postfix=" ✓", filters=[name_filter], color=(0.6, 0.6, 0.6))
+    postfix_config = TocPostfix(
+        postfix=" ✓", filters=[name_filter], color=(0.6, 0.6, 0.6)
+    )
     generator.config.postfixes = [postfix_config]
 
     # Confirmed song: routes to a dedicated color writer, not mock_tw
     writers = _writers(mock_tw)
-    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Confirmed Song", properties={}), 25, 70, 0)
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="Confirmed Song", properties={}),
+        25,
+        70,
+        0,
+    )
     assert (0.6, 0.6, 0.6) in writers
     mock_tw.append.assert_not_called()
 
     # Candidate song: routes to the default writer
     writers2 = _writers(mock_tw)
-    generator._add_toc_entry(writers2, PAGE_RECT, 1, 0, File(id="2", name="Candidate Song", properties={}), 25, 70, 0)
+    generator._add_toc_entry(
+        writers2,
+        PAGE_RECT,
+        1,
+        0,
+        File(id="2", name="Candidate Song", properties={}),
+        25,
+        70,
+        0,
+    )
     assert (0.6, 0.6, 0.6) not in writers2
     assert " ✓" not in mock_tw.append.call_args_list[0].args[1]
 
@@ -394,7 +414,16 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     generator.config.postfixes = [postfix_config]
 
     writers = _writers(mock_tw)
-    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Confirmed Song", properties={}), 25, 70, 0)
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="Confirmed Song", properties={}),
+        25,
+        70,
+        0,
+    )
 
     # A separate writer keyed by color was created
     assert (0.6, 0.6, 0.6) in writers
@@ -415,7 +444,16 @@ def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocke
     generator.config.postfixes = [postfix_config]
 
     writers = _writers(mock_tw)
-    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Candidate Song", properties={}), 25, 70, 0)
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="Candidate Song", properties={}),
+        25,
+        70,
+        0,
+    )
 
     # No color writer created; only the default None key remains
     assert list(writers.keys()) == [None]
@@ -439,7 +477,16 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     generator.config.postfixes = [postfix_first, postfix_second]
 
     writers = _writers(mock_tw)
-    generator._add_toc_entry(writers, PAGE_RECT, 0, 0, File(id="1", name="Double Match", properties={}), 25, 70, 0)
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="Double Match", properties={}),
+        25,
+        70,
+        0,
+    )
 
     # Only the first matched color's writer should be created
     assert (0.6, 0.6, 0.6) in writers
