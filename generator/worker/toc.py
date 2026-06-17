@@ -96,13 +96,16 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        # Add any custom postfixes
+        # Add any custom postfixes; first matched color wins for the whole row
         postfix_str = ""
+        entry_color: Optional[tuple[float, float, float]] = None
         if self.config.postfixes:
             for postfix_config in self.config.postfixes:
                 for p_filter in postfix_config.filters:
                     if p_filter.matches(file.properties):
                         postfix_str += postfix_config.postfix
+                        if entry_color is None and postfix_config.color is not None:
+                            entry_color = postfix_config.color
                         break  # Stop checking filters for this postfix config
 
         shortened_title = self._generate_toc_title(
@@ -113,12 +116,15 @@ class TocGenerator:
 
         full_title = f"{symbol}{shortened_title}{postfix_str}"
 
+        color_kwargs = {"color": entry_color} if entry_color is not None else {}
+
         # Append title
         tw.append(
             (x_start, y_pos),
             full_title,
             font=self.text_font,
             fontsize=self.config.text_fontsize,
+            **color_kwargs,
         )
 
         title_width = self.text_font.text_length(
@@ -137,6 +143,7 @@ class TocGenerator:
             page_number_str,
             font=self.page_number_font,
             fontsize=self.config.text_fontsize,
+            **color_kwargs,
         )
 
         # Draw dots
@@ -154,6 +161,7 @@ class TocGenerator:
                 f"{dots} ",
                 font=self.text_font,
                 fontsize=self.config.text_fontsize,
+                **color_kwargs,
             )
 
         # Store entry for link creation

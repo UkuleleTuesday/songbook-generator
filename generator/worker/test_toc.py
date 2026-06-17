@@ -344,6 +344,97 @@ def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
     assert appended_title == "Ready Song"
 
 
+def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
+    """Test that a matching postfix color is applied to the entire TOC row."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
+    mock_filter.matches.return_value = True
+    postfix_config = TocPostfix(
+        postfix=" ✓", filters=[mock_filter], color=(0.6, 0.6, 0.6)
+    )
+    generator.config.postfixes = [postfix_config]
+
+    file = File(id="1", name="Confirmed Song", properties={})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # All tw.append calls should carry the postfix color
+    for call in mock_tw.append.call_args_list:
+        assert call.kwargs.get("color") == (0.6, 0.6, 0.6)
+
+
+def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocker):
+    """Test that color is NOT applied when the postfix filter doesn't match."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    mock_filter = mocker.MagicMock(spec=PropertyFilter)
+    mock_filter.matches.return_value = False
+    postfix_config = TocPostfix(
+        postfix=" ✓", filters=[mock_filter], color=(0.6, 0.6, 0.6)
+    )
+    generator.config.postfixes = [postfix_config]
+
+    file = File(id="1", name="Candidate Song", properties={})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    # No color kwarg should be passed when filter doesn't match
+    for call in mock_tw.append.call_args_list:
+        assert "color" not in call.kwargs
+
+
+def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
+    """Test that the first matched postfix color wins when multiple postfixes match."""
+    generator = mock_toc_generator
+    mock_tw = MagicMock(spec=fitz.TextWriter)
+
+    matching_filter = mocker.MagicMock(spec=PropertyFilter)
+    matching_filter.matches.return_value = True
+
+    postfix_first = TocPostfix(
+        postfix=" ✓", filters=[matching_filter], color=(0.6, 0.6, 0.6)
+    )
+    postfix_second = TocPostfix(
+        postfix=" 🌈", filters=[matching_filter], color=(1.0, 0.0, 0.5)
+    )
+    generator.config.postfixes = [postfix_first, postfix_second]
+
+    file = File(id="1", name="Double Match", properties={})
+
+    generator._add_toc_entry(
+        tw=mock_tw,
+        file_index=0,
+        page_offset=0,
+        file=file,
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+    )
+
+    title_call = mock_tw.append.call_args_list[0]
+    assert title_call.kwargs.get("color") == (0.6, 0.6, 0.6)
+    assert " ✓ 🌈" in title_call.args[1]
+
+
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
     """Verify that assign_difficulty_bins is called."""
     mock_assign_bins = mocker.patch("generator.worker.toc.assign_difficulty_bins")
