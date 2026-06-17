@@ -72,9 +72,7 @@ class TocGenerator:
         )
 
     @staticmethod
-    def _write_page_writers(
-        page: fitz.Page, writers: dict
-    ) -> None:
+    def _write_page_writers(page: fitz.Page, writers: dict) -> None:
         """Write all per-color TextWriters to the page."""
         for color, tw in writers.items():
             if tw.text_rect:
