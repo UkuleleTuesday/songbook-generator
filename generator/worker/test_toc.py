@@ -359,10 +359,12 @@ def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
     assert appended_title == "Ready Song"
 
 
-def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
+def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator, mocker):
     """Test that postfix filters can match on the file name (not just properties)."""
     generator = mock_toc_generator
-    mock_tw = MagicMock(spec=fitz.TextWriter)
+    default_tw = MagicMock(spec=fitz.TextWriter)
+    color_tw = MagicMock(spec=fitz.TextWriter)
+    mocker.patch("generator.worker.toc.fitz.TextWriter", return_value=color_tw)
 
     name_filter = PropertyFilter(key="name", operator="in", value=["Confirmed Song"])
     postfix_config = TocPostfix(
@@ -370,8 +372,8 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
     )
     generator.config.postfixes = [postfix_config]
 
-    # Confirmed song: routes to a dedicated color writer, not mock_tw
-    writers = _writers(mock_tw)
+    # Confirmed song: routes to a dedicated color writer, not default_tw
+    writers = {None: default_tw}
     generator._add_toc_entry(
         writers,
         PAGE_RECT,
@@ -383,10 +385,10 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
         0,
     )
     assert (0.6, 0.6, 0.6) in writers
-    mock_tw.append.assert_not_called()
+    default_tw.append.assert_not_called()
 
     # Candidate song: routes to the default writer
-    writers2 = _writers(mock_tw)
+    writers2 = {None: default_tw}
     generator._add_toc_entry(
         writers2,
         PAGE_RECT,
@@ -398,13 +400,17 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator):
         0,
     )
     assert (0.6, 0.6, 0.6) not in writers2
-    assert " ✓" not in mock_tw.append.call_args_list[0].args[1]
+    assert " ✓" not in default_tw.append.call_args_list[0].args[1]
 
 
 def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     """Test that a matching postfix color routes the entry to a dedicated writer."""
     generator = mock_toc_generator
-    mock_tw = MagicMock(spec=fitz.TextWriter)
+    default_tw = MagicMock(spec=fitz.TextWriter)
+    mocker.patch(
+        "generator.worker.toc.fitz.TextWriter",
+        return_value=MagicMock(spec=fitz.TextWriter),
+    )
 
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = True
@@ -413,7 +419,7 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     )
     generator.config.postfixes = [postfix_config]
 
-    writers = _writers(mock_tw)
+    writers = {None: default_tw}
     generator._add_toc_entry(
         writers,
         PAGE_RECT,
@@ -428,7 +434,7 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     # A separate writer keyed by color was created
     assert (0.6, 0.6, 0.6) in writers
     # The default writer was not used for this colored entry
-    mock_tw.append.assert_not_called()
+    default_tw.append.assert_not_called()
 
 
 def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocker):
@@ -463,7 +469,11 @@ def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocke
 def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     """Test that when multiple postfixes match, only the first color's writer is used."""
     generator = mock_toc_generator
-    mock_tw = MagicMock(spec=fitz.TextWriter)
+    default_tw = MagicMock(spec=fitz.TextWriter)
+    mocker.patch(
+        "generator.worker.toc.fitz.TextWriter",
+        return_value=MagicMock(spec=fitz.TextWriter),
+    )
 
     matching_filter = mocker.MagicMock(spec=PropertyFilter)
     matching_filter.matches.return_value = True
@@ -476,7 +486,7 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     )
     generator.config.postfixes = [postfix_first, postfix_second]
 
-    writers = _writers(mock_tw)
+    writers = {None: default_tw}
     generator._add_toc_entry(
         writers,
         PAGE_RECT,
@@ -492,7 +502,7 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     assert (0.6, 0.6, 0.6) in writers
     assert (1.0, 0.0, 0.5) not in writers
     # Default writer not used
-    mock_tw.append.assert_not_called()
+    default_tw.append.assert_not_called()
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
@@ -528,13 +538,14 @@ def test_add_toc_entry_stores_full_title_for_outline(mock_toc_generator):
 
     long_name = "A Really Quite Long Song Title - The Artist Band"
     generator._add_toc_entry(
-        tw=mock_tw,
-        file_index=3,
-        page_offset=10,
-        file=File(id="1", name=long_name),
-        x_start=25,
-        y_pos=70,
-        current_page_index=0,
+        _writers(mock_tw),
+        PAGE_RECT,
+        3,
+        10,
+        File(id="1", name=long_name),
+        25,
+        70,
+        0,
     )
 
     entry = generator.get_toc_entries()[-1]

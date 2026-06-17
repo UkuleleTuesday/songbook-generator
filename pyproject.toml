@@ -54,6 +54,7 @@ dev = [
     "psutil>=7.0.0",
     "pytest>=8.4.1",
     "pytest-mock>=3.14.1",
+    "pytest-timeout>=2.3.1",
     "seaborn>=0.13.2",
 ]
 
@@ -67,6 +68,9 @@ include-package-data = true
 [tool.setuptools.package-data]
 "generator" = ["fonts/RobotoCondensed-*.ttf"]
 "generator.templates" = ["*.pptx"]
+
+[tool.pytest.ini_options]
+timeout = 30
 
 [tool.ruff.lint]
 extend-select = ["BLE001"] # Catch all exceptions are the plague
