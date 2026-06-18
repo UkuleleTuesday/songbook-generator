@@ -910,17 +910,22 @@ def test_drive_write_disabled_writes_firestore_only(
         ("Ireland", "ireland"),
         ("  france  ", "france"),
         ("puerto rico", "puerto rico"),
-        ("ireland,usa", "ireland,usa"),
+        ("usa", "united states"),  # canonicalized via pycountry
+        ("uk", "united kingdom"),  # canonicalized via alias
+        ("russia", "russian federation"),  # canonicalized via alias
+        ("scotland", "scotland"),  # supported sub-national region
+        ("brazil", "brazil"),  # any ISO-3166 country is accepted
+        ("ireland,usa", "ireland,united states"),
         ("ireland,ireland", "ireland"),  # de-duplicated
         ("ireland,atlantis", "ireland"),  # unknown dropped
-        ("atlantis", None),  # not in enum
+        ("atlantis", None),  # not a recognized country/region
         (None, None),
         ("", None),
         ("  ,  ", None),
     ],
 )
 def test_country_validator(raw, expected):
-    assert country(_make_ctx(), raw, valid_countries="") == expected
+    assert country(_make_ctx(), raw) == expected
 
 
 @pytest.mark.parametrize(
@@ -938,7 +943,7 @@ def test_country_validator(raw, expected):
     ],
 )
 def test_theme_validator(raw, expected):
-    assert theme(_make_ctx(), raw, valid_themes="") == expected
+    assert theme(_make_ctx(), raw) == expected
 
 
 # --- split_specialbooks tests ---
@@ -955,7 +960,12 @@ def test_theme_validator(raw, expected):
         ("pride.uk", None, "pride", []),  # alias normalization
         ("xmas", None, "christmas", []),  # legacy xmas -> christmas
         ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
-        ("USA, UK", "usa,uk", None, []),  # case + whitespace
+        (
+            "USA, UK",
+            "united states,united kingdom",
+            None,
+            [],
+        ),  # canonicalized + whitespace
         ("ireland,ireland", "ireland", None, []),  # de-duplicated
         ("new", None, None, ["new"]),  # unknown leftover surfaced
         ("", None, None, []),

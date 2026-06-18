@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 import click
+import pycountry
 from google import genai
 from google.genai import types
 
@@ -123,39 +124,46 @@ GALLOP_PATTERN = re.compile(r"\bgallop\b", re.IGNORECASE)
 BPM_PATTERN = re.compile(r"(\d+)bpm", re.IGNORECASE)
 TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
 
-# Allowed values for the typed `country` and `theme` properties. These ground
-# both the LLM tagger prompts and the deterministic `specialbooks` backfill.
-COUNTRY_VALUES = [
-    "usa",
-    "uk",
-    "ireland",
-    "france",
-    "canada",
-    "italy",
-    "australia",
-    "sweden",
-    "scotland",
-    "spain",
-    "wales",
-    "japan",
-    "hawaii",
-    "puerto rico",
-    "colombia",
-    "germany",
-    "netherlands",
-    "new zealand",
-    "norway",
-    "russia",
-]
+# Recurring session themes are a small, curated Ukulele-Tuesday-specific set,
+# so they stay an explicit enum that grounds the LLM prompt.
 THEME_VALUES = ["halloween", "christmas", "valentines", "pride", "peace"]
-
-# Normalizations applied when splitting legacy `specialbooks` values into the
-# new typed properties.
-_SPECIALBOOKS_ALIASES = {
-    "scottish": "scotland",
+_THEME_ALIASES = {
     "pride.uk": "pride",
     "xmas": "christmas",
 }
+
+# `country` is validated against the full ISO-3166 list via `pycountry` (so any
+# country is taggable while values stay canonical), plus a few sub-national
+# regions Ukulele Tuesday cares about that aren't ISO-3166 countries. Loose or
+# legacy spellings that `pycountry.lookup` can't resolve are mapped here.
+_EXTRA_REGIONS = {"scotland", "wales", "england", "northern ireland", "hawaii"}
+_COUNTRY_ALIASES = {
+    "uk": "united kingdom",
+    "russia": "russian federation",
+    "scottish": "scotland",
+}
+
+
+def _canonical_country(value: Optional[str]) -> Optional[str]:
+    """
+    Resolve a free-form country/region string to a canonical lowercase value, or
+    ``None`` if it can't be recognized. ISO-3166 countries resolve to their
+    `pycountry` common/short name; the supported sub-national regions pass
+    through as-is.
+    """
+    if not value:
+        return None
+    token = value.strip().lower()
+    if not token:
+        return None
+    token = _COUNTRY_ALIASES.get(token, token)
+    if token in _EXTRA_REGIONS:
+        return token
+    try:
+        country = pycountry.countries.lookup(token)
+    except LookupError:
+        return None
+    return (getattr(country, "common_name", None) or country.name).lower()
 
 
 def split_specialbooks(specialbooks: Optional[str]) -> tuple:
@@ -186,15 +194,17 @@ def split_specialbooks(specialbooks: Optional[str]) -> tuple:
         token = raw.strip().lower()
         if not token:
             continue
-        token = _SPECIALBOOKS_ALIASES.get(token, token)
         if token in dropped:
             continue
-        if token in COUNTRY_VALUES:
-            if token not in countries:
-                countries.append(token)
-        elif token in THEME_VALUES:
-            if token not in themes:
-                themes.append(token)
+        theme_token = _THEME_ALIASES.get(token, token)
+        if theme_token in THEME_VALUES:
+            if theme_token not in themes:
+                themes.append(theme_token)
+            continue
+        canonical = _canonical_country(token)
+        if canonical:
+            if canonical not in countries:
+                countries.append(canonical)
         else:
             unknown.append(token)
 
@@ -789,27 +799,28 @@ def language(ctx: Context, raw: Optional[str]) -> Optional[str]:
 
 @llm_tag(
     prompt=(
-        'What country or region is "{song}" by {artist} most associated with '
+        'Which countries or regions is "{song}" by {artist} associated with '
         "(based on the artist's origin or the song's content)? "
-        "Reply with only a value from this list, or null if none clearly applies: "
-        "{valid_countries}."
+        "Reply with a comma-separated list of country/region names in lowercase "
+        'English (usually one, e.g. "ireland" or "united states", but more if '
+        "the song is equally tied to several), or null if none clearly applies."
     ),
     only_if_unset=True,
-    valid_countries=", ".join(COUNTRY_VALUES),
 )
-def country(
-    ctx: Context, raw: Optional[str], *, valid_countries: str = ""
-) -> Optional[str]:
-    """Looks up the country/region the song is associated with via Gemini."""
+def country(ctx: Context, raw: Optional[str]) -> Optional[str]:
+    """Looks up the country/region(s) the song is associated with via Gemini.
+
+    Values are canonicalized against ISO-3166 (via ``pycountry``) plus a small
+    set of supported sub-national regions, so unrecognized values are dropped.
+    """
     if not raw:
         return None
-    parts = [c.strip().lower() for c in raw.split(",") if c.strip()]
-    valid = [c for c in parts if c in COUNTRY_VALUES]
-    # De-duplicate while preserving order.
+    # De-duplicate canonical values while preserving order.
     seen: List[str] = []
-    for c in valid:
-        if c not in seen:
-            seen.append(c)
+    for part in raw.split(","):
+        canonical = _canonical_country(part)
+        if canonical and canonical not in seen:
+            seen.append(canonical)
     return ",".join(seen) if seen else None
 
 
@@ -827,10 +838,10 @@ def theme(ctx: Context, raw: Optional[str], *, valid_themes: str = "") -> Option
     """Looks up the recurring session theme(s) of the song via Gemini."""
     if not raw:
         return None
-    parts = [t.strip().lower() for t in raw.split(",") if t.strip()]
-    valid = [t for t in parts if t in THEME_VALUES]
     seen: List[str] = []
-    for t in valid:
-        if t not in seen:
-            seen.append(t)
+    for raw_part in raw.split(","):
+        token = raw_part.strip().lower()
+        token = _THEME_ALIASES.get(token, token)
+        if token in THEME_VALUES and token not in seen:
+            seen.append(token)
     return ",".join(seen) if seen else None
