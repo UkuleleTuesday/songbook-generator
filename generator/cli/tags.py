@@ -42,7 +42,15 @@ def get_tag(file_identifier, key):
     )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    properties = gdrive_client.get_file_properties(file_id)
+
+    if settings.metadata_store.firestore_read_enabled:
+        store = get_metadata_store()
+        properties = store.get_properties(file_id)
+        if properties is None:
+            click.echo("No Firestore doc found, falling back to Drive.", err=True)
+            properties = gdrive_client.get_file_properties(file_id)
+    else:
+        properties = gdrive_client.get_file_properties(file_id)
 
     if properties is None:
         raise click.Abort()
@@ -78,11 +86,20 @@ def set_tag(file_identifier, key, value):
     )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    if gdrive_client.set_file_property(file_id, key, value):
-        click.echo(f"Successfully set tag '{key}' to '{value}'.")
-    else:
-        click.echo("Failed to set tag.", err=True)
-        raise click.Abort()
+
+    if settings.metadata_store.drive_write_enabled:
+        if gdrive_client.set_file_property(file_id, key, value):
+            click.echo(f"Successfully set tag '{key}' to '{value}' in Drive.")
+        else:
+            click.echo("Failed to set tag in Drive.", err=True)
+            raise click.Abort()
+
+    if settings.metadata_store.firestore_write_enabled:
+        store = get_metadata_store()
+        props = store.get_properties(file_id) or {}
+        props[key] = value
+        store.write(file_id, props)
+        click.echo(f"Successfully set tag '{key}' to '{value}' in Firestore.")
 
 
 @tags.command(name="delete")
@@ -106,30 +123,37 @@ def delete_tag(file_identifier, key):
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
-    try:
-        file_metadata = (
-            gdrive_client.drive.files()
-            .get(fileId=file_id, fields="properties")
-            .execute()
-        )
-        properties = file_metadata.get("properties", {})
+    if settings.metadata_store.drive_write_enabled:
+        try:
+            file_metadata = (
+                gdrive_client.drive.files()
+                .get(fileId=file_id, fields="properties")
+                .execute()
+            )
+            properties = file_metadata.get("properties", {})
 
-        if key not in properties:
-            click.echo(f"Tag '{key}' not found on file. No changes made.")
-            return
+            if key not in properties:
+                click.echo(f"Tag '{key}' not found on file in Drive. No changes made.")
+            else:
+                gdrive_client.drive.files().update(
+                    fileId=file_id,
+                    body={"properties": {key: None}},
+                    fields="properties",
+                ).execute()
+                click.echo(f"Successfully deleted tag '{key}' from Drive.")
+        except HttpError as e:
+            click.echo(f"Failed to delete tag '{key}' from Drive: {e}", err=True)
+            raise click.Abort()
 
-        # To delete a property, set its value to null.
-        properties_to_update = {key: None}
-
-        gdrive_client.drive.files().update(
-            fileId=file_id,
-            body={"properties": properties_to_update},
-            fields="properties",
-        ).execute()
-        click.echo(f"Successfully deleted tag '{key}'.")
-    except HttpError as e:
-        click.echo(f"Failed to delete tag '{key}': {e}", err=True)
-        raise click.Abort()
+    if settings.metadata_store.firestore_write_enabled:
+        store = get_metadata_store()
+        props = store.get_properties(file_id) or {}
+        if key not in props:
+            click.echo(f"Tag '{key}' not found in Firestore. No changes made.")
+        else:
+            props.pop(key)
+            store.write(file_id, props)
+            click.echo(f"Successfully deleted tag '{key}' from Firestore.")
 
 
 @tags.command(name="update")
