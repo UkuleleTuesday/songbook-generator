@@ -334,10 +334,12 @@ jobs:
           TAGUPDATER_TRIGGER_FIELD: "status"
           TAGUPDATER_DRY_RUN: "false"
           # Drive and Firestore writes are controlled independently (#281).
-          # PR previews must never write to the real Drive, so Drive writes are
-          # disabled there; Firestore writes go to an isolated per-PR named
-          # database so previews still exercise the path. main writes to both.
-          SONG_METADATA_DRIVE_WRITE_ENABLED: "${{ github.event_name == 'pull_request' && 'false' || 'true' }}"
+          # Metadata reads are served from Firestore, so the tag updater no
+          # longer writes to Drive in any environment: this avoids resetting
+          # modifiedTime / lastModifyingUser and breaking tab review (#281).
+          # Firestore writes go to an isolated per-PR named database on previews
+          # so the path is still exercised; main writes to the default database.
+          SONG_METADATA_DRIVE_WRITE_ENABLED: "false"
           SONG_METADATA_FIRESTORE_WRITE_ENABLED: "true"
           FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
 

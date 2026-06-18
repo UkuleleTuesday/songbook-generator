@@ -327,7 +327,7 @@ to Firestore-only — the step that finally resolves #281 by ending Drive writes
 
 | Variable | Default | Effect |
 |---|---|---|
-| `SONG_METADATA_DRIVE_WRITE_ENABLED` | `true` | Write computed metadata back to Drive file properties (historical behaviour). |
+| `SONG_METADATA_DRIVE_WRITE_ENABLED` | `true` | Write computed metadata back to Drive file properties (historical behaviour). Now deployed as `false` everywhere — see *Deployment* below. |
 | `SONG_METADATA_FIRESTORE_WRITE_ENABLED` | `false` | Write computed metadata to the Firestore collection. |
 | `SONG_METADATA_FIRESTORE_COLLECTION` | `song-metadata` | Collection holding metadata documents (use a per-PR name in preview envs). |
 
@@ -335,11 +335,13 @@ to Firestore-only — the step that finally resolves #281 by ending Drive writes
 but writes nothing, to either sink. Per-sink control is via the two flags above.
 
 **Deployment.** The tag updater Cloud Function (`.github/workflows/deploy.yaml`)
-deploys with `SONG_METADATA_FIRESTORE_WRITE_ENABLED=true`. Drive writes are
-**disabled on PR previews** (`SONG_METADATA_DRIVE_WRITE_ENABLED=false`) so a
-preview can never mutate the real Drive, while still exercising the Firestore
-write into an isolated per-PR collection (`song-metadata-pr-<N>`); on `main` both
-sinks are enabled and the collection is `song-metadata`. No Firestore collection
+deploys with `SONG_METADATA_FIRESTORE_WRITE_ENABLED=true`. Drive writes are now
+**disabled everywhere** (`SONG_METADATA_DRIVE_WRITE_ENABLED=false`): reads are
+served from Firestore, so the tag updater no longer mutates Drive file
+properties and therefore no longer resets `modifiedTime` / `lastModifyingUser`
+on song sheets (resolves #281). PR previews write Firestore into an isolated
+per-PR collection (`song-metadata-pr-<N>`); on `main` the collection is
+`song-metadata`. No Firestore collection
 needs explicit creation — Firestore creates it on first write — and the
 job-expiry TTL in `deploy-gcs.sh` is scoped to the `jobs` collection only, so
 metadata documents are never expired. The function's runtime service account
@@ -358,10 +360,9 @@ isolated; a bulk-delete step can be added later if they accumulate.
 2. Run `songbook-tools metadata backfill` to hydrate the collection.
 3. Enable `firestore_write_enabled=true` (dual-write) so both stay in sync.
 4. Validate parity (Drive properties vs. Firestore `properties`) over time.
-5. *(Future)* cut the read path over to Firestore, then set
+5. *(Done)* cut the read path over to Firestore, then set
    `drive_write_enabled=false` — Firestore only, which resolves #281.
 
-**Not yet done (deliberately):** read-path hydration from Firestore, the
-`specialbooks` Firestore query, and the offline JSON export. Those are the later
-phases from §9. Note that step 5's "stop writing to Drive" is now just a flag
-flip rather than a code change.
+**Status:** the read path is hydrated from Firestore and Drive writes are
+disabled in all environments, completing the cutover. Step 5's "stop writing to
+Drive" was just a flag flip rather than a code change, as planned.
