@@ -17,7 +17,7 @@ sections:
         filters:
           - key: "theme"
             operator: "contains"
-            value: "xmas"
+            value: "christmas"
       - postfix: " ☘"
         filters:
           - key: "country"

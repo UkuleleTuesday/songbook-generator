@@ -928,6 +928,7 @@ def test_country_validator(raw, expected):
     [
         ("pride", "pride"),
         ("Pride", "pride"),
+        ("christmas", "christmas"),
         ("pride,halloween", "pride,halloween"),
         ("pride,pride", "pride"),  # de-duplicated
         ("pride,birthday", "pride"),  # unknown dropped
@@ -952,6 +953,7 @@ def test_theme_validator(raw, expected):
         ("pride,halloween", None, "pride,halloween", []),
         ("scottish", "scotland", None, []),  # alias normalization
         ("pride.uk", None, "pride", []),  # alias normalization
+        ("xmas", None, "christmas", []),  # legacy xmas -> christmas
         ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
         ("USA, UK", "usa,uk", None, []),  # case + whitespace
         ("ireland,ireland", "ireland", None, []),  # de-duplicated

@@ -147,13 +147,14 @@ COUNTRY_VALUES = [
     "norway",
     "russia",
 ]
-THEME_VALUES = ["halloween", "xmas", "valentines", "pride", "peace"]
+THEME_VALUES = ["halloween", "christmas", "valentines", "pride", "peace"]
 
 # Normalizations applied when splitting legacy `specialbooks` values into the
 # new typed properties.
 _SPECIALBOOKS_ALIASES = {
     "scottish": "scotland",
     "pride.uk": "pride",
+    "xmas": "christmas",
 }
 
 
