@@ -338,7 +338,7 @@ jobs:
   deploy-drivewatcher:
     name: Deploy Drive Watcher
     needs: [test, deploy-infrastructure]
-    if: github.event.action != 'closed'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
