@@ -19,7 +19,6 @@ from .metadata import metadata
 from .misc import print_settings, validate_pdf_cli
 from .pptx import generate_pptx
 from .songs import songs
-from .specialbooks import specialbooks
 from .tags import tags
 from .utils import global_options
 
@@ -42,7 +41,6 @@ cli.add_command(songs)
 cli.add_command(cache)
 cli.add_command(print_settings)
 cli.add_command(validate_pdf_cli)
-cli.add_command(specialbooks)
 cli.add_command(editions)
 cli.add_command(tags)
 cli.add_command(metadata)
