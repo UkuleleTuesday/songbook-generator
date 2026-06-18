@@ -29,6 +29,30 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  changes:
+    name: Detect File Changes
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Filter changed paths
+      id: filter
+      uses: dorny/paths-filter@v3
+      with:
+        # "code" is true when the change touches anything other than
+        # documentation (docs/** or any Markdown file). Doc-only changes skip
+        # the GCP deploy jobs (Cloud Functions builds, Cloud Run deploys,
+        # scheduler jobs) to avoid needless build/storage cost.
+        filters: |
+          code:
+            - '**'
+            - '!docs/**'
+            - '!**/*.md'
+
   test:
     name: Test and Lint
     if: github.event.action != 'closed'
@@ -36,7 +60,10 @@ jobs:
 
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
-    if: github.event.action != 'closed'
+    needs: [changes]
+    # Skipping this job on doc-only changes cascades to every GCP deploy job,
+    # since they all (transitively) depend on it via `needs`.
+    if: needs.changes.outputs.code == 'true' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
@@ -355,6 +382,8 @@ jobs:
 
   deploy-ui:
     name: Deploy UI
+    needs: [changes]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
