@@ -447,8 +447,9 @@ class Settings(BaseSettings):
         if (
             firestore_read_env := os.getenv("SONG_METADATA_FIRESTORE_READ_ENABLED")
         ) is not None:
-            self.metadata_store.firestore_read_enabled = (
-                firestore_read_env.lower() in ("true", "1")
+            self.metadata_store.firestore_read_enabled = firestore_read_env.lower() in (
+                "true",
+                "1",
             )
 
         return self

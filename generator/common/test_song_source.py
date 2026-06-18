@@ -61,7 +61,9 @@ def test_client_filter_is_passed_through_to_drive():
     gdrive.query_drive_files_with_client_filter.return_value = files
     source = SongSheetSource(gdrive)
 
-    client_filter = PropertyFilter(key="specialbooks", operator="contains", value="pride")
+    client_filter = PropertyFilter(
+        key="specialbooks", operator="contains", value="pride"
+    )
     source.collect_files(["folder1"], client_filter)
 
     gdrive.query_drive_files_with_client_filter.assert_called_once_with(
