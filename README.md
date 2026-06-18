@@ -219,6 +219,11 @@ The Cloud Functions require these environment variables:
 - `TAGUPDATER_DRY_RUN`: Set to `true` to compute tags without writing back to Drive. Automatically set on PR preview deployments.
 - `TAGUPDATER_LLM_TAGGING_ENABLED`: Set to `false` to disable LLM-backed tags (year, duration, genre via Gemini + Google Search). Enabled by default.
 
+**Song metadata store variables (experimental, issue #281):**
+
+- `SONG_METADATA_DUAL_WRITE_ENABLED`: Set to `true` to mirror every metadata write to a Firestore collection in addition to Google Drive (Drive remains the source of truth). Disabled by default. See `docs/spikes/281-firestore-metadata-evaluation.md`.
+- `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Use a per-PR name in preview environments. Hydrate it with `uv run songbook-tools metadata backfill`.
+
 ### Caching
 
 The backend uses a caching mechanism to store downloaded files and generated covers locally. Supported caching implementations are the local file system when running locally, and GCS when running on the cloud. Locally, cached files are stored in:

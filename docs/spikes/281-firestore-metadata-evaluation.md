@@ -292,3 +292,50 @@ Suggested direction if Firestore is chosen:
 If preserving the current offline-first, cache-co-located workflow with the
 *smallest* change is the priority instead, Option A (GCS object metadata) or
 Option D (hybrid) from the companion spike remain the lower-friction choices.
+
+---
+
+## 10. Implemented: hydrate + dual-write (first migration step)
+
+The safe, additive first step of the Firestore migration is implemented behind a
+flag. It populates Firestore and starts mirroring writes **without** changing the
+read path — Drive remains the source of truth, so #281 is not yet resolved (Drive
+writes continue) but the Firestore corpus is built and validated in production.
+
+**Components**
+
+- `generator/common/metadata_store.py` — `SongMetadataStore` (Firestore client
+  wrapper: `write`, `get`, `get_properties`, `get_all`, `bulk_write`) and a
+  `get_metadata_store()` factory. One document per song, keyed by Drive file ID;
+  the `properties` map mirrors the Drive custom properties one-to-one.
+- `generator/common/config.py` — new `MetadataStore` settings block
+  (`firestore_collection`, `dual_write_enabled`).
+- `generator/tagupdater/tags.py` — `Tagger` accepts an optional
+  `metadata_store`; after each successful Drive `files().update()` it mirrors the
+  same `updated_properties` to Firestore. The mirror is **best-effort**: a
+  Firestore failure logs a warning and never breaks the Drive write.
+- `generator/tagupdater/main.py` and `generator/cli/tags.py` construct the store
+  only when dual-write is enabled.
+- `generator/cli/metadata.py` — `songbook-tools metadata backfill` hydrates the
+  collection from Drive properties (chunked batches; `--dry-run` supported), and
+  `metadata get <file_id>` inspects a single document.
+
+**Configuration (env)**
+
+| Variable | Default | Effect |
+|---|---|---|
+| `SONG_METADATA_FIRESTORE_COLLECTION` | `song-metadata` | Collection holding metadata documents (use a per-PR name in preview envs). |
+| `SONG_METADATA_DUAL_WRITE_ENABLED` | `false` | When `true`, the tag updater mirrors every write to Firestore. |
+
+**Rollout**
+
+1. Deploy with `SONG_METADATA_DUAL_WRITE_ENABLED=false` (no behaviour change).
+2. Run `songbook-tools metadata backfill` to hydrate the collection.
+3. Set `SONG_METADATA_DUAL_WRITE_ENABLED=true` so new writes stay in sync.
+4. Validate parity (Drive properties vs. Firestore `properties`) over time.
+5. *(Future)* cut the read path over to Firestore and stop writing to Drive —
+   the step that actually resolves #281.
+
+**Not yet done (deliberately):** read-path hydration from Firestore, the
+`specialbooks` Firestore query, the offline JSON export, and removal of Drive
+writes. Those are the later phases from §9.

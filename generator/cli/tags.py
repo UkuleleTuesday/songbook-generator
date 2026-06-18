@@ -9,6 +9,7 @@ from googleapiclient.errors import HttpError
 from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
+from ..common.metadata_store import get_metadata_store
 from ..tagupdater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
@@ -221,12 +222,21 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
     else:
         genai_client = None
         click.echo("LLM tagging disabled (use --with-llm-tags to enable).")
+    metadata_store = (
+        get_metadata_store() if settings.metadata_store.dual_write_enabled else None
+    )
+    if metadata_store is not None:
+        click.echo(
+            "Firestore dual-write enabled (collection "
+            f"'{settings.metadata_store.firestore_collection}')."
+        )
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
         trigger_field=effective_trigger_field,
         genai_client=genai_client,
         llm_tagging_enabled=effective_llm_tagging,
+        metadata_store=metadata_store,
     )
     failed_updates = {}
 

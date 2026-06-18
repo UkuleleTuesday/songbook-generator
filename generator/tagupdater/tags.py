@@ -8,6 +8,7 @@ import click
 from google import genai
 from google.genai import types
 
+from ..common.metadata_store import SongMetadataStore
 from ..common.tracing import get_tracer
 from ..worker.models import File
 
@@ -269,12 +270,14 @@ class Tagger:
         trigger_field: Optional[str] = None,
         genai_client: Optional[genai.Client] = None,
         llm_tagging_enabled: bool = False,
+        metadata_store: Optional[SongMetadataStore] = None,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
         self.trigger_field = trigger_field
         self.genai_client = genai_client
         self.llm_tagging_enabled = llm_tagging_enabled
+        self.metadata_store = metadata_store
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -431,6 +434,23 @@ class Tagger:
                     body={"properties": updated_properties},
                     fields="properties",
                 ).execute()
+
+                # Dual-write: mirror the same properties to Firestore. Best
+                # effort — a Firestore failure must not break the Drive write,
+                # which remains the source of truth (#281).
+                if self.metadata_store is not None:
+                    try:
+                        self.metadata_store.write(
+                            file.id, updated_properties, name=file_name
+                        )
+                        span.set_attribute("firestore_dual_write", True)
+                    except Exception as e:  # noqa: BLE001 - best-effort mirror
+                        click.echo(
+                            f"  WARNING: Firestore dual-write failed for "
+                            f"{file.id}: {e}",
+                            err=True,
+                        )
+                        span.add_event("firestore_dual_write_failed", {"error": str(e)})
 
 
 @tag

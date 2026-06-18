@@ -240,6 +240,23 @@ class TagUpdater(BaseModel):
     )
 
 
+class MetadataStore(BaseModel):
+    """Configuration for the Firestore-backed song metadata store (issue #281)."""
+
+    firestore_collection: str = Field(
+        default="song-metadata",
+        description="Firestore collection holding song-sheet metadata documents.",
+    )
+    dual_write_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True, metadata writes are mirrored to Firestore in addition to "
+            "Google Drive. Drive remains the source of truth. "
+            "Set SONG_METADATA_DUAL_WRITE_ENABLED=true to enable."
+        ),
+    )
+
+
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
     drive_client: GoogleDriveClientConfig = Field(
@@ -300,6 +317,7 @@ class Settings(BaseSettings):
     caching: Caching = Field(default_factory=Caching)
     tracing: Tracing = Field(default_factory=Tracing)
     tag_updater: TagUpdater = Field(default_factory=TagUpdater)
+    metadata_store: MetadataStore = Field(default_factory=MetadataStore)
     editions: List[Edition] = Field(default_factory=list)
 
     @model_validator(mode="before")
@@ -378,6 +396,17 @@ class Settings(BaseSettings):
         ) is not None:
             self.tag_updater.llm_tagging_enabled = (
                 tagupdater_llm_tagging_enabled_env.lower() in ("true", "1")
+            )
+
+        # Handle song metadata store settings
+        if metadata_collection_env := os.getenv("SONG_METADATA_FIRESTORE_COLLECTION"):
+            self.metadata_store.firestore_collection = metadata_collection_env
+        if (
+            dual_write_env := os.getenv("SONG_METADATA_DUAL_WRITE_ENABLED")
+        ) is not None:
+            self.metadata_store.dual_write_enabled = dual_write_env.lower() in (
+                "true",
+                "1",
             )
 
         return self

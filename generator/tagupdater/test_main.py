@@ -284,6 +284,7 @@ def test_get_services_success(
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.metadata_store.dual_write_enabled = False
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -392,6 +393,7 @@ def test_get_services_tagger_instantiation(
 
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
+    mock_settings.metadata_store.dual_write_enabled = False
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -421,6 +423,7 @@ def test_get_services_tagger_instantiation(
         trigger_field=mock_get_settings.return_value.tag_updater.trigger_field,
         genai_client=mock_genai.Client.return_value,
         llm_tagging_enabled=mock_get_settings.return_value.tag_updater.llm_tagging_enabled,
+        metadata_store=None,
     )
 
     # Verify the tagger is returned
