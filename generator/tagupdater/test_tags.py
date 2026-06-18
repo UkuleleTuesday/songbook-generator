@@ -779,3 +779,119 @@ def test_run_llm_tags_interpolates_extra_in_prompt():
 
     call_args = client.models.generate_content.call_args
     assert "List up to 2 genres." in call_args.kwargs["contents"]
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_dual_write_mirrors_properties_to_metadata_store(
+    mock_now, mock_drive_service, mock_docs_service
+):
+    """When a metadata store is provided, the same properties are mirrored to it."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "name": "test.pdf"
+    }
+    metadata_store = Mock()
+    tagger = Tagger(
+        mock_drive_service, mock_docs_service, metadata_store=metadata_store
+    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
+
+    tagger.update_tags(file_to_tag)
+
+    # Drive remains the source of truth and is still written.
+    mock_drive_service.files.return_value.update.assert_called_once()
+    # The mirror receives the exact same updated properties.
+    metadata_store.write.assert_called_once_with(
+        "file123",
+        {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
+        name="test.pdf",
+    )
+
+
+def test_dual_write_not_attempted_when_no_drive_write(
+    mock_drive_service, mock_docs_service
+):
+    """No mirror write happens when the Drive write is skipped (tags identical)."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
+    metadata_store = Mock()
+    tagger = Tagger(
+        mock_drive_service, mock_docs_service, metadata_store=metadata_store
+    )
+    # status already APPROVED and parents point to APPROVED -> identical, no write
+    file_to_tag = File(
+        id="file123",
+        name="test.pdf",
+        parents=[FOLDER_ID_APPROVED],
+        properties={"status": "APPROVED", "approved_date": "2026-01-01T00:00:00Z"},
+    )
+
+    tagger.update_tags(file_to_tag)
+
+    mock_drive_service.files.return_value.update.assert_not_called()
+    metadata_store.write.assert_not_called()
+
+
+def test_dual_write_failure_does_not_break_drive_write(
+    mock_drive_service, mock_docs_service
+):
+    """A Firestore mirror failure must not propagate or block the Drive write."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "name": "test.pdf"
+    }
+    metadata_store = Mock()
+    metadata_store.write.side_effect = RuntimeError("firestore unavailable")
+    tagger = Tagger(
+        mock_drive_service, mock_docs_service, metadata_store=metadata_store
+    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
+
+    # Should not raise despite the mirror failing.
+    tagger.update_tags(file_to_tag)
+
+    mock_drive_service.files.return_value.update.assert_called_once()
+    metadata_store.write.assert_called_once()
+
+
+def test_dry_run_skips_both_drive_and_firestore_writes(
+    mock_drive_service, mock_docs_service
+):
+    """dry_run is the master override: no writes to either sink."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "name": "test.pdf"
+    }
+    metadata_store = Mock()
+    tagger = Tagger(
+        mock_drive_service, mock_docs_service, metadata_store=metadata_store
+    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
+
+    tagger.update_tags(file_to_tag, dry_run=True)
+
+    mock_drive_service.files.return_value.update.assert_not_called()
+    metadata_store.write.assert_not_called()
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_drive_write_disabled_writes_firestore_only(
+    mock_now, mock_drive_service, mock_docs_service
+):
+    """With drive_write_enabled=False, only Firestore is written."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "name": "test.pdf"
+    }
+    metadata_store = Mock()
+    tagger = Tagger(
+        mock_drive_service,
+        mock_docs_service,
+        metadata_store=metadata_store,
+        drive_write_enabled=False,
+    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
+
+    tagger.update_tags(file_to_tag)
+
+    mock_drive_service.files.return_value.update.assert_not_called()
+    metadata_store.write.assert_called_once_with(
+        "file123",
+        {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
+        name="test.pdf",
+    )

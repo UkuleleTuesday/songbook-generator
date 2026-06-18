@@ -41,7 +41,7 @@ def _get_services():
 
     firestore_collection = os.environ["FIRESTORE_COLLECTION"]
     gcs_cdn_bucket_name = os.environ["GCS_CDN_BUCKET"]
-    db = firestore.Client(project=project_id)
+    db = firestore.Client(project=project_id, database=os.getenv("FIRESTORE_DATABASE"))
     storage_client = storage.Client(project=project_id)
     cdn_bucket = storage_client.bucket(gcs_cdn_bucket_name)
 

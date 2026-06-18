@@ -8,6 +8,7 @@ import click
 from google import genai
 from google.genai import types
 
+from ..common.metadata_store import SongMetadataStore
 from ..common.tracing import get_tracer
 from ..worker.models import File
 
@@ -269,12 +270,16 @@ class Tagger:
         trigger_field: Optional[str] = None,
         genai_client: Optional[genai.Client] = None,
         llm_tagging_enabled: bool = False,
+        metadata_store: Optional[SongMetadataStore] = None,
+        drive_write_enabled: bool = True,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
         self.trigger_field = trigger_field
         self.genai_client = genai_client
         self.llm_tagging_enabled = llm_tagging_enabled
+        self.metadata_store = metadata_store
+        self.drive_write_enabled = drive_write_enabled
 
     def update_tags(self, file: File, dry_run: bool = False):
         """
@@ -421,16 +426,42 @@ class Tagger:
                     span.set_attribute("update_skipped.reason", "tags_identical")
                     return
 
+                # dry_run is the master override: compute everything but write
+                # nothing, to either sink.
                 if dry_run:
-                    click.echo("  DRY RUN: Skipping actual update.")
+                    click.echo("  DRY RUN: Skipping all writes (Drive and Firestore).")
                     span.set_attribute("dry_run", "true")
                     return
 
-                self.drive_service.files().update(
-                    fileId=file.id,
-                    body={"properties": updated_properties},
-                    fields="properties",
-                ).execute()
+                # Drive and Firestore writes are controlled independently (#281),
+                # so the tagger can target either, both, or neither.
+                if self.drive_write_enabled:
+                    self.drive_service.files().update(
+                        fileId=file.id,
+                        body={"properties": updated_properties},
+                        fields="properties",
+                    ).execute()
+                    span.set_attribute("drive_write", True)
+                else:
+                    click.echo("  Drive write disabled, skipping Drive update.")
+                    span.set_attribute("drive_write", False)
+
+                # The Firestore write is gated by the presence of metadata_store
+                # (constructed only when firestore writes are enabled). Best
+                # effort: a Firestore failure must never break tagging or the
+                # Drive write.
+                if self.metadata_store is not None:
+                    try:
+                        self.metadata_store.write(
+                            file.id, updated_properties, name=file_name
+                        )
+                        span.set_attribute("firestore_write", True)
+                    except Exception as e:  # noqa: BLE001 - best-effort write
+                        click.echo(
+                            f"  WARNING: Firestore write failed for {file.id}: {e}",
+                            err=True,
+                        )
+                        span.add_event("firestore_write_failed", {"error": str(e)})
 
 
 @tag

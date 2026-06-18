@@ -18,6 +18,7 @@ from google.auth import default
 from googleapiclient.discovery import build
 
 from ..common.config import get_settings
+from ..common.metadata_store import get_metadata_store
 from ..common.tracing import get_tracer, setup_tracing
 from .tags import Tagger
 from ..worker.gcp import get_credentials
@@ -69,6 +70,16 @@ def _get_services():
     if settings.tag_updater.dry_run:
         click.echo("WARNING: dry_run=True — no writes will be made to Google Drive.")
 
+    metadata_store = None
+    if settings.metadata_store.firestore_write_enabled:
+        metadata_store = get_metadata_store()
+        click.echo(
+            "Firestore metadata write enabled (collection "
+            f"'{settings.metadata_store.firestore_collection}')."
+        )
+    if not settings.metadata_store.drive_write_enabled:
+        click.echo("Drive metadata write disabled.")
+
     return {
         "tracer": tracer,
         "drive": drive_service,
@@ -79,6 +90,8 @@ def _get_services():
             trigger_field=settings.tag_updater.trigger_field,
             genai_client=genai_client,
             llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
+            metadata_store=metadata_store,
+            drive_write_enabled=settings.metadata_store.drive_write_enabled,
         ),
     }
 

@@ -287,3 +287,46 @@ def test_public_editions_in_config():
         assert edition_map[edition_id].publish.visibility == "public", (
             f"{edition_id} should be public"
         )
+
+
+def test_metadata_store_defaults(monkeypatch):
+    monkeypatch.delenv("SONG_METADATA_FIRESTORE_COLLECTION", raising=False)
+    monkeypatch.delenv("SONG_METADATA_DRIVE_WRITE_ENABLED", raising=False)
+    monkeypatch.delenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED", raising=False)
+    monkeypatch.delenv("FIRESTORE_DATABASE", raising=False)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.metadata_store.firestore_collection == "song-metadata"
+    # Drive writes on by default (historical behaviour), Firestore off.
+    assert settings.metadata_store.drive_write_enabled is True
+    assert settings.metadata_store.firestore_write_enabled is False
+    assert settings.google_cloud.firestore_database is None
+
+
+def test_firestore_database_override(monkeypatch):
+    monkeypatch.setenv("FIRESTORE_DATABASE", "pr-395")
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.google_cloud.firestore_database == "pr-395"
+
+
+@pytest.mark.parametrize(
+    "env_value, expected",
+    [("true", True), ("TRUE", True), ("1", True), ("false", False), ("0", False)],
+)
+def test_metadata_store_drive_write_override(monkeypatch, env_value, expected):
+    monkeypatch.setenv("SONG_METADATA_DRIVE_WRITE_ENABLED", env_value)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.metadata_store.drive_write_enabled is expected
+
+
+@pytest.mark.parametrize(
+    "env_value, expected",
+    [("true", True), ("TRUE", True), ("1", True), ("false", False), ("0", False)],
+)
+def test_metadata_store_firestore_write_override(monkeypatch, env_value, expected):
+    monkeypatch.setenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED", env_value)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.metadata_store.firestore_write_enabled is expected
