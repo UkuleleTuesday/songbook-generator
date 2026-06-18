@@ -54,7 +54,9 @@ class _FakeCollection:
 
     def stream(self):
         for doc_id, data in list(self._store.get(self._name, {}).items()):
-            yield _FakeSnapshot(doc_id, data, ref=_FakeDocRef(self._store, self._name, doc_id))
+            yield _FakeSnapshot(
+                doc_id, data, ref=_FakeDocRef(self._store, self._name, doc_id)
+            )
 
 
 class _FakeBatch:
