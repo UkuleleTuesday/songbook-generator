@@ -8,7 +8,7 @@ from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 from ..common.metadata_store import get_metadata_store
 from ..worker.pdf import init_services
-from .utils import SubcmdGroup
+from .utils import SubcmdGroup, _resolve_file_id
 
 
 @click.group(cls=SubcmdGroup)
@@ -77,3 +77,100 @@ def get(file_id):
         click.echo(f"No metadata document found for file ID '{file_id}'.", err=True)
         raise click.Abort()
     click.echo(json.dumps(doc, indent=2, default=str))
+
+
+@metadata.command(name="diff")
+@click.argument("file_identifier", required=False)
+def diff(file_identifier):
+    """Compare Firestore metadata against live Drive properties.
+
+    With no argument: checks every song sheet in Drive against Firestore,
+    reporting missing docs, extra docs, and per-key value mismatches.
+
+    With FILE_IDENTIFIER: checks a single song by Drive file ID or name.
+
+    Exits with a non-zero status code if any drift is found.
+    """
+    import sys
+
+    settings = get_settings()
+    gdrive_client = _init_drive_client()
+    store = get_metadata_store()
+
+    if file_identifier:
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        drive_props = gdrive_client.get_file_properties(file_id) or {}
+        firestore_props = store.get_properties(file_id)
+
+        if firestore_props is None:
+            click.echo(f"MISSING from Firestore: {file_id}")
+            sys.exit(1)
+
+        mismatches = _diff_properties(drive_props, firestore_props)
+        if mismatches:
+            click.echo(f"DRIFTED: {file_id}")
+            for line in mismatches:
+                click.echo(f"  {line}")
+            sys.exit(1)
+        else:
+            click.echo(f"OK: {file_id} is in sync.")
+        return
+
+    click.echo("Fetching all song sheets from Drive...")
+    drive_files = gdrive_client.query_drive_files(settings.song_sheets.folder_ids)
+    drive_by_id = {f.id: f for f in drive_files}
+    click.echo(f"Found {len(drive_files)} files in Drive.")
+
+    click.echo("Fetching all Firestore metadata docs...")
+    firestore_all = store.get_all()
+    click.echo(f"Found {len(firestore_all)} docs in Firestore.")
+
+    missing = [f for f in drive_files if f.id not in firestore_all]
+    extra = [fid for fid in firestore_all if fid not in drive_by_id]
+    drifted_files = []
+    for f in drive_files:
+        if f.id not in firestore_all:
+            continue
+        fs_props = firestore_all[f.id].get("properties", {})
+        mismatches = _diff_properties(f.properties, fs_props)
+        if mismatches:
+            drifted_files.append((f, mismatches))
+
+    if missing:
+        click.echo(f"\nMISSING from Firestore ({len(missing)}):")
+        for f in missing:
+            click.echo(f"  {f.id}  {f.name}")
+
+    if extra:
+        click.echo(f"\nEXTRA in Firestore ({len(extra)}) (no matching Drive file):")
+        for fid in extra:
+            name = firestore_all[fid].get("gdrive_file_name", "")
+            click.echo(f"  {fid}  {name}")
+
+    if drifted_files:
+        click.echo(f"\nDRIFTED ({len(drifted_files)}):")
+        for f, mismatches in drifted_files:
+            click.echo(f"  {f.id}  {f.name}")
+            for line in mismatches:
+                click.echo(f"    {line}")
+
+    in_sync = len(drive_files) - len(missing) - len(drifted_files)
+    click.echo(
+        f"\nSummary: {in_sync} in sync, {len(missing)} missing, "
+        f"{len(extra)} extra, {len(drifted_files)} drifted."
+    )
+
+    if missing or extra or drifted_files:
+        sys.exit(1)
+
+
+def _diff_properties(drive_props: dict, firestore_props: dict) -> list[str]:
+    """Return a list of human-readable mismatch lines, empty if in sync."""
+    lines = []
+    all_keys = set(drive_props) | set(firestore_props)
+    for key in sorted(all_keys):
+        drive_val = drive_props.get(key)
+        fs_val = firestore_props.get(key)
+        if drive_val != fs_val:
+            lines.append(f"{key}: Drive={drive_val!r}  Firestore={fs_val!r}")
+    return lines
