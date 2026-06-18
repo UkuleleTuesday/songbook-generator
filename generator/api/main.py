@@ -37,7 +37,7 @@ def _get_services():
     firestore_collection = os.environ["FIRESTORE_COLLECTION"]
     publisher = pubsub_v1.PublisherClient()
     topic_path = publisher.topic_path(project_id, pubsub_topic)
-    db = firestore.Client(project=project_id)
+    db = firestore.Client(project=project_id, database=os.getenv("FIRESTORE_DATABASE"))
 
     _services = {
         "tracer": tracer,

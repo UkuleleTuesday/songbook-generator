@@ -108,6 +108,18 @@ jobs:
         gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
+    - name: Create named Firestore database for PR
+      if: github.event_name == 'pull_request'
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        DB_NAME="pr-${PR_NUM}"
+        echo "Creating Firestore database: ${DB_NAME}"
+        gcloud firestore databases create \
+          --database="${DB_NAME}" \
+          --location="${{ env.GCP_REGION }}" \
+          --project="${{ env.GCP_PROJECT_ID }}" \
+          || echo "Database may already exist, continuing…"
+
     - name: Apply Artifact Registry cleanup policy
       # Only on main: this mutates the shared gcf-artifacts repo, so PR runs
       # must not touch it. Idempotent — re-applying the same policy is a no-op.
@@ -157,6 +169,7 @@ jobs:
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
           PUBSUB_TOPIC: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.PUBSUB_TOPIC, github.event.pull_request.number) || env.PUBSUB_TOPIC }}"
+          FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
           FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
           GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
           JOB_TTL_DAYS: "3"
@@ -202,6 +215,7 @@ jobs:
           SERVICE_NAME: "songbook-generator"
           GCP_PROJECT_ID: "${{ env.GCP_PROJECT_ID }}"
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
+          FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
           FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
           GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
           GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
@@ -314,11 +328,11 @@ jobs:
           TAGUPDATER_DRY_RUN: "false"
           # Drive and Firestore writes are controlled independently (#281).
           # PR previews must never write to the real Drive, so Drive writes are
-          # disabled there; Firestore writes go to an isolated per-PR collection
-          # so previews still exercise the path. main writes to both.
+          # disabled there; Firestore writes go to an isolated per-PR named
+          # database so previews still exercise the path. main writes to both.
           SONG_METADATA_DRIVE_WRITE_ENABLED: "${{ github.event_name == 'pull_request' && 'false' || 'true' }}"
           SONG_METADATA_FIRESTORE_WRITE_ENABLED: "true"
-          SONG_METADATA_FIRESTORE_COLLECTION: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.SONG_METADATA_FIRESTORE_COLLECTION, github.event.pull_request.number) || env.SONG_METADATA_FIRESTORE_COLLECTION }}"
+          FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
 
   deploy-drivewatcher:
     name: Deploy Drive Watcher
@@ -579,6 +593,16 @@ jobs:
         else
           echo "Pub/Sub topic $DRIVEWATCHER_TRIGGER_TOPIC_NAME not found, skipping"
         fi
+
+    - name: Delete PR Firestore database
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        DB_NAME="pr-${PR_NUM}"
+        echo "Deleting Firestore database: ${DB_NAME}"
+        gcloud firestore databases delete "${DB_NAME}" \
+          --project="${{ env.GCP_PROJECT_ID }}" \
+          --quiet \
+          || echo "Failed to delete Firestore database ${DB_NAME}, skipping"
 
   detect-changed-editions:
     name: Detect Changed Editions

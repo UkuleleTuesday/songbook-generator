@@ -103,6 +103,25 @@ class SongMetadataStore:
             for snap in self._db.collection(self._collection).stream()
         }
 
+    def purge(self) -> int:
+        """Delete every document in the collection. Returns the count deleted."""
+        with tracer.start_as_current_span("metadata_store.purge") as span:
+            count = 0
+            pending = 0
+            batch = self._db.batch()
+            for snap in self._db.collection(self._collection).stream():
+                batch.delete(snap.reference)
+                pending += 1
+                count += 1
+                if pending >= _BATCH_LIMIT:
+                    batch.commit()
+                    batch = self._db.batch()
+                    pending = 0
+            if pending:
+                batch.commit()
+            span.set_attribute("documents_deleted", count)
+            return count
+
     def bulk_write(
         self, items: Iterable[Tuple[str, Dict[str, str], Optional[str]]]
     ) -> int:
@@ -137,17 +156,21 @@ def get_metadata_store(
     collection: Optional[str] = None,
     *,
     project_id: Optional[str] = None,
+    database: Optional[str] = None,
     db: Optional[firestore.Client] = None,
 ) -> SongMetadataStore:
     """Build a :class:`SongMetadataStore` from settings/env.
 
     ``db`` can be injected for tests; otherwise a real Firestore client is
-    created. ``collection`` defaults to the configured metadata collection.
+    created. ``collection`` and ``database`` default to the configured values.
     """
     from .config import get_settings
 
     settings = get_settings()
     collection = collection or settings.metadata_store.firestore_collection
     if db is None:
-        db = firestore.Client(project=project_id or settings.google_cloud.project_id)
+        db = firestore.Client(
+            project=project_id or settings.google_cloud.project_id,
+            database=database or settings.google_cloud.firestore_database,
+        )
     return SongMetadataStore(db=db, collection=collection)

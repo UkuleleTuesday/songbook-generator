@@ -271,6 +271,14 @@ class MetadataStore(BaseModel):
 
 class GoogleCloud(BaseModel):
     project_id: Optional[str] = Field("songbook-generator")
+    firestore_database: Optional[str] = Field(
+        default=None,
+        description=(
+            "Firestore database to use. Defaults to the Firestore default database. "
+            "Set FIRESTORE_DATABASE to a named database (e.g. 'pr-395') for "
+            "isolated preview environments."
+        ),
+    )
     drive_client: GoogleDriveClientConfig = Field(
         default_factory=GoogleDriveClientConfig
     )
@@ -358,6 +366,8 @@ class Settings(BaseSettings):
             os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT_ID")
         ):
             self.google_cloud.project_id = gcp_project_id_env
+        if firestore_database_env := os.getenv("FIRESTORE_DATABASE"):
+            self.google_cloud.firestore_database = firestore_database_env
 
         # Handle GDRIVE_SONG_SHEETS_FOLDER_IDS
         if folder_ids_env := os.getenv("GDRIVE_SONG_SHEETS_FOLDER_IDS"):

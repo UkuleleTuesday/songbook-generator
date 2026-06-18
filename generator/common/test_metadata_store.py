@@ -11,9 +11,10 @@ from .metadata_store import SongMetadataStore
 
 
 class _FakeSnapshot:
-    def __init__(self, doc_id, data):
+    def __init__(self, doc_id, data, ref=None):
         self.id = doc_id
         self._data = data
+        self.reference = ref
 
     @property
     def exists(self):
@@ -52,8 +53,8 @@ class _FakeCollection:
         return _FakeDocRef(self._store, self._name, doc_id)
 
     def stream(self):
-        for doc_id, data in self._store.get(self._name, {}).items():
-            yield _FakeSnapshot(doc_id, data)
+        for doc_id, data in list(self._store.get(self._name, {}).items()):
+            yield _FakeSnapshot(doc_id, data, ref=_FakeDocRef(self._store, self._name, doc_id))
 
 
 class _FakeBatch:
@@ -61,11 +62,18 @@ class _FakeBatch:
         self._ops = []
 
     def set(self, ref, data, merge=False):
-        self._ops.append((ref, data, merge))
+        self._ops.append(("set", ref, data, merge))
+
+    def delete(self, ref):
+        self._ops.append(("delete", ref, None, None))
 
     def commit(self):
-        for ref, data, merge in self._ops:
-            ref.set(data, merge=merge)
+        for op, ref, data, merge in self._ops:
+            if op == "set":
+                ref.set(data, merge=merge)
+            elif op == "delete":
+                bucket = ref._store.get(ref._collection, {})
+                bucket.pop(ref._id, None)
         self._ops = []
 
 
@@ -141,6 +149,31 @@ def test_bulk_write_writes_all_documents():
     assert len(all_docs) == 10
     assert all_docs["id7"]["properties"] == {"n": "7"}
     assert all_docs["id7"]["gdrive_file_name"] == "name7"
+
+
+def test_purge_deletes_all_documents():
+    store = _make_store()
+    store.write("a", {"artist": "A"}, name="a")
+    store.write("b", {"artist": "B"}, name="b")
+
+    deleted = store.purge()
+
+    assert deleted == 2
+    assert store.get_all() == {}
+
+
+def test_purge_chunks_beyond_batch_limit(monkeypatch):
+    import generator.common.metadata_store as ms
+
+    monkeypatch.setattr(ms, "_BATCH_LIMIT", 3)
+    store = _make_store()
+    for i in range(7):
+        store.write(f"id{i}", {"n": str(i)}, name=None)
+
+    deleted = store.purge()
+
+    assert deleted == 7
+    assert store.get_all() == {}
 
 
 def test_bulk_write_chunks_beyond_batch_limit(monkeypatch):

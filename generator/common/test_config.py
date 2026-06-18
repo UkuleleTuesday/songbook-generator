@@ -293,19 +293,21 @@ def test_metadata_store_defaults(monkeypatch):
     monkeypatch.delenv("SONG_METADATA_FIRESTORE_COLLECTION", raising=False)
     monkeypatch.delenv("SONG_METADATA_DRIVE_WRITE_ENABLED", raising=False)
     monkeypatch.delenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED", raising=False)
+    monkeypatch.delenv("FIRESTORE_DATABASE", raising=False)
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.metadata_store.firestore_collection == "song-metadata"
     # Drive writes on by default (historical behaviour), Firestore off.
     assert settings.metadata_store.drive_write_enabled is True
     assert settings.metadata_store.firestore_write_enabled is False
+    assert settings.google_cloud.firestore_database is None
 
 
-def test_metadata_store_collection_override(monkeypatch):
-    monkeypatch.setenv("SONG_METADATA_FIRESTORE_COLLECTION", "song-metadata-pr-395")
+def test_firestore_database_override(monkeypatch):
+    monkeypatch.setenv("FIRESTORE_DATABASE", "pr-395")
     config.get_settings.cache_clear()
     settings = config.get_settings()
-    assert settings.metadata_store.firestore_collection == "song-metadata-pr-395"
+    assert settings.google_cloud.firestore_database == "pr-395"
 
 
 @pytest.mark.parametrize(

@@ -77,3 +77,32 @@ def get(file_id):
         click.echo(f"No metadata document found for file ID '{file_id}'.", err=True)
         raise click.Abort()
     click.echo(json.dumps(doc, indent=2, default=str))
+
+
+@metadata.command(name="purge")
+@click.option(
+    "--confirm",
+    is_flag=True,
+    default=False,
+    help="Required to actually delete. Omit for a dry-run that shows the collection and document count.",
+)
+def purge(confirm):
+    """Delete all documents in the configured Firestore metadata collection.
+
+    Useful for cleaning up per-PR collections after testing. Requires --confirm
+    to actually delete; omitting it shows what would be purged.
+    """
+    store = get_metadata_store()
+    settings = get_settings()
+    collection = settings.metadata_store.firestore_collection
+
+    if not confirm:
+        all_docs = store.get_all()
+        click.echo(
+            f"DRY RUN: would delete {len(all_docs)} documents from collection '{collection}'."
+        )
+        click.echo("Pass --confirm to actually delete.")
+        return
+
+    deleted = store.purge()
+    click.echo(f"Deleted {deleted} documents from collection '{collection}'.")
