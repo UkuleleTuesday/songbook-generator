@@ -153,7 +153,7 @@ Run `uv run songbook-tools --help` for more commands and options.
 ### CLI Commands
 
 The `songbook-tools` CLI provides commands for local development and utility tasks,
-organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`) and
+organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`, `metadata`) and
 standalone commands (`generate`, `merge-pdfs`, `validate-pdf`, `print-settings`).
 
 Run `uv run songbook-tools --help` for a full list of commands and groups, and
@@ -207,6 +207,7 @@ The Cloud Functions require these environment variables:
 
 - `GCP_PROJECT_ID`: Google Cloud Project ID
 - `FIRESTORE_COLLECTION`: Firestore collection name for job tracking
+- `FIRESTORE_DATABASE`: Firestore database to use. Defaults to the project's default database; set to a named database (e.g. `pr-395`) to isolate a preview environment.
 - `GCS_CDN_BUCKET`: Storage bucket for generated PDFs
 - `GCS_WORKER_CACHE_BUCKET`: Storage bucket for caching intermediate files
 - `PUBSUB_TOPIC`: Pub/Sub topic for job queue
@@ -225,7 +226,7 @@ Drive and Firestore metadata writes are controlled independently, so the tag upd
 
 - `SONG_METADATA_DRIVE_WRITE_ENABLED`: Whether computed metadata is written back to Google Drive file properties. Defaults to `true` (the historical behaviour). Set to `false` to stop writing to Drive.
 - `SONG_METADATA_FIRESTORE_WRITE_ENABLED`: Whether computed metadata is written to a Firestore collection. Defaults to `false`. Set to `true` to enable. See `docs/spikes/281-firestore-metadata-evaluation.md`.
-- `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Use a per-PR name in preview environments. Hydrate it with `uv run songbook-tools metadata backfill`.
+- `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Hydrate it with `uv run songbook-tools metadata backfill`, and inspect a single document with `uv run songbook-tools metadata get <file-id>`. Preview environments are isolated via a named Firestore database (`FIRESTORE_DATABASE`) rather than a separate collection name.
 
 ### Caching
 
