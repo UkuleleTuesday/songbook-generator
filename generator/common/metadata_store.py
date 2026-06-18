@@ -103,25 +103,6 @@ class SongMetadataStore:
             for snap in self._db.collection(self._collection).stream()
         }
 
-    def purge(self) -> int:
-        """Delete every document in the collection. Returns the count deleted."""
-        with tracer.start_as_current_span("metadata_store.purge") as span:
-            count = 0
-            pending = 0
-            batch = self._db.batch()
-            for snap in self._db.collection(self._collection).stream():
-                batch.delete(snap.reference)
-                pending += 1
-                count += 1
-                if pending >= _BATCH_LIMIT:
-                    batch.commit()
-                    batch = self._db.batch()
-                    pending = 0
-            if pending:
-                batch.commit()
-            span.set_attribute("documents_deleted", count)
-            return count
-
     def bulk_write(
         self, items: Iterable[Tuple[str, Dict[str, str], Optional[str]]]
     ) -> int:
