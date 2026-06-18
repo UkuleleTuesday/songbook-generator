@@ -47,6 +47,12 @@ jobs:
         # documentation (docs/** or any Markdown file). Doc-only changes skip
         # the GCP deploy jobs (Cloud Functions builds, Cloud Run deploys,
         # scheduler jobs) to avoid needless build/storage cost.
+        #
+        # predicate-quantifier: every — a file must satisfy ALL patterns (match
+        # '**' AND not be under docs/ AND not be Markdown) for "code" to match.
+        # Without this, the default 'some' quantifier OR's the patterns, so '**'
+        # alone matches every file and the negations never exclude anything.
+        predicate-quantifier: 'every'
         filters: |
           code:
             - '**'
