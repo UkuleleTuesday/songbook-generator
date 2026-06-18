@@ -107,6 +107,21 @@ jobs:
         gcloud pubsub topics create "${DRIVE_CHANGES_PUBSUB_TOPIC}" \
           --project="${{ env.GCP_PROJECT_ID }}" || echo "Topic may already exist, continuing…"
 
+    - name: Apply Artifact Registry cleanup policy
+      # Only on main: this mutates the shared gcf-artifacts repo, so PR runs
+      # must not touch it. Idempotent — re-applying the same policy is a no-op.
+      # Caps the Cloud Functions image storage that otherwise grows unbounded
+      # (keep 3 most-recent versions per image, delete untagged after 7 days).
+      if: github.event_name == 'push'
+      run: |
+        echo "Applying cleanup policy to gcf-artifacts in ${{ env.GCP_REGION }}…"
+        gcloud artifacts repositories set-cleanup-policies gcf-artifacts \
+          --project="${{ env.GCP_PROJECT_ID }}" \
+          --location="${{ env.GCP_REGION }}" \
+          --policy="infra/artifact-registry-cleanup-policy.json" \
+          --no-dry-run \
+          || echo "Could not set cleanup policy (repo may not exist yet); continuing…"
+
   deploy-api:
     name: Deploy API
     needs: [test, deploy-infrastructure]
@@ -473,6 +488,33 @@ jobs:
         else
           echo "Tag Updater function $TAGUPDATER_FN_NAME not found, skipping"
         fi
+
+    - name: Delete PR Artifact Registry images
+      # Deleting the PR functions above does not remove their container images
+      # from gcf-artifacts; without this they linger and accrue storage cost.
+      # Anything missed here (e.g. a naming mismatch) is still reclaimed by the
+      # repo cleanup policy's untagged rule as a backstop.
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        for FN_BASE in \
+          "${{ env.API_FUNCTION_NAME }}" \
+          "${{ env.WORKER_FUNCTION_NAME }}" \
+          "${{ env.CACHE_UPDATER_FUNCTION_NAME }}" \
+          "${{ env.DRIVEWATCHER_FUNCTION_NAME }}" \
+          "${{ env.TAGUPDATER_FUNCTION_NAME }}"; do
+          PKG="${FN_BASE}-pr-${PR_NUM}"
+          if gcloud artifacts packages describe "$PKG" \
+              --repository=gcf-artifacts --location="${{ env.GCP_REGION }}" \
+              --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
+            echo "Deleting Artifact Registry package: $PKG"
+            gcloud artifacts packages delete "$PKG" \
+              --repository=gcf-artifacts --location="${{ env.GCP_REGION }}" \
+              --project="${{ env.GCP_PROJECT_ID }}" --quiet \
+              || echo "Failed to delete package $PKG, skipping"
+          else
+            echo "Artifact Registry package $PKG not found, skipping"
+          fi
+        done
 
     - name: Delete PR Cloud Scheduler jobs
       run: |
