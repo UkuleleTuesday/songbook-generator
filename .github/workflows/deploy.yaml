@@ -223,6 +223,7 @@ jobs:
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
           FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
+          SONG_METADATA_FIRESTORE_READ_ENABLED: "true"
           GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
           GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
@@ -239,7 +240,7 @@ jobs:
   deploy-cache-updater:
     name: Deploy Cache Updater
     needs: [test, deploy-infrastructure]
-    if: github.event.action != 'closed'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -343,7 +344,7 @@ jobs:
   deploy-drivewatcher:
     name: Deploy Drive Watcher
     needs: [test, deploy-infrastructure]
-    if: github.event.action != 'closed'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

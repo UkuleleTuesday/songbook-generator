@@ -267,6 +267,14 @@ class MetadataStore(BaseModel):
             "Set SONG_METADATA_FIRESTORE_WRITE_ENABLED=true to enable."
         ),
     )
+    firestore_read_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True, File.properties is sourced from Firestore instead of Drive. "
+            "Drive remains the source for file existence (id, name, mimeType, parents). "
+            "Set SONG_METADATA_FIRESTORE_READ_ENABLED=true to enable."
+        ),
+    )
 
 
 class GoogleCloud(BaseModel):
@@ -435,6 +443,13 @@ class Settings(BaseSettings):
         ) is not None:
             self.metadata_store.firestore_write_enabled = (
                 firestore_write_env.lower() in ("true", "1")
+            )
+        if (
+            firestore_read_env := os.getenv("SONG_METADATA_FIRESTORE_READ_ENABLED")
+        ) is not None:
+            self.metadata_store.firestore_read_enabled = firestore_read_env.lower() in (
+                "true",
+                "1",
             )
 
         return self

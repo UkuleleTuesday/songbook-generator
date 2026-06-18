@@ -3,6 +3,7 @@ import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 from ..common.config import Edition
+from ..common.song_source import SongSheetSource
 from .pdf import (
     _resolve_songs_from_folder,
     add_page_number,
@@ -182,7 +183,7 @@ def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -216,7 +217,7 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = all_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1", "folder2"],
     )
 
@@ -246,7 +247,7 @@ def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
         client_filter=mock_filter,
     )
@@ -262,7 +263,7 @@ def test_collect_and_sort_files_empty_folders(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = []
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["empty_folder"],
     )
 
@@ -281,7 +282,7 @@ def test_collect_and_sort_files_with_progress_step(mocker, mock_gdrive_client):
     )
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1", "folder2"],
         progress_step=mock_progress_step,
     )
@@ -307,7 +308,7 @@ def test_collect_and_sort_files_no_progress_step(mocker, mock_gdrive_client):
 
     # Should not raise any errors when progress_step is None
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
         progress_step=None,
     )
@@ -325,7 +326,7 @@ def test_collect_and_sort_files_strips_artist_name(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -347,7 +348,7 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker, mock_gdrive_clien
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -369,7 +370,7 @@ def test_collect_and_sort_files_strips_punctuation(mocker, mock_gdrive_client):
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -391,7 +392,7 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker, mock_gdrive_cli
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -413,7 +414,7 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker, mock_gdrive_cl
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1"],
     )
     expected = [
@@ -436,7 +437,7 @@ def test_collect_and_sort_files_progress_increment_calculation(
     mock_gdrive_client.query_drive_files_with_client_filter.return_value = folder_files
 
     collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1", "folder2", "folder3"],
         progress_step=mock_progress_step,
     )
@@ -458,7 +459,7 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
     ]
 
     result = collect_and_sort_files(
-        gdrive_client=mock_gdrive_client,
+        song_source=SongSheetSource(mock_gdrive_client),
         source_folders=["folder1", "folder2", "folder3"],
     )
 
