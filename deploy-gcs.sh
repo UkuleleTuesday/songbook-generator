@@ -16,6 +16,7 @@ gcloud services enable \
   firestore.googleapis.com \
   storage.googleapis.com \
   eventarc.googleapis.com \
+  artifactregistry.googleapis.com \
   telemetry.googleapis.com \
   monitoring.googleapis.com \
   logging.googleapis.com \
@@ -169,5 +170,18 @@ gcloud scheduler jobs create http trigger-cache-updater-job \
   --message-body="${PAYLOAD_JSON}" \
   --location="${GCP_REGION}" \
   --description="Triggers the PDF cache updater and cache sync for songbooks."
+
+echo "10. Applying Artifact Registry cleanup policy to gcf-artifacts…"
+# Caps Cloud Functions image storage (keep 3 most-recent versions per image,
+# delete untagged after 7 days). The gcf-artifacts repo is created by the first
+# Gen2 function deploy, so this may fail on a fresh project — re-run after the
+# functions are deployed, or rely on the Deploy workflow which re-applies it on
+# every push to main.
+gcloud artifacts repositories set-cleanup-policies gcf-artifacts \
+  --project="${GCP_PROJECT_ID}" \
+  --location="${GCP_REGION}" \
+  --policy="infra/artifact-registry-cleanup-policy.json" \
+  --no-dry-run \
+  || echo "gcf-artifacts may not exist yet; re-run after first function deploy…"
 
 echo "✔ All done. 🎉"
