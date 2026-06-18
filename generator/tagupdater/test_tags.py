@@ -851,15 +851,10 @@ def test_dual_write_failure_does_not_break_drive_write(
     metadata_store.write.assert_called_once()
 
 
-def test_dry_run_skips_drive_write_but_still_mirrors(
+def test_dry_run_skips_both_drive_and_firestore_writes(
     mock_drive_service, mock_docs_service
 ):
-    """Dry run suppresses the Drive write but still mirrors to Firestore.
-
-    Drive writes are the #281 problem; the Firestore mirror is the migration
-    target, so it runs even under dry_run (this is how PR preview environments
-    exercise dual-write into an isolated per-PR collection).
-    """
+    """dry_run is the master override: no writes to either sink."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
         "name": "test.pdf"
     }
@@ -872,4 +867,31 @@ def test_dry_run_skips_drive_write_but_still_mirrors(
     tagger.update_tags(file_to_tag, dry_run=True)
 
     mock_drive_service.files.return_value.update.assert_not_called()
-    metadata_store.write.assert_called_once()
+    metadata_store.write.assert_not_called()
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_drive_write_disabled_writes_firestore_only(
+    mock_now, mock_drive_service, mock_docs_service
+):
+    """With drive_write_enabled=False, only Firestore is written."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
+        "name": "test.pdf"
+    }
+    metadata_store = Mock()
+    tagger = Tagger(
+        mock_drive_service,
+        mock_docs_service,
+        metadata_store=metadata_store,
+        drive_write_enabled=False,
+    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
+
+    tagger.update_tags(file_to_tag)
+
+    mock_drive_service.files.return_value.update.assert_not_called()
+    metadata_store.write.assert_called_once_with(
+        "file123",
+        {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
+        name="test.pdf",
+    )

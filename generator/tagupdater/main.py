@@ -71,12 +71,14 @@ def _get_services():
         click.echo("WARNING: dry_run=True — no writes will be made to Google Drive.")
 
     metadata_store = None
-    if settings.metadata_store.dual_write_enabled:
+    if settings.metadata_store.firestore_write_enabled:
         metadata_store = get_metadata_store()
         click.echo(
-            "Firestore dual-write enabled (collection "
+            "Firestore metadata write enabled (collection "
             f"'{settings.metadata_store.firestore_collection}')."
         )
+    if not settings.metadata_store.drive_write_enabled:
+        click.echo("Drive metadata write disabled.")
 
     return {
         "tracer": tracer,
@@ -89,6 +91,7 @@ def _get_services():
             genai_client=genai_client,
             llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
             metadata_store=metadata_store,
+            drive_write_enabled=settings.metadata_store.drive_write_enabled,
         ),
     }
 

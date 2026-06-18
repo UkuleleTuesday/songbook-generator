@@ -241,18 +241,30 @@ class TagUpdater(BaseModel):
 
 
 class MetadataStore(BaseModel):
-    """Configuration for the Firestore-backed song metadata store (issue #281)."""
+    """Configuration for where song-sheet metadata is written (issue #281).
+
+    Drive and Firestore writes are controlled independently, so the tag updater
+    can target Drive only, Firestore only, both, or neither. ``TAGUPDATER_DRY_RUN``
+    remains a master override that suppresses all writes.
+    """
 
     firestore_collection: str = Field(
         default="song-metadata",
         description="Firestore collection holding song-sheet metadata documents.",
     )
-    dual_write_enabled: bool = Field(
+    drive_write_enabled: bool = Field(
+        default=True,
+        description=(
+            "When True, computed metadata is written back to Google Drive file "
+            "properties (the historical behaviour). "
+            "Set SONG_METADATA_DRIVE_WRITE_ENABLED=false to disable."
+        ),
+    )
+    firestore_write_enabled: bool = Field(
         default=False,
         description=(
-            "When True, metadata writes are mirrored to Firestore in addition to "
-            "Google Drive. Drive remains the source of truth. "
-            "Set SONG_METADATA_DUAL_WRITE_ENABLED=true to enable."
+            "When True, computed metadata is written to the Firestore collection. "
+            "Set SONG_METADATA_FIRESTORE_WRITE_ENABLED=true to enable."
         ),
     )
 
@@ -402,11 +414,17 @@ class Settings(BaseSettings):
         if metadata_collection_env := os.getenv("SONG_METADATA_FIRESTORE_COLLECTION"):
             self.metadata_store.firestore_collection = metadata_collection_env
         if (
-            dual_write_env := os.getenv("SONG_METADATA_DUAL_WRITE_ENABLED")
+            drive_write_env := os.getenv("SONG_METADATA_DRIVE_WRITE_ENABLED")
         ) is not None:
-            self.metadata_store.dual_write_enabled = dual_write_env.lower() in (
+            self.metadata_store.drive_write_enabled = drive_write_env.lower() in (
                 "true",
                 "1",
+            )
+        if (
+            firestore_write_env := os.getenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED")
+        ) is not None:
+            self.metadata_store.firestore_write_enabled = (
+                firestore_write_env.lower() in ("true", "1")
             )
 
         return self

@@ -221,7 +221,10 @@ The Cloud Functions require these environment variables:
 
 **Song metadata store variables (experimental, issue #281):**
 
-- `SONG_METADATA_DUAL_WRITE_ENABLED`: Set to `true` to mirror every metadata write to a Firestore collection in addition to Google Drive (Drive remains the source of truth). Disabled by default. See `docs/spikes/281-firestore-metadata-evaluation.md`.
+Drive and Firestore metadata writes are controlled independently, so the tag updater can target Drive only, Firestore only, both, or neither. `TAGUPDATER_DRY_RUN=true` is a master override that suppresses all writes.
+
+- `SONG_METADATA_DRIVE_WRITE_ENABLED`: Whether computed metadata is written back to Google Drive file properties. Defaults to `true` (the historical behaviour). Set to `false` to stop writing to Drive.
+- `SONG_METADATA_FIRESTORE_WRITE_ENABLED`: Whether computed metadata is written to a Firestore collection. Defaults to `false`. Set to `true` to enable. See `docs/spikes/281-firestore-metadata-evaluation.md`.
 - `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Use a per-PR name in preview environments. Hydrate it with `uv run songbook-tools metadata backfill`.
 
 ### Caching

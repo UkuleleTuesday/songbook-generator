@@ -295,12 +295,15 @@ Option D (hybrid) from the companion spike remain the lower-friction choices.
 
 ---
 
-## 10. Implemented: hydrate + dual-write (first migration step)
+## 10. Implemented: hydrate + independent Drive/Firestore writes (first migration step)
 
-The safe, additive first step of the Firestore migration is implemented behind a
-flag. It populates Firestore and starts mirroring writes **without** changing the
-read path — Drive remains the source of truth, so #281 is not yet resolved (Drive
-writes continue) but the Firestore corpus is built and validated in production.
+The safe, additive first step of the Firestore migration is implemented behind
+flags. It populates Firestore and starts writing metadata to it **without**
+changing the read path — Drive remains the source of truth. Drive and Firestore
+writes are controlled **independently**, so the tag updater can target Drive
+only, Firestore only, both, or neither. This means the same machinery covers the
+whole migration: start Drive-only (today), add Firestore (dual-write), then flip
+to Firestore-only — the step that finally resolves #281 by ending Drive writes.
 
 **Components**
 
@@ -308,14 +311,14 @@ writes continue) but the Firestore corpus is built and validated in production.
   wrapper: `write`, `get`, `get_properties`, `get_all`, `bulk_write`) and a
   `get_metadata_store()` factory. One document per song, keyed by Drive file ID;
   the `properties` map mirrors the Drive custom properties one-to-one.
-- `generator/common/config.py` — new `MetadataStore` settings block
-  (`firestore_collection`, `dual_write_enabled`).
-- `generator/tagupdater/tags.py` — `Tagger` accepts an optional
-  `metadata_store`; after each successful Drive `files().update()` it mirrors the
-  same `updated_properties` to Firestore. The mirror is **best-effort**: a
-  Firestore failure logs a warning and never breaks the Drive write.
-- `generator/tagupdater/main.py` and `generator/cli/tags.py` construct the store
-  only when dual-write is enabled.
+- `generator/common/config.py` — `MetadataStore` settings block
+  (`firestore_collection`, `drive_write_enabled`, `firestore_write_enabled`).
+- `generator/tagupdater/tags.py` — `Tagger` takes `drive_write_enabled` and an
+  optional `metadata_store`. After computing tags it writes to each enabled sink
+  independently. The Firestore write is **best-effort**: a failure logs a warning
+  and never breaks tagging or the Drive write.
+- `generator/tagupdater/main.py` and `generator/cli/tags.py` build the store only
+  when Firestore writes are enabled and pass `drive_write_enabled` through.
 - `generator/cli/metadata.py` — `songbook-tools metadata backfill` hydrates the
   collection from Drive properties (chunked batches; `--dry-run` supported), and
   `metadata get <file_id>` inspects a single document.
@@ -324,24 +327,24 @@ writes continue) but the Firestore corpus is built and validated in production.
 
 | Variable | Default | Effect |
 |---|---|---|
+| `SONG_METADATA_DRIVE_WRITE_ENABLED` | `true` | Write computed metadata back to Drive file properties (historical behaviour). |
+| `SONG_METADATA_FIRESTORE_WRITE_ENABLED` | `false` | Write computed metadata to the Firestore collection. |
 | `SONG_METADATA_FIRESTORE_COLLECTION` | `song-metadata` | Collection holding metadata documents (use a per-PR name in preview envs). |
-| `SONG_METADATA_DUAL_WRITE_ENABLED` | `false` | When `true`, the tag updater mirrors every write to Firestore. |
 
-**Dry-run semantics.** `TAGUPDATER_DRY_RUN` suppresses only the **Drive** write
-(the #281 problem). The Firestore mirror is the migration *target*, so it still
-runs under dry-run. This lets PR preview environments — which deploy the tag
-updater with `TAGUPDATER_DRY_RUN=true` — exercise the dual-write into an isolated
-per-PR collection without ever touching Drive.
+**Dry-run semantics.** `TAGUPDATER_DRY_RUN` is a master override: it computes tags
+but writes nothing, to either sink. Per-sink control is via the two flags above.
 
 **Deployment.** The tag updater Cloud Function (`.github/workflows/deploy.yaml`)
-deploys with `SONG_METADATA_DUAL_WRITE_ENABLED=true`. The collection is
-`song-metadata` on `main` and `song-metadata-pr-<N>` on PR previews (same per-PR
-isolation pattern as the Pub/Sub topics). No Firestore collection needs explicit
-creation — Firestore creates it on first write — and the job-expiry TTL in
-`deploy-gcs.sh` is scoped to the `jobs` collection only, so metadata documents
-are never expired. The function's runtime service account already has
-`roles/datastore.user` (it writes job docs today), so no new IAM grant is
-required.
+deploys with `SONG_METADATA_FIRESTORE_WRITE_ENABLED=true`. Drive writes are
+**disabled on PR previews** (`SONG_METADATA_DRIVE_WRITE_ENABLED=false`) so a
+preview can never mutate the real Drive, while still exercising the Firestore
+write into an isolated per-PR collection (`song-metadata-pr-<N>`); on `main` both
+sinks are enabled and the collection is `song-metadata`. No Firestore collection
+needs explicit creation — Firestore creates it on first write — and the
+job-expiry TTL in `deploy-gcs.sh` is scoped to the `jobs` collection only, so
+metadata documents are never expired. The function's runtime service account
+already has `roles/datastore.user` (it writes job docs today), so no new IAM
+grant is required.
 
 *Known limitation:* per-PR `song-metadata-pr-<N>` collections are not
 auto-deleted on PR close (the cleanup job removes functions and topics, and
@@ -350,13 +353,15 @@ isolated; a bulk-delete step can be added later if they accumulate.
 
 **Rollout**
 
-1. Deploy with `SONG_METADATA_DUAL_WRITE_ENABLED=false` (no behaviour change).
+1. Today: `drive_write_enabled=true`, `firestore_write_enabled=false` — Drive
+   only, no behaviour change.
 2. Run `songbook-tools metadata backfill` to hydrate the collection.
-3. Set `SONG_METADATA_DUAL_WRITE_ENABLED=true` so new writes stay in sync.
+3. Enable `firestore_write_enabled=true` (dual-write) so both stay in sync.
 4. Validate parity (Drive properties vs. Firestore `properties`) over time.
-5. *(Future)* cut the read path over to Firestore and stop writing to Drive —
-   the step that actually resolves #281.
+5. *(Future)* cut the read path over to Firestore, then set
+   `drive_write_enabled=false` — Firestore only, which resolves #281.
 
 **Not yet done (deliberately):** read-path hydration from Firestore, the
-`specialbooks` Firestore query, the offline JSON export, and removal of Drive
-writes. Those are the later phases from §9.
+`specialbooks` Firestore query, and the offline JSON export. Those are the later
+phases from §9. Note that step 5's "stop writing to Drive" is now just a flag
+flip rather than a code change.

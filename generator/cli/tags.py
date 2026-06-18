@@ -223,13 +223,17 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
         genai_client = None
         click.echo("LLM tagging disabled (use --with-llm-tags to enable).")
     metadata_store = (
-        get_metadata_store() if settings.metadata_store.dual_write_enabled else None
+        get_metadata_store()
+        if settings.metadata_store.firestore_write_enabled
+        else None
     )
     if metadata_store is not None:
         click.echo(
-            "Firestore dual-write enabled (collection "
+            "Firestore metadata write enabled (collection "
             f"'{settings.metadata_store.firestore_collection}')."
         )
+    if not settings.metadata_store.drive_write_enabled:
+        click.echo("Drive metadata write disabled.")
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
@@ -237,6 +241,7 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
         genai_client=genai_client,
         llm_tagging_enabled=effective_llm_tagging,
         metadata_store=metadata_store,
+        drive_write_enabled=settings.metadata_store.drive_write_enabled,
     )
     failed_updates = {}
 

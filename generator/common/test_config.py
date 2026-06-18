@@ -291,11 +291,14 @@ def test_public_editions_in_config():
 
 def test_metadata_store_defaults(monkeypatch):
     monkeypatch.delenv("SONG_METADATA_FIRESTORE_COLLECTION", raising=False)
-    monkeypatch.delenv("SONG_METADATA_DUAL_WRITE_ENABLED", raising=False)
+    monkeypatch.delenv("SONG_METADATA_DRIVE_WRITE_ENABLED", raising=False)
+    monkeypatch.delenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED", raising=False)
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.metadata_store.firestore_collection == "song-metadata"
-    assert settings.metadata_store.dual_write_enabled is False
+    # Drive writes on by default (historical behaviour), Firestore off.
+    assert settings.metadata_store.drive_write_enabled is True
+    assert settings.metadata_store.firestore_write_enabled is False
 
 
 def test_metadata_store_collection_override(monkeypatch):
@@ -309,8 +312,19 @@ def test_metadata_store_collection_override(monkeypatch):
     "env_value, expected",
     [("true", True), ("TRUE", True), ("1", True), ("false", False), ("0", False)],
 )
-def test_metadata_store_dual_write_override(monkeypatch, env_value, expected):
-    monkeypatch.setenv("SONG_METADATA_DUAL_WRITE_ENABLED", env_value)
+def test_metadata_store_drive_write_override(monkeypatch, env_value, expected):
+    monkeypatch.setenv("SONG_METADATA_DRIVE_WRITE_ENABLED", env_value)
     config.get_settings.cache_clear()
     settings = config.get_settings()
-    assert settings.metadata_store.dual_write_enabled is expected
+    assert settings.metadata_store.drive_write_enabled is expected
+
+
+@pytest.mark.parametrize(
+    "env_value, expected",
+    [("true", True), ("TRUE", True), ("1", True), ("false", False), ("0", False)],
+)
+def test_metadata_store_firestore_write_override(monkeypatch, env_value, expected):
+    monkeypatch.setenv("SONG_METADATA_FIRESTORE_WRITE_ENABLED", env_value)
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert settings.metadata_store.firestore_write_enabled is expected
