@@ -185,7 +185,13 @@ def delete_tag(file_identifier, key):
         "Overrides the TAGUPDATER_LLM_TAGGING_ENABLED config/env setting (on by default)."
     ),
 )
-def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Print computed tag values for each file.",
+)
+def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -281,7 +287,7 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags):
             if dry_run:
                 click.echo("  (Dry run mode)")
 
-            tagger.update_tags(file_obj, dry_run=dry_run)
+            tagger.update_tags(file_obj, dry_run=dry_run, verbose=verbose)
         except HttpError as e:
             error_message = f"Failed to update tags for '{file_obj.name}': {e}"
             click.echo(f"ERROR: {error_message}", err=True)
