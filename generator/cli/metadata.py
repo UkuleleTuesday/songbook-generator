@@ -77,5 +77,3 @@ def get(file_id):
         click.echo(f"No metadata document found for file ID '{file_id}'.", err=True)
         raise click.Abort()
     click.echo(json.dumps(doc, indent=2, default=str))
-
-
