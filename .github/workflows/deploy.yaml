@@ -22,11 +22,11 @@ permissions:
   pull-requests: write
   checks: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+# For PRs: cancel in-progress runs when a new push arrives (saves CI minutes on stale pushes).
+# For main: never cancel in-progress deployments.
 concurrency:
   group: "deploy-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}"
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -65,6 +65,7 @@ jobs:
     # since they all (transitively) depend on it via `needs`.
     if: needs.changes.outputs.code == 'true' && github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -112,6 +113,7 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       api_url: ${{ steps.deploy-api-fn.outputs.function_url }}
 
@@ -157,6 +159,7 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
@@ -203,6 +206,7 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
@@ -254,6 +258,7 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
@@ -298,6 +303,7 @@ jobs:
     needs: [test, deploy-infrastructure]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
@@ -385,6 +391,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -413,6 +420,7 @@ jobs:
     name: Cleanup PR Resources
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -528,6 +536,7 @@ jobs:
     needs: [deploy-api, deploy-generator]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       editions: ${{ steps.get-editions.outputs.editions }}
     steps:

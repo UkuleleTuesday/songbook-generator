@@ -71,9 +71,20 @@ class TocGenerator:
             is_ready_to_play=is_ready_to_play,
         )
 
+    @staticmethod
+    def _write_page_writers(page: fitz.Page, writers: dict) -> None:
+        """Write all per-color TextWriters to the page."""
+        for color, tw in writers.items():
+            if tw.text_rect:
+                if color is None:
+                    tw.write_text(page)
+                else:
+                    tw.write_text(page, color=color)
+
     def _add_toc_entry(
         self,
-        tw: fitz.TextWriter,
+        writers: dict,
+        page_rect: fitz.Rect,
         file_index: int,
         page_offset: int,
         file: File,
@@ -96,13 +107,16 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        # Add any custom postfixes
+        # Add any custom postfixes; first matched color wins for the whole row
         postfix_str = ""
+        entry_color: Optional[tuple[float, float, float]] = None
         if self.config.postfixes:
             for postfix_config in self.config.postfixes:
                 for p_filter in postfix_config.filters:
-                    if p_filter.matches(file.properties):
+                    if p_filter.matches({**file.properties, "name": file.name}):
                         postfix_str += postfix_config.postfix
+                        if entry_color is None and postfix_config.color is not None:
+                            entry_color = postfix_config.color
                         break  # Stop checking filters for this postfix config
 
         shortened_title = self._generate_toc_title(
@@ -113,7 +127,9 @@ class TocGenerator:
 
         full_title = f"{symbol}{shortened_title}{postfix_str}"
 
-        # Append title
+        # Each distinct color gets its own TextWriter so write_text() can apply it
+        tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
+
         tw.append(
             (x_start, y_pos),
             full_title,
@@ -183,7 +199,6 @@ class TocGenerator:
         page_rect = temp_page.rect
         self.pdf.delete_page(0)
 
-        tw = fitz.TextWriter(page_rect)
         available_height = (
             page_rect.height
             - self.config.title_height
@@ -202,13 +217,19 @@ class TocGenerator:
             + self.config.title_height
             - self.config.title_margin_bottom,
         )
-        tw.append(
-            title_pos,
-            "Table of Contents",
-            font=self.title_font,
-            fontsize=self.config.title_fontsize,
-        )
 
+        def new_writers() -> dict:
+            """Fresh per-color writer dict for a new TOC page."""
+            tw_default = fitz.TextWriter(page_rect)
+            tw_default.append(
+                title_pos,
+                "Table of Contents",
+                font=self.title_font,
+                fontsize=self.config.title_fontsize,
+            )
+            return {None: tw_default}
+
+        writers = new_writers()
         current_column = 0
         current_line_in_column = 0
         current_page_index = 0
@@ -222,14 +243,8 @@ class TocGenerator:
                     page = self.pdf.new_page(
                         width=page_rect.width, height=page_rect.height
                     )
-                    tw.write_text(page)
-                    tw = fitz.TextWriter(page_rect)
-                    tw.append(
-                        title_pos,
-                        "Table of Contents",
-                        font=self.title_font,
-                        fontsize=self.config.title_fontsize,
-                    )
+                    self._write_page_writers(page, writers)
+                    writers = new_writers()
 
             y_pos = (
                 self.config.title_height
@@ -237,7 +252,8 @@ class TocGenerator:
                 + (current_line_in_column * self.config.line_spacing)
             )
             self._add_toc_entry(
-                tw,
+                writers,
+                page_rect,
                 file_index,
                 page_offset,
                 file,
@@ -247,9 +263,9 @@ class TocGenerator:
             )
             current_line_in_column += 1
 
-        if tw.text_rect:
+        if any(tw.text_rect for tw in writers.values()):
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
-            tw.write_text(page)
+            self._write_page_writers(page, writers)
 
         return self.pdf
 

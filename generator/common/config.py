@@ -47,6 +47,8 @@ class TocPostfix(BaseModel):
 
     postfix: str
     filters: List[Union[FilterGroup, PropertyFilter]]
+    color: Optional[tuple[float, float, float]] = None
+    """RGB color (0–1 scale) applied to the entire TOC row when this postfix matches."""
 
 
 class Toc(BaseModel):
