@@ -12,11 +12,14 @@ from .tags import (
     _parse_duration,
     _run_llm_tags,
     approved_date,
+    country,
     duration,
     genre,
     ready_to_play_date,
+    split_specialbooks,
     status,
     tag,
+    theme,
     year,
     Context,
     LlmTaggerConfig,
@@ -894,4 +897,74 @@ def test_drive_write_disabled_writes_firestore_only(
         "file123",
         {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
         name="test.pdf",
+    )
+
+
+# --- country / theme validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("ireland", "ireland"),
+        ("Ireland", "ireland"),
+        ("  france  ", "france"),
+        ("puerto rico", "puerto rico"),
+        ("ireland,usa", "ireland,usa"),
+        ("ireland,ireland", "ireland"),  # de-duplicated
+        ("ireland,atlantis", "ireland"),  # unknown dropped
+        ("atlantis", None),  # not in enum
+        (None, None),
+        ("", None),
+        ("  ,  ", None),
+    ],
+)
+def test_country_validator(raw, expected):
+    assert country(_make_ctx(), raw, valid_countries="") == expected
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("pride", "pride"),
+        ("Pride", "pride"),
+        ("pride,halloween", "pride,halloween"),
+        ("pride,pride", "pride"),  # de-duplicated
+        ("pride,birthday", "pride"),  # unknown dropped
+        ("birthday", None),  # not in enum
+        (None, None),
+        ("", None),
+    ],
+)
+def test_theme_validator(raw, expected):
+    assert theme(_make_ctx(), raw, valid_themes="") == expected
+
+
+# --- split_specialbooks tests ---
+
+
+@pytest.mark.parametrize(
+    "specialbooks,expected_country,expected_theme,expected_unknown",
+    [
+        ("ireland", "ireland", None, []),
+        ("pride", None, "pride", []),
+        ("pride,ireland,regular", "ireland", "pride", []),
+        ("pride,halloween", None, "pride,halloween", []),
+        ("scottish", "scotland", None, []),  # alias normalization
+        ("pride.uk", None, "pride", []),  # alias normalization
+        ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
+        ("USA, UK", "usa,uk", None, []),  # case + whitespace
+        ("ireland,ireland", "ireland", None, []),  # de-duplicated
+        ("new", None, None, ["new"]),  # unknown leftover surfaced
+        ("", None, None, []),
+        (None, None, None, []),
+    ],
+)
+def test_split_specialbooks(
+    specialbooks, expected_country, expected_theme, expected_unknown
+):
+    assert split_specialbooks(specialbooks) == (
+        expected_country,
+        expected_theme,
+        expected_unknown,
     )

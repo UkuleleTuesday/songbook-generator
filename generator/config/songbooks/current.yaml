@@ -16,7 +16,7 @@ sections:
     postfixes:
       - postfix: " 🌈"
         filters:
-          - key: "specialbooks"
+          - key: "theme"
             operator: "contains"
             value: "pride"
     # postfixes:

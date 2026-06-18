@@ -10,7 +10,7 @@ from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 from ..common.metadata_store import get_metadata_store
-from ..tagupdater.tags import Tagger
+from ..tagupdater.tags import Tagger, split_specialbooks
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
 from .utils import SubcmdGroup, _resolve_file_id
@@ -155,6 +155,114 @@ def delete_tag(file_identifier, key):
         else:
             store.delete_property(file_id, key)
             click.echo(f"Successfully deleted tag '{key}' from Firestore.")
+
+
+@tags.command(name="migrate-specialbooks")
+@click.argument("file_identifier", required=False)
+@click.option(
+    "--all",
+    "all_files",
+    is_flag=True,
+    default=False,
+    help="Migrate all song sheets.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be written without making any changes.",
+)
+def migrate_specialbooks(file_identifier, all_files, dry_run):
+    """Backfill typed `country`/`theme` tags from legacy `specialbooks` values.
+
+    Splits each file's `specialbooks` property into the new `country` and
+    `theme` properties (dropping edition/event values). Existing `country`/
+    `theme` values are left untouched, and `specialbooks` itself is preserved.
+    """
+    if not file_identifier and not all_files:
+        click.echo(
+            "Error: Either a file identifier or the --all flag must be provided.",
+            err=True,
+        )
+        raise click.Abort()
+    if file_identifier and all_files:
+        click.echo(
+            "Error: Cannot use both a file identifier and the --all flag.", err=True
+        )
+        raise click.Abort()
+
+    settings = get_settings()
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+
+    if file_identifier:
+        file_id = _resolve_file_id(gdrive_client, file_identifier)
+        files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
+    else:
+        click.echo("Fetching all song sheets from Drive...")
+        files_to_process = gdrive_client.query_drive_files(
+            settings.song_sheets.folder_ids
+        )
+
+    store = (
+        get_metadata_store()
+        if settings.metadata_store.firestore_write_enabled
+        else None
+    )
+
+    migrated = 0
+    for file_obj in files_to_process:
+        specialbooks = file_obj.properties.get("specialbooks")
+        if not specialbooks:
+            continue
+
+        country, theme, unknown = split_specialbooks(specialbooks)
+        if unknown:
+            click.echo(
+                f"  '{file_obj.name}': unrecognized specialbooks value(s): "
+                f"{', '.join(unknown)}",
+                err=True,
+            )
+
+        # Only set keys that resolved to a value and aren't already present.
+        new_props = {}
+        if country and "country" not in file_obj.properties:
+            new_props["country"] = country
+        if theme and "theme" not in file_obj.properties:
+            new_props["theme"] = theme
+        if not new_props:
+            continue
+
+        migrated += 1
+        rendered = ", ".join(f"{k}={v!r}" for k, v in new_props.items())
+        click.echo(f"'{file_obj.name}': {rendered}")
+        if dry_run:
+            continue
+
+        if settings.metadata_store.drive_write_enabled:
+            for key, value in new_props.items():
+                if not gdrive_client.set_file_property(file_obj.id, key, value):
+                    click.echo(
+                        f"  Failed to set '{key}' in Drive for '{file_obj.name}'.",
+                        err=True,
+                    )
+        if store is not None:
+            props = store.get_properties(file_obj.id) or {}
+            props.update(new_props)
+            store.write(file_obj.id, props)
+
+    suffix = " (dry run)" if dry_run else ""
+    click.echo(f"\nMigrated {migrated} file(s){suffix}.")
 
 
 @tags.command(name="update")

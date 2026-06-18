@@ -123,6 +123,77 @@ GALLOP_PATTERN = re.compile(r"\bgallop\b", re.IGNORECASE)
 BPM_PATTERN = re.compile(r"(\d+)bpm", re.IGNORECASE)
 TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
 
+# Allowed values for the typed `country` and `theme` properties. These ground
+# both the LLM tagger prompts and the deterministic `specialbooks` backfill.
+COUNTRY_VALUES = [
+    "usa",
+    "uk",
+    "ireland",
+    "france",
+    "canada",
+    "italy",
+    "australia",
+    "sweden",
+    "scotland",
+    "spain",
+    "wales",
+    "japan",
+    "hawaii",
+    "puerto rico",
+    "colombia",
+    "germany",
+    "netherlands",
+    "new zealand",
+    "norway",
+    "russia",
+]
+THEME_VALUES = ["halloween", "xmas", "valentines", "pride", "peace"]
+
+# Normalizations applied when splitting legacy `specialbooks` values into the
+# new typed properties.
+_SPECIALBOOKS_ALIASES = {
+    "scottish": "scotland",
+    "pride.uk": "pride",
+}
+
+
+def split_specialbooks(specialbooks: Optional[str]) -> tuple:
+    """
+    Split a legacy comma-separated ``specialbooks`` value into the new typed
+    ``country`` and ``theme`` properties.
+
+    Country/theme values are extracted (after normalization); edition/event and
+    other non-themed values (e.g. ``regular``, ``womens-2026``, ``hooley-2025``)
+    are dropped. Returns ``(country_csv, theme_csv, unknown_values)`` where the
+    CSV strings are ``None`` when empty and ``unknown_values`` lists any leftover
+    tokens that matched neither a country nor a theme (for logging).
+    """
+    countries: List[str] = []
+    themes: List[str] = []
+    unknown: List[str] = []
+    # Edition/event membership values handled by edition YAMLs, not migrated.
+    dropped = {"regular", "womens", "womens-2026", "hooley-2025", "can2025", "nocan2025"}
+
+    for raw in (specialbooks or "").split(","):
+        token = raw.strip().lower()
+        if not token:
+            continue
+        token = _SPECIALBOOKS_ALIASES.get(token, token)
+        if token in dropped:
+            continue
+        if token in COUNTRY_VALUES:
+            if token not in countries:
+                countries.append(token)
+        elif token in THEME_VALUES:
+            if token not in themes:
+                themes.append(token)
+        else:
+            unknown.append(token)
+
+    country_csv = ",".join(countries) if countries else None
+    theme_csv = ",".join(themes) if themes else None
+    return country_csv, theme_csv, unknown
+
 
 def tag(_func=None, *, only_if_unset: bool = False):
     """
@@ -706,3 +777,52 @@ def language(ctx: Context, raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None
     return raw.strip().lower() or None
+
+
+@llm_tag(
+    prompt=(
+        'What country or region is "{song}" by {artist} most associated with '
+        "(based on the artist's origin or the song's content)? "
+        "Reply with only a value from this list, or null if none clearly applies: "
+        "{valid_countries}."
+    ),
+    only_if_unset=True,
+    valid_countries=", ".join(COUNTRY_VALUES),
+)
+def country(
+    ctx: Context, raw: Optional[str], *, valid_countries: str = ""
+) -> Optional[str]:
+    """Looks up the country/region the song is associated with via Gemini."""
+    if not raw:
+        return None
+    parts = [c.strip().lower() for c in raw.split(",") if c.strip()]
+    valid = [c for c in parts if c in COUNTRY_VALUES]
+    # De-duplicate while preserving order.
+    seen: List[str] = []
+    for c in valid:
+        if c not in seen:
+            seen.append(c)
+    return ",".join(seen) if seen else None
+
+
+@llm_tag(
+    prompt=(
+        'Which of these recurring session themes does "{song}" by {artist} fit, '
+        "based on its lyrics or subject matter? "
+        "Reply with a comma-separated list of values from this list, "
+        "or null if none clearly applies: {valid_themes}."
+    ),
+    only_if_unset=True,
+    valid_themes=", ".join(THEME_VALUES),
+)
+def theme(ctx: Context, raw: Optional[str], *, valid_themes: str = "") -> Optional[str]:
+    """Looks up the recurring session theme(s) of the song via Gemini."""
+    if not raw:
+        return None
+    parts = [t.strip().lower() for t in raw.split(",") if t.strip()]
+    valid = [t for t in parts if t in THEME_VALUES]
+    seen: List[str] = []
+    for t in valid:
+        if t not in seen:
+            seen.append(t)
+    return ",".join(seen) if seen else None
