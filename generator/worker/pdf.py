@@ -23,6 +23,7 @@ from ..common.gdrive import (
     GoogleDriveClient,
     client,
 )
+from ..common.song_source import SongSheetSource
 from .models import File
 from ..common.tracing import get_tracer
 from natsort import natsorted
@@ -82,8 +83,20 @@ def _sort_titles(files: List[File]) -> List[File]:
     return natsorted(files, key=_create_song_sort_key)
 
 
+def _make_song_source(drive, cache) -> SongSheetSource:
+    from ..common.config import get_settings
+    from ..common.metadata_store import get_metadata_store
+
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    settings = get_settings()
+    metadata_store = (
+        get_metadata_store() if settings.metadata_store.firestore_read_enabled else None
+    )
+    return SongSheetSource(gdrive_client, metadata_store)
+
+
 def collect_and_sort_files(
-    gdrive_client: GoogleDriveClient,
+    song_source: SongSheetSource,
     source_folders: List[str],
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
@@ -92,7 +105,7 @@ def collect_and_sort_files(
     Collect files from multiple Google Drive folders and sort them alphabetically by name.
 
     Args:
-        gdrive_client: Authenticated Google Drive client
+        song_source: Source for song sheet files and their properties.
         source_folders: List of Google Drive folder IDs
         client_filter: Optional filter to apply to files
         progress_step: Optional progress step for reporting
@@ -110,9 +123,7 @@ def collect_and_sort_files(
             json.dumps(client_filter.model_dump(mode="json")) if client_filter else "",
         )
 
-        files = gdrive_client.query_drive_files_with_client_filter(
-            source_folders, client_filter
-        )
+        files = song_source.collect_files(source_folders, client_filter)
 
         if progress_step:
             progress_step.increment(
@@ -717,7 +728,6 @@ def generate_songbook_from_edition(
                 None,
             )
             if ref_edition:
-                gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
                 ref_filter = None
                 if ref_edition.sections.songs.filters:
                     ref_filter = (
@@ -729,7 +739,7 @@ def generate_songbook_from_edition(
                         )
                     )
                 ref_files = collect_and_sort_files(
-                    gdrive_client, source_folders, ref_filter
+                    _make_song_source(drive, cache), source_folders, ref_filter
                 )
                 _enrich_missing_difficulty(files, ref_files)
 
@@ -800,7 +810,7 @@ def generate_songbook(
         if files is None:
             with reporter.step(1, "Querying files...") as step:
                 files = collect_and_sort_files(
-                    gdrive_client, source_folders, client_filter, step
+                    _make_song_source(drive, cache), source_folders, client_filter, step
                 )
 
                 # Apply limit after collecting files from all folders
