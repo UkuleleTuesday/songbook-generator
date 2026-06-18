@@ -234,7 +234,7 @@ jobs:
   deploy-cache-updater:
     name: Deploy Cache Updater
     needs: [test, deploy-infrastructure]
-    if: github.event.action != 'closed'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
