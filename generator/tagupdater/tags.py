@@ -281,7 +281,7 @@ class Tagger:
         self.metadata_store = metadata_store
         self.drive_write_enabled = drive_write_enabled
 
-    def update_tags(self, file: File, dry_run: bool = False):
+    def update_tags(self, file: File, dry_run: bool = False, verbose: bool = False):
         """
         Update Google Drive file properties based on registered tag functions.
 
@@ -394,15 +394,12 @@ class Tagger:
                     continue
                 new_properties[tag_name] = value_str
 
-            click.echo(f"New properties: {json.dumps(new_properties)}")
             if new_properties:
                 span.set_attribute("new_properties", json.dumps(new_properties))
                 # Preserve existing properties by doing a read-modify-write.
-                click.echo(f"  Current properties: {json.dumps(current_properties)}")
                 span.set_attribute("current_properties", json.dumps(current_properties))
                 updated_properties = current_properties.copy()
                 updated_properties.update(new_properties)
-                click.echo(f"  Updated properties: {json.dumps(updated_properties)}")
 
                 if self.trigger_field is not None:
                     current_trigger_value = current_properties.get(self.trigger_field)
@@ -428,8 +425,14 @@ class Tagger:
 
                 # dry_run is the master override: compute everything but write
                 # nothing, to either sink.
+                if dry_run or verbose:
+                    for k, v in sorted(new_properties.items()):
+                        old_v = current_properties.get(k)
+                        if old_v is not None and old_v != v:
+                            click.echo(f"  {k}: {old_v!r} -> {v!r}")
+                        else:
+                            click.echo(f"  {k}: {v!r}")
                 if dry_run:
-                    click.echo("  DRY RUN: Skipping all writes (Drive and Firestore).")
                     span.set_attribute("dry_run", "true")
                     return
 
