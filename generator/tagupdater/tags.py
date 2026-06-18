@@ -172,7 +172,14 @@ def split_specialbooks(specialbooks: Optional[str]) -> tuple:
     themes: List[str] = []
     unknown: List[str] = []
     # Edition/event membership values handled by edition YAMLs, not migrated.
-    dropped = {"regular", "womens", "womens-2026", "hooley-2025", "can2025", "nocan2025"}
+    dropped = {
+        "regular",
+        "womens",
+        "womens-2026",
+        "hooley-2025",
+        "can2025",
+        "nocan2025",
+    }
 
     for raw in (specialbooks or "").split(","):
         token = raw.strip().lower()
