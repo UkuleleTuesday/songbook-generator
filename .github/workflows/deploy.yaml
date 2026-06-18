@@ -312,6 +312,11 @@ jobs:
           LOCAL_CACHE_ENABLED: "false"
           TAGUPDATER_TRIGGER_FIELD: "status"
           TAGUPDATER_DRY_RUN: "${{ github.event_name == 'pull_request' && 'true' || 'false' }}"
+          # Mirror metadata writes to Firestore (#281). Drive remains the source
+          # of truth; the mirror runs even under dry_run, so PR previews exercise
+          # it into an isolated per-PR collection.
+          SONG_METADATA_DUAL_WRITE_ENABLED: "true"
+          SONG_METADATA_FIRESTORE_COLLECTION: "${{ github.event_name == 'pull_request' && format('{0}-pr-{1}', env.SONG_METADATA_FIRESTORE_COLLECTION, github.event.pull_request.number) || env.SONG_METADATA_FIRESTORE_COLLECTION }}"
 
   deploy-drivewatcher:
     name: Deploy Drive Watcher

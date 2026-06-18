@@ -327,6 +327,27 @@ writes continue) but the Firestore corpus is built and validated in production.
 | `SONG_METADATA_FIRESTORE_COLLECTION` | `song-metadata` | Collection holding metadata documents (use a per-PR name in preview envs). |
 | `SONG_METADATA_DUAL_WRITE_ENABLED` | `false` | When `true`, the tag updater mirrors every write to Firestore. |
 
+**Dry-run semantics.** `TAGUPDATER_DRY_RUN` suppresses only the **Drive** write
+(the #281 problem). The Firestore mirror is the migration *target*, so it still
+runs under dry-run. This lets PR preview environments — which deploy the tag
+updater with `TAGUPDATER_DRY_RUN=true` — exercise the dual-write into an isolated
+per-PR collection without ever touching Drive.
+
+**Deployment.** The tag updater Cloud Function (`.github/workflows/deploy.yaml`)
+deploys with `SONG_METADATA_DUAL_WRITE_ENABLED=true`. The collection is
+`song-metadata` on `main` and `song-metadata-pr-<N>` on PR previews (same per-PR
+isolation pattern as the Pub/Sub topics). No Firestore collection needs explicit
+creation — Firestore creates it on first write — and the job-expiry TTL in
+`deploy-gcs.sh` is scoped to the `jobs` collection only, so metadata documents
+are never expired. The function's runtime service account already has
+`roles/datastore.user` (it writes job docs today), so no new IAM grant is
+required.
+
+*Known limitation:* per-PR `song-metadata-pr-<N>` collections are not
+auto-deleted on PR close (the cleanup job removes functions and topics, and
+Firestore has no simple recursive collection delete). They are small and
+isolated; a bulk-delete step can be added later if they accumulate.
+
 **Rollout**
 
 1. Deploy with `SONG_METADATA_DUAL_WRITE_ENABLED=false` (no behaviour change).

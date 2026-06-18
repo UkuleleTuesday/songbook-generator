@@ -425,19 +425,25 @@ class Tagger:
                     return
 
                 if dry_run:
-                    click.echo("  DRY RUN: Skipping actual update.")
+                    click.echo(
+                        "  DRY RUN: Skipping Drive write "
+                        "(Firestore mirror still applied if enabled)."
+                    )
                     span.set_attribute("dry_run", "true")
-                    return
+                else:
+                    self.drive_service.files().update(
+                        fileId=file.id,
+                        body={"properties": updated_properties},
+                        fields="properties",
+                    ).execute()
 
-                self.drive_service.files().update(
-                    fileId=file.id,
-                    body={"properties": updated_properties},
-                    fields="properties",
-                ).execute()
-
-                # Dual-write: mirror the same properties to Firestore. Best
-                # effort — a Firestore failure must not break the Drive write,
-                # which remains the source of truth (#281).
+                # Dual-write: mirror the same properties to Firestore. This runs
+                # even under dry_run, because Firestore (not Drive) is the
+                # migration target — dry_run only suppresses the Drive write that
+                # causes #281. This lets PR preview environments (which run with
+                # TAGUPDATER_DRY_RUN=true) exercise the mirror into an isolated
+                # per-PR collection. Best effort: a Firestore failure must never
+                # break tagging.
                 if self.metadata_store is not None:
                     try:
                         self.metadata_store.write(
