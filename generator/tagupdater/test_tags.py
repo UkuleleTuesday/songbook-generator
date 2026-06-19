@@ -9,14 +9,18 @@ from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
     Tagger,
+    _GENRE_ALIASES,
     _parse_duration,
     _run_llm_tags,
     approved_date,
+    country,
     duration,
     genre,
     ready_to_play_date,
+    split_specialbooks,
     status,
     tag,
+    theme,
     year,
     Context,
     LlmTaggerConfig,
@@ -734,22 +738,6 @@ def test_parse_duration(raw, expected):
 # --- genre validator tests ---
 
 
-@pytest.mark.parametrize(
-    "raw, expected",
-    [
-        ("Rock", "rock"),
-        ("Rock,Pop", "rock,pop"),
-        ("Rock, Pop, Folk", "rock,pop,folk"),
-        ("Rock,Pop,Folk,Country", "rock,pop,folk"),  # clips to max_genres=3
-        (None, None),
-        ("", None),
-        ("  ,  ", None),  # whitespace-only entries
-    ],
-)
-def test_genre_validator(raw, expected):
-    assert genre(_make_ctx(), raw) == expected
-
-
 def test_genre_validator_respects_max_genres():
     assert genre(_make_ctx(), "Rock,Pop,Folk,Country", max_genres=2) == "rock,pop"
 
@@ -895,3 +883,133 @@ def test_drive_write_disabled_writes_firestore_only(
         {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
         name="test.pdf",
     )
+
+
+# --- country / theme validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("ireland", "ireland"),
+        ("Ireland", "ireland"),
+        ("  france  ", "france"),
+        ("puerto rico", "puerto rico"),
+        ("usa", "united states"),  # canonicalized via pycountry
+        ("uk", "united kingdom"),  # canonicalized via alias
+        ("russia", "russian federation"),  # canonicalized via alias
+        ("scotland", "scotland"),  # supported sub-national region
+        ("brazil", "brazil"),  # any ISO-3166 country is accepted
+        ("ireland,usa", "ireland,united states"),
+        ("ireland,ireland", "ireland"),  # de-duplicated
+        ("ireland,atlantis", "ireland"),  # unknown dropped
+        ("atlantis", None),  # not a recognized country/region
+        (None, None),
+        ("", None),
+        ("  ,  ", None),
+    ],
+)
+def test_country_validator(raw, expected):
+    assert country(_make_ctx(), raw) == expected
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("pride", "pride"),
+        ("Pride", "pride"),
+        ("christmas", "christmas"),
+        ("pride,halloween", "pride,halloween"),
+        ("pride,pride", "pride"),  # de-duplicated
+        ("pride,birthday", "pride,birthday"),
+        ("birthday", "birthday"),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_theme_validator(raw, expected):
+    assert theme(_make_ctx(), raw) == expected
+
+
+# --- split_specialbooks tests ---
+
+
+@pytest.mark.parametrize(
+    "specialbooks,expected_country,expected_theme,expected_unknown",
+    [
+        ("ireland", "ireland", None, []),
+        ("pride", None, "pride", []),
+        ("pride,ireland,regular", "ireland", "pride", []),
+        ("pride,halloween", None, "pride,halloween", []),
+        ("scottish", "scotland", None, []),  # alias normalization
+        ("pride.uk", None, "pride", []),  # alias normalization
+        ("xmas", None, "christmas", []),  # legacy xmas -> christmas
+        ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
+        (
+            "USA, UK",
+            "united states,united kingdom",
+            None,
+            [],
+        ),  # canonicalized + whitespace
+        ("ireland,ireland", "ireland", None, []),  # de-duplicated
+        ("new", None, None, ["new"]),  # unknown leftover surfaced
+        ("", None, None, []),
+        (None, None, None, []),
+    ],
+)
+def test_split_specialbooks(
+    specialbooks, expected_country, expected_theme, expected_unknown
+):
+    assert split_specialbooks(specialbooks) == (
+        expected_country,
+        expected_theme,
+        expected_unknown,
+    )
+
+
+# --- genre validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("rock", "rock"),
+        ("Rock", "rock"),
+        ("  pop , rock  ", "pop,rock"),
+        # alias: spaced → hyphenated
+        ("pop punk", "pop-punk"),
+        ("dance pop", "dance-pop"),
+        ("folk rock", "folk-rock"),
+        ("alternative rock", "alternative-rock"),
+        # alias: symbols
+        ("rock & roll", "rock-and-roll"),
+        ("rock 'n' roll", "rock-and-roll"),
+        ("rock and roll", "rock-and-roll"),
+        # blanket space→hyphen normalization
+        ("hip hop", "hip-hop"),
+        ("heavy metal", "heavy-metal"),
+        ("adult contemporary", "adult-contemporary"),
+        ("funk / soul", "funk-soul"),
+        ("brass & military", "brass-military"),
+        # alias: near-synonym
+        ("christmas music", "christmas"),
+        # deduplication
+        ("rock,rock,pop", "rock,pop"),
+        (
+            "pop punk,pop-punk",
+            "pop-punk",
+        ),  # first entry normalized, second already canonical, deduped
+        # max 3
+        ("a,b,c,d", "a,b,c"),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_genre_validator(raw, expected):
+    assert genre(_make_ctx(), raw) == expected
+
+
+def test_genre_aliases_are_valid():
+    for k, v in _GENRE_ALIASES.items():
+        assert k == k.lower(), f"alias key {k!r} is not lowercase"
+        assert v == v.lower(), f"alias value {v!r} is not lowercase"

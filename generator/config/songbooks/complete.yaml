@@ -10,17 +10,17 @@ sections:
     postfixes:
       - postfix: " 🎃"
         filters:
-          - key: "specialbooks"
+          - key: "theme"
             operator: "contains"
             value: "halloween"
       - postfix: " 🎄"
         filters:
-          - key: "specialbooks"
+          - key: "theme"
             operator: "contains"
-            value: "xmas"
+            value: "christmas"
       - postfix: " ☘"
         filters:
-          - key: "specialbooks"
+          - key: "country"
             operator: "contains"
             value: "ireland"
   songs:
