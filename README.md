@@ -160,6 +160,24 @@ Run `uv run songbook-tools --help` for a full list of commands and groups, and
 `uv run songbook-tools <command> --help` (or `uv run songbook-tools <group> <subcommand> --help`)
 for detailed options on any individual command.
 
+### Song metadata snapshot (`tabdb.csv`)
+
+`tabdb.csv` is a point-in-time snapshot of all song metadata (tags), exported
+from the Firestore metadata store. It's useful for auditing, reporting, and
+ad-hoc analysis without needing live Firestore access. Each row is one song;
+the columns are `gdrive_file_id`, `gdrive_file_name`, followed by the union of
+all tag keys present across songs.
+
+Regenerate it locally with the CLI:
+
+```bash
+uv run songbook-tools tags export --format csv --output tabdb.csv
+```
+
+Or produce it on demand via the **Export Tags** GitHub Actions workflow
+(`.github/workflows/export-tags.yaml`): run it with the `csv` format and
+download the resulting artifact.
+
 ### Testing Full Application
 
 For testing the complete web application including the asynchronous job processing:
