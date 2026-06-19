@@ -738,22 +738,6 @@ def test_parse_duration(raw, expected):
 # --- genre validator tests ---
 
 
-@pytest.mark.parametrize(
-    "raw, expected",
-    [
-        ("Rock", "rock"),
-        ("Rock,Pop", "rock,pop"),
-        ("Rock, Pop, Folk", "rock,pop,folk"),
-        ("Rock,Pop,Folk,Country", "rock,pop,folk"),  # clips to max_genres=3
-        (None, None),
-        ("", None),
-        ("  ,  ", None),  # whitespace-only entries
-    ],
-)
-def test_genre_validator(raw, expected):
-    assert genre(_make_ctx(), raw) == expected
-
-
 def test_genre_validator_respects_max_genres():
     assert genre(_make_ctx(), "Rock,Pop,Folk,Country", max_genres=2) == "rock,pop"
 
@@ -1011,7 +995,10 @@ def test_split_specialbooks(
         ("christmas music", "christmas"),
         # deduplication
         ("rock,rock,pop", "rock,pop"),
-        ("pop punk,pop-punk", "pop-punk"),  # first entry normalized, second already canonical, deduped
+        (
+            "pop punk,pop-punk",
+            "pop-punk",
+        ),  # first entry normalized, second already canonical, deduped
         # max 3
         ("a,b,c,d", "a,b,c"),
         (None, None),

@@ -317,7 +317,9 @@ def migrate_specialbooks(file_identifier, all_files, dry_run):
         "E.g. --retag genre,country"
     ),
 )
-def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose, tags, retag):
+def update_tags(
+    file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose, tags, retag
+):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(

@@ -404,7 +404,10 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
             return {}
 
         if not isinstance(parsed, dict):
-            click.echo(f"LLM returned unexpected JSON type ({type(parsed).__name__}): {raw_text!r}", err=True)
+            click.echo(
+                f"LLM returned unexpected JSON type ({type(parsed).__name__}): {raw_text!r}",
+                err=True,
+            )
             span.add_event("json_parse_error", {"raw_text_preview": raw_text[:200]})
             span.set_attribute("llm.parse_error", True)
             span.set_attribute("llm.results_count", 0)
@@ -511,7 +514,11 @@ class Tagger:
                 if effective_scope is not None and tag_name not in effective_scope:
                     continue
                 force = tag_name in self.retag
-                if tagger_config.only_if_unset and tag_name in current_properties and not force:
+                if (
+                    tagger_config.only_if_unset
+                    and tag_name in current_properties
+                    and not force
+                ):
                     continue
 
                 tag_value = tagger_func(context)
@@ -544,7 +551,10 @@ class Tagger:
                 applicable_llm_taggers = [
                     config
                     for config in _LLM_TAGGERS
-                    if (effective_scope is None or config.func.__name__ in effective_scope)
+                    if (
+                        effective_scope is None
+                        or config.func.__name__ in effective_scope
+                    )
                     and not (
                         config.only_if_unset
                         and config.func.__name__ in current_properties
