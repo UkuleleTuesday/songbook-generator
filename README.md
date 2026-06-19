@@ -168,6 +168,11 @@ ad-hoc analysis without needing live Firestore access. Each row is one song;
 the columns are `gdrive_file_id`, `gdrive_file_name`, followed by the union of
 all tag keys present across songs.
 
+> **Note:** this is a snapshot, not a live source of truth — the underlying
+> data changes fairly quickly. Check the file's last commit
+> (`git log -1 -- tabdb.csv`) to see how stale it is, and regenerate it if you
+> need current data.
+
 Regenerate it locally with the CLI:
 
 ```bash
