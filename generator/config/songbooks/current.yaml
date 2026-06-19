@@ -22,7 +22,7 @@ sections:
     # postfixes:
     #   - postfix: " ☘"
     #     filters:
-    #       - key: "specialbooks"
+    #       - key: "country"
     #         operator: "contains"
     #         value: "ireland"
   songs:
