@@ -128,7 +128,9 @@ def test_export_falls_back_to_drive_when_firestore_read_disabled(runner, mocker)
     )
     gdrive_client = mocker.Mock()
     gdrive_client.query_drive_files.return_value = [
-        File(id="fileA", name="Let It Be - The Beatles", properties={"song": "Let It Be"}),
+        File(
+            id="fileA", name="Let It Be - The Beatles", properties={"song": "Let It Be"}
+        ),
     ]
     mocker.patch("generator.cli.tags.GoogleDriveClient", return_value=gdrive_client)
 
