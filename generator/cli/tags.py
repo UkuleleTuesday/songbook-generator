@@ -147,12 +147,13 @@ def delete_tag(file_identifier, key):
 
     if settings.metadata_store.firestore_write_enabled:
         store = get_metadata_store()
-        props = store.get_properties(file_id) or {}
-        if key not in props:
+        props = store.get_properties(file_id)
+        if props is None:
+            click.echo("No Firestore doc found. No changes made.")
+        elif key not in props:
             click.echo(f"Tag '{key}' not found in Firestore. No changes made.")
         else:
-            props.pop(key)
-            store.write(file_id, props)
+            store.delete_property(file_id, key)
             click.echo(f"Successfully deleted tag '{key}' from Firestore.")
 
 
