@@ -38,6 +38,24 @@ class _FakeDocRef:
         else:
             bucket[self._id] = dict(data)
 
+    def update(self, updates: dict):
+        """Apply field-path updates; values of DELETE_FIELD remove that path."""
+        bucket = self._store.setdefault(self._collection, {})
+        doc = bucket.get(self._id)
+        if doc is None:
+            raise KeyError(f"Document {self._id!r} does not exist")
+        doc = dict(doc)
+        for field_path, value in updates.items():
+            parts = field_path.split(".")
+            target = doc
+            for part in parts[:-1]:
+                target = target.setdefault(part, {})
+            if value is firestore.DELETE_FIELD:
+                target.pop(parts[-1], None)
+            else:
+                target[parts[-1]] = value
+        bucket[self._id] = doc
+
     def get(self):
         bucket = self._store.get(self._collection, {})
         return _FakeSnapshot(self._id, bucket.get(self._id))
@@ -141,6 +159,34 @@ def test_bulk_write_writes_all_documents():
     assert len(all_docs) == 10
     assert all_docs["id7"]["properties"] == {"n": "7"}
     assert all_docs["id7"]["gdrive_file_name"] == "name7"
+
+
+def test_delete_property_removes_key():
+    store = _make_store()
+    store.write("file1", {"artist": "Queen", "test_key": "test_value"}, name="x")
+
+    result = store.delete_property("file1", "test_key")
+
+    assert result is True
+    assert store.get_properties("file1") == {"artist": "Queen"}
+
+
+def test_delete_property_missing_key_leaves_doc_unchanged():
+    store = _make_store()
+    store.write("file1", {"artist": "Queen"}, name="x")
+
+    result = store.delete_property("file1", "nonexistent")
+
+    assert result is True
+    assert store.get_properties("file1") == {"artist": "Queen"}
+
+
+def test_delete_property_missing_doc_returns_false():
+    store = _make_store()
+
+    result = store.delete_property("nope", "any_key")
+
+    assert result is False
 
 
 def test_bulk_write_chunks_beyond_batch_limit(monkeypatch):

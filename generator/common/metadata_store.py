@@ -82,6 +82,22 @@ class SongMetadataStore:
                 self._build_doc(file_id, properties, name), merge=True
             )
 
+    def delete_property(self, file_id: str, key: str) -> bool:
+        """Remove a single key from the properties map. Returns False if doc missing."""
+        with tracer.start_as_current_span("metadata_store.delete_property") as span:
+            span.set_attribute("file.id", file_id)
+            span.set_attribute("property.key", key)
+            doc_ref = self._doc(file_id)
+            if not doc_ref.get().exists:
+                return False
+            doc_ref.update(
+                {
+                    f"properties.{key}": firestore.DELETE_FIELD,
+                    "metadata_updated_at": firestore.SERVER_TIMESTAMP,
+                }
+            )
+            return True
+
     def get(self, file_id: str) -> Optional[dict]:
         """Return the full stored document for ``file_id``, or None."""
         snapshot = self._doc(file_id).get()
