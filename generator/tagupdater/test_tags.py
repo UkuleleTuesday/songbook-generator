@@ -9,6 +9,7 @@ from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
     Tagger,
+    _GENRE_ALIASES,
     _parse_duration,
     _run_llm_tags,
     approved_date,
@@ -936,8 +937,8 @@ def test_country_validator(raw, expected):
         ("christmas", "christmas"),
         ("pride,halloween", "pride,halloween"),
         ("pride,pride", "pride"),  # de-duplicated
-        ("pride,birthday", "pride"),  # unknown dropped
-        ("birthday", None),  # not in enum
+        ("pride,birthday", "pride,birthday"),
+        ("birthday", "birthday"),
         (None, None),
         ("", None),
     ],
@@ -980,3 +981,48 @@ def test_split_specialbooks(
         expected_theme,
         expected_unknown,
     )
+
+
+# --- genre validator tests ---
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("rock", "rock"),
+        ("Rock", "rock"),
+        ("  pop , rock  ", "pop,rock"),
+        # alias: spaced → hyphenated
+        ("pop punk", "pop-punk"),
+        ("dance pop", "dance-pop"),
+        ("folk rock", "folk-rock"),
+        ("alternative rock", "alternative-rock"),
+        # alias: symbols
+        ("rock & roll", "rock-and-roll"),
+        ("rock 'n' roll", "rock-and-roll"),
+        ("rock and roll", "rock-and-roll"),
+        # blanket space→hyphen normalization
+        ("hip hop", "hip-hop"),
+        ("heavy metal", "heavy-metal"),
+        ("adult contemporary", "adult-contemporary"),
+        ("funk / soul", "funk-soul"),
+        ("brass & military", "brass-military"),
+        # alias: near-synonym
+        ("christmas music", "christmas"),
+        # deduplication
+        ("rock,rock,pop", "rock,pop"),
+        ("pop punk,pop-punk", "pop-punk"),  # first entry normalized, second already canonical, deduped
+        # max 3
+        ("a,b,c,d", "a,b,c"),
+        (None, None),
+        ("", None),
+    ],
+)
+def test_genre_validator(raw, expected):
+    assert genre(_make_ctx(), raw) == expected
+
+
+def test_genre_aliases_are_valid():
+    for k, v in _GENRE_ALIASES.items():
+        assert k == k.lower(), f"alias key {k!r} is not lowercase"
+        assert v == v.lower(), f"alias value {v!r} is not lowercase"

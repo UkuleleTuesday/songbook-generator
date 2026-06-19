@@ -253,26 +253,26 @@ class MetadataStore(BaseModel):
         description="Firestore collection holding song-sheet metadata documents.",
     )
     drive_write_enabled: bool = Field(
-        default=True,
+        default=False,
         description=(
             "When True, computed metadata is written back to Google Drive file "
             "properties (the historical behaviour). "
-            "Set SONG_METADATA_DRIVE_WRITE_ENABLED=false to disable."
+            "Set SONG_METADATA_DRIVE_WRITE_ENABLED=true to enable."
         ),
     )
     firestore_write_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
             "When True, computed metadata is written to the Firestore collection. "
-            "Set SONG_METADATA_FIRESTORE_WRITE_ENABLED=true to enable."
+            "Set SONG_METADATA_FIRESTORE_WRITE_ENABLED=false to disable."
         ),
     )
     firestore_read_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
             "When True, File.properties is sourced from Firestore instead of Drive. "
             "Drive remains the source for file existence (id, name, mimeType, parents). "
-            "Set SONG_METADATA_FIRESTORE_READ_ENABLED=true to enable."
+            "Set SONG_METADATA_FIRESTORE_READ_ENABLED=false to disable."
         ),
     )
 

@@ -300,7 +300,24 @@ def migrate_specialbooks(file_identifier, all_files, dry_run):
     default=False,
     help="Print computed tag values for each file.",
 )
-def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose):
+@click.option(
+    "--tags",
+    default=None,
+    help=(
+        "Comma-separated list of tag keys to run (skips all others). "
+        "Respects only_if_unset — won't overwrite existing values. "
+        "E.g. --tags genre,country"
+    ),
+)
+@click.option(
+    "--retag",
+    default=None,
+    help=(
+        "Comma-separated list of tag keys to re-run and overwrite even if already set. "
+        "E.g. --retag genre,country"
+    ),
+)
+def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose, tags, retag):
     """Run the auto-tagger on a specific Google Drive file or all files."""
     if not file_identifier and not all:
         click.echo(
@@ -312,6 +329,9 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, ver
         click.echo(
             "Error: Cannot use both a file identifier and the --all flag.", err=True
         )
+        raise click.Abort()
+    if tags and retag:
+        click.echo("Error: Cannot use both --tags and --retag.", err=True)
         raise click.Abort()
 
     settings = get_settings()
@@ -373,6 +393,12 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, ver
         )
     if not settings.metadata_store.drive_write_enabled:
         click.echo("Drive metadata write disabled.")
+    tags_keys = {k.strip() for k in tags.split(",")} if tags else None
+    retag_keys = {k.strip() for k in retag.split(",")} if retag else None
+    if tags_keys:
+        click.echo(f"Running only: {', '.join(sorted(tags_keys))}")
+    if retag_keys:
+        click.echo(f"Re-tagging (force overwrite): {', '.join(sorted(retag_keys))}")
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
@@ -381,6 +407,8 @@ def update_tags(file_identifier, all, dry_run, trigger_field, with_llm_tags, ver
         llm_tagging_enabled=effective_llm_tagging,
         metadata_store=metadata_store,
         drive_write_enabled=settings.metadata_store.drive_write_enabled,
+        tags=tags_keys,
+        retag=retag_keys,
     )
     failed_updates = {}
 

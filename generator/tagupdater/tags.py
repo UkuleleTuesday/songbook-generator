@@ -126,7 +126,75 @@ TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
 
 # Recurring session themes are a small, curated Ukulele-Tuesday-specific set,
 # so they stay an explicit enum that grounds the LLM prompt.
-THEME_VALUES = ["halloween", "christmas", "valentines", "pride", "peace"]
+# Canonical genre convention: hyphens between all words (e.g. "pop-punk", "dance-pop", "rock-and-roll"),
+# matching MusicBrainz/Last.fm. Maps known variant spellings to canonical forms.
+_GENRE_ALIASES: dict[str, str] = {
+    # spaced → hyphenated
+    "dance pop": "dance-pop",
+    "pop punk": "pop-punk",
+    "folk pop": "folk-pop",
+    "synth pop": "synth-pop",
+    "electro pop": "electro-pop",
+    "indie pop": "indie-pop",
+    "disco pop": "disco-pop",
+    "electro rock": "electro-rock",
+    "dance rock": "dance-rock",
+    "folk rock": "folk-rock",
+    "country pop": "country-pop",
+    "alt pop": "alt-pop",
+    "pop rock": "pop-rock",
+    "hi nrg": "hi-nrg",
+    "post punk": "post-punk",
+    "post grunge": "post-grunge",
+    "pop soul": "pop-soul",
+    "art pop": "art-pop",
+    "dream pop": "dream-pop",
+    "jangle pop": "jangle-pop",
+    "indie folk": "indie-folk",
+    "indie rock": "indie-rock",
+    "power pop": "power-pop",
+    "garage rock": "garage-rock",
+    "arena rock": "arena-rock",
+    "punk rock": "punk-rock",
+    "blues rock": "blues-rock",
+    "glam rock": "glam-rock",
+    "hard rock": "hard-rock",
+    "soft rock": "soft-rock",
+    "classic rock": "classic-rock",
+    "alt rock": "alt-rock",
+    "alternative rock": "alternative-rock",
+    "psychedelic rock": "psychedelic-rock",
+    "psychedelic pop": "psychedelic-pop",
+    "progressive rock": "progressive-rock",
+    "new wave": "new-wave",
+    "bubblegum pop": "bubblegum-pop",
+    "latin pop": "latin-pop",
+    "teen pop": "teen-pop",
+    "art rock": "art-rock",
+    "emo pop": "emo-pop",
+    "euro disco": "euro-disco",
+    "glam metal": "glam-metal",
+    "funk rock": "funk-rock",
+    "comedy rock": "comedy-rock",
+    "heartland rock": "heartland-rock",
+    "electronic rock": "electronic-rock",
+    "reggae rock": "reggae-rock",
+    # symbol/spelling variants
+    "rock and roll": "rock-and-roll",
+    "rock & roll": "rock-and-roll",
+    "rock 'n' roll": "rock-and-roll",
+    # near-synonyms
+    "christmas music": "christmas",
+}
+
+THEME_VALUES: dict[str, str] = {
+    "halloween": "spooky, horror, or supernatural themes",
+    "christmas": "christmas or winter holiday themes",
+    "valentines": "love, romance, or Valentine's Day themes",
+    "pride": "LGBTQ+ pride, identity, anthems, or songs by artists who publicly identify as LGBTQ+",
+    "peace": "peace, anti-war, or protest themes",
+    "birthday": "birthday celebrations",
+}
 _THEME_ALIASES = {
     "pride.uk": "pride",
     "xmas": "christmas",
@@ -335,6 +403,13 @@ def _run_llm_tags(ctx: Context, llm_taggers: List[LlmTaggerConfig]) -> Dict[str,
             span.set_attribute("llm.results_count", 0)
             return {}
 
+        if not isinstance(parsed, dict):
+            click.echo(f"LLM returned unexpected JSON type ({type(parsed).__name__}): {raw_text!r}", err=True)
+            span.add_event("json_parse_error", {"raw_text_preview": raw_text[:200]})
+            span.set_attribute("llm.parse_error", True)
+            span.set_attribute("llm.results_count", 0)
+            return {}
+
         results = {}
         for config in llm_taggers:
             field_name = config.func.__name__
@@ -361,6 +436,8 @@ class Tagger:
         llm_tagging_enabled: bool = False,
         metadata_store: Optional[SongMetadataStore] = None,
         drive_write_enabled: bool = True,
+        tags: Optional[set] = None,
+        retag: Optional[set] = None,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
@@ -369,6 +446,10 @@ class Tagger:
         self.llm_tagging_enabled = llm_tagging_enabled
         self.metadata_store = metadata_store
         self.drive_write_enabled = drive_write_enabled
+        # --tags: scope to these keys, respect only_if_unset
+        # --retag: scope to these keys, ignore only_if_unset (force overwrite)
+        self.tags: Optional[set] = tags
+        self.retag: set = retag or set()
 
     def update_tags(self, file: File, dry_run: bool = False, verbose: bool = False):
         """
@@ -419,12 +500,18 @@ class Tagger:
             new_properties = {}
             current_properties = file.properties.copy()
 
+            # Determine effective scope: retag keys take precedence over tags filter
+            effective_scope = self.retag or self.tags  # None means run all
+
             # Run regular (non-LLM) taggers
             for tagger_config in _TAGGERS:
                 tagger_func = tagger_config.func
                 tag_name = tagger_func.__name__
 
-                if tagger_config.only_if_unset and tag_name in current_properties:
+                if effective_scope is not None and tag_name not in effective_scope:
+                    continue
+                force = tag_name in self.retag
+                if tagger_config.only_if_unset and tag_name in current_properties and not force:
                     continue
 
                 tag_value = tagger_func(context)
@@ -457,9 +544,11 @@ class Tagger:
                 applicable_llm_taggers = [
                     config
                     for config in _LLM_TAGGERS
-                    if not (
+                    if (effective_scope is None or config.func.__name__ in effective_scope)
+                    and not (
                         config.only_if_unset
                         and config.func.__name__ in current_properties
+                        and config.func.__name__ not in self.retag
                     )
                 ]
                 span.set_attribute(
@@ -768,8 +857,9 @@ def duration(ctx: Context, raw: Optional[str]) -> Optional[str]:
 @llm_tag(
     prompt=(
         'What are the musical genres of "{song}" by {artist}? '
-        "List up to {max_genres} genres as a comma-separated list "
-        '(e.g. "Rock,Pop"), or null if unknown.'
+        "List up to {max_genres} genres as a comma-separated list in lowercase English, "
+        "always using hyphens between words (e.g. 'pop-punk', 'dance-pop', 'rock-and-roll'), "
+        "or null if unknown."
     ),
     only_if_unset=True,
     max_genres=3,
@@ -778,8 +868,19 @@ def genre(ctx: Context, raw: Optional[str], *, max_genres: int = 3) -> Optional[
     """Looks up the genre(s) of the song via Gemini + Google Search."""
     if not raw:
         return None
-    parts = [g.strip().lower() for g in raw.split(",") if g.strip()][:max_genres]
-    return ",".join(parts) if parts else None
+    seen: List[str] = []
+    for part in raw.split(","):
+        g = part.strip().lower()
+        if not g:
+            continue
+        g = _GENRE_ALIASES.get(g, g)
+        # Normalize: collapse spaces and special chars to hyphens, dedupe hyphens
+        g = re.sub(r"[\s/&]+", "-", g)
+        g = re.sub(r"-+", "-", g).strip("-")
+        if g and g not in seen:
+            seen.append(g)
+    seen = seen[:max_genres]
+    return ",".join(seen) if seen else None
 
 
 @llm_tag(
@@ -832,7 +933,7 @@ def country(ctx: Context, raw: Optional[str]) -> Optional[str]:
         "or null if none clearly applies: {valid_themes}."
     ),
     only_if_unset=True,
-    valid_themes=", ".join(THEME_VALUES),
+    valid_themes=", ".join(f"{k} ({v})" for k, v in THEME_VALUES.items()),
 )
 def theme(ctx: Context, raw: Optional[str], *, valid_themes: str = "") -> Optional[str]:
     """Looks up the recurring session theme(s) of the song via Gemini."""
