@@ -1,0 +1,55 @@
+name: Export Tags
+
+on:
+  workflow_dispatch:
+    inputs:
+      format:
+        description: "Output format for the export"
+        type: choice
+        options:
+          - json
+          - csv
+        default: json
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  export-tags:
+    name: Export song metadata (${{ inputs.format }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Export song metadata
+      id: export
+      run: |
+        set -e
+        FORMAT="${{ inputs.format }}"
+        if [[ "$FORMAT" == "csv" ]]; then
+          EXT="csv"
+        else
+          EXT="jsonl"
+        fi
+        OUTPUT_FILE="song-metadata-export-$(date -u +%Y-%m-%d).${EXT}"
+        echo "Exporting song metadata as ${FORMAT} to ${OUTPUT_FILE}"
+        uv run songbook-tools tags export \
+          --format "$FORMAT" \
+          --output "$OUTPUT_FILE"
+        echo "output_file=${OUTPUT_FILE}" >> "$GITHUB_OUTPUT"
+
+    - name: Upload export artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: song-metadata-export-${{ inputs.format }}
+        path: ${{ steps.export.outputs.output_file }}
+        if-no-files-found: error
