@@ -298,10 +298,10 @@ def test_metadata_store_defaults(monkeypatch):
     config.get_settings.cache_clear()
     settings = config.get_settings()
     assert settings.metadata_store.firestore_collection == "song-metadata"
-    # Drive writes on by default (historical behaviour), Firestore read/write off.
-    assert settings.metadata_store.drive_write_enabled is True
-    assert settings.metadata_store.firestore_write_enabled is False
-    assert settings.metadata_store.firestore_read_enabled is False
+    # Firestore is the primary store: read/write on by default, Drive write off.
+    assert settings.metadata_store.drive_write_enabled is False
+    assert settings.metadata_store.firestore_write_enabled is True
+    assert settings.metadata_store.firestore_read_enabled is True
     assert settings.google_cloud.firestore_database is None
 
 
