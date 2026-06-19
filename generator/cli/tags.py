@@ -1,3 +1,5 @@
+import contextlib
+import csv
 import json
 import sys
 
@@ -263,6 +265,127 @@ def migrate_specialbooks(file_identifier, all_files, dry_run):
 
     suffix = " (dry run)" if dry_run else ""
     click.echo(f"\nMigrated {migrated} file(s){suffix}.")
+
+
+def _load_metadata_documents(settings) -> list[dict]:
+    """Return all song metadata documents, sorted by Drive file ID.
+
+    Reads from Firestore when ``SONG_METADATA_FIRESTORE_READ_ENABLED`` is on
+    (the default); otherwise falls back to live Drive custom properties,
+    synthesising documents with the same top-level schema (minus the
+    Firestore-only ``metadata_updated_at`` timestamp).
+    """
+    if settings.metadata_store.firestore_read_enabled:
+        store = get_metadata_store()
+        all_docs = store.get_all()
+        return [all_docs[file_id] for file_id in sorted(all_docs)]
+
+    click.echo(
+        "Firestore read disabled; exporting from live Drive properties.", err=True
+    )
+    credential_config = settings.google_cloud.credentials.get(
+        "songbook-metadata-writer"
+    )
+    if not credential_config:
+        click.echo(
+            "Error: credential config 'songbook-metadata-writer' not found.", err=True
+        )
+        raise click.Abort()
+
+    drive, cache = init_services(
+        scopes=credential_config.scopes, target_principal=credential_config.principal
+    )
+    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
+    files = gdrive_client.query_drive_files(settings.song_sheets.folder_ids)
+    return [
+        {
+            "gdrive_file_id": f.id,
+            "gdrive_file_name": f.name,
+            "properties": dict(f.properties),
+        }
+        for f in sorted(files, key=lambda f: f.id)
+    ]
+
+
+@contextlib.contextmanager
+def _open_output(output_path):
+    """Yield a writable handle for ``output_path``, or stdout if it is None."""
+    if output_path is None:
+        yield sys.stdout
+    else:
+        with open(output_path, "w", encoding="utf-8", newline="") as handle:
+            yield handle
+
+
+def _write_jsonl(documents: list[dict], out) -> None:
+    """Write documents as newline-delimited JSON (one object per line)."""
+    for doc in documents:
+        out.write(json.dumps(doc, default=str, sort_keys=True))
+        out.write("\n")
+
+
+def _write_csv(documents: list[dict], out) -> None:
+    """Write documents as CSV, one row per song.
+
+    Columns are the identifying ``gdrive_file_id``/``gdrive_file_name`` fields
+    followed by the sorted union of all property keys across documents.
+    """
+    property_keys: set[str] = set()
+    for doc in documents:
+        property_keys.update(doc.get("properties", {}) or {})
+
+    columns = ["gdrive_file_id", "gdrive_file_name", *sorted(property_keys)]
+    writer = csv.DictWriter(out, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    for doc in documents:
+        row = {
+            "gdrive_file_id": doc.get("gdrive_file_id", ""),
+            "gdrive_file_name": doc.get("gdrive_file_name", ""),
+        }
+        row.update(doc.get("properties", {}) or {})
+        writer.writerow(row)
+
+
+@tags.command(name="export")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["csv", "json"]),
+    default="json",
+    show_default=True,
+    help="Output format.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    type=click.Path(dir_okay=False, writable=True),
+    default=None,
+    help="Output file path (default: stdout).",
+)
+def export_tags(output_format, output_path):
+    """Bulk-export all song metadata (tags) to a local file or stdout.
+
+    Reads every song document from Firestore (respecting
+    SONG_METADATA_FIRESTORE_READ_ENABLED) and writes them in the requested
+    format:
+
+    \b
+    - json: newline-delimited JSON (one object per line, same schema as the
+      GCS dataset).
+    - csv: one row per song, columns derived from the union of all property
+      keys present across documents.
+    """
+    settings = get_settings()
+    documents = _load_metadata_documents(settings)
+
+    with _open_output(output_path) as out:
+        if output_format == "json":
+            _write_jsonl(documents, out)
+        else:
+            _write_csv(documents, out)
+
+    if output_path:
+        click.echo(f"Exported {len(documents)} song(s) to {output_path}.", err=True)
 
 
 @tags.command(name="update")
