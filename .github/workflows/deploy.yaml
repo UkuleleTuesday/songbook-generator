@@ -126,6 +126,23 @@ jobs:
           --project="${{ env.GCP_PROJECT_ID }}" \
           || echo "Database may already exist, continuing…"
 
+    - name: Backfill PR Firestore from production
+      if: github.event_name == 'pull_request'
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        DB_NAME="pr-${PR_NUM}"
+        echo "Backfilling Firestore database ${DB_NAME} from the production default database…"
+        # Copy the song-metadata collection from the default (main) database into
+        # the freshly-created per-PR database so previews see the same song
+        # properties as production. A database-to-database copy is required
+        # rather than re-hydrating from Drive: Drive metadata writes are disabled
+        # (#281), so some tags live only in Firestore and a Drive re-hydrate would
+        # miss them, leaving preview properties incomplete.
+        #
+        # FIRESTORE_DATABASE is not set in this job, so the copy source resolves
+        # to the production default database.
+        uv run songbook-tools metadata copy --dest-database "${DB_NAME}"
+
     - name: Apply Artifact Registry cleanup policy
       # Only on main: this mutates the shared gcf-artifacts repo, so PR runs
       # must not touch it. Idempotent — re-applying the same policy is a no-op.
