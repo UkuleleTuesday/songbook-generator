@@ -1,5 +1,6 @@
 import os
 import yaml
+from enum import Enum
 from functools import lru_cache
 from typing import List, Literal, Optional, Union
 
@@ -42,16 +43,27 @@ class Cover(BaseModel):
     file_id: Optional[str] = None
 
 
-class TocPostfix(BaseModel):
-    """Configuration for a single TOC entry postfix."""
+class TocMarker(str, Enum):
+    """A small graphic that can be drawn next to a matching TOC entry."""
 
-    postfix: str
+    PRIDE_FLAG = "pride_flag"
+
+
+class TocPostfix(BaseModel):
+    """A decoration applied to TOC entries whose properties match ``filters``.
+
+    Each aspect is independent and optional: append ``postfix`` text, tint the
+    row with ``color``, and/or draw a ``marker`` graphic after the title.
+    """
+
     filters: List[Union[FilterGroup, PropertyFilter]]
+    postfix: str = ""
+    """Text appended to the entry title (e.g. an emoji or symbol)."""
     color: Optional[tuple[float, float, float]] = None
-    """RGB color (0–1 scale) applied to the entire TOC row when this postfix matches."""
-    rainbow: bool = False
-    """When true, draw a small pride-flag mark after the entry's title. The
-    title text itself is unaffected (still ``color`` or default black)."""
+    """RGB color (0–1 scale) applied to the entire TOC row when this matches."""
+    marker: Optional[TocMarker] = None
+    """A small graphic drawn after the title (e.g. a pride flag). Independent of
+    ``color`` and ``postfix``."""
 
 
 class Toc(BaseModel):

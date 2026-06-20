@@ -8,7 +8,7 @@ from ..common.tracing import get_tracer
 from ..common.titles import generate_short_title
 from .difficulty import assign_difficulty_bins
 from .models import File
-from ..common.config import get_settings, Toc
+from ..common.config import get_settings, Toc, TocMarker
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -18,9 +18,9 @@ DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
 # Classic six-stripe pride flag, drawn as a small vector mark next to entries a
-# postfix flags as ``rainbow``. RGB on a 0–1 scale; top stripe first. These are
-# vivid (not the muted text shades) because the mark is a small solid graphic,
-# where saturated colours read as a recognisable flag.
+# postfix marks with ``TocMarker.PRIDE_FLAG``. RGB on a 0–1 scale; top stripe
+# first. Vivid (not the muted text shades) because the mark is a small solid
+# graphic, where saturated colours read as a recognisable flag.
 PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
     (0.894, 0.012, 0.012),  # red
     (1.000, 0.549, 0.000),  # orange
@@ -161,10 +161,10 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        # Add any custom postfixes; first matched color wins for the whole row
+        # Add any custom postfixes; first matched color/marker wins for the row
         postfix_str = ""
         entry_color: Optional[tuple[float, float, float]] = None
-        entry_rainbow = False
+        entry_marker: Optional[TocMarker] = None
         if self.config.postfixes:
             for postfix_config in self.config.postfixes:
                 for p_filter in postfix_config.filters:
@@ -172,8 +172,8 @@ class TocGenerator:
                         postfix_str += postfix_config.postfix
                         if entry_color is None and postfix_config.color is not None:
                             entry_color = postfix_config.color
-                        if postfix_config.rainbow:
-                            entry_rainbow = True
+                        if entry_marker is None and postfix_config.marker is not None:
+                            entry_marker = postfix_config.marker
                         break  # Stop checking filters for this postfix config
 
         shortened_title = self._generate_toc_title(
@@ -198,11 +198,11 @@ class TocGenerator:
             fontsize=self.config.text_fontsize,
         )
 
-        # Rainbow entries get a small drawn pride flag after the title; reserve
-        # its horizontal span so the dot leaders start after it. The flag itself
-        # is a vector mark drawn when the page is finalised (see _draw_marks).
+        # A pride-flag marker draws a small flag after the title; reserve its
+        # horizontal span so the dot leaders start after it. The flag itself is a
+        # vector mark drawn when the page is finalised (see _draw_marks).
         flag_advance = 0.0
-        if entry_rainbow:
+        if entry_marker is TocMarker.PRIDE_FLAG:
             flag_w, flag_h, gap = self._pride_flag_size()
             flag_x = x_start + title_width + gap
             marks.append((flag_x, y_pos, flag_w, flag_h))

@@ -7,7 +7,7 @@ from .toc import (
 )
 from .models import File
 from . import toc
-from ..common.config import TocPostfix
+from ..common.config import TocMarker, TocPostfix
 from ..common.filters import PropertyFilter
 
 
@@ -505,15 +505,17 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     default_tw.append.assert_not_called()
 
 
-def test_add_toc_entry_rainbow_registers_flag_mark(mock_toc_generator, mocker):
-    """A rainbow postfix registers a pride-flag mark and draws the title plainly."""
+def test_add_toc_entry_pride_flag_marker_registers_flag_mark(
+    mock_toc_generator, mocker
+):
+    """A pride_flag marker registers a flag mark and draws the title plainly."""
     generator = mock_toc_generator
     default_tw = MagicMock(spec=fitz.TextWriter)
 
     match_filter = mocker.MagicMock(spec=PropertyFilter)
     match_filter.matches.return_value = True
     generator.config.postfixes = [
-        TocPostfix(postfix="", filters=[match_filter], rainbow=True)
+        TocPostfix(filters=[match_filter], marker=TocMarker.PRIDE_FLAG)
     ]
 
     writers = {None: default_tw}
@@ -543,8 +545,8 @@ def test_add_toc_entry_rainbow_registers_flag_mark(mock_toc_generator, mocker):
     assert flag_w > 0 and flag_h > 0
 
 
-def test_add_toc_entry_no_flag_mark_when_not_rainbow(mock_toc_generator, mocker):
-    """A non-rainbow entry registers no marks."""
+def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
+    """An entry without a marker registers no marks."""
     generator = mock_toc_generator
     match_filter = mocker.MagicMock(spec=PropertyFilter)
     match_filter.matches.return_value = True
