@@ -1,0 +1,96 @@
+name: Preview Retag (Diff + Persist)
+
+# Rerun the auto-tagger against a PR's isolated Firestore database (pr-<N>),
+# show the pre/post diff (dry-run output), then persist the retag to that
+# preview database. Production data is never touched: writes are confined to the
+# disposable pr-<N> database and Drive writes are disabled.
+#
+# Trigger this from the PR branch so the tagger code under review (e.g. an
+# updated prompt) is the code that runs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to target (selects the pr-<N> Firestore database)'
+        required: true
+        type: string
+      retag:
+        description: 'Comma-separated tag keys to re-run and overwrite (e.g. theme)'
+        required: true
+        type: string
+        default: theme
+
+permissions:
+  contents: read
+
+jobs:
+  preview-retag:
+    name: Retag pr-${{ inputs.pr_number }} (${{ inputs.retag }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Confine all writes to the disposable per-PR database; never the prod default DB.
+      FIRESTORE_DATABASE: "pr-${{ inputs.pr_number }}"
+      SONG_METADATA_DRIVE_WRITE_ENABLED: "false"
+      SONG_METADATA_FIRESTORE_WRITE_ENABLED: "true"
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Guard - require an isolated pr-<N> database
+      run: |
+        set -euo pipefail
+        # Safety-critical: refuse to run unless we are clearly targeting a pr-<N>
+        # database, so a missing/empty input can never write to production.
+        if [[ ! "${{ inputs.pr_number }}" =~ ^[0-9]+$ ]]; then
+          echo "::error::pr_number must be a positive integer (got '${{ inputs.pr_number }}')."
+          exit 1
+        fi
+        if [[ "${FIRESTORE_DATABASE}" != pr-* ]]; then
+          echo "::error::FIRESTORE_DATABASE='${FIRESTORE_DATABASE}' is not a pr-<N> database; refusing to run."
+          exit 1
+        fi
+        echo "Targeting Firestore database: ${FIRESTORE_DATABASE}"
+        # Fail early with a clear message if the preview database doesn't exist
+        # (it is created when the PR is opened by deploy.yaml).
+        if ! gcloud firestore databases describe \
+            --database="${FIRESTORE_DATABASE}" \
+            --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
+          echo "::error::Firestore database '${FIRESTORE_DATABASE}' not found. Open/redeploy PR #${{ inputs.pr_number }} first."
+          exit 1
+        fi
+
+    - name: Diff (dry-run, pre/post)
+      run: |
+        set -euo pipefail
+        echo "Computing dry-run diff for retag keys: ${{ inputs.retag }}"
+        uv run songbook-tools tags update --all \
+          --retag "${{ inputs.retag }}" \
+          --dry-run --verbose 2>&1 | tee retag-dryrun.txt
+        {
+          echo "### Retag dry-run diff (pr-${{ inputs.pr_number }}, keys: ${{ inputs.retag }})"
+          echo ""
+          echo '```'
+          cat retag-dryrun.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload dry-run diff artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: retag-dryrun-pr-${{ inputs.pr_number }}
+        path: retag-dryrun.txt
+        if-no-files-found: error
+
+    - name: Persist retag to pr-${{ inputs.pr_number }} database
+      run: |
+        set -euo pipefail
+        echo "Persisting retag to ${FIRESTORE_DATABASE} (keys: ${{ inputs.retag }})"
+        uv run songbook-tools tags update --all --retag "${{ inputs.retag }}"
