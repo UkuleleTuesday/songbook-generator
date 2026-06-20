@@ -125,7 +125,12 @@ BPM_PATTERN = re.compile(r"(\d+)bpm", re.IGNORECASE)
 TIME_SIGNATURE_PATTERN = re.compile(r"(\d/\d)")
 
 # Recurring session themes are a small, curated Ukulele-Tuesday-specific set,
-# so they stay an explicit enum that grounds the LLM prompt.
+# so they stay an explicit enum that grounds the LLM prompt. Each description
+# defines that theme's *qualifying basis* (not just a label): most themes are
+# decided from the song's lyrics/subject matter, but some (e.g. pride) also
+# qualify via the artist's identity or strong cultural association. The theme
+# tagger prompt defers to these descriptions rather than imposing one shared
+# basis on every theme.
 # Canonical genre convention: hyphens between all words (e.g. "pop-punk", "dance-pop", "rock-and-roll"),
 # matching MusicBrainz/Last.fm. Maps known variant spellings to canonical forms.
 _GENRE_ALIASES: dict[str, str] = {
@@ -188,12 +193,16 @@ _GENRE_ALIASES: dict[str, str] = {
 }
 
 THEME_VALUES: dict[str, str] = {
-    "halloween": "spooky, horror, or supernatural themes",
-    "christmas": "christmas or winter holiday themes",
-    "valentines": "love, romance, or Valentine's Day themes",
-    "pride": "LGBTQ+ pride, identity, anthems, or songs by artists who publicly identify as LGBTQ+",
-    "peace": "peace, anti-war, or protest themes",
-    "birthday": "birthday celebrations",
+    "halloween": "spooky, horror, or supernatural lyrics or subject matter",
+    "christmas": "christmas or winter-holiday lyrics or subject matter",
+    "valentines": "love, romance, or Valentine's Day lyrics or subject matter",
+    "pride": (
+        "LGBTQ+ pride or identity in the lyrics or subject matter; a widely "
+        "recognised LGBTQ+/queer anthem or gay icon; or a song by an artist who "
+        "publicly identifies as LGBTQ+"
+    ),
+    "peace": "peace, anti-war, or protest lyrics or subject matter",
+    "birthday": "birthday-celebration lyrics or subject matter",
 }
 _THEME_ALIASES = {
     "pride.uk": "pride",
@@ -937,8 +946,10 @@ def country(ctx: Context, raw: Optional[str]) -> Optional[str]:
 
 @llm_tag(
     prompt=(
-        'Which of these recurring session themes does "{song}" by {artist} fit, '
-        "based on its lyrics or subject matter? "
+        'Which of these recurring session themes does "{song}" by {artist} fit? '
+        "Apply each theme's own criteria as described — a song may qualify through "
+        "its lyrics or subject matter, and/or through the artist's identity or "
+        "strong cultural association where that theme's description allows it. "
         "Reply with a comma-separated list of values from this list, "
         "or null if none clearly applies: {valid_themes}."
     ),
