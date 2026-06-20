@@ -50,9 +50,8 @@ class TocPostfix(BaseModel):
     color: Optional[tuple[float, float, float]] = None
     """RGB color (0–1 scale) applied to the entire TOC row when this postfix matches."""
     rainbow: bool = False
-    """When true, draw the entry's title with a per-character rainbow pattern
-    (the pride flag colours, cycled letter by letter). Takes precedence over
-    ``color`` for the title text; dot leaders and the page number stay default."""
+    """When true, draw a small pride-flag mark after the entry's title. The
+    title text itself is unaffected (still ``color`` or default black)."""
 
 
 class Toc(BaseModel):

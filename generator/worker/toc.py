@@ -17,17 +17,17 @@ DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
-# Pride-flag rainbow, cycled one colour per (non-space) character for entries a
-# postfix flags as ``rainbow``. RGB on a 0–1 scale: deliberately deep/muted
-# shades so the pattern reads as a subtle rainbow rather than a bright one and
-# stays legible on white paper.
-RAINBOW_PALETTE: Tuple[Tuple[float, float, float], ...] = (
-    (0.60, 0.05, 0.05),  # deep red
-    (0.66, 0.33, 0.03),  # burnt orange
-    (0.52, 0.40, 0.00),  # dark gold
-    (0.05, 0.33, 0.12),  # dark green
-    (0.06, 0.20, 0.48),  # indigo blue
-    (0.33, 0.06, 0.40),  # dark violet
+# Classic six-stripe pride flag, drawn as a small vector mark next to entries a
+# postfix flags as ``rainbow``. RGB on a 0–1 scale; top stripe first. These are
+# vivid (not the muted text shades) because the mark is a small solid graphic,
+# where saturated colours read as a recognisable flag.
+PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.894, 0.012, 0.012),  # red
+    (1.000, 0.549, 0.000),  # orange
+    (1.000, 0.929, 0.000),  # yellow
+    (0.000, 0.502, 0.149),  # green
+    (0.000, 0.302, 1.000),  # blue
+    (0.459, 0.027, 0.529),  # violet
 )
 
 
@@ -94,38 +94,43 @@ class TocGenerator:
                 else:
                     tw.write_text(page, color=color)
 
-    def _append_rainbow_title(
-        self,
-        writers: dict,
-        page_rect: fitz.Rect,
-        text: str,
-        x_start: float,
-        y_pos: float,
-    ) -> None:
-        """Append ``text`` one character at a time, cycling the rainbow palette.
+    def _pride_flag_size(self) -> Tuple[float, float, float]:
+        """Return (width, height, leading_gap) of the pride-flag mark, in points."""
+        height = self.config.text_fontsize * 0.72
+        width = height * 1.6  # ~flag aspect ratio
+        gap = self.text_font.text_length(" ", fontsize=self.config.text_fontsize)
+        return width, height, gap
 
-        Each visible character is routed to the per-colour TextWriter for its
-        rainbow colour (created on demand), so ``write_text`` paints it that
-        colour. Whitespace advances the pen without consuming a colour, keeping
-        the cycle aligned to letters across words.
+    @staticmethod
+    def _draw_marks(page: fitz.Page, marks: list) -> None:
+        """Draw deferred vector marks (e.g. pride flags) onto a finalised page."""
+        for x, baseline_y, width, height in marks:
+            TocGenerator._draw_pride_flag(page, x, baseline_y, width, height)
+
+    @staticmethod
+    def _draw_pride_flag(
+        page: fitz.Page, x: float, baseline_y: float, width: float, height: float
+    ) -> None:
+        """Draw a small six-stripe pride flag with its baseline near the text.
+
+        The flag bottom sits on the text baseline; stripes overlap by a hair to
+        avoid anti-aliasing seams, and a faint outline crisps it against white.
         """
-        x = x_start
-        color_index = 0
-        for char in text:
-            char_width = self.text_font.text_length(
-                char, fontsize=self.config.text_fontsize
+        stripes = PRIDE_FLAG_COLORS
+        stripe_h = height / len(stripes)
+        top = baseline_y - height
+        for i, color in enumerate(stripes):
+            y0 = top + i * stripe_h
+            # Extend the last stripe to the flag bottom; overlap others slightly.
+            y1 = baseline_y if i == len(stripes) - 1 else y0 + stripe_h + 0.15
+            page.draw_rect(
+                fitz.Rect(x, y0, x + width, y1), color=None, fill=color, width=0
             )
-            if not char.isspace():
-                color = RAINBOW_PALETTE[color_index % len(RAINBOW_PALETTE)]
-                tw = writers.setdefault(color, fitz.TextWriter(page_rect))
-                tw.append(
-                    (x, y_pos),
-                    char,
-                    font=self.text_font,
-                    fontsize=self.config.text_fontsize,
-                )
-                color_index += 1
-            x += char_width
+        page.draw_rect(
+            fitz.Rect(x, top, x + width, baseline_y),
+            color=(0.6, 0.6, 0.6),
+            width=0.3,
+        )
 
     def _add_toc_entry(
         self,
@@ -137,7 +142,10 @@ class TocGenerator:
         x_start: float,
         y_pos: float,
         current_page_index: int,
+        marks: Optional[list] = None,
     ):
+        if marks is None:
+            marks = []
         page_number_str = str(file_index + 1 + page_offset)
 
         # Get difficulty symbol
@@ -180,23 +188,25 @@ class TocGenerator:
             full_title, fontsize=self.config.text_fontsize
         )
 
-        # Draw the title. Rainbow entries paint each character in the next pride
-        # colour (across per-colour writers); otherwise the whole row shares one
-        # writer keyed by its colour. Dot leaders and the page number always use
-        # ``tw`` below: the matched colour for a plain row, or the default
-        # (None) writer for a rainbow row so they stay legible.
+        # The whole row shares one TextWriter keyed by its colour (default black
+        # unless a postfix sets a colour).
+        tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
+        tw.append(
+            (x_start, y_pos),
+            full_title,
+            font=self.text_font,
+            fontsize=self.config.text_fontsize,
+        )
+
+        # Rainbow entries get a small drawn pride flag after the title; reserve
+        # its horizontal span so the dot leaders start after it. The flag itself
+        # is a vector mark drawn when the page is finalised (see _draw_marks).
+        flag_advance = 0.0
         if entry_rainbow:
-            self._append_rainbow_title(writers, page_rect, full_title, x_start, y_pos)
-            tw = writers.setdefault(None, fitz.TextWriter(page_rect))
-        else:
-            # Each distinct color gets its own TextWriter so write_text() can apply it
-            tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
-            tw.append(
-                (x_start, y_pos),
-                full_title,
-                font=self.text_font,
-                fontsize=self.config.text_fontsize,
-            )
+            flag_w, flag_h, gap = self._pride_flag_size()
+            flag_x = x_start + title_width + gap
+            marks.append((flag_x, y_pos, flag_w, flag_h))
+            flag_advance = gap + flag_w + gap
 
         # Manually draw dots and page number to allow for different fonts
         page_num_width = self.page_number_font.text_length(
@@ -213,7 +223,7 @@ class TocGenerator:
         )
 
         # Draw dots
-        dots_start_x = x_start + title_width
+        dots_start_x = x_start + title_width + flag_advance
         dots_end_x = page_num_pos_x - self.text_font.text_length(
             " ", fontsize=self.config.text_fontsize
         )
@@ -287,6 +297,7 @@ class TocGenerator:
             return {None: tw_default}
 
         writers = new_writers()
+        marks: list = []  # deferred vector marks (pride flags) for the current page
         current_column = 0
         current_line_in_column = 0
         current_page_index = 0
@@ -301,7 +312,9 @@ class TocGenerator:
                         width=page_rect.width, height=page_rect.height
                     )
                     self._write_page_writers(page, writers)
+                    self._draw_marks(page, marks)
                     writers = new_writers()
+                    marks = []
 
             y_pos = (
                 self.config.title_height
@@ -317,12 +330,14 @@ class TocGenerator:
                 column_positions[current_column],
                 y_pos,
                 current_page_index,
+                marks,
             )
             current_line_in_column += 1
 
-        if any(tw.text_rect for tw in writers.values()):
+        if any(tw.text_rect for tw in writers.values()) or marks:
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
             self._write_page_writers(page, writers)
+            self._draw_marks(page, marks)
 
         return self.pdf
 
