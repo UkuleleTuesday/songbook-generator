@@ -548,9 +548,7 @@ def test_add_toc_entry_no_flag_mark_when_not_rainbow(mock_toc_generator, mocker)
     generator = mock_toc_generator
     match_filter = mocker.MagicMock(spec=PropertyFilter)
     match_filter.matches.return_value = True
-    generator.config.postfixes = [
-        TocPostfix(postfix=" ✓", filters=[match_filter])
-    ]
+    generator.config.postfixes = [TocPostfix(postfix=" ✓", filters=[match_filter])]
 
     marks = []
     generator._add_toc_entry(
