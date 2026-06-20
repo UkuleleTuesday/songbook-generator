@@ -15,6 +15,7 @@ sections:
   table_of_contents:
     postfixes:
       - postfix: " 🌈"
+        rainbow: true
         filters:
           - key: "theme"
             operator: "contains"

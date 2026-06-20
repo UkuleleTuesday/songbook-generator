@@ -49,6 +49,10 @@ class TocPostfix(BaseModel):
     filters: List[Union[FilterGroup, PropertyFilter]]
     color: Optional[tuple[float, float, float]] = None
     """RGB color (0–1 scale) applied to the entire TOC row when this postfix matches."""
+    rainbow: bool = False
+    """When true, draw the entry's title with a per-character rainbow pattern
+    (the pride flag colours, cycled letter by letter). Takes precedence over
+    ``color`` for the title text; dot leaders and the page number stay default."""
 
 
 class Toc(BaseModel):

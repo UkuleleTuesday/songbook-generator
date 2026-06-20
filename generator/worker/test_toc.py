@@ -505,6 +505,84 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     default_tw.append.assert_not_called()
 
 
+def test_add_toc_entry_rainbow_paints_each_character(mock_toc_generator, mocker):
+    """A rainbow postfix routes title characters across the rainbow palette writers."""
+    generator = mock_toc_generator
+    default_tw = MagicMock(spec=fitz.TextWriter)
+    # Each new writer (one per rainbow colour) is a distinct mock we can inspect.
+    mocker.patch(
+        "generator.worker.toc.fitz.TextWriter",
+        side_effect=lambda *a, **k: MagicMock(),
+    )
+
+    match_filter = mocker.MagicMock(spec=PropertyFilter)
+    match_filter.matches.return_value = True
+    postfix_config = TocPostfix(postfix="", filters=[match_filter], rainbow=True)
+    generator.config.postfixes = [postfix_config]
+
+    writers = {None: default_tw}
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="ABC", properties={}),
+        25,
+        70,
+        0,
+    )
+
+    # Each of the three letters lands on its own palette-colour writer.
+    for color in toc.RAINBOW_PALETTE[:3]:
+        assert color in writers
+    # The title characters are NOT drawn on the default writer...
+    titles_on_default = [
+        c.args[1] for c in default_tw.append.call_args_list if c.args[1] in "ABC"
+    ]
+    assert titles_on_default == []
+    # ...but dot leaders and the page number still are.
+    assert default_tw.append.called
+
+    # Letters were distributed one per palette writer, in order.
+    red_tw = writers[toc.RAINBOW_PALETTE[0]]
+    orange_tw = writers[toc.RAINBOW_PALETTE[1]]
+    yellow_tw = writers[toc.RAINBOW_PALETTE[2]]
+    assert red_tw.append.call_args.args[1] == "A"
+    assert orange_tw.append.call_args.args[1] == "B"
+    assert yellow_tw.append.call_args.args[1] == "C"
+
+
+def test_add_toc_entry_rainbow_skips_whitespace_in_cycle(mock_toc_generator, mocker):
+    """Spaces advance the pen without consuming a rainbow colour."""
+    generator = mock_toc_generator
+    mocker.patch(
+        "generator.worker.toc.fitz.TextWriter",
+        side_effect=lambda *a, **k: MagicMock(),
+    )
+    match_filter = mocker.MagicMock(spec=PropertyFilter)
+    match_filter.matches.return_value = True
+    generator.config.postfixes = [
+        TocPostfix(postfix="", filters=[match_filter], rainbow=True)
+    ]
+
+    writers = {None: MagicMock()}
+    # "A B" -> 'A' is red (index 0), the space is skipped, 'B' is orange (index 1).
+    generator._add_toc_entry(
+        writers, PAGE_RECT, 0, 0, File(id="1", name="A B", properties={}), 25, 70, 0
+    )
+
+    red_tw = writers[toc.RAINBOW_PALETTE[0]]
+    orange_tw = writers[toc.RAINBOW_PALETTE[1]]
+    assert red_tw.append.call_args.args[1] == "A"
+    assert orange_tw.append.call_args.args[1] == "B"
+    # No writer received a space.
+    for color, tw in writers.items():
+        if color is None:
+            continue
+        for call in tw.append.call_args_list:
+            assert call.args[1].strip() != ""
+
+
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):
     """Verify that assign_difficulty_bins is called."""
     mock_assign_bins = mocker.patch("generator.worker.toc.assign_difficulty_bins")

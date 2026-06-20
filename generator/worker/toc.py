@@ -17,6 +17,18 @@ DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
+# Pride-flag rainbow, cycled one colour per (non-space) character for entries a
+# postfix flags as ``rainbow``. RGB on a 0–1 scale; the yellow is darkened from
+# the literal flag colour so it stays legible on white paper.
+RAINBOW_PALETTE: Tuple[Tuple[float, float, float], ...] = (
+    (0.84, 0.00, 0.00),  # red
+    (0.95, 0.49, 0.00),  # orange
+    (0.86, 0.67, 0.00),  # yellow (darkened for contrast)
+    (0.00, 0.50, 0.15),  # green
+    (0.00, 0.30, 0.80),  # blue
+    (0.46, 0.00, 0.54),  # violet
+)
+
 
 def difficulty_symbol(difficulty_bin: int) -> str:
     """Return a symbol representing the difficulty level from a bin."""
@@ -81,6 +93,39 @@ class TocGenerator:
                 else:
                     tw.write_text(page, color=color)
 
+    def _append_rainbow_title(
+        self,
+        writers: dict,
+        page_rect: fitz.Rect,
+        text: str,
+        x_start: float,
+        y_pos: float,
+    ) -> None:
+        """Append ``text`` one character at a time, cycling the rainbow palette.
+
+        Each visible character is routed to the per-colour TextWriter for its
+        rainbow colour (created on demand), so ``write_text`` paints it that
+        colour. Whitespace advances the pen without consuming a colour, keeping
+        the cycle aligned to letters across words.
+        """
+        x = x_start
+        color_index = 0
+        for char in text:
+            char_width = self.text_font.text_length(
+                char, fontsize=self.config.text_fontsize
+            )
+            if not char.isspace():
+                color = RAINBOW_PALETTE[color_index % len(RAINBOW_PALETTE)]
+                tw = writers.setdefault(color, fitz.TextWriter(page_rect))
+                tw.append(
+                    (x, y_pos),
+                    char,
+                    font=self.text_font,
+                    fontsize=self.config.text_fontsize,
+                )
+                color_index += 1
+            x += char_width
+
     def _add_toc_entry(
         self,
         writers: dict,
@@ -110,6 +155,7 @@ class TocGenerator:
         # Add any custom postfixes; first matched color wins for the whole row
         postfix_str = ""
         entry_color: Optional[tuple[float, float, float]] = None
+        entry_rainbow = False
         if self.config.postfixes:
             for postfix_config in self.config.postfixes:
                 for p_filter in postfix_config.filters:
@@ -117,6 +163,8 @@ class TocGenerator:
                         postfix_str += postfix_config.postfix
                         if entry_color is None and postfix_config.color is not None:
                             entry_color = postfix_config.color
+                        if postfix_config.rainbow:
+                            entry_rainbow = True
                         break  # Stop checking filters for this postfix config
 
         shortened_title = self._generate_toc_title(
@@ -127,19 +175,27 @@ class TocGenerator:
 
         full_title = f"{symbol}{shortened_title}{postfix_str}"
 
-        # Each distinct color gets its own TextWriter so write_text() can apply it
-        tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
-
-        tw.append(
-            (x_start, y_pos),
-            full_title,
-            font=self.text_font,
-            fontsize=self.config.text_fontsize,
-        )
-
         title_width = self.text_font.text_length(
             full_title, fontsize=self.config.text_fontsize
         )
+
+        # Draw the title. Rainbow entries paint each character in the next pride
+        # colour (across per-colour writers); otherwise the whole row shares one
+        # writer keyed by its colour. Dot leaders and the page number always use
+        # ``tw`` below: the matched colour for a plain row, or the default
+        # (None) writer for a rainbow row so they stay legible.
+        if entry_rainbow:
+            self._append_rainbow_title(writers, page_rect, full_title, x_start, y_pos)
+            tw = writers.setdefault(None, fitz.TextWriter(page_rect))
+        else:
+            # Each distinct color gets its own TextWriter so write_text() can apply it
+            tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
+            tw.append(
+                (x_start, y_pos),
+                full_title,
+                font=self.text_font,
+                fontsize=self.config.text_fontsize,
+            )
 
         # Manually draw dots and page number to allow for different fonts
         page_num_width = self.page_number_font.text_length(
