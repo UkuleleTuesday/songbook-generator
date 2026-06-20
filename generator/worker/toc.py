@@ -18,15 +18,16 @@ DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
 # Pride-flag rainbow, cycled one colour per (non-space) character for entries a
-# postfix flags as ``rainbow``. RGB on a 0–1 scale; the yellow is darkened from
-# the literal flag colour so it stays legible on white paper.
+# postfix flags as ``rainbow``. RGB on a 0–1 scale: deliberately deep/muted
+# shades so the pattern reads as a subtle rainbow rather than a bright one and
+# stays legible on white paper.
 RAINBOW_PALETTE: Tuple[Tuple[float, float, float], ...] = (
-    (0.84, 0.00, 0.00),  # red
-    (0.95, 0.49, 0.00),  # orange
-    (0.86, 0.67, 0.00),  # yellow (darkened for contrast)
-    (0.00, 0.50, 0.15),  # green
-    (0.00, 0.30, 0.80),  # blue
-    (0.46, 0.00, 0.54),  # violet
+    (0.60, 0.05, 0.05),  # deep red
+    (0.66, 0.33, 0.03),  # burnt orange
+    (0.52, 0.40, 0.00),  # dark gold
+    (0.05, 0.33, 0.12),  # dark green
+    (0.06, 0.20, 0.48),  # indigo blue
+    (0.33, 0.06, 0.40),  # dark violet
 )
 
 
