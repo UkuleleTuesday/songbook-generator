@@ -110,8 +110,7 @@ Configuration sources (in order of precedence):
 2. Model defaults defined in `generator/common/config.py`
 
 Per-edition settings (cover, table of contents, song filters) are loaded
-separately from the YAML files in `generator/config/songbooks/`. There is no
-TOML config file — `~/.config/songbook-generator/config.toml` is not read.
+separately from the YAML files in `generator/config/songbooks/`.
 
 ### Error Handling Pattern
 

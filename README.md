@@ -199,7 +199,7 @@ Configuration is defined by the Pydantic `Settings` model in
 `generator/common/config.py`. Sensible defaults live in that model, and you
 override them at runtime with **environment variables** (most easily via a
 `.env` file in the repo root — see `.env` for the defaults used in CI and
-deployment). There is no separate per-user config file.
+deployment).
 
 The most useful variables for local CLI work are:
 
