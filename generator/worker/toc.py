@@ -165,8 +165,8 @@ class TocGenerator:
         # colour wins for the whole row.
         entry_badges = []
         entry_color: Optional[tuple[float, float, float]] = None
-        if self.config.postfixes:
-            for decoration in self.config.postfixes:
+        if self.config.decorations:
+            for decoration in self.config.decorations:
                 for p_filter in decoration.filters:
                     if p_filter.matches({**file.properties, "name": file.name}):
                         entry_badges.extend(decoration.badges)

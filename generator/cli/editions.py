@@ -143,9 +143,9 @@ def _warn_complex_edition_features(edition: config.Edition) -> None:
             err=True,
         )
     toc = edition.sections.table_of_contents
-    if toc is not None and toc.postfixes:
+    if toc is not None and toc.decorations:
         click.echo(
-            "Warning: This edition has Table of Contents postfixes. "
+            "Warning: This edition has Table of Contents decorations. "
             "These can only be modified by editing the .songbook.yaml "
             "file directly in Google Drive.",
             err=True,

@@ -287,7 +287,7 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = True
     postfix_config = TocDecoration(badges=[TocBadge(text=" 🎃")], filters=[mock_filter])
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     file = File(id="1", name="Monster Mash", properties={"tags": "halloween"})
 
@@ -317,7 +317,7 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = False
     postfix_config = TocDecoration(badges=[TocBadge(text=" 🎃")], filters=[mock_filter])
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     file = File(id="1", name="Jingle Bells", properties={"tags": "christmas"})
 
@@ -372,7 +372,7 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator, mocker
     postfix_config = TocDecoration(
         badges=[TocBadge(text=" ✓")], filters=[name_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     # Confirmed song: routes to a dedicated color writer, not default_tw
     writers = {None: default_tw}
@@ -419,7 +419,7 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
     postfix_config = TocDecoration(
         badges=[TocBadge(text=" ✓")], filters=[mock_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     writers = {None: default_tw}
     generator._add_toc_entry(
@@ -449,7 +449,7 @@ def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocke
     postfix_config = TocDecoration(
         badges=[TocBadge(text=" ✓")], filters=[mock_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     writers = _writers(mock_tw)
     generator._add_toc_entry(
@@ -486,7 +486,7 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     postfix_second = TocDecoration(
         badges=[TocBadge(text=" 🌈")], filters=[matching_filter], color=(1.0, 0.0, 0.5)
     )
-    generator.config.postfixes = [postfix_first, postfix_second]
+    generator.config.decorations = [postfix_first, postfix_second]
 
     writers = {None: default_tw}
     generator._add_toc_entry(
@@ -516,7 +516,7 @@ def test_add_toc_entry_pride_flag_marker_registers_flag_mark(
 
     match_filter = mocker.MagicMock(spec=PropertyFilter)
     match_filter.matches.return_value = True
-    generator.config.postfixes = [
+    generator.config.decorations = [
         TocDecoration(
             filters=[match_filter], badges=[TocBadge(symbol=TocSymbol.PRIDE_FLAG)]
         )
@@ -554,7 +554,7 @@ def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
     generator = mock_toc_generator
     match_filter = mocker.MagicMock(spec=PropertyFilter)
     match_filter.matches.return_value = True
-    generator.config.postfixes = [
+    generator.config.decorations = [
         TocDecoration(badges=[TocBadge(text=" ✓")], filters=[match_filter])
     ]
 

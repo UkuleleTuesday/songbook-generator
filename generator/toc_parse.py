@@ -149,7 +149,7 @@ def parse_toc_songs(
     config = toc_config or get_settings().toc
     postfixes = [
         badge.text.strip()
-        for decoration in (config.postfixes or [])
+        for decoration in (config.decorations or [])
         for badge in decoration.badges
         if badge.text
     ]
