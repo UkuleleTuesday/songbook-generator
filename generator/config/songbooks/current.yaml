@@ -16,10 +16,28 @@ sections:
     decorations:
       - badges:
           - symbol: pride-flag
+        # Filters within a decoration are OR-ed: a song gets the pride flag if
+        # its `theme` metadata contains "pride" OR its name is in the explicit
+        # list below.
         filters:
           - key: "theme"
             operator: "contains"
             value: "pride"
+          # Manual workaround for #425: the LLM theme tagger only considers a
+          # song's lyrics/subject matter, so songs that qualify for pride by
+          # *artist identity/association* (rather than content) never get
+          # `theme=pride` and so miss the flag in the TOC. Pin them by name
+          # here until the tagger prompt is fixed and the catalogue retagged.
+          - key: "name"
+            operator: "in"
+            value:
+              - "BIRDS OF A FEATHER - Billie Eilish"
+              - "Can't Get You out of My Head - Kylie Minogue"
+              - "Flowers - Miley Cyrus"
+              - "Hot Stuff (Single Version) - Donna Summer"
+              - "I Only Want To Be With You - Dusty Springfield"
+              - "Jolene - Dolly Parton"
+              - "Waterloo - ABBA"
     # decorations:
     #   - badges:
     #       - text: " ☘"
