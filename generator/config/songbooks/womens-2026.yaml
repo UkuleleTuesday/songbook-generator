@@ -18,7 +18,7 @@ sections:
     margin_right: 120
     margin_top: 10
     margin_bottom: 10
-    postfixes: []
+    decorations: []
   songs:
     filters:
       - key: "specialbooks"

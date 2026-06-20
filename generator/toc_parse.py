@@ -147,7 +147,12 @@ def parse_toc_songs(
     in the *shortened* form the TOC renders.
     """
     config = toc_config or get_settings().toc
-    postfixes = [pf.postfix.strip() for pf in (config.postfixes or []) if pf.postfix]
+    postfixes = [
+        badge.text.strip()
+        for decoration in (config.decorations or [])
+        for badge in decoration.badges
+        if badge.text
+    ]
 
     lines: list[str] = []
     for i in find_toc_pages(doc, page_indices):

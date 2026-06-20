@@ -7,7 +7,7 @@ from .toc import (
 )
 from .models import File
 from . import toc
-from ..common.config import TocPostfix
+from ..common.config import TocBadge, TocDecoration, TocSymbol
 from ..common.filters import PropertyFilter
 
 
@@ -286,8 +286,8 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
     # Mock filter logic
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = True
-    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
-    generator.config.postfixes = [postfix_config]
+    postfix_config = TocDecoration(badges=[TocBadge(text=" 🎃")], filters=[mock_filter])
+    generator.config.decorations = [postfix_config]
 
     file = File(id="1", name="Monster Mash", properties={"tags": "halloween"})
 
@@ -302,8 +302,10 @@ def test_add_toc_entry_with_postfix(mock_toc_generator, mocker):
         current_page_index=0,
     )
 
-    appended_title = mock_tw.append.call_args_list[0].args[1]
-    assert "Monster Mash 🎃" in appended_title
+    appends = [c.args[1] for c in mock_tw.append.call_args_list]
+    # Title and badge are separate appends now (title first, badge after).
+    assert appends[0] == "Monster Mash"
+    assert " 🎃" in appends
 
 
 def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
@@ -314,8 +316,8 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
     # Mock filter logic
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = False
-    postfix_config = TocPostfix(postfix=" 🎃", filters=[mock_filter])
-    generator.config.postfixes = [postfix_config]
+    postfix_config = TocDecoration(badges=[TocBadge(text=" 🎃")], filters=[mock_filter])
+    generator.config.decorations = [postfix_config]
 
     file = File(id="1", name="Jingle Bells", properties={"tags": "christmas"})
 
@@ -330,9 +332,9 @@ def test_add_toc_entry_with_postfix_no_match(mock_toc_generator, mocker):
         current_page_index=0,
     )
 
-    appended_title = mock_tw.append.call_args_list[0].args[1]
-    assert "Jingle Bells" in appended_title
-    assert "🎃" not in appended_title
+    appends = [c.args[1] for c in mock_tw.append.call_args_list]
+    assert appends[0] == "Jingle Bells"
+    assert all("🎃" not in a for a in appends)
 
 
 def test_add_toc_entry_ready_to_play_status_marker_disabled(mock_toc_generator):
@@ -367,10 +369,10 @@ def test_add_toc_entry_postfix_filter_matches_on_name(mock_toc_generator, mocker
     mocker.patch("generator.worker.toc.fitz.TextWriter", return_value=color_tw)
 
     name_filter = PropertyFilter(key="name", operator="in", value=["Confirmed Song"])
-    postfix_config = TocPostfix(
-        postfix=" ✓", filters=[name_filter], color=(0.6, 0.6, 0.6)
+    postfix_config = TocDecoration(
+        badges=[TocBadge(text=" ✓")], filters=[name_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     # Confirmed song: routes to a dedicated color writer, not default_tw
     writers = {None: default_tw}
@@ -414,10 +416,10 @@ def test_add_toc_entry_with_postfix_color(mock_toc_generator, mocker):
 
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = True
-    postfix_config = TocPostfix(
-        postfix=" ✓", filters=[mock_filter], color=(0.6, 0.6, 0.6)
+    postfix_config = TocDecoration(
+        badges=[TocBadge(text=" ✓")], filters=[mock_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     writers = {None: default_tw}
     generator._add_toc_entry(
@@ -444,10 +446,10 @@ def test_add_toc_entry_no_color_when_postfix_unmatched(mock_toc_generator, mocke
 
     mock_filter = mocker.MagicMock(spec=PropertyFilter)
     mock_filter.matches.return_value = False
-    postfix_config = TocPostfix(
-        postfix=" ✓", filters=[mock_filter], color=(0.6, 0.6, 0.6)
+    postfix_config = TocDecoration(
+        badges=[TocBadge(text=" ✓")], filters=[mock_filter], color=(0.6, 0.6, 0.6)
     )
-    generator.config.postfixes = [postfix_config]
+    generator.config.decorations = [postfix_config]
 
     writers = _writers(mock_tw)
     generator._add_toc_entry(
@@ -478,13 +480,13 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     matching_filter = mocker.MagicMock(spec=PropertyFilter)
     matching_filter.matches.return_value = True
 
-    postfix_first = TocPostfix(
-        postfix=" ✓", filters=[matching_filter], color=(0.6, 0.6, 0.6)
+    postfix_first = TocDecoration(
+        badges=[TocBadge(text=" ✓")], filters=[matching_filter], color=(0.6, 0.6, 0.6)
     )
-    postfix_second = TocPostfix(
-        postfix=" 🌈", filters=[matching_filter], color=(1.0, 0.0, 0.5)
+    postfix_second = TocDecoration(
+        badges=[TocBadge(text=" 🌈")], filters=[matching_filter], color=(1.0, 0.0, 0.5)
     )
-    generator.config.postfixes = [postfix_first, postfix_second]
+    generator.config.decorations = [postfix_first, postfix_second]
 
     writers = {None: default_tw}
     generator._add_toc_entry(
@@ -503,6 +505,88 @@ def test_add_toc_entry_first_matched_color_wins(mock_toc_generator, mocker):
     assert (1.0, 0.0, 0.5) not in writers
     # Default writer not used
     default_tw.append.assert_not_called()
+
+
+def test_add_toc_entry_pride_flag_marker_registers_flag_mark(
+    mock_toc_generator, mocker
+):
+    """A pride_flag marker registers a flag mark and draws the title plainly."""
+    generator = mock_toc_generator
+    default_tw = MagicMock(spec=fitz.TextWriter)
+
+    match_filter = mocker.MagicMock(spec=PropertyFilter)
+    match_filter.matches.return_value = True
+    generator.config.decorations = [
+        TocDecoration(
+            filters=[match_filter], badges=[TocBadge(symbol=TocSymbol.PRIDE_FLAG)]
+        )
+    ]
+
+    writers = {None: default_tw}
+    marks = []
+    generator._add_toc_entry(
+        writers,
+        PAGE_RECT,
+        0,
+        0,
+        File(id="1", name="ABC", properties={}),
+        25,
+        70,
+        0,
+        marks,
+    )
+
+    # The title is drawn normally on the default writer (no per-colour writers).
+    assert list(writers.keys()) == [None]
+    assert default_tw.append.call_args_list[0].args[1] == "ABC"
+
+    # Exactly one flag mark, positioned after the title (x_start + title_width + gap).
+    assert len(marks) == 1
+    flag_x, flag_y, flag_w, flag_h = marks[0]
+    # title "ABC" width = 3*5 = 15 (mock font), gap = text_length(" ") = 5.
+    assert flag_x == 25 + 15 + 5
+    assert flag_y == 70
+    assert flag_w > 0 and flag_h > 0
+
+
+def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
+    """An entry without a marker registers no marks."""
+    generator = mock_toc_generator
+    match_filter = mocker.MagicMock(spec=PropertyFilter)
+    match_filter.matches.return_value = True
+    generator.config.decorations = [
+        TocDecoration(badges=[TocBadge(text=" ✓")], filters=[match_filter])
+    ]
+
+    marks = []
+    generator._add_toc_entry(
+        writers=_writers(MagicMock(spec=fitz.TextWriter)),
+        page_rect=PAGE_RECT,
+        file_index=0,
+        page_offset=0,
+        file=File(id="1", name="Plain Song", properties={}),
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+        marks=marks,
+    )
+
+    assert marks == []
+
+
+def test_draw_pride_flag_draws_all_stripes_and_border(mocker):
+    """_draw_marks paints one rect per flag stripe plus an outline."""
+    page = MagicMock(spec=fitz.Page)
+    marks = [(45.0, 70.0, 11.5, 7.2)]
+
+    toc.TocGenerator._draw_marks(page, marks)
+
+    # Six stripes + one border rectangle.
+    assert page.draw_rect.call_count == len(toc.PRIDE_FLAG_COLORS) + 1
+    # Stripe fills use the pride-flag palette colours.
+    fills = [c.kwargs.get("fill") for c in page.draw_rect.call_args_list]
+    assert toc.PRIDE_FLAG_COLORS[0] in fills
+    assert toc.PRIDE_FLAG_COLORS[-1] in fills
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):

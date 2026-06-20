@@ -8,7 +8,7 @@ from ..common.tracing import get_tracer
 from ..common.titles import generate_short_title
 from .difficulty import assign_difficulty_bins
 from .models import File
-from ..common.config import get_settings, Toc
+from ..common.config import get_settings, Toc, TocSymbol
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -16,6 +16,19 @@ tracer = get_tracer(__name__)
 DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
+
+# Classic six-stripe pride flag, drawn as a small vector mark next to entries a
+# a ``TocSymbol.PRIDE_FLAG`` badge. RGB on a 0–1 scale; top stripe
+# first. Vivid (not the muted text shades) because the mark is a small solid
+# graphic, where saturated colours read as a recognisable flag.
+PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.894, 0.012, 0.012),  # red
+    (1.000, 0.549, 0.000),  # orange
+    (1.000, 0.929, 0.000),  # yellow
+    (0.000, 0.502, 0.149),  # green
+    (0.000, 0.302, 1.000),  # blue
+    (0.459, 0.027, 0.529),  # violet
+)
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:
@@ -81,6 +94,44 @@ class TocGenerator:
                 else:
                     tw.write_text(page, color=color)
 
+    def _pride_flag_size(self) -> Tuple[float, float, float]:
+        """Return (width, height, leading_gap) of the pride-flag mark, in points."""
+        height = self.config.text_fontsize * 0.72
+        width = height * 1.6  # ~flag aspect ratio
+        gap = self.text_font.text_length(" ", fontsize=self.config.text_fontsize)
+        return width, height, gap
+
+    @staticmethod
+    def _draw_marks(page: fitz.Page, marks: list) -> None:
+        """Draw deferred vector marks (e.g. pride flags) onto a finalised page."""
+        for x, baseline_y, width, height in marks:
+            TocGenerator._draw_pride_flag(page, x, baseline_y, width, height)
+
+    @staticmethod
+    def _draw_pride_flag(
+        page: fitz.Page, x: float, baseline_y: float, width: float, height: float
+    ) -> None:
+        """Draw a small six-stripe pride flag with its baseline near the text.
+
+        The flag bottom sits on the text baseline; stripes overlap by a hair to
+        avoid anti-aliasing seams, and a faint outline crisps it against white.
+        """
+        stripes = PRIDE_FLAG_COLORS
+        stripe_h = height / len(stripes)
+        top = baseline_y - height
+        for i, color in enumerate(stripes):
+            y0 = top + i * stripe_h
+            # Extend the last stripe to the flag bottom; overlap others slightly.
+            y1 = baseline_y if i == len(stripes) - 1 else y0 + stripe_h + 0.15
+            page.draw_rect(
+                fitz.Rect(x, y0, x + width, y1), color=None, fill=color, width=0
+            )
+        page.draw_rect(
+            fitz.Rect(x, top, x + width, baseline_y),
+            color=(0.6, 0.6, 0.6),
+            width=0.3,
+        )
+
     def _add_toc_entry(
         self,
         writers: dict,
@@ -91,7 +142,10 @@ class TocGenerator:
         x_start: float,
         y_pos: float,
         current_page_index: int,
+        marks: Optional[list] = None,
     ):
+        if marks is None:
+            marks = []
         page_number_str = str(file_index + 1 + page_offset)
 
         # Get difficulty symbol
@@ -107,39 +161,62 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        # Add any custom postfixes; first matched color wins for the whole row
-        postfix_str = ""
+        # Collect badges from all matching decorations (in order); first matched
+        # colour wins for the whole row.
+        entry_badges = []
         entry_color: Optional[tuple[float, float, float]] = None
-        if self.config.postfixes:
-            for postfix_config in self.config.postfixes:
-                for p_filter in postfix_config.filters:
+        if self.config.decorations:
+            for decoration in self.config.decorations:
+                for p_filter in decoration.filters:
                     if p_filter.matches({**file.properties, "name": file.name}):
-                        postfix_str += postfix_config.postfix
-                        if entry_color is None and postfix_config.color is not None:
-                            entry_color = postfix_config.color
-                        break  # Stop checking filters for this postfix config
+                        entry_badges.extend(decoration.badges)
+                        if entry_color is None and decoration.color is not None:
+                            entry_color = decoration.color
+                        break  # Stop checking filters for this decoration
 
+        # Text badges share the title's character budget so the row still fits.
+        text_badge_len = sum(len(b.text) for b in entry_badges if b.text is not None)
         shortened_title = self._generate_toc_title(
             file.name,
-            max_length=self.config.max_toc_entry_length - len(postfix_str),
+            max_length=self.config.max_toc_entry_length - text_badge_len,
             is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
 
-        full_title = f"{symbol}{shortened_title}{postfix_str}"
+        title_text = f"{symbol}{shortened_title}"
 
-        # Each distinct color gets its own TextWriter so write_text() can apply it
+        # The whole row shares one TextWriter keyed by its colour (default black
+        # unless a decoration sets one).
         tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
-
         tw.append(
             (x_start, y_pos),
-            full_title,
+            title_text,
             font=self.text_font,
             fontsize=self.config.text_fontsize,
         )
 
-        title_width = self.text_font.text_length(
-            full_title, fontsize=self.config.text_fontsize
+        # Lay out trailing badges after the title, in order. Text badges are
+        # appended in the row colour; symbol badges are deferred vector marks
+        # drawn when the page is finalised (see _draw_marks). ``x`` tracks the pen
+        # so the dot leaders start after the last badge.
+        x = x_start + self.text_font.text_length(
+            title_text, fontsize=self.config.text_fontsize
         )
+        for badge in entry_badges:
+            if badge.text is not None:
+                tw.append(
+                    (x, y_pos),
+                    badge.text,
+                    font=self.text_font,
+                    fontsize=self.config.text_fontsize,
+                )
+                x += self.text_font.text_length(
+                    badge.text, fontsize=self.config.text_fontsize
+                )
+            elif badge.symbol is TocSymbol.PRIDE_FLAG:
+                flag_w, flag_h, gap = self._pride_flag_size()
+                x += gap
+                marks.append((x, y_pos, flag_w, flag_h))
+                x += flag_w + gap
 
         # Manually draw dots and page number to allow for different fonts
         page_num_width = self.page_number_font.text_length(
@@ -156,7 +233,7 @@ class TocGenerator:
         )
 
         # Draw dots
-        dots_start_x = x_start + title_width
+        dots_start_x = x
         dots_end_x = page_num_pos_x - self.text_font.text_length(
             " ", fontsize=self.config.text_fontsize
         )
@@ -230,6 +307,7 @@ class TocGenerator:
             return {None: tw_default}
 
         writers = new_writers()
+        marks: list = []  # deferred vector marks (pride flags) for the current page
         current_column = 0
         current_line_in_column = 0
         current_page_index = 0
@@ -244,7 +322,9 @@ class TocGenerator:
                         width=page_rect.width, height=page_rect.height
                     )
                     self._write_page_writers(page, writers)
+                    self._draw_marks(page, marks)
                     writers = new_writers()
+                    marks = []
 
             y_pos = (
                 self.config.title_height
@@ -260,12 +340,14 @@ class TocGenerator:
                 column_positions[current_column],
                 y_pos,
                 current_page_index,
+                marks,
             )
             current_line_in_column += 1
 
-        if any(tw.text_rect for tw in writers.values()):
+        if any(tw.text_rect for tw in writers.values()) or marks:
             page = self.pdf.new_page(width=page_rect.width, height=page_rect.height)
             self._write_page_writers(page, writers)
+            self._draw_marks(page, marks)
 
         return self.pdf
 

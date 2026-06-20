@@ -8,19 +8,21 @@ description: >
   so make sure to download the latest version!
 sections:
   cover:
-    file_id: "1l0YGV0UD-ZxTrsuaY8WcMlHybrhz3BdpgIKqhTEyRLY"
+    file_id: "19cmazq_tGLRYivC396Iemz7gWtPHhfL0gSN-gIcld8M"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
-    postfixes:
-      - postfix: " 🌈"
+    decorations:
+      - badges:
+          - symbol: pride-flag
         filters:
           - key: "theme"
             operator: "contains"
             value: "pride"
-    # postfixes:
-    #   - postfix: " ☘"
+    # decorations:
+    #   - badges:
+    #       - text: " ☘"
     #     filters:
     #       - key: "country"
     #         operator: "contains"
@@ -35,8 +37,8 @@ sections:
           - "Accidentally in Love - Counting Crows"
           - "All These Things That I've Done - The Killers"
           - "All The Small Things - Blink-182"
+          - "All The Things She Said - t.A.T.u."
           - "Angels - Robbie Williams"
-          - "An Poc Ar Buile (The Mad Puck Goat) - The Chieftains"
           - "Baby One More Time - Britney Spears"
           - "Bad Moon Rising - Creedence Clearwater Revival"
           - "Basket Case - Green Day"
@@ -68,7 +70,6 @@ sections:
           - "Faith - George Michael"
           - "Flowers - Miley Cyrus"
           - "Friday I'm In Love - The Cure"
-          - "Gangsta's Paradise - Coolio, L.V."
           - "Grace Kelly - MIKA"
           - "Hand in My Pocket - Alanis Morissette"
           - "Happy Birthday To You (in D) - Traditional"
@@ -104,6 +105,7 @@ sections:
           - "Livin' on a Prayer - Bon Jovi"
           - "Love Machine - Girls Aloud"
           - "Love Me Do - The Beatles"
+          - "Mamma Mia - ABBA"
           - "Man! I Feel Like A Woman! - Shania Twain"
           - "Material Girl - Madonna"
           - "Murder On The Dancefloor - Sophie Ellis-Bextor"
@@ -138,6 +140,7 @@ sections:
           - "Torn - Natalie Imbruglia"
           - "Toxic - Britney Spears"
           - "Tree Hugger - Kimya Dawson & Antsy Pants"
+          - "True Trans Soul Rebel - Against Me!"
           - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
           - "vampire - Olivia Rodrigo"
           - "Venus - Bananarama"
@@ -146,11 +149,9 @@ sections:
           - "Waterloo - ABBA"
           - "What's Up? - 4 Non Blondes"
           - "Where's Me Jumper? - Sultans Of Ping F.C."
-          - "Whiskey in the Jar - Thin Lizzy"
           - "With Or Without You - U2"
           - "Wrecking Ball - Miley Cyrus"
           - "You're So Vain - Carly Simon"
           - "(You're the) Devil in Disguise - Elvis Presley"
-          - "You're The One That I Want - John Travolta, Olivia Newton-John"
           - "You've Got The Love - Florence + The Machine"
           - "Zombie - The Cranberries"

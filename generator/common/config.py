@@ -1,5 +1,6 @@
 import os
 import yaml
+from enum import Enum
 from functools import lru_cache
 from typing import List, Literal, Optional, Union
 
@@ -42,13 +43,42 @@ class Cover(BaseModel):
     file_id: Optional[str] = None
 
 
-class TocPostfix(BaseModel):
-    """Configuration for a single TOC entry postfix."""
+class TocSymbol(str, Enum):
+    """A symbol we draw ourselves as a TOC badge (crisp at any size)."""
 
-    postfix: str
+    PRIDE_FLAG = "pride-flag"
+
+
+class TocBadge(BaseModel):
+    """A single trailing badge on a TOC entry.
+
+    Exactly one kind: inline ``text`` (an emoji/glyph rendered in the TOC font)
+    or a ``symbol`` we draw ourselves. They are the same idea — a small mark
+    after the title — differing only in how they're rendered.
+    """
+
+    text: Optional[str] = None
+    symbol: Optional[TocSymbol] = None
+
+    @model_validator(mode="after")
+    def _exactly_one_kind(self):
+        if (self.text is None) == (self.symbol is None):
+            raise ValueError("TocBadge requires exactly one of 'text' or 'symbol'")
+        return self
+
+
+class TocDecoration(BaseModel):
+    """A decoration applied to TOC entries whose properties match ``filters``.
+
+    Tints the row with ``color`` and/or appends one or more ``badges`` (inline
+    text or drawn symbols) after the title.
+    """
+
     filters: List[Union[FilterGroup, PropertyFilter]]
     color: Optional[tuple[float, float, float]] = None
-    """RGB color (0–1 scale) applied to the entire TOC row when this postfix matches."""
+    """RGB color (0–1 scale) applied to the entire TOC row when this matches."""
+    badges: List[TocBadge] = []
+    """Trailing badges drawn after the title, in order."""
 
 
 class Toc(BaseModel):
@@ -70,7 +100,7 @@ class Toc(BaseModel):
     max_toc_entry_length: int = 52
     include_difficulty: bool = True
     include_wip_marker: bool = True
-    postfixes: Optional[List[TocPostfix]] = None
+    decorations: Optional[List[TocDecoration]] = None
 
     @field_validator(
         "*",

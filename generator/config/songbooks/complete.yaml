@@ -7,18 +7,21 @@ sections:
     file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
   table_of_contents:
     # Include a pumpkin for songs tagged as `halloween`
-    postfixes:
-      - postfix: " 🎃"
+    decorations:
+      - badges:
+          - text: " 🎃"
         filters:
           - key: "theme"
             operator: "contains"
             value: "halloween"
-      - postfix: " 🎄"
+      - badges:
+          - text: " 🎄"
         filters:
           - key: "theme"
             operator: "contains"
             value: "christmas"
-      - postfix: " ☘"
+      - badges:
+          - text: " ☘"
         filters:
           - key: "country"
             operator: "contains"
