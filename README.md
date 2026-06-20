@@ -195,34 +195,40 @@ For testing the complete web application including the asynchronous job processi
 
 #### Local CLI Configuration
 
-The CLI uses a configuration file located at:
+Configuration is defined by the Pydantic `Settings` model in
+`generator/common/config.py`. Sensible defaults live in that model, and you
+override them at runtime with **environment variables** (most easily via a
+`.env` file in the repo root — see `.env` for the defaults used in CI and
+deployment).
 
-```bash
-~/.config/songbook-generator/config.toml
-```
+The most useful variables for local CLI work are:
 
-This file allows you to specify folder IDs, fonts, and other settings. Example structure:
+| Variable | Overrides | Notes |
+| --- | --- | --- |
+| `GDRIVE_SONG_SHEETS_FOLDER_IDS` | Drive folders to source song sheets from | Comma-separated list of folder IDs |
+| `GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS` | Drive folders scanned for `.songbook.yaml` editions | Comma-separated list of folder IDs |
+| `LOCAL_CACHE_DIR` | Local cache directory | Defaults to `~/.cache/songbook-generator` |
+| `LOCAL_CACHE_ENABLED` | Whether the local file-system cache is used | `true`/`false` |
+| `GCS_WORKER_CACHE_BUCKET` | GCS bucket used for the worker cache | |
+| `GCP_REGION` | GCP region for the cache bucket | |
+| `GOOGLE_CLOUD_PROJECT` / `GCP_PROJECT_ID` | Google Cloud project ID | |
+| `GOOGLE_DRIVE_API_RETRIES` | Retries for Google Drive API calls | Integer |
 
-```toml
-[song-sheets]
-folder-ids = ["<DEFAULT_FOLDER_ID>"]
+See `apply_env_overrides` in `generator/common/config.py` for the full,
+authoritative list (the `TAGUPDATER_*` and `SONG_METADATA_*` variables
+documented below are handled there too).
 
-[cover]
-file-id = "<COVER_TEMPLATE_FILE_ID>"
+Per-edition settings — the cover template, table-of-contents layout/fonts,
+preface/postface pages, and song filters — are **not** set globally. They live
+in each edition's YAML file under `generator/config/songbooks/` (see
+[Songbook Editions](#songbook-editions)).
 
-[toc]
-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
-fontsize = 9
-title-font = "/usr/share/fonts/truetype/msttcorefonts/Verdana.ttf"
-title-fontsize = 16
-```
-
-The cover Google Doc (configured via `[cover] file-id`) may contain text placeholders that are substituted at generation time and reverted afterwards:
+The cover Google Doc (configured via the edition's `sections.cover.file_id`)
+may contain text placeholders that are substituted at generation time and
+reverted afterwards:
 
 - `{{DATE}}` — the date the songbook is generated.
 - `{{NEXT_TUESDAY}}` — the date of the upcoming Tuesday, or the current day when generated on a Tuesday. This lets a songbook be published ahead of the session while still showing the correct session date.
-
-It's definitely not complete at this stage though and doesn't expose all possible config options.
 
 #### Cloud Functions Environment
 
