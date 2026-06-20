@@ -8,17 +8,20 @@ sections:
   table_of_contents:
     # Include a pumpkin for songs tagged as `halloween`
     postfixes:
-      - postfix: " 🎃"
+      - badges:
+          - text: " 🎃"
         filters:
           - key: "theme"
             operator: "contains"
             value: "halloween"
-      - postfix: " 🎄"
+      - badges:
+          - text: " 🎄"
         filters:
           - key: "theme"
             operator: "contains"
             value: "christmas"
-      - postfix: " ☘"
+      - badges:
+          - text: " ☘"
         filters:
           - key: "country"
             operator: "contains"

@@ -43,27 +43,42 @@ class Cover(BaseModel):
     file_id: Optional[str] = None
 
 
-class TocMarker(str, Enum):
-    """A small graphic that can be drawn next to a matching TOC entry."""
+class TocSymbol(str, Enum):
+    """A symbol we draw ourselves as a TOC badge (crisp at any size)."""
 
-    PRIDE_FLAG = "pride_flag"
+    PRIDE_FLAG = "pride-flag"
+
+
+class TocBadge(BaseModel):
+    """A single trailing badge on a TOC entry.
+
+    Exactly one kind: inline ``text`` (an emoji/glyph rendered in the TOC font)
+    or a ``symbol`` we draw ourselves. They are the same idea — a small mark
+    after the title — differing only in how they're rendered.
+    """
+
+    text: Optional[str] = None
+    symbol: Optional[TocSymbol] = None
+
+    @model_validator(mode="after")
+    def _exactly_one_kind(self):
+        if (self.text is None) == (self.symbol is None):
+            raise ValueError("TocBadge requires exactly one of 'text' or 'symbol'")
+        return self
 
 
 class TocDecoration(BaseModel):
     """A decoration applied to TOC entries whose properties match ``filters``.
 
-    Each aspect is independent and optional: append ``postfix`` text, tint the
-    row with ``color``, and/or draw a ``marker`` graphic after the title.
+    Tints the row with ``color`` and/or appends one or more ``badges`` (inline
+    text or drawn symbols) after the title.
     """
 
     filters: List[Union[FilterGroup, PropertyFilter]]
-    postfix: str = ""
-    """Text appended to the entry title (e.g. an emoji or symbol)."""
     color: Optional[tuple[float, float, float]] = None
     """RGB color (0–1 scale) applied to the entire TOC row when this matches."""
-    marker: Optional[TocMarker] = None
-    """A small graphic drawn after the title (e.g. a pride flag). Independent of
-    ``color`` and ``postfix``."""
+    badges: List[TocBadge] = []
+    """Trailing badges drawn after the title, in order."""
 
 
 class Toc(BaseModel):

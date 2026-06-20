@@ -8,7 +8,7 @@ from ..common.tracing import get_tracer
 from ..common.titles import generate_short_title
 from .difficulty import assign_difficulty_bins
 from .models import File
-from ..common.config import get_settings, Toc, TocMarker
+from ..common.config import get_settings, Toc, TocSymbol
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -18,7 +18,7 @@ DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
 # Classic six-stripe pride flag, drawn as a small vector mark next to entries a
-# postfix marks with ``TocMarker.PRIDE_FLAG``. RGB on a 0–1 scale; top stripe
+# a ``TocSymbol.PRIDE_FLAG`` badge. RGB on a 0–1 scale; top stripe
 # first. Vivid (not the muted text shades) because the mark is a small solid
 # graphic, where saturated colours read as a recognisable flag.
 PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
@@ -161,52 +161,62 @@ class TocGenerator:
                 except (ValueError, TypeError):
                     pass  # Ignore if not a valid integer
 
-        # Add any custom postfixes; first matched color/marker wins for the row
-        postfix_str = ""
+        # Collect badges from all matching decorations (in order); first matched
+        # colour wins for the whole row.
+        entry_badges = []
         entry_color: Optional[tuple[float, float, float]] = None
-        entry_marker: Optional[TocMarker] = None
         if self.config.postfixes:
-            for postfix_config in self.config.postfixes:
-                for p_filter in postfix_config.filters:
+            for decoration in self.config.postfixes:
+                for p_filter in decoration.filters:
                     if p_filter.matches({**file.properties, "name": file.name}):
-                        postfix_str += postfix_config.postfix
-                        if entry_color is None and postfix_config.color is not None:
-                            entry_color = postfix_config.color
-                        if entry_marker is None and postfix_config.marker is not None:
-                            entry_marker = postfix_config.marker
-                        break  # Stop checking filters for this postfix config
+                        entry_badges.extend(decoration.badges)
+                        if entry_color is None and decoration.color is not None:
+                            entry_color = decoration.color
+                        break  # Stop checking filters for this decoration
 
+        # Text badges share the title's character budget so the row still fits.
+        text_badge_len = sum(len(b.text) for b in entry_badges if b.text is not None)
         shortened_title = self._generate_toc_title(
             file.name,
-            max_length=self.config.max_toc_entry_length - len(postfix_str),
+            max_length=self.config.max_toc_entry_length - text_badge_len,
             is_ready_to_play=file.properties.get("status") == "READY_TO_PLAY",
         )
 
-        full_title = f"{symbol}{shortened_title}{postfix_str}"
-
-        title_width = self.text_font.text_length(
-            full_title, fontsize=self.config.text_fontsize
-        )
+        title_text = f"{symbol}{shortened_title}"
 
         # The whole row shares one TextWriter keyed by its colour (default black
-        # unless a postfix sets a colour).
+        # unless a decoration sets one).
         tw = writers.setdefault(entry_color, fitz.TextWriter(page_rect))
         tw.append(
             (x_start, y_pos),
-            full_title,
+            title_text,
             font=self.text_font,
             fontsize=self.config.text_fontsize,
         )
 
-        # A pride-flag marker draws a small flag after the title; reserve its
-        # horizontal span so the dot leaders start after it. The flag itself is a
-        # vector mark drawn when the page is finalised (see _draw_marks).
-        flag_advance = 0.0
-        if entry_marker is TocMarker.PRIDE_FLAG:
-            flag_w, flag_h, gap = self._pride_flag_size()
-            flag_x = x_start + title_width + gap
-            marks.append((flag_x, y_pos, flag_w, flag_h))
-            flag_advance = gap + flag_w + gap
+        # Lay out trailing badges after the title, in order. Text badges are
+        # appended in the row colour; symbol badges are deferred vector marks
+        # drawn when the page is finalised (see _draw_marks). ``x`` tracks the pen
+        # so the dot leaders start after the last badge.
+        x = x_start + self.text_font.text_length(
+            title_text, fontsize=self.config.text_fontsize
+        )
+        for badge in entry_badges:
+            if badge.text is not None:
+                tw.append(
+                    (x, y_pos),
+                    badge.text,
+                    font=self.text_font,
+                    fontsize=self.config.text_fontsize,
+                )
+                x += self.text_font.text_length(
+                    badge.text, fontsize=self.config.text_fontsize
+                )
+            elif badge.symbol is TocSymbol.PRIDE_FLAG:
+                flag_w, flag_h, gap = self._pride_flag_size()
+                x += gap
+                marks.append((x, y_pos, flag_w, flag_h))
+                x += flag_w + gap
 
         # Manually draw dots and page number to allow for different fonts
         page_num_width = self.page_number_font.text_length(
@@ -223,7 +233,7 @@ class TocGenerator:
         )
 
         # Draw dots
-        dots_start_x = x_start + title_width + flag_advance
+        dots_start_x = x
         dots_end_x = page_num_pos_x - self.text_font.text_length(
             " ", fontsize=self.config.text_fontsize
         )

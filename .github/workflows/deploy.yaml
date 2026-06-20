@@ -1,6 +1,9 @@
 name: Deploy
 
 on:
+  # Allows re-running the deploy/preview pipeline on demand from the Actions UI
+  # or API (e.g. when a push event is missed and no run is created).
+  workflow_dispatch:
   push:
     branches:
       - main

@@ -9,7 +9,8 @@ sections:
     file_id: "1l0YGV0UD-ZxTrsuaY8WcMlHybrhz3BdpgIKqhTEyRLY"
   table_of_contents:
     postfixes:
-      - postfix: " ✓"
+      - badges:
+          - text: " ✓"
         color: [0.4, 0.4, 0.4]
         filters:
           - key: "name"
