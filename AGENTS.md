@@ -102,13 +102,16 @@ The application uses Pydantic Settings for configuration:
 from generator.common.config import get_settings
 
 settings = get_settings()
-# Settings are loaded from environment variables and config files
+# Settings come from the Pydantic model defaults, overridden by environment variables
 ```
 
 Configuration sources (in order of precedence):
-1. Environment variables
-2. `~/.config/songbook-generator/config.toml` (local development)
-3. `generator/config/config.toml` (defaults)
+1. Environment variables (handled in `apply_env_overrides`, e.g. `GDRIVE_SONG_SHEETS_FOLDER_IDS`, `LOCAL_CACHE_DIR`, `TAGUPDATER_*`, `SONG_METADATA_*`)
+2. Model defaults defined in `generator/common/config.py`
+
+Per-edition settings (cover, table of contents, song filters) are loaded
+separately from the YAML files in `generator/config/songbooks/`. There is no
+TOML config file — `~/.config/songbook-generator/config.toml` is not read.
 
 ### Error Handling Pattern
 
