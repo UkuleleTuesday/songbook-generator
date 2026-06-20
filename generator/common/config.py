@@ -49,7 +49,7 @@ class TocMarker(str, Enum):
     PRIDE_FLAG = "pride_flag"
 
 
-class TocPostfix(BaseModel):
+class TocDecoration(BaseModel):
     """A decoration applied to TOC entries whose properties match ``filters``.
 
     Each aspect is independent and optional: append ``postfix`` text, tint the
@@ -85,7 +85,7 @@ class Toc(BaseModel):
     max_toc_entry_length: int = 52
     include_difficulty: bool = True
     include_wip_marker: bool = True
-    postfixes: Optional[List[TocPostfix]] = None
+    postfixes: Optional[List[TocDecoration]] = None
 
     @field_validator(
         "*",
