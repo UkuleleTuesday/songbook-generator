@@ -1,0 +1,22 @@
+id: "travel-songbook"
+title: "Travel Songbook"
+description: "We packed a bunch of ukulele Tuesday classics in this songbook. Download it and play along with us wherever your travels take you!"
+sections:
+  cover:
+    file_id: "11yX2IY8x-nny0ET4qiOGSKFBQ0g3dQX1xKFtCUg3LKs"
+  preface:
+    file_ids: []
+  table_of_contents:
+    include_difficulty: false
+    include_wip_marker: false
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    text_fontsize: 12
+    line_spacing: 15
+  songs:
+    filters:
+      - key: "specialbooks"
+        operator: "contains"
+        value: "hooley-2025"
