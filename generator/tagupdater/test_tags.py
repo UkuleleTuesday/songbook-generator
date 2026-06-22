@@ -8,8 +8,10 @@ from ..worker.models import File
 from .tags import (
     FOLDER_ID_APPROVED,
     FOLDER_ID_READY_TO_PLAY,
+    THEME_VALUES,
     Tagger,
     _GENRE_ALIASES,
+    _LLM_TAGGERS,
     _parse_duration,
     _run_llm_tags,
     approved_date,
@@ -929,6 +931,40 @@ def test_country_validator(raw, expected):
 )
 def test_theme_validator(raw, expected):
     assert theme(_make_ctx(), raw) == expected
+
+
+def _theme_tagger_config() -> LlmTaggerConfig:
+    """Locate the registered theme @llm_tag config (with its real prompt/extra)."""
+    for config in _LLM_TAGGERS:
+        if config.func is theme:
+            return config
+    raise AssertionError("theme tagger is not registered in _LLM_TAGGERS")
+
+
+def test_theme_prompt_defers_to_per_theme_criteria():
+    """The theme prompt must not impose one shared basis, and must surface the
+    pride artist-identity criterion so artist-qualified songs (e.g. Dusty
+    Springfield, Kylie) can be tagged. Pins the assembled prompt, not model output.
+    """
+    client = _make_genai_client('{"theme": "pride"}')
+    file = File(
+        id="1",
+        name="test",
+        properties={
+            "song": "I Only Want To Be With You",
+            "artist": "Dusty Springfield",
+        },
+    )
+    ctx = Context(file=file, genai_client=client)
+
+    _run_llm_tags(ctx, [_theme_tagger_config()])
+
+    compound_prompt = client.models.generate_content.call_args.kwargs["contents"]
+    # The old generic framing forced a lyrics-only judgement; it must be gone.
+    assert "based on its lyrics or subject matter" not in compound_prompt
+    # The pride artist-identity criterion (from THEME_VALUES) must reach the model.
+    assert "publicly identifies as LGBTQ+" in compound_prompt
+    assert THEME_VALUES["pride"] in compound_prompt
 
 
 # --- split_specialbooks tests ---
