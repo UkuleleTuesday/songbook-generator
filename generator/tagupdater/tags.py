@@ -199,7 +199,7 @@ THEME_VALUES: dict[str, str] = {
     "pride": (
         "LGBTQ+ pride or identity in the lyrics or subject matter; a widely "
         "recognised LGBTQ+/queer anthem or gay icon; or a song by an artist who "
-        "publicly identifies as LGBTQ+"
+        "identifies as LGBTQ+"
     ),
     "peace": "peace, anti-war, or protest lyrics or subject matter",
     "birthday": "birthday-celebration lyrics or subject matter",
