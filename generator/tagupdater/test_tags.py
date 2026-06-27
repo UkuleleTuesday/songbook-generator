@@ -904,6 +904,12 @@ def test_drive_write_disabled_writes_firestore_only(
         ("ireland,ireland", "ireland"),  # de-duplicated
         ("ireland,atlantis", "ireland"),  # unknown dropped
         ("atlantis", None),  # not a recognized country/region
+        # A long chart-performance list (issue #435) is capped to max_countries (3).
+        (
+            "united states,canada,new zealand,italy,switzerland,zimbabwe,"
+            "australia,norway,germany,belgium",
+            "united states,canada,new zealand",
+        ),
         (None, None),
         ("", None),
         ("  ,  ", None),
