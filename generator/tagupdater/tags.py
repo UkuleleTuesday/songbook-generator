@@ -910,19 +910,32 @@ def language(ctx: Context, raw: Optional[str]) -> Optional[str]:
 
 @llm_tag(
     prompt=(
-        'Which countries or regions is "{song}" by {artist} associated with '
-        "(based on the artist's origin or the song's content)? "
-        "Reply with a comma-separated list of country/region names in lowercase "
-        'English (usually one, e.g. "ireland" or "united states", but more if '
-        "the song is equally tied to several), or null if none clearly applies."
+        'Which country or region is "{song}" by {artist} associated with, '
+        "based on the artist's nationality / country of origin or what the song "
+        "is about? "
+        "IMPORTANT: this is about origin, NOT chart performance, commercial "
+        "popularity, or where the song was released or charted. Do NOT list "
+        "countries just because the song was a hit there. "
+        "For example, Elton John is British so his songs are 'united kingdom'; "
+        "Shakira is Colombian so her songs are 'colombia'. "
+        "Reply with a single country/region name in lowercase English "
+        '(e.g. "ireland" or "united states"). Only give more than one '
+        "(comma-separated, at most {max_countries}) if the song is genuinely tied "
+        "to several, such as a duo whose members are from different countries. "
+        "Reply with null if none clearly applies."
     ),
     only_if_unset=True,
+    max_countries=3,
 )
-def country(ctx: Context, raw: Optional[str]) -> Optional[str]:
+def country(
+    ctx: Context, raw: Optional[str], *, max_countries: int = 3
+) -> Optional[str]:
     """Looks up the country/region(s) the song is associated with via Gemini.
 
     Values are canonicalized against ISO-3166 (via ``pycountry``) plus a small
     set of supported sub-national regions, so unrecognized values are dropped.
+    The result is capped at ``max_countries`` as a backstop against the model
+    returning a long list of chart-performance countries.
     """
     if not raw:
         return None
@@ -932,6 +945,7 @@ def country(ctx: Context, raw: Optional[str]) -> Optional[str]:
         canonical = _canonical_country(part)
         if canonical and canonical not in seen:
             seen.append(canonical)
+    seen = seen[:max_countries]
     return ",".join(seen) if seen else None
 
 
