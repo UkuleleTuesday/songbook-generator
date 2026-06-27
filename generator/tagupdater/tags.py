@@ -910,19 +910,14 @@ def language(ctx: Context, raw: Optional[str]) -> Optional[str]:
 
 @llm_tag(
     prompt=(
-        'Which country or region is "{song}" by {artist} associated with, '
-        "based on the artist's nationality / country of origin or what the song "
-        "is about? "
-        "IMPORTANT: this is about origin, NOT chart performance, commercial "
-        "popularity, or where the song was released or charted. Do NOT list "
-        "countries just because the song was a hit there. "
-        "For example, Elton John is British so his songs are 'united kingdom'; "
-        "Shakira is Colombian so her songs are 'colombia'. "
-        "Reply with a single country/region name in lowercase English "
-        '(e.g. "ireland" or "united states"). Only give more than one '
-        "(comma-separated, at most {max_countries}) if the song is genuinely tied "
-        "to several, such as a duo whose members are from different countries. "
-        "Reply with null if none clearly applies."
+        'What country or region does "{song}" by {artist} come from? '
+        "Judge by the artist's nationality/origin, or a place the song is "
+        "explicitly about — never by where it charted, sold, or was popular. "
+        "Examples: Elton John -> united kingdom; Shakira -> colombia. "
+        'Answer with one lowercase country/region name (e.g. "ireland", '
+        '"united states"), or null if unclear. Give multiple only when a '
+        "group's members are genuinely from different countries "
+        "(comma-separated, max {max_countries})."
     ),
     only_if_unset=True,
     max_countries=3,
