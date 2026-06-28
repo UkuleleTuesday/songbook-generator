@@ -1,0 +1,66 @@
+id: "pride-2026"
+title: "Ukulele Tuesday - Pride 2026"
+description: >
+  A dedicated Pride edition: every song flagged as Pride in the current
+  Tuesday songbook, and only those. Happy Pride! 🏳️‍🌈
+publish:
+  visibility: unlisted
+sections:
+  cover:
+    file_id: "1l0YGV0UD-ZxTrsuaY8WcMlHybrhz3BdpgIKqhTEyRLY"
+  table_of_contents:
+    # The whole book is Pride, so no per-entry pride flag is needed.
+    decorations: []
+  songs:
+    filters:
+      # The exact set of songs that carry the pride flag in the current
+      # songbook's TOC (theme contains "pride" OR pinned in the current
+      # edition's #425 name-list workaround), and only those.
+      - key: "name"
+        operator: "in"
+        value:
+          - "9 to 5 - Dolly Parton"
+          - "All The Things She Said - t.A.T.u."
+          - "Baby One More Time - Britney Spears"
+          - "Basket Case - Green Day"
+          - "BIRDS OF A FEATHER - Billie Eilish"
+          - "Call Me - Blondie"
+          - "Can't Get You out of My Head - Kylie Minogue"
+          - "Cheap Thrills - Sia"
+          - "Crocodile Rock - Elton John"
+          - "Don't Stop Me Now - Queen"
+          - "Faith - George Michael"
+          - "Flowers - Miley Cyrus"
+          - "Grace Kelly - MIKA"
+          - "Hand in My Pocket - Alanis Morissette"
+          - "Holding Out for a Hero - Bonnie Tyler"
+          - "Hot Stuff (Single Version) - Donna Summer"
+          - "I Love It (feat. Charli XCX) - Icona Pop"
+          - "I Only Want To Be With You - Dusty Springfield"
+          - "I Want to Break Free - Queen"
+          - "I Will Survive - Gloria Gaynor"
+          - "In Bloom - Nirvana"
+          - "Jolene - Dolly Parton"
+          - "Karma Chameleon - Culture Club"
+          - "King for a Day - Green Day"
+          - "Kiss/Mustang Sally Medley - Prince/The Commitments"
+          - "Man! I Feel Like A Woman! - Shania Twain"
+          - "Material Girl - Madonna"
+          - "Nancy Boy - Placebo"
+          - "One Way or Another - Blondie"
+          - "Proud Mary - Tina Turner"
+          - "Red Wine Supernova - Chappell Roan"
+          - "Respect - Aretha Franklin"
+          - "So What - P!nk"
+          - "Space Oddity - David Bowie"
+          - "Sweet Dreams (Are Made of This) - Eurythmics"
+          - "Take on Me - a-ha"
+          - "Talkin' Bout a Revolution - Tracy Chapman"
+          - "The Edge Of Glory (Radio Edit) - Lady Gaga"
+          - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"
+          - "Tree Hugger - Kimya Dawson & Antsy Pants"
+          - "True Trans Soul Rebel - Against Me!"
+          - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
+          - "Walking On Sunshine - Katrina & The Waves"
+          - "Waterloo - ABBA"
+          - "What's Up? - 4 Non Blondes"
