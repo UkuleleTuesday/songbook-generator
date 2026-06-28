@@ -10,10 +10,7 @@ sections:
     file_id: "1v7JMZ84h_cLObsqBa8vL-25FxZIxcLERrw06pULa1kM"
   table_of_contents:
     # Single, generously-sized column that fills the TOC page (mirrors the
-    # Ukulele Hooley 2025 layout): larger text, roomier line spacing, and no
-    # difficulty/WIP markers.
-    include_difficulty: false
-    include_wip_marker: false
+    # Ukulele Hooley 2025 layout): larger text, roomier line spacing.
     columns_per_page: 1
     column_width: 360
     margin_left: 120
