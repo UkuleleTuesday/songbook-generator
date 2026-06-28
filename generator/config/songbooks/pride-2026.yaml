@@ -37,6 +37,7 @@ sections:
           - key: "name"
             operator: "in"
             value:
+              - "All The Things She Said - t.A.T.u."       # Yulia Volkova
               - "Basket Case - Green Day"                 # Billie Joe Armstrong
               - "Call Me - Blondie"                        # Debbie Harry
               - "Heroes (single version) - David Bowie"    # David Bowie
