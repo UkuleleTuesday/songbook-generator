@@ -62,7 +62,6 @@ sections:
           - key: "name"
             operator: "in"
             value:
-              - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"  # Richard O'Brien
               - "True Trans Soul Rebel - Against Me!"      # Laura Jane Grace
       # Pansexual
       - badges:
@@ -89,6 +88,7 @@ sections:
             operator: "in"
             value:
               - "BIRDS OF A FEATHER - Billie Eilish"       # Billie Eilish (queer)
+              - "Boom, Boom, Boom, Boom!! - Vengaboys"     # Donny Latupeirissa (gay)
               - "Cheap Thrills - Sia"                      # Sia (queer)
               - "Crocodile Rock - Elton John"              # Elton John (gay)
               - "Don't Stop Me Now - Queen"                # Freddie Mercury
@@ -109,6 +109,7 @@ sections:
           - "Baby One More Time - Britney Spears"
           - "Basket Case - Green Day"
           - "BIRDS OF A FEATHER - Billie Eilish"
+          - "Boom, Boom, Boom, Boom!! - Vengaboys"
           - "Call Me - Blondie"
           - "Call Me Maybe - Carly Rae Jepsen"
           - "Can't Get You out of My Head - Kylie Minogue"
@@ -149,7 +150,6 @@ sections:
           - "Talkin' Bout a Revolution - Tracy Chapman"
           - "The Best (Edit) - Tina Turner"
           - "The Edge Of Glory (Radio Edit) - Lady Gaga"
-          - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"
           - "Toxic - Britney Spears"
           - "Tree Hugger - Kimya Dawson & Antsy Pants"
           - "True Trans Soul Rebel - Against Me!"
