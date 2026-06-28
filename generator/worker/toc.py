@@ -17,10 +17,10 @@ DEFAULT_FONT_NAME = "RobotoCondensed-Regular.ttf"
 DEFAULT_TITLE_FONT_NAME = "RobotoCondensed-Bold.ttf"
 DEFAULT_TEXT_SEMIBOLD_FONT_NAME = "RobotoCondensed-SemiBold.ttf"
 
-# Classic six-stripe pride flag, drawn as a small vector mark next to entries a
-# a ``TocSymbol.PRIDE_FLAG`` badge. RGB on a 0–1 scale; top stripe
-# first. Vivid (not the muted text shades) because the mark is a small solid
-# graphic, where saturated colours read as a recognisable flag.
+# Pride/identity flags drawn as small vector marks next to TOC entries carrying
+# the matching ``TocSymbol`` badge. RGB on a 0–1 scale; top stripe first. Vivid
+# (not the muted text shades) because the mark is a small solid graphic, where
+# saturated colours read as a recognisable flag.
 PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
     (0.894, 0.012, 0.012),  # red
     (1.000, 0.549, 0.000),  # orange
@@ -29,6 +29,58 @@ PRIDE_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
     (0.000, 0.302, 1.000),  # blue
     (0.459, 0.027, 0.529),  # violet
 )
+
+# Transgender flag: light blue / pink / white / pink / light blue.
+TRANS_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.357, 0.808, 0.980),
+    (0.961, 0.663, 0.722),
+    (1.000, 1.000, 1.000),
+    (0.961, 0.663, 0.722),
+    (0.357, 0.808, 0.980),
+)
+
+# Bisexual flag: magenta / lavender / royal blue, in a 2:1:2 stripe ratio.
+BI_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.839, 0.008, 0.439),
+    (0.608, 0.310, 0.588),
+    (0.000, 0.220, 0.659),
+)
+BI_FLAG_WEIGHTS: Tuple[float, ...] = (2.0, 1.0, 2.0)
+
+# Lesbian flag (five-stripe): dark orange / orange / white / pink / dark rose.
+LESBIAN_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.835, 0.176, 0.000),
+    (1.000, 0.604, 0.337),
+    (1.000, 1.000, 1.000),
+    (0.827, 0.384, 0.643),
+    (0.639, 0.008, 0.384),
+)
+
+# Pansexual flag: pink / yellow / cyan-blue.
+PAN_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (1.000, 0.129, 0.549),
+    (1.000, 0.847, 0.000),
+    (0.129, 0.694, 1.000),
+)
+
+# Non-binary flag: yellow / white / purple / black.
+NONBINARY_FLAG_COLORS: Tuple[Tuple[float, float, float], ...] = (
+    (0.988, 0.957, 0.204),
+    (1.000, 1.000, 1.000),
+    (0.612, 0.349, 0.820),
+    (0.173, 0.173, 0.173),
+)
+
+# Map each flag symbol to its (stripe colours, optional per-stripe weights).
+# Weights of ``None`` mean equal-height stripes.
+FLAG_PALETTES: dict = {
+    TocSymbol.PRIDE_FLAG: (PRIDE_FLAG_COLORS, None),
+    TocSymbol.TRANS_FLAG: (TRANS_FLAG_COLORS, None),
+    TocSymbol.BI_FLAG: (BI_FLAG_COLORS, BI_FLAG_WEIGHTS),
+    TocSymbol.LESBIAN_FLAG: (LESBIAN_FLAG_COLORS, None),
+    TocSymbol.PAN_FLAG: (PAN_FLAG_COLORS, None),
+    TocSymbol.NONBINARY_FLAG: (NONBINARY_FLAG_COLORS, None),
+}
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:
@@ -94,8 +146,8 @@ class TocGenerator:
                 else:
                     tw.write_text(page, color=color)
 
-    def _pride_flag_size(self) -> Tuple[float, float, float]:
-        """Return (width, height, leading_gap) of the pride-flag mark, in points."""
+    def _flag_size(self) -> Tuple[float, float, float]:
+        """Return (width, height, leading_gap) of a flag mark, in points."""
         height = self.config.text_fontsize * 0.72
         width = height * 1.6  # ~flag aspect ratio
         gap = self.text_font.text_length(" ", fontsize=self.config.text_fontsize)
@@ -103,29 +155,49 @@ class TocGenerator:
 
     @staticmethod
     def _draw_marks(page: fitz.Page, marks: list) -> None:
-        """Draw deferred vector marks (e.g. pride flags) onto a finalised page."""
-        for x, baseline_y, width, height in marks:
-            TocGenerator._draw_pride_flag(page, x, baseline_y, width, height)
+        """Draw deferred vector flag marks onto a finalised page.
+
+        Each mark is ``(x, baseline_y, width, height, stripes, weights)`` where
+        ``stripes`` is the top-to-bottom palette and ``weights`` is an optional
+        per-stripe height ratio (``None`` = equal stripes).
+        """
+        for x, baseline_y, width, height, stripes, weights in marks:
+            TocGenerator._draw_flag(
+                page, x, baseline_y, width, height, stripes, weights
+            )
 
     @staticmethod
-    def _draw_pride_flag(
-        page: fitz.Page, x: float, baseline_y: float, width: float, height: float
+    def _draw_flag(
+        page: fitz.Page,
+        x: float,
+        baseline_y: float,
+        width: float,
+        height: float,
+        stripes: Tuple[Tuple[float, float, float], ...],
+        weights: Optional[Tuple[float, ...]] = None,
     ) -> None:
-        """Draw a small six-stripe pride flag with its baseline near the text.
+        """Draw a small horizontal-stripe flag with its baseline near the text.
 
         The flag bottom sits on the text baseline; stripes overlap by a hair to
         avoid anti-aliasing seams, and a faint outline crisps it against white.
+        ``weights`` gives relative stripe heights (e.g. the bi flag's 2:1:2);
+        when ``None`` the stripes are equal height.
         """
-        stripes = PRIDE_FLAG_COLORS
-        stripe_h = height / len(stripes)
+        n = len(stripes)
+        if weights is None:
+            weights = (1.0,) * n
+        total = sum(weights)
         top = baseline_y - height
-        for i, color in enumerate(stripes):
-            y0 = top + i * stripe_h
+        y = top
+        for i, (color, weight) in enumerate(zip(stripes, weights)):
+            stripe_h = height * (weight / total)
+            y0 = y
             # Extend the last stripe to the flag bottom; overlap others slightly.
-            y1 = baseline_y if i == len(stripes) - 1 else y0 + stripe_h + 0.15
+            y1 = baseline_y if i == n - 1 else y0 + stripe_h + 0.15
             page.draw_rect(
                 fitz.Rect(x, y0, x + width, y1), color=None, fill=color, width=0
             )
+            y += stripe_h
         page.draw_rect(
             fitz.Rect(x, top, x + width, baseline_y),
             color=(0.6, 0.6, 0.6),
@@ -212,10 +284,11 @@ class TocGenerator:
                 x += self.text_font.text_length(
                     badge.text, fontsize=self.config.text_fontsize
                 )
-            elif badge.symbol is TocSymbol.PRIDE_FLAG:
-                flag_w, flag_h, gap = self._pride_flag_size()
+            elif badge.symbol is not None:
+                stripes, weights = FLAG_PALETTES[badge.symbol]
+                flag_w, flag_h, gap = self._flag_size()
                 x += gap
-                marks.append((x, y_pos, flag_w, flag_h))
+                marks.append((x, y_pos, flag_w, flag_h, stripes, weights))
                 x += flag_w + gap
 
         # Manually draw dots and page number to allow for different fonts

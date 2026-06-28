@@ -1,0 +1,161 @@
+id: "pride-2026"
+title: "Ukulele Tuesday - Pride 2026"
+description: >
+  A dedicated Pride edition: every song flagged as Pride in the current
+  Tuesday songbook, and only those. Happy Pride! 🏳️‍🌈
+publish:
+  visibility: unlisted
+sections:
+  cover:
+    file_id: "1v7JMZ84h_cLObsqBa8vL-25FxZIxcLERrw06pULa1kM"
+  table_of_contents:
+    # Single, generously-sized column that fills the TOC page (mirrors the
+    # Ukulele Hooley 2025 layout): larger text, roomier line spacing.
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    margin_top: 10
+    margin_bottom: 10
+    # Sized so all songs fit on a single TOC page (font dropped half a point,
+    # line spacing tightened to pack the full list onto one page).
+    text_fontsize: 11.5
+    line_spacing: 14
+    # Flag songs whose credited artist is openly LGBTQ+ (pride by artist
+    # identity), using the flag that matches each artist's identity. Hand-
+    # curated — there is no orientation field in the song metadata to filter on.
+    # Gay men fall under the general rainbow flag (there is no equally-recognised
+    # single-symbol gay-men's flag to draw).
+    decorations:
+      # Bisexual
+      - badges:
+          - symbol: bi-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "All The Things She Said - t.A.T.u."       # Yulia Volkova
+              - "Basket Case - Green Day"                 # Billie Joe Armstrong
+              - "Call Me - Blondie"                        # Debbie Harry
+              - "Heroes (single version) - David Bowie"    # David Bowie
+              - "I Only Want To Be With You - Dusty Springfield"  # Dusty Springfield
+              - "Just Can't Get Enough - Depeche Mode"     # Dave Gahan
+              - "King for a Day - Green Day"               # Billie Joe Armstrong
+              - "Nancy Boy - Placebo"                      # Brian Molko
+              - "One Way or Another - Blondie"             # Debbie Harry
+              - "Space Oddity - David Bowie"               # David Bowie
+              - "The Edge Of Glory (Radio Edit) - Lady Gaga"  # Lady Gaga
+      # Lesbian
+      - badges:
+          - symbol: lesbian-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "Red Wine Supernova - Chappell Roan"       # Chappell Roan
+              - "Talkin' Bout a Revolution - Tracy Chapman"  # Tracy Chapman
+              - "What's Up? - 4 Non Blondes"               # Linda Perry
+      # Transgender
+      - badges:
+          - symbol: trans-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "True Trans Soul Rebel - Against Me!"      # Laura Jane Grace
+      # Pansexual
+      - badges:
+          - symbol: pan-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "Flowers - Miley Cyrus"                    # Miley Cyrus
+              - "Wrecking Ball - Miley Cyrus"              # Miley Cyrus
+      # Non-binary / genderfluid
+      - badges:
+          - symbol: nonbinary-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "Tree Hugger - Kimya Dawson & Antsy Pants"  # Kimya Dawson
+      # Gay / general queer (rainbow)
+      - badges:
+          - symbol: pride-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "BIRDS OF A FEATHER - Billie Eilish"       # Billie Eilish (queer)
+              - "Boom, Boom, Boom, Boom!! - Vengaboys"     # Donny Latupeirissa (gay)
+              - "Cheap Thrills - Sia"                      # Sia (queer)
+              - "Crocodile Rock - Elton John"              # Elton John (gay)
+              - "Don't Stop Me Now - Queen"                # Freddie Mercury
+              - "Faith - George Michael"                   # George Michael (gay)
+              - "Grace Kelly - MIKA"                       # MIKA (gay)
+              - "I Want to Break Free - Queen"             # Freddie Mercury
+              - "Karma Chameleon - Culture Club"           # Boy George (gay)
+  songs:
+    filters:
+      # The exact set of songs that carry the pride flag in the current
+      # songbook's TOC (theme contains "pride" OR pinned in the current
+      # edition's #425 name-list workaround), and only those.
+      - key: "name"
+        operator: "in"
+        value:
+          - "9 to 5 - Dolly Parton"
+          - "All The Things She Said - t.A.T.u."
+          - "Baby One More Time - Britney Spears"
+          - "Basket Case - Green Day"
+          - "BIRDS OF A FEATHER - Billie Eilish"
+          - "Boom, Boom, Boom, Boom!! - Vengaboys"
+          - "Call Me - Blondie"
+          - "Call Me Maybe - Carly Rae Jepsen"
+          - "Can't Get You out of My Head - Kylie Minogue"
+          - "Cheap Thrills - Sia"
+          - "Crocodile Rock - Elton John"
+          - "Don't Stop Me Now - Queen"
+          - "Faith - George Michael"
+          - "Flowers - Miley Cyrus"
+          - "Grace Kelly - MIKA"
+          - "Hand in My Pocket - Alanis Morissette"
+          - "Heroes (single version) - David Bowie"
+          - "Holding Out for a Hero - Bonnie Tyler"
+          - "Hot Stuff (Single Version) - Donna Summer"
+          - "I Feel Love - Donna Summer"
+          - "I Love It (feat. Charli XCX) - Icona Pop"
+          - "I Only Want To Be With You - Dusty Springfield"
+          - "I Want to Break Free - Queen"
+          - "I Will Survive - Gloria Gaynor"
+          - "In Bloom - Nirvana"
+          - "Jolene - Dolly Parton"
+          - "Just Can't Get Enough - Depeche Mode"
+          - "Karma Chameleon - Culture Club"
+          - "King for a Day - Green Day"
+          - "Kiss/Mustang Sally Medley - Prince/The Commitments"
+          - "Mamma Mia - ABBA"
+          - "Man! I Feel Like A Woman! - Shania Twain"
+          - "Material Girl - Madonna"
+          - "Nancy Boy - Placebo"
+          - "One Way or Another - Blondie"
+          - "Proud Mary - Tina Turner"
+          - "Red Wine Supernova - Chappell Roan"
+          - "Respect - Aretha Franklin"
+          - "So What - P!nk"
+          - "Space Oddity - David Bowie"
+          - "Sweet Dreams (Are Made of This) - Eurythmics"
+          - "Take A Chance On Me - ABBA"
+          - "Take on Me - a-ha"
+          - "Talkin' Bout a Revolution - Tracy Chapman"
+          - "The Best (Edit) - Tina Turner"
+          - "The Edge Of Glory (Radio Edit) - Lady Gaga"
+          - "Toxic - Britney Spears"
+          - "Tree Hugger - Kimya Dawson & Antsy Pants"
+          - "True Trans Soul Rebel - Against Me!"
+          - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
+          - "Walking On Sunshine - Katrina & The Waves"
+          - "Waterloo - ABBA"
+          - "What's Up? - 4 Non Blondes"
+          - "Wrecking Ball - Miley Cyrus"
+          - "You've Got The Love - Florence + The Machine"
