@@ -24,8 +24,41 @@ sections:
     # line spacing tightened to pack the full list onto one page).
     text_fontsize: 11.5
     line_spacing: 14
-    # The whole book is Pride, so no per-entry pride flag is needed.
-    decorations: []
+    # Flag only songs whose credited artist is openly LGBTQ+ (pride by artist
+    # identity), as distinct from the rest of the book which is pride by song
+    # theme/association. Hand-curated — there is no orientation field in the
+    # song metadata to filter on.
+    decorations:
+      - badges:
+          - symbol: pride-flag
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "Basket Case - Green Day"               # Billie Joe Armstrong (bi)
+              - "BIRDS OF A FEATHER - Billie Eilish"     # Billie Eilish (queer)
+              - "Call Me - Blondie"                       # Debbie Harry (bi)
+              - "Cheap Thrills - Sia"                     # Sia (queer)
+              - "Crocodile Rock - Elton John"             # Elton John (gay)
+              - "Don't Stop Me Now - Queen"               # Freddie Mercury (queer)
+              - "Faith - George Michael"                  # George Michael (gay)
+              - "Flowers - Miley Cyrus"                   # Miley Cyrus (pansexual)
+              - "Grace Kelly - MIKA"                      # MIKA (gay)
+              - "Heroes (single version) - David Bowie"   # David Bowie (bi)
+              - "I Only Want To Be With You - Dusty Springfield"  # Dusty Springfield (bi)
+              - "I Want to Break Free - Queen"            # Freddie Mercury (queer)
+              - "Karma Chameleon - Culture Club"          # Boy George (gay)
+              - "King for a Day - Green Day"              # Billie Joe Armstrong (bi)
+              - "Nancy Boy - Placebo"                     # Brian Molko (bi)
+              - "One Way or Another - Blondie"            # Debbie Harry (bi)
+              - "Red Wine Supernova - Chappell Roan"      # Chappell Roan (lesbian)
+              - "Space Oddity - David Bowie"              # David Bowie (bi)
+              - "Talkin' Bout a Revolution - Tracy Chapman"  # Tracy Chapman (queer)
+              - "The Edge Of Glory (Radio Edit) - Lady Gaga"  # Lady Gaga (bi)
+              - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"  # Richard O'Brien (trans/third-gender)
+              - "True Trans Soul Rebel - Against Me!"     # Laura Jane Grace (trans)
+              - "What's Up? - 4 Non Blondes"              # Linda Perry (lesbian)
+              - "Wrecking Ball - Miley Cyrus"             # Miley Cyrus (pansexual)
   songs:
     filters:
       # The exact set of songs that carry the pride flag in the current
