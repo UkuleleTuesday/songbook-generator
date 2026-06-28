@@ -20,8 +20,10 @@ sections:
     margin_right: 120
     margin_top: 10
     margin_bottom: 10
-    text_fontsize: 12
-    line_spacing: 15
+    # Sized so all songs fit on a single TOC page (font dropped half a point,
+    # line spacing tightened to pack the full list onto one page).
+    text_fontsize: 11.5
+    line_spacing: 14
     # The whole book is Pride, so no per-entry pride flag is needed.
     decorations: []
   songs:
