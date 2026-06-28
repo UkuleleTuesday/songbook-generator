@@ -542,11 +542,12 @@ def test_add_toc_entry_pride_flag_marker_registers_flag_mark(
 
     # Exactly one flag mark, positioned after the title (x_start + title_width + gap).
     assert len(marks) == 1
-    flag_x, flag_y, flag_w, flag_h = marks[0]
+    flag_x, flag_y, flag_w, flag_h, stripes, weights = marks[0]
     # title "ABC" width = 3*5 = 15 (mock font), gap = text_length(" ") = 5.
     assert flag_x == 25 + 15 + 5
     assert flag_y == 70
     assert flag_w > 0 and flag_h > 0
+    assert stripes == toc.PRIDE_FLAG_COLORS
 
 
 def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
@@ -577,7 +578,7 @@ def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
 def test_draw_pride_flag_draws_all_stripes_and_border(mocker):
     """_draw_marks paints one rect per flag stripe plus an outline."""
     page = MagicMock(spec=fitz.Page)
-    marks = [(45.0, 70.0, 11.5, 7.2)]
+    marks = [(45.0, 70.0, 11.5, 7.2, toc.PRIDE_FLAG_COLORS, None)]
 
     toc.TocGenerator._draw_marks(page, marks)
 
@@ -587,6 +588,19 @@ def test_draw_pride_flag_draws_all_stripes_and_border(mocker):
     fills = [c.kwargs.get("fill") for c in page.draw_rect.call_args_list]
     assert toc.PRIDE_FLAG_COLORS[0] in fills
     assert toc.PRIDE_FLAG_COLORS[-1] in fills
+
+
+def test_draw_flag_supports_weighted_stripes(mocker):
+    """A weighted palette (e.g. the bi flag's 2:1:2) draws all stripes + border."""
+    page = MagicMock(spec=fitz.Page)
+    marks = [(45.0, 70.0, 11.5, 7.2, toc.BI_FLAG_COLORS, toc.BI_FLAG_WEIGHTS)]
+
+    toc.TocGenerator._draw_marks(page, marks)
+
+    assert page.draw_rect.call_count == len(toc.BI_FLAG_COLORS) + 1
+    fills = [c.kwargs.get("fill") for c in page.draw_rect.call_args_list]
+    assert toc.BI_FLAG_COLORS[0] in fills
+    assert toc.BI_FLAG_COLORS[-1] in fills
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):

@@ -47,6 +47,11 @@ class TocSymbol(str, Enum):
     """A symbol we draw ourselves as a TOC badge (crisp at any size)."""
 
     PRIDE_FLAG = "pride-flag"
+    TRANS_FLAG = "trans-flag"
+    BI_FLAG = "bi-flag"
+    LESBIAN_FLAG = "lesbian-flag"
+    PAN_FLAG = "pan-flag"
+    NONBINARY_FLAG = "nonbinary-flag"
 
 
 class TocBadge(BaseModel):
