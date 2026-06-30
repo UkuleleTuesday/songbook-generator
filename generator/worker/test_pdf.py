@@ -1525,9 +1525,7 @@ def test_copy_pdfs_stamps_pride_flag_on_matching_song(mocker):
     decorations = [
         TocDecoration(
             filters=[
-                PropertyFilter(
-                    key="name", operator=FilterOperator.IN, value=[title]
-                )
+                PropertyFilter(key="name", operator=FilterOperator.IN, value=[title])
             ],
             badges=[TocBadge(symbol=TocSymbol.PRIDE_FLAG)],
         )
