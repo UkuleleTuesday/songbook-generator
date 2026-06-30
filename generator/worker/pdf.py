@@ -1440,7 +1440,11 @@ def add_pride_flags(page, file, decorations, title_rect):
     height = title_rect.height * 0.72
     width = height * 1.6  # ~flag aspect ratio
     gap = height * 0.45
-    baseline_y = title_rect.y1
+    # Sit the flag on the title's baseline rather than the bounding-box bottom,
+    # which is a descender lower and dropped the flag a few pixels below the
+    # text. ``_draw_flag`` puts the flag bottom on ``baseline_y`` (as the TOC
+    # does), so it lines up with the title.
+    baseline_y = title_rect.y1 - title_rect.height * 0.18
     x = title_rect.x1 + gap
 
     text_font = None
