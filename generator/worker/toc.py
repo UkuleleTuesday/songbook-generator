@@ -8,7 +8,7 @@ from ..common.tracing import get_tracer
 from ..common.titles import generate_short_title
 from .difficulty import assign_difficulty_bins
 from .models import File
-from ..common.config import get_settings, Toc, TocSymbol
+from ..common.config import get_settings, Toc, TocSymbol, TocBadge, TocDecoration
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer(__name__)
@@ -81,6 +81,29 @@ FLAG_PALETTES: dict = {
     TocSymbol.PAN_FLAG: (PAN_FLAG_COLORS, None),
     TocSymbol.NONBINARY_FLAG: (NONBINARY_FLAG_COLORS, None),
 }
+
+
+def collect_decoration_badges(
+    file: File, decorations: Optional[List[TocDecoration]]
+) -> Tuple[List[TocBadge], Optional[Tuple[float, float, float]]]:
+    """Collect the badges (and first matched colour) that apply to *file*.
+
+    Shared by the TOC rows and the per-song "tab" stamps so both pick up the
+    exact same decorations: every decoration whose filters match contributes
+    its badges, in order, and the first matched ``color`` wins.
+    """
+    badges: List[TocBadge] = []
+    color: Optional[Tuple[float, float, float]] = None
+    if not decorations:
+        return badges, color
+    for decoration in decorations:
+        for p_filter in decoration.filters:
+            if p_filter.matches({**file.properties, "name": file.name}):
+                badges.extend(decoration.badges)
+                if color is None and decoration.color is not None:
+                    color = decoration.color
+                break  # Stop checking filters for this decoration
+    return badges, color
 
 
 def difficulty_symbol(difficulty_bin: int) -> str:
@@ -235,16 +258,9 @@ class TocGenerator:
 
         # Collect badges from all matching decorations (in order); first matched
         # colour wins for the whole row.
-        entry_badges = []
-        entry_color: Optional[tuple[float, float, float]] = None
-        if self.config.decorations:
-            for decoration in self.config.decorations:
-                for p_filter in decoration.filters:
-                    if p_filter.matches({**file.properties, "name": file.name}):
-                        entry_badges.extend(decoration.badges)
-                        if entry_color is None and decoration.color is not None:
-                            entry_color = decoration.color
-                        break  # Stop checking filters for this decoration
+        entry_badges, entry_color = collect_decoration_badges(
+            file, self.config.decorations
+        )
 
         # Text badges share the title's character budget so the row still fits.
         text_badge_len = sum(len(b.text) for b in entry_badges if b.text is not None)

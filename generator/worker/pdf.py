@@ -198,6 +198,7 @@ def copy_pdfs(
     add_page_numbers=True,
     toc_page_index: int = 0,
     add_difficulty_wheels=True,
+    decorations=None,
 ):
     """
     Copy pages from the merged PDF cache based on TOC entries for the selected files.
@@ -209,6 +210,8 @@ def copy_pdfs(
         page_offset: Starting page offset for numbering
         progress_step: Progress reporter
         add_page_numbers: Whether to add page numbers
+        decorations: Optional TOC decorations; matching pride/identity flags are
+            stamped after each song's title on its first page.
     """
     with tracer.start_as_current_span("copy_pdfs") as span:
         files_count = len(files)
@@ -331,6 +334,14 @@ def copy_pdfs(
                                     }
                                 )
 
+                            # Stamp pride/identity flags as a suffix after the title.
+                            add_pride_flags(
+                                dest_page,
+                                file,
+                                decorations,
+                                text_instances[0] if text_instances else None,
+                            )
+
                         copied_pages += 1
 
                 current_page += page_count
@@ -351,6 +362,7 @@ def _download_songs_individually(
     add_page_numbers: bool = True,
     toc_page_index: int = 0,
     add_difficulty_wheels: bool = True,
+    decorations=None,
 ):
     """
     Download each song from Drive and insert its pages into *destination_pdf*.
@@ -410,6 +422,12 @@ def _download_songs_individually(
                                         "page": toc_page_index,
                                     }
                                 )
+                            add_pride_flags(
+                                dest_page,
+                                file,
+                                decorations,
+                                text_instances[0] if text_instances else None,
+                            )
 
                     current_page += song_page_count
 
@@ -1041,6 +1059,11 @@ def generate_songbook(
                             add_page_numbers=add_page_numbers,
                             toc_page_index=toc_start_page,
                             add_difficulty_wheels=add_difficulty_wheels,
+                            decorations=(
+                                edition_toc_config.decorations
+                                if edition_toc_config
+                                else None
+                            ),
                         )
                     except PdfCopyException as e:
                         click.echo(
@@ -1057,6 +1080,11 @@ def generate_songbook(
                             add_page_numbers=add_page_numbers,
                             toc_page_index=toc_start_page,
                             add_difficulty_wheels=add_difficulty_wheels,
+                            decorations=(
+                                edition_toc_config.decorations
+                                if edition_toc_config
+                                else None
+                            ),
                         )
                 current_page = len(songbook_pdf)
                 if files:  # Only set if there are actual song files
@@ -1385,6 +1413,52 @@ def add_page_number(page, page_index):
     x = page.rect.width - 35
     y = 30
     page.insert_text((x, y), text, fontsize=11, color=(0, 0, 0))
+
+
+def add_pride_flags(page, file, decorations, title_rect):
+    """Stamp matching pride/identity flags as a suffix after the song title.
+
+    Draws the same flag badges that the TOC shows for this song onto the song's
+    first page ("tab"), immediately to the right of its title, so the edition's
+    pride markers are visible on the sheet itself and not only in the contents.
+
+    Args:
+        page: Destination :class:`fitz.Page` (first page of the song).
+        file: The song :class:`~generator.worker.models.File`.
+        decorations: The edition's TOC decorations (``None`` for editions that
+            define none, in which case this is a no-op).
+        title_rect: Bounding box of the song title found on the page, used to
+            size and position the badges. ``None`` if the title wasn't located.
+    """
+    if title_rect is None:
+        return
+    badges, _ = toc.collect_decoration_badges(file, decorations)
+    if not badges:
+        return
+
+    # Size the flags to the title text so they read as a suffix of it.
+    height = title_rect.height * 0.72
+    width = height * 1.6  # ~flag aspect ratio
+    gap = height * 0.45
+    baseline_y = title_rect.y1
+    x = title_rect.x1 + gap
+
+    text_font = None
+    for badge in badges:
+        if badge.symbol is not None:
+            stripes, weights = toc.FLAG_PALETTES[badge.symbol]
+            toc.TocGenerator._draw_flag(
+                page, x, baseline_y, width, height, stripes, weights
+            )
+            x += width + gap
+        elif badge.text is not None:
+            if text_font is None:
+                text_font = resolve_font("RobotoCondensed-Regular.ttf")
+            fontsize = title_rect.height
+            tw = fitz.TextWriter(page.rect)
+            tw.append((x, baseline_y), badge.text, font=text_font, fontsize=fontsize)
+            tw.write_text(page)
+            x += text_font.text_length(badge.text, fontsize=fontsize) + gap
 
 
 def add_difficulty_wheel(page, file):
