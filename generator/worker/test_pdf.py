@@ -1498,6 +1498,99 @@ def test_copy_pdfs_custom_file_with_same_name_misses_cache(mocker):
     dest.close()
 
 
+def _make_merged_pdf_with_title(file_id: str, title: str) -> bytes:
+    """Build a single-page merged PDF whose first page renders *title* text.
+
+    The visible title lets ``copy_pdfs`` locate it with ``search_for`` so the
+    pride-flag suffix has somewhere to anchor.
+    """
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text((72, 100), title, fontsize=20)
+    doc.set_toc([[1, file_id, 1]])
+    buf = doc.tobytes()
+    doc.close()
+    return buf
+
+
+def test_copy_pdfs_stamps_pride_flag_on_matching_song(mocker):
+    """A song matching a decoration gets its flag drawn on the song page,
+    while an identical run without decorations draws nothing extra."""
+    from ..common.config import TocDecoration, TocBadge, TocSymbol
+    from ..common.filters import PropertyFilter, FilterOperator
+
+    title = "Don't Stop Me Now - Queen"
+    cached_pdf_bytes = _make_merged_pdf_with_title("queen_id", title)
+
+    decorations = [
+        TocDecoration(
+            filters=[
+                PropertyFilter(key="name", operator=FilterOperator.IN, value=[title])
+            ],
+            badges=[TocBadge(symbol=TocSymbol.PRIDE_FLAG)],
+        )
+    ]
+    files = [File(id="queen_id", name=title)]
+
+    def _run(decorations_arg):
+        mock_cache = mocker.Mock()
+        mock_cache.get.return_value = cached_pdf_bytes
+        dest = fitz.open()
+        copy_pdfs(
+            dest,
+            files,
+            mock_cache,
+            page_offset=0,
+            progress_step=mocker.Mock(),
+            decorations=decorations_arg,
+        )
+        count = len(dest[0].get_drawings())
+        dest.close()
+        return count
+
+    # The rainbow flag is drawn as several stripe rects plus an outline, so the
+    # decorated run must add vector drawings the undecorated run doesn't have.
+    assert _run(decorations) > _run(None)
+
+
+def test_copy_pdfs_no_flag_for_unmatched_song(mocker):
+    """A song that matches no decoration is left untouched."""
+    from ..common.config import TocDecoration, TocBadge, TocSymbol
+    from ..common.filters import PropertyFilter, FilterOperator
+
+    title = "Amazing Grace - Traditional"
+    cached_pdf_bytes = _make_merged_pdf_with_title("grace_id", title)
+
+    decorations = [
+        TocDecoration(
+            filters=[
+                PropertyFilter(
+                    key="name",
+                    operator=FilterOperator.IN,
+                    value=["Some Other Song - Someone"],
+                )
+            ],
+            badges=[TocBadge(symbol=TocSymbol.PRIDE_FLAG)],
+        )
+    ]
+
+    mock_cache = mocker.Mock()
+    mock_cache.get.return_value = cached_pdf_bytes
+    dest = fitz.open()
+
+    copy_pdfs(
+        dest,
+        [File(id="grace_id", name=title)],
+        mock_cache,
+        page_offset=0,
+        progress_step=mocker.Mock(),
+        decorations=decorations,
+    )
+
+    assert dest[0].get_drawings() == []
+    dest.close()
+
+
 def test_copy_pdfs_raises_when_no_merged_cache(mocker):
     """PdfCacheNotFound is raised when the merged PDF is absent from cache."""
     mock_cache = mocker.Mock()
