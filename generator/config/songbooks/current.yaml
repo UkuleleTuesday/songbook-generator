@@ -8,46 +8,11 @@ description: >
   so make sure to download the latest version!
 sections:
   cover:
-    file_id: "19cmazq_tGLRYivC396Iemz7gWtPHhfL0gSN-gIcld8M"
+    file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
-    decorations:
-      - badges:
-          - symbol: pride-flag
-        # Filters within a decoration are OR-ed: a song gets the pride flag if
-        # its `theme` metadata contains "pride" OR its name is in the explicit
-        # list below.
-        filters:
-          - key: "theme"
-            operator: "contains"
-            value: "pride"
-          # Manual workaround for #425: the LLM theme tagger only considers a
-          # song's lyrics/subject matter, so songs that qualify for pride by
-          # *artist identity/association* (rather than content) never get
-          # `theme=pride` and so miss the flag in the TOC. Pin them by name
-          # here until the tagger prompt is fixed and the catalogue retagged.
-          - key: "name"
-            operator: "in"
-            value:
-              - "BIRDS OF A FEATHER - Billie Eilish"
-              - "Call Me Maybe - Carly Rae Jepsen"
-              - "Can't Get You out of My Head - Kylie Minogue"
-              - "Flowers - Miley Cyrus"
-              - "Heroes (single version) - David Bowie"
-              - "Hot Stuff (Single Version) - Donna Summer"
-              - "I Feel Love - Donna Summer"
-              - "I Only Want To Be With You - Dusty Springfield"
-              - "Jolene - Dolly Parton"
-              - "Just Can't Get Enough - Depeche Mode"
-              - "Mamma Mia - ABBA"
-              - "Talkin' Bout a Revolution - Tracy Chapman"
-              - "The Best (Edit) - Tina Turner"
-              - "Toxic - Britney Spears"
-              - "Waterloo - ABBA"
-              - "Wrecking Ball - Miley Cyrus"
-              - "You've Got The Love - Florence + The Machine"
     # decorations:
     #   - badges:
     #       - text: " ☘"
@@ -77,7 +42,6 @@ sections:
           - "Brown Eyed Girl - Van Morrison"
           - "Call Me - Blondie"
           - "Call Me Maybe - Carly Rae Jepsen"
-          - "Can't Get You out of My Head - Kylie Minogue"
           - "Candy - Paolo Nutini"
           - "C'est la Vie - B*Witched"
           - "Chaise Longue - Wet Leg"
@@ -86,7 +50,6 @@ sections:
           - "Complicated - Avril Lavigne"
           - "Crazy World - Aslan"
           - "Creep - Radiohead"
-          - "Crocodile Rock - Elton John"
           - "Dirty Old Town - The Pogues"
           - "Dog Days Are Over - Florence + The Machine"
           - "Don't Look Back In Anger - Oasis"
@@ -113,7 +76,6 @@ sections:
           - "House of the Rising Sun - The Animals"
           - "I Feel Love - Donna Summer"
           - "I Love It (feat. Charli XCX) - Icona Pop"
-          - "I Want to Break Free - Queen"
           - "Imagine - John Lennon"
           - "In Bloom - Nirvana"
           - "I Only Want To Be With You - Dusty Springfield"
@@ -126,7 +88,6 @@ sections:
           - "Karma Chameleon - Culture Club"
           - "Kids - MGMT"
           - "Kids in America - Kim Wilde"
-          - "King for a Day - Green Day"
           - "Kiss/Mustang Sally Medley - Prince/The Commitments"
           - "Lady Madonna - The Beatles"
           - "Linger - The Cranberries"
@@ -162,14 +123,12 @@ sections:
           - "Stuck in the Middle with You - Stealers Wheel"
           - "Sweet Dreams (Are Made of This) - Eurythmics"
           - "Take on Me - a-ha"
-          - "Talkin' Bout a Revolution - Tracy Chapman"
+          - "TEXAS HOLD'EM - Beyoncé"
           - "The Best (Edit) - Tina Turner"
-          - "The Edge Of Glory (Radio Edit) - Lady Gaga"
           - "The Lion Sleeps Tonight - The Tokens"
           - "Torn - Natalie Imbruglia"
           - "Toxic - Britney Spears"
           - "Tree Hugger - Kimya Dawson & Antsy Pants"
-          - "True Trans Soul Rebel - Against Me!"
           - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
           - "vampire - Olivia Rodrigo"
           - "Venus - Bananarama"
@@ -180,6 +139,7 @@ sections:
           - "Where's Me Jumper? - Sultans Of Ping F.C."
           - "With Or Without You - U2"
           - "Wrecking Ball - Miley Cyrus"
+          - "You Oughta Know - Alanis Morissette"
           - "You're So Vain - Carly Simon"
           - "(You're the) Devil in Disguise - Elvis Presley"
           - "You've Got The Love - Florence + The Machine"
