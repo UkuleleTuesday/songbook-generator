@@ -13,13 +13,6 @@ sections:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
-    decorations:
-      - badges:
-          - symbol: pride-flag
-        filters:
-          - key: "theme"
-            operator: "contains"
-            value: "pride"
     # decorations:
     #   - badges:
     #       - text: " ☘"
