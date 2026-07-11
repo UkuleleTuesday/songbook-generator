@@ -7,6 +7,7 @@ from .toc import (
 )
 from .models import File
 from . import toc
+from . import badges
 from ..common.config import TocBadge, TocDecoration, TocSymbol
 from ..common.filters import PropertyFilter
 
@@ -542,12 +543,45 @@ def test_add_toc_entry_pride_flag_marker_registers_flag_mark(
 
     # Exactly one flag mark, positioned after the title (x_start + title_width + gap).
     assert len(marks) == 1
-    flag_x, flag_y, flag_w, flag_h, stripes, weights = marks[0]
+    flag_x, flag_y, flag_w, flag_h, stripes, weights, vertical = marks[0]
     # title "ABC" width = 3*5 = 15 (mock font), gap = text_length(" ") = 5.
     assert flag_x == 25 + 15 + 5
     assert flag_y == 70
     assert flag_w > 0 and flag_h > 0
-    assert stripes == toc.PRIDE_FLAG_COLORS
+    assert stripes == badges.PRIDE_FLAG_COLORS
+    assert vertical is False  # pride flag draws horizontal stripes
+
+
+def test_add_toc_entry_france_flag_marker_registers_vertical_mark(
+    mock_toc_generator, mocker
+):
+    """A france_flag marker registers a mark flagged for vertical stripes."""
+    generator = mock_toc_generator
+    match_filter = mocker.MagicMock(spec=PropertyFilter)
+    match_filter.matches.return_value = True
+    generator.config.decorations = [
+        TocDecoration(
+            filters=[match_filter], badges=[TocBadge(symbol=TocSymbol.FRANCE_FLAG)]
+        )
+    ]
+
+    marks = []
+    generator._add_toc_entry(
+        writers={None: MagicMock(spec=fitz.TextWriter)},
+        page_rect=PAGE_RECT,
+        file_index=0,
+        page_offset=0,
+        file=File(id="1", name="ABC", properties={}),
+        x_start=25,
+        y_pos=70,
+        current_page_index=0,
+        marks=marks,
+    )
+
+    assert len(marks) == 1
+    stripes, vertical = marks[0][4], marks[0][6]
+    assert stripes == badges.FRANCE_FLAG_COLORS
+    assert vertical is True  # French tricolor draws vertical stripes
 
 
 def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
@@ -578,29 +612,47 @@ def test_add_toc_entry_no_flag_mark_without_marker(mock_toc_generator, mocker):
 def test_draw_pride_flag_draws_all_stripes_and_border(mocker):
     """_draw_marks paints one rect per flag stripe plus an outline."""
     page = MagicMock(spec=fitz.Page)
-    marks = [(45.0, 70.0, 11.5, 7.2, toc.PRIDE_FLAG_COLORS, None)]
+    marks = [(45.0, 70.0, 11.5, 7.2, badges.PRIDE_FLAG_COLORS, None, False)]
 
     toc.TocGenerator._draw_marks(page, marks)
 
     # Six stripes + one border rectangle.
-    assert page.draw_rect.call_count == len(toc.PRIDE_FLAG_COLORS) + 1
+    assert page.draw_rect.call_count == len(badges.PRIDE_FLAG_COLORS) + 1
     # Stripe fills use the pride-flag palette colours.
     fills = [c.kwargs.get("fill") for c in page.draw_rect.call_args_list]
-    assert toc.PRIDE_FLAG_COLORS[0] in fills
-    assert toc.PRIDE_FLAG_COLORS[-1] in fills
+    assert badges.PRIDE_FLAG_COLORS[0] in fills
+    assert badges.PRIDE_FLAG_COLORS[-1] in fills
 
 
 def test_draw_flag_supports_weighted_stripes(mocker):
     """A weighted palette (e.g. the bi flag's 2:1:2) draws all stripes + border."""
     page = MagicMock(spec=fitz.Page)
-    marks = [(45.0, 70.0, 11.5, 7.2, toc.BI_FLAG_COLORS, toc.BI_FLAG_WEIGHTS)]
+    marks = [
+        (45.0, 70.0, 11.5, 7.2, badges.BI_FLAG_COLORS, badges.BI_FLAG_WEIGHTS, False)
+    ]
 
     toc.TocGenerator._draw_marks(page, marks)
 
-    assert page.draw_rect.call_count == len(toc.BI_FLAG_COLORS) + 1
+    assert page.draw_rect.call_count == len(badges.BI_FLAG_COLORS) + 1
     fills = [c.kwargs.get("fill") for c in page.draw_rect.call_args_list]
-    assert toc.BI_FLAG_COLORS[0] in fills
-    assert toc.BI_FLAG_COLORS[-1] in fills
+    assert badges.BI_FLAG_COLORS[0] in fills
+    assert badges.BI_FLAG_COLORS[-1] in fills
+
+
+def test_draw_flag_vertical_draws_stripes_side_by_side(mocker):
+    """A vertical flag draws each stripe as a full-height column plus a border."""
+    page = MagicMock(spec=fitz.Page)
+    marks = [(45.0, 70.0, 11.5, 7.2, badges.FRANCE_FLAG_COLORS, None, True)]
+
+    toc.TocGenerator._draw_marks(page, marks)
+
+    # Three stripes + one border rectangle.
+    assert page.draw_rect.call_count == len(badges.FRANCE_FLAG_COLORS) + 1
+    # Each stripe spans the full flag height (top to baseline), varying only in x.
+    stripe_rects = [c.args[0] for c in page.draw_rect.call_args_list[:-1]]
+    assert all(r.y0 == 70.0 - 7.2 and r.y1 == 70.0 for r in stripe_rects)
+    xs = [r.x0 for r in stripe_rects]
+    assert xs == sorted(xs)  # columns laid left-to-right
 
 
 def test_build_table_of_contents_calls_assign_difficulty_bins(mocker):

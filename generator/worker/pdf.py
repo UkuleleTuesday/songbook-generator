@@ -10,6 +10,7 @@ from typing import List, Optional, Union, Dict, Any
 from pydantic import ValidationError
 from . import progress
 from . import toc
+from . import badges as badges_mod
 from . import cover
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -1432,7 +1433,7 @@ def add_pride_flags(page, file, decorations, title_rect):
     """
     if title_rect is None:
         return
-    badges, _ = toc.collect_decoration_badges(file, decorations)
+    badges, _ = badges_mod.collect_decoration_badges(file, decorations)
     if not badges:
         return
 
@@ -1450,9 +1451,10 @@ def add_pride_flags(page, file, decorations, title_rect):
     text_font = None
     for badge in badges:
         if badge.symbol is not None:
-            stripes, weights = toc.FLAG_PALETTES[badge.symbol]
-            toc.TocGenerator._draw_flag(
-                page, x, baseline_y, width, height, stripes, weights
+            stripes, weights = badges_mod.FLAG_PALETTES[badge.symbol]
+            vertical = badge.symbol in badges_mod.VERTICAL_FLAG_SYMBOLS
+            badges_mod.draw_flag(
+                page, x, baseline_y, width, height, stripes, weights, vertical
             )
             x += width + gap
         elif badge.text is not None:
