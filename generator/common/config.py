@@ -52,6 +52,7 @@ class TocSymbol(str, Enum):
     LESBIAN_FLAG = "lesbian-flag"
     PAN_FLAG = "pan-flag"
     NONBINARY_FLAG = "nonbinary-flag"
+    FRANCE_FLAG = "france-flag"
 
 
 class TocBadge(BaseModel):
