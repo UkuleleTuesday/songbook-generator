@@ -107,6 +107,51 @@ def test_export_writes_to_output_file(runner, mocker, tmp_path):
     assert "Exported 2 song(s)" in result.output
 
 
+def test_export_strips_unknown_date_sentinels(runner, mocker):
+    """The literal "unknown" sentinel is dropped from exported date fields (#442)."""
+    docs = {
+        "fileA": {
+            "gdrive_file_id": "fileA",
+            "gdrive_file_name": "Luka - Suzanne Vega",
+            "properties": {
+                "artist": "Suzanne Vega",
+                "ready_to_play_date": "unknown",
+                "approved_date": "unknown",
+                "year": "1987",
+            },
+        },
+        "fileB": {
+            "gdrive_file_id": "fileB",
+            "gdrive_file_name": "Roar - Katy Perry",
+            "properties": {
+                "ready_to_play_date": "2023-06-20T10:02:00Z",
+                "approved_date": "unknown",
+            },
+        },
+    }
+    mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
+        metadata_store=mocker.Mock(firestore_read_enabled=True),
+    )
+    store = mocker.Mock()
+    store.get_all.return_value = docs
+    mocker.patch("generator.cli.tags.get_metadata_store", return_value=store)
+
+    result = runner.invoke(cli, ["tags", "export", "--format", "json"])
+
+    assert result.exit_code == 0, result.output
+    by_id = {
+        json.loads(line)["gdrive_file_id"]: json.loads(line)
+        for line in result.output.splitlines()
+        if line.strip()
+    }
+    # Both "unknown" date fields are gone; real values and other props survive.
+    assert "ready_to_play_date" not in by_id["fileA"]["properties"]
+    assert "approved_date" not in by_id["fileA"]["properties"]
+    assert by_id["fileA"]["properties"]["year"] == "1987"
+    assert by_id["fileB"]["properties"]["ready_to_play_date"] == "2023-06-20T10:02:00Z"
+    assert "approved_date" not in by_id["fileB"]["properties"]
+
+
 def test_export_falls_back_to_drive_when_firestore_read_disabled(runner, mocker):
     from ..worker.models import File
 

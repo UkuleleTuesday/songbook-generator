@@ -220,7 +220,14 @@ const songs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 1. **Coerce strings.** `Number(properties.year)`, `parseFloat(properties.difficulty)`.
 2. **Split list fields** on `,` (`genre`, `specialbooks`, `chords`, `features`).
 3. **Treat keys as optional** — do not assume any `properties` key exists.
-4. **Join to the PDF (optional).** The document ID is the Drive file ID, which is
+4. **Coerce the `"unknown"` sentinel to null.** `ready_to_play_date` and
+   `approved_date` may hold the literal string `"unknown"` when the real date
+   could not be determined (see #442). It is kept in Firestore so the tagger does
+   not later re-stamp a wrong timestamp, but it is **not** a valid date — treat it
+   as absent. The `songbook-tools tags export` output already strips it, so a
+   consumer reading the exported dataset will not see it; a consumer reading
+   Firestore directly must coerce `"unknown"` → null itself.
+5. **Join to the PDF (optional).** The document ID is the Drive file ID, which is
    also the cached PDF object key in the public cache bucket:
    `https://storage.googleapis.com/songbook-generator-cache-europe-west1/song-sheets/<docId>.pdf`
    (public-read, 90-day TTL).
@@ -246,6 +253,8 @@ request, no per-visitor read amplification, no Firebase/security-rules setup).
 - The DB must be **Firestore Native** mode for the `documents` REST API — it is.
 - Values are **all strings** inside `properties`; there is no typed/array data
   despite some fields being conceptually numbers or lists.
+- `ready_to_play_date` / `approved_date` may be the literal string `"unknown"` —
+  coerce it to null (see the post-processing checklist and #442).
 - The **key set is not fixed** — it mirrors whatever Drive custom properties
   existed per song.
 - Browser-direct reads require **Firebase + security rules** on the project

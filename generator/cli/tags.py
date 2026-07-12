@@ -267,6 +267,29 @@ def migrate_specialbooks(file_identifier, all_files, dry_run):
     click.echo(f"\nMigrated {migrated} file(s){suffix}.")
 
 
+# Date properties that store the literal string "unknown" as a sentinel when the
+# real value could not be determined (see #442). The sentinel is kept in
+# Firestore to stop the tagger re-stamping a wrong timestamp, but consumers of
+# the exported dataset should see an absent field rather than a magic string.
+_UNKNOWN_SENTINEL = "unknown"
+_UNKNOWN_SENTINEL_FIELDS = ("ready_to_play_date", "approved_date")
+
+
+def _normalise_unknown_sentinels(doc: dict) -> dict:
+    """Drop date properties whose value is the ``"unknown"`` sentinel.
+
+    Returns the same document (mutated) so consumers get an absent field
+    instead of a literal ``"unknown"`` string.
+    """
+    props = doc.get("properties")
+    if not props:
+        return doc
+    for key in _UNKNOWN_SENTINEL_FIELDS:
+        if props.get(key) == _UNKNOWN_SENTINEL:
+            del props[key]
+    return doc
+
+
 def _load_metadata_documents(settings) -> list[dict]:
     """Return all song metadata documents, sorted by Drive file ID.
 
@@ -274,11 +297,17 @@ def _load_metadata_documents(settings) -> list[dict]:
     (the default); otherwise falls back to live Drive custom properties,
     synthesising documents with the same top-level schema (minus the
     Firestore-only ``metadata_updated_at`` timestamp).
+
+    Date fields holding the ``"unknown"`` sentinel are normalised to absent so
+    the exported dataset never surfaces the magic string (see #442).
     """
     if settings.metadata_store.firestore_read_enabled:
         store = get_metadata_store()
         all_docs = store.get_all()
-        return [all_docs[file_id] for file_id in sorted(all_docs)]
+        return [
+            _normalise_unknown_sentinels(all_docs[file_id])
+            for file_id in sorted(all_docs)
+        ]
 
     click.echo(
         "Firestore read disabled; exporting from live Drive properties.", err=True
@@ -298,11 +327,13 @@ def _load_metadata_documents(settings) -> list[dict]:
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     files = gdrive_client.query_drive_files(settings.song_sheets.folder_ids)
     return [
-        {
-            "gdrive_file_id": f.id,
-            "gdrive_file_name": f.name,
-            "properties": dict(f.properties),
-        }
+        _normalise_unknown_sentinels(
+            {
+                "gdrive_file_id": f.id,
+                "gdrive_file_name": f.name,
+                "properties": dict(f.properties),
+            }
+        )
         for f in sorted(files, key=lambda f: f.id)
     ]
 
