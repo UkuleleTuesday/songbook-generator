@@ -1069,3 +1069,43 @@ def test_convert_edition_dry_run_shows_keep_config(runner, mocker, tmp_path):
     assert result.exit_code == 0, result.output
     assert "Keep local config file" in result.output
     assert str(config_file) in result.output
+
+
+# ---------------------------------------------------------------------------
+# editions export tests
+# ---------------------------------------------------------------------------
+
+
+def test_editions_export_round_trips_real_config(runner):
+    """The exported blob re-validates to the exact baked-in edition set.
+
+    Runs against the real YAMLs in generator/config/songbooks/, so it also
+    guards every repo edition against schema drift.
+    """
+    import json
+
+    from ..common.config import get_settings
+    from ..common.editions import EDITIONS_SCHEMA_VERSION
+
+    result = runner.invoke(cli, ["editions", "export"])
+
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["schema_version"] == EDITIONS_SCHEMA_VERSION
+
+    expected = get_settings().editions
+    assert len(data["editions"]) == len(expected) > 0
+    round_tripped = [Edition.model_validate(e) for e in data["editions"]]
+    assert round_tripped == expected
+
+
+def test_editions_export_writes_to_file(runner, tmp_path):
+    """--output writes the blob to the given file."""
+    import json
+
+    out_file = tmp_path / "editions.json"
+    result = runner.invoke(cli, ["editions", "export", "--output", str(out_file)])
+
+    assert result.exit_code == 0, result.output
+    data = json.loads(out_file.read_text())
+    assert data["editions"]

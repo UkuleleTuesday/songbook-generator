@@ -1,3 +1,6 @@
+import json
+import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -8,7 +11,7 @@ from googleapiclient.errors import HttpError
 
 from ..common import config
 from ..common.config import get_settings
-from ..common.editions import scan_drive_editions
+from ..common.editions import EDITIONS_SCHEMA_VERSION, scan_drive_editions
 from ..common.filters import FilterGroup
 from ..common.gdrive import GoogleDriveClient
 from ..worker.pdf import (
@@ -80,6 +83,38 @@ def list_editions():
             )
     else:
         click.echo("\nNo drive editions found.")
+
+
+@editions.command(name="export")
+@click.option(
+    "--output",
+    "-o",
+    type=click.File("w"),
+    default="-",
+    help="Where to write the JSON blob (defaults to stdout).",
+)
+def export_editions(output):
+    """Compile repo edition YAMLs into a single validated JSON blob.
+
+    Loading Settings validates every YAML in generator/config/songbooks/,
+    so an invalid edition makes this command fail before anything is
+    written. CI uploads the resulting blob to GCS so deployed functions
+    can pick up config changes without a redeploy.
+    """
+    settings = get_settings()
+    json.dump(
+        {
+            "schema_version": EDITIONS_SCHEMA_VERSION,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "git_sha": os.getenv("GITHUB_SHA", ""),
+            "editions": [
+                e.model_dump(mode="json", exclude_unset=True) for e in settings.editions
+            ],
+        },
+        output,
+        indent=2,
+    )
+    output.write("\n")
 
 
 def _edition_to_yaml_bytes(
