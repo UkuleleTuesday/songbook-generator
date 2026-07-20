@@ -84,6 +84,35 @@ def empty_history(edition: str) -> dict[str, Any]:
     return {"edition": edition, "entries": []}
 
 
+def compose_entries(base: dict[str, Any], step: dict[str, Any]) -> dict[str, Any]:
+    """Fold two chained entries into one cumulative entry.
+
+    ``base`` records ``B -> M`` and ``step`` records ``M -> F`` (``step``'s
+    ``previous_manifest`` is ``base``'s ``manifest_filename``). The result records
+    the net ``B -> F`` change: it keeps ``step``'s identity (filename/timestamp)
+    but adopts ``base``'s baseline (``previous_*``). Songs added then removed (or
+    removed then re-added) across the two steps cancel out, so the cumulative diff
+    reflects the endpoints only.
+
+    This is what lets several same-day publishes — which all overwrite the one
+    date-stamped artifact — collapse into a single entry for it, instead of a
+    later publish evicting an earlier one's changes.
+    """
+    a1, r1 = set(base.get("added", [])), set(base.get("removed", []))
+    a2, r2 = set(step.get("added", [])), set(step.get("removed", []))
+    added = sorted((a1 - r2) | (a2 - r1))
+    removed = sorted((r1 - a2) | (r2 - a1))
+    return {
+        **step,
+        "previous_manifest": base.get("previous_manifest"),
+        "previous_generated_at": base.get("previous_generated_at"),
+        "added": added,
+        "removed": removed,
+        "added_count": len(added),
+        "removed_count": len(removed),
+    }
+
+
 def update_history(
     existing: Optional[dict[str, Any]],
     entry: Optional[dict[str, Any]],
@@ -93,9 +122,17 @@ def update_history(
     """Return the history with ``entry`` prepended (newest first).
 
     ``existing`` of ``None`` starts a fresh history. ``entry`` of ``None``
-    (no change to record) returns the history unchanged. Any existing entry with
-    the same ``manifest_filename`` is dropped first, so re-running a publish for
-    the same dated manifest is idempotent rather than producing duplicates. The
+    (no change to record) returns the history unchanged.
+
+    Any existing entry with the same ``manifest_filename`` is replaced (not
+    duplicated), which keeps re-running a publish idempotent. When the new entry
+    *chains onto* that existing one — i.e. it was diffed against the very manifest
+    the existing entry produced (``entry['previous_manifest']`` equals the
+    existing entry's ``manifest_filename``) — the two are folded into a single
+    cumulative entry via :func:`compose_entries`. That is the same-day case: the
+    date-stamped artifact is published more than once on one UTC day, each publish
+    diffing against the previous, and we want the one entry for that date to carry
+    the whole day's net change rather than only the last publish's slice. The
     history is truncated to ``max_entries``.
     """
     history = (
@@ -111,6 +148,15 @@ def update_history(
         return history
 
     filename = entry.get("manifest_filename")
+    prior = next(
+        (e for e in history["entries"] if e.get("manifest_filename") == filename),
+        None,
+    )
+    if prior is not None and entry.get("previous_manifest") == prior.get(
+        "manifest_filename"
+    ):
+        entry = compose_entries(prior, entry)
+
     entries = [e for e in history["entries"] if e.get("manifest_filename") != filename]
     entries.insert(0, entry)
     history["entries"] = entries[:max_entries]
