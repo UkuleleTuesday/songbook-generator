@@ -1,7 +1,5 @@
 """Tests for editions module."""
 
-import json
-
 import pytest
 from googleapiclient.errors import HttpError
 from unittest.mock import MagicMock
@@ -12,8 +10,7 @@ from .editions import (
     _list_child_folders,
     scan_drive_editions,
     DriveEditionError,
-    EDITIONS_SCHEMA_VERSION,
-    editions_blob_path,
+    editions_config_prefix,
     resolve_editions,
     validate_config_ref,
 )
@@ -487,29 +484,26 @@ def test_scan_drive_editions_scopes_search_to_configured_folders(mocker):
 # ---------------------------------------------------------------------------
 
 
-def _make_blob_json(edition_ids, schema_version=EDITIONS_SCHEMA_VERSION):
-    return json.dumps(
-        {
-            "schema_version": schema_version,
-            "generated_at": "2026-01-01T00:00:00+00:00",
-            "git_sha": "abc123",
-            "editions": [
-                {"id": eid, "title": eid.title(), "description": f"{eid} edition"}
-                for eid in edition_ids
-            ],
-        }
-    ).encode("utf-8")
+def _edition_yaml(eid):
+    return f"id: {eid}\ntitle: {eid}\ndescription: {eid} edition\n".encode("utf-8")
 
 
-def _mock_gcs(mocker, download_result):
-    """Patch the storage client so blob downloads return/raise download_result."""
-    mock_blob = MagicMock()
-    if isinstance(download_result, Exception):
-        mock_blob.download_as_bytes.side_effect = download_result
-    else:
-        mock_blob.download_as_bytes.return_value = download_result
+def _mock_gcs(mocker, files=None, error=None):
+    """Patch the storage client; list_blobs yields mock blobs for *files*.
+
+    *files* maps blob name -> content bytes. *error* makes list_blobs raise.
+    """
     mock_client = MagicMock()
-    mock_client.bucket.return_value.blob.return_value = mock_blob
+    if error is not None:
+        mock_client.list_blobs.side_effect = error
+    else:
+        blobs = []
+        for name, content in (files or {}).items():
+            blob = MagicMock()
+            blob.name = name
+            blob.download_as_bytes.return_value = content
+            blobs.append(blob)
+        mock_client.list_blobs.return_value = blobs
     mocker.patch(
         "generator.common.editions._get_storage_client", return_value=mock_client
     )
@@ -547,70 +541,113 @@ class TestValidateConfigRef:
             validate_config_ref(ref)
 
 
-def test_editions_blob_path():
-    assert editions_blob_path("pr-7") == "config/pr-7/editions.json"
-    assert editions_blob_path("main") == "config/main/editions.json"
+def test_editions_config_prefix():
+    assert editions_config_prefix("pr-7") == "config/pr-7/"
+    assert editions_config_prefix("main") == "config/main/"
 
 
 class TestResolveEditions:
     def test_bucket_unset_returns_baked_without_gcs_call(self, mocker, monkeypatch):
         monkeypatch.delenv("EDITIONS_CONFIG_BUCKET", raising=False)
         settings = _mock_baked_settings(mocker, ["baked"])
-        gcs = _mock_gcs(mocker, _make_blob_json(["gcs"]))
+        gcs = _mock_gcs(mocker, {"config/main/gcs.yaml": _edition_yaml("gcs")})
 
         editions, source = resolve_editions()
 
         assert source == "baked"
         assert editions == settings.editions
-        gcs.bucket.assert_not_called()
+        gcs.list_blobs.assert_not_called()
 
-    def test_gcs_blob_replaces_baked_set_entirely(self, mocker, monkeypatch):
+    def test_gcs_set_replaces_baked_set_entirely(self, mocker, monkeypatch):
         """Whole-set replacement: a baked-only edition must not survive."""
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
         _mock_baked_settings(mocker, ["baked-only", "shared", "extra"])
-        _mock_gcs(mocker, _make_blob_json(["shared", "new-one"]))
+        _mock_gcs(
+            mocker,
+            {
+                "config/main/shared.yaml": _edition_yaml("shared"),
+                "config/main/a-new-one.yaml": _edition_yaml("new-one"),
+            },
+        )
 
         editions, source = resolve_editions()
 
         assert source == "gcs:main"
-        assert [e.id for e in editions] == ["shared", "new-one"]
+        # Sorted by blob name, matching the baked loader's sorted(os.listdir)
+        assert [e.id for e in editions] == ["new-one", "shared"]
+
+    def test_non_yaml_blobs_are_ignored(self, mocker, monkeypatch):
+        monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
+        _mock_baked_settings(mocker, ["baked"])
+        _mock_gcs(
+            mocker,
+            {
+                "config/main/current.yaml": _edition_yaml("current"),
+                "config/main/README.md": b"not an edition",
+            },
+        )
+
+        editions, source = resolve_editions()
+
+        assert source == "gcs:main"
+        assert [e.id for e in editions] == ["current"]
 
     def test_default_ref_falls_back_to_baked_on_gcs_failure(self, mocker, monkeypatch):
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
         settings = _mock_baked_settings(mocker, ["baked"])
-        _mock_gcs(mocker, RuntimeError("blob not found"))
+        _mock_gcs(mocker, error=RuntimeError("gcs unavailable"))
 
         editions, source = resolve_editions()
 
         assert source == "baked"
         assert editions == settings.editions
 
-    def test_unsupported_schema_version_falls_back(self, mocker, monkeypatch):
+    def test_empty_prefix_falls_back_to_baked(self, mocker, monkeypatch):
+        """No published config set (e.g. before the first publish) means baked."""
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
         settings = _mock_baked_settings(mocker, ["baked"])
-        _mock_gcs(mocker, _make_blob_json(["gcs"], schema_version=2))
+        _mock_gcs(mocker, files={})
 
         editions, source = resolve_editions()
 
         assert source == "baked"
         assert editions == settings.editions
 
-    def test_explicit_ref_loads_pr_blob(self, mocker, monkeypatch):
+    def test_invalid_yaml_falls_back_to_baked(self, mocker, monkeypatch):
+        monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
+        settings = _mock_baked_settings(mocker, ["baked"])
+        _mock_gcs(mocker, {"config/main/bad.yaml": _INVALID_YAML})
+
+        editions, source = resolve_editions()
+
+        assert source == "baked"
+        assert editions == settings.editions
+
+    def test_explicit_ref_loads_pr_set(self, mocker, monkeypatch):
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
         _mock_baked_settings(mocker, ["baked"])
-        gcs = _mock_gcs(mocker, _make_blob_json(["pr-edition"]))
+        gcs = _mock_gcs(mocker, {"config/pr-42/x.yaml": _edition_yaml("pr-edition")})
 
         editions, source = resolve_editions("pr-42")
 
         assert source == "gcs:pr-42"
         assert [e.id for e in editions] == ["pr-edition"]
-        gcs.bucket.return_value.blob.assert_called_with("config/pr-42/editions.json")
+        gcs.list_blobs.assert_called_once_with("test-bucket", prefix="config/pr-42/")
 
     def test_explicit_ref_gcs_failure_raises(self, mocker, monkeypatch):
         """An explicitly requested config must never silently fall back."""
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
         _mock_baked_settings(mocker, ["baked"])
-        _mock_gcs(mocker, RuntimeError("blob not found"))
+        _mock_gcs(mocker, error=RuntimeError("gcs unavailable"))
+
+        with pytest.raises(ValueError, match="pr-42"):
+            resolve_editions("pr-42")
+
+    def test_explicit_ref_empty_prefix_raises(self, mocker, monkeypatch):
+        """A ref whose config set was never published fails the job."""
+        monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
+        _mock_baked_settings(mocker, ["baked"])
+        _mock_gcs(mocker, files={})
 
         with pytest.raises(ValueError, match="pr-42"):
             resolve_editions("pr-42")
@@ -619,18 +656,18 @@ class TestResolveEditions:
         """Mixed code+config PR envs have no bucket; baked config matches the PR."""
         monkeypatch.delenv("EDITIONS_CONFIG_BUCKET", raising=False)
         settings = _mock_baked_settings(mocker, ["baked"])
-        gcs = _mock_gcs(mocker, _make_blob_json(["gcs"]))
+        gcs = _mock_gcs(mocker, {"config/main/gcs.yaml": _edition_yaml("gcs")})
 
         editions, source = resolve_editions("pr-42")
 
         assert source == "baked"
         assert editions == settings.editions
-        gcs.bucket.assert_not_called()
+        gcs.list_blobs.assert_not_called()
 
     def test_malformed_ref_raises_before_gcs(self, mocker, monkeypatch):
         monkeypatch.setenv("EDITIONS_CONFIG_BUCKET", "test-bucket")
-        gcs = _mock_gcs(mocker, _make_blob_json(["gcs"]))
+        gcs = _mock_gcs(mocker, {"config/main/gcs.yaml": _edition_yaml("gcs")})
 
         with pytest.raises(ValueError):
             resolve_editions("gs://evil/x")
-        gcs.bucket.assert_not_called()
+        gcs.list_blobs.assert_not_called()

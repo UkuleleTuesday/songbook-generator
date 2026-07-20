@@ -100,10 +100,19 @@ jobs:
         gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
         gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
 
-    - name: Compile and validate editions
-      run: uv run songbook-tools editions export --output editions.json
+    - name: Validate editions config
+      # Constructing Settings parses and schema-validates every YAML in
+      # generator/config/songbooks/, so invalid config fails here before
+      # anything is uploaded.
+      run: |
+        uv run python -c "
+        from generator.common.config import get_settings
+        editions = get_settings().editions
+        assert editions, 'no editions loaded'
+        print(f'Validated {len(editions)} edition(s):', ', '.join(e.id for e in editions))
+        "
 
-    - name: Upload editions.json
+    - name: Sync edition YAMLs to GCS
       run: |
         if [[ "${{ github.event_name }}" == "pull_request" ]]; then
           REF="pr-${{ github.event.pull_request.number }}"
@@ -111,9 +120,9 @@ jobs:
           REF="main"
         fi
         echo "Publishing editions config for ref: ${REF}"
-        gcloud storage cp editions.json \
-          "gs://${{ env.GCS_WORKER_CACHE_BUCKET }}/config/${REF}/editions.json" \
-          --cache-control="no-store"
+        gcloud storage rsync generator/config/songbooks \
+          "gs://${{ env.GCS_WORKER_CACHE_BUCKET }}/config/${REF}" \
+          --delete-unmatched-destination-objects
 
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
@@ -729,7 +738,7 @@ jobs:
     # Runs in three configurations:
     # - main config-only merge: deploys skipped, runs after publish-config;
     #   empty api_url falls back to the production API in
-    #   generate-songbook.yaml, which reads config/main/editions.json.
+    #   generate-songbook.yaml, which reads the config/main/ edition YAMLs.
     # - PR config-only: deploys skipped; the production API is used with
     #   config_ref pr-N so the worker reads the PR's published config.
     # - code (or mixed) change: deploys ran; PR api_url with baked config,
