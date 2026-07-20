@@ -4,6 +4,7 @@ from .changelog import (
     build_timeline,
     build_vocabulary,
     canon,
+    compose_entries,
     diff_keyed,
     diff_songs,
     empty_history,
@@ -108,6 +109,97 @@ def test_update_history_upsert_by_filename_is_idempotent():
     # Re-run the same publish: should replace, not duplicate.
     history = update_history(history, entry, "current")
     assert len(history["entries"]) == 1
+
+
+def test_update_history_same_day_republish_accumulates():
+    """Two real changes published on one UTC day share a date-stamped filename.
+
+    The second publish must not evict the first's changes (the I Feel Love bug):
+    the single entry for that date should carry the whole day's net change.
+    """
+    history = empty_history("current")
+    # First publish of the day: diffed against last week's edition.
+    first = {
+        "generated_at": "2026-07-20T09:00:00+00:00",
+        "manifest_filename": "sb-current-2026-07-20.manifest.json",
+        "previous_manifest": "sb-current-2026-07-14.manifest.json",
+        "previous_generated_at": "2026-07-14T00:00:00+00:00",
+        "added": ["Macarena - Los Del Rio"],
+        "removed": ["Ne Me Quitte Pas - Jacques Brel"],
+        "added_count": 1,
+        "removed_count": 1,
+    }
+    # Second publish, same day -> same filename, diffed against `first`'s manifest.
+    second = {
+        "generated_at": "2026-07-20T11:47:00+00:00",
+        "manifest_filename": "sb-current-2026-07-20.manifest.json",
+        "previous_manifest": "sb-current-2026-07-20.manifest.json",
+        "previous_generated_at": "2026-07-20T09:00:00+00:00",
+        "added": [],
+        "removed": ["I Feel Love - Donna Summer"],
+        "added_count": 0,
+        "removed_count": 1,
+    }
+    history = update_history(history, first, "current")
+    history = update_history(history, second, "current")
+
+    assert len(history["entries"]) == 1
+    entry = history["entries"][0]
+    assert entry["added"] == ["Macarena - Los Del Rio"]
+    assert entry["removed"] == [
+        "I Feel Love - Donna Summer",
+        "Ne Me Quitte Pas - Jacques Brel",
+    ]
+    assert entry["added_count"] == 1
+    assert entry["removed_count"] == 2
+    # Baseline is preserved from the first publish, identity from the second.
+    assert entry["previous_manifest"] == "sb-current-2026-07-14.manifest.json"
+    assert entry["previous_generated_at"] == "2026-07-14T00:00:00+00:00"
+    assert entry["generated_at"] == "2026-07-20T11:47:00+00:00"
+
+
+def test_update_history_same_day_republish_is_idempotent_on_retry():
+    """Re-applying the same chained step (e.g. a workflow retry) is a no-op."""
+    history = empty_history("current")
+    first = {
+        "manifest_filename": "sb-2026-07-20.manifest.json",
+        "previous_manifest": "sb-2026-07-14.manifest.json",
+        "added": ["A"],
+        "removed": ["B"],
+    }
+    second = {
+        "manifest_filename": "sb-2026-07-20.manifest.json",
+        "previous_manifest": "sb-2026-07-20.manifest.json",
+        "added": [],
+        "removed": ["C"],
+    }
+    history = update_history(history, first, "current")
+    history = update_history(history, second, "current")
+    once = history["entries"][0]
+    # The chained step arrives again (retry before latest.json advanced).
+    history = update_history(history, second, "current")
+    assert len(history["entries"]) == 1
+    assert history["entries"][0]["added"] == once["added"]
+    assert history["entries"][0]["removed"] == once["removed"]
+
+
+def test_compose_entries_cancels_reverted_songs():
+    base = {
+        "manifest_filename": "day.json",
+        "previous_manifest": "prev.json",
+        "added": ["Keep - X", "Fleeting - Y"],
+        "removed": ["Gone - Z", "Boomerang - W"],
+    }
+    step = {
+        "manifest_filename": "day.json",
+        "previous_manifest": "day.json",
+        "added": ["Boomerang - W"],  # re-added -> cancels base's removal
+        "removed": ["Fleeting - Y"],  # removed again -> cancels base's addition
+    }
+    composed = compose_entries(base, step)
+    assert composed["added"] == ["Keep - X"]
+    assert composed["removed"] == ["Gone - Z"]
+    assert composed["previous_manifest"] == "prev.json"
 
 
 def test_update_history_caps_entries():
