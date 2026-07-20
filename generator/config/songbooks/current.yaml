@@ -8,7 +8,7 @@ description: >
   so make sure to download the latest version!
 sections:
   cover:
-    file_id: "1I1JPx_tQLtHFq6v4ERP4_RpieOsr9OsMweVz8MgZoOU"
+    file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
@@ -20,21 +20,6 @@ sections:
     #       - key: "country"
     #         operator: "contains"
     #         value: "ireland"
-    decorations:
-      # French flag on the French-language songs, shown as a suffix in the TOC
-      # and stamped after the title on each song's tab.
-      - badges:
-          - symbol: france-flag
-        filters:
-          - key: "name"
-            operator: "in"
-            value:
-              - "Bongo Bong - Manu Chao"
-              - "Ça Plane Pour Moi - Plastic Bertrand"
-              - "Cendrillon - Téléphone"
-              - "Je ne t'aime plus - Manu Chao"
-              - "La Seine - Vanessa Paradis, -M-"
-              - "Les lacs du Connemara - Michel Sardou"
   songs:
     filters:
       - key: "name"
@@ -54,13 +39,11 @@ sections:
           - "BIRDS OF A FEATHER - Billie Eilish"
           - "Blinding Lights - The Weeknd"
           - "Blitzkrieg Bop - Ramones"
-          - "Bongo Bong - Manu Chao"
           - "Brown Eyed Girl - Van Morrison"
           - "Call Me - Blondie"
           - "Call Me Maybe - Carly Rae Jepsen"
           - "Ça Plane Pour Moi - Plastic Bertrand"
           - "Candy - Paolo Nutini"
-          - "Cendrillon - Téléphone"
           - "C'est la Vie - B*Witched"
           - "Chaise Longue - Wet Leg"
           - "Chasing Cars - Snow Patrol"
@@ -98,7 +81,6 @@ sections:
           - "I Only Want To Be With You - Dusty Springfield"
           - "Island In The Sun - Weezer"
           - "I Will Survive - Gloria Gaynor"
-          - "Je ne t'aime plus - Manu Chao"
           - "Jolene - Dolly Parton"
           - "Jump in the Line - Harry Belafonte"
           - "Just A Girl - No Doubt"
@@ -107,14 +89,13 @@ sections:
           - "Kids - MGMT"
           - "Kids in America - Kim Wilde"
           - "Kiss/Mustang Sally Medley - Prince/The Commitments"
-          - "La Seine - Vanessa Paradis, -M-"
           - "Lady Madonna - The Beatles"
-          - "Les lacs du Connemara - Michel Sardou"
           - "Linger - The Cranberries"
           - "Little Lion Man - Mumford and Sons"
           - "Livin' on a Prayer - Bon Jovi"
           - "Love Machine - Girls Aloud"
           - "Love Me Do - The Beatles"
+          - "Macarena (Bayside Boys Remix) - Los Del Rio"
           - "Mamma Mia - ABBA"
           - "Man! I Feel Like A Woman! - Shania Twain"
           - "Material Girl - Madonna"
