@@ -1,0 +1,78 @@
+id: "ukulele-hooley-2026"
+title: "Ukulele Hooley 2026"
+description: "The official songbook for the 2026 Ukulele Hooley Friday jam."
+publish:
+  visibility: public
+sections:
+  cover:
+    file_id: "11FEjZuo_-HRTRvDVo5JY7kYm8jnetwwREDtjCzIEeK8"
+  preface:
+    file_ids:
+      - "1cn7ZzJPD5g4IaPPfx5IJY0L9k7eboMwGV_KEnf4zdXs"
+  table_of_contents:
+    include_difficulty: false
+    include_wip_marker: false
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    text_fontsize: 12
+    line_spacing: 15
+  songs:
+    filters:
+      # Seeded from the 2025 Hooley set (specialbooks contains hooley-2025);
+      # curate by editing this list.
+      - key: "name"
+        operator: "in"
+        value:
+          - "All The Small Things - Blink-182"
+          - "An Poc Ar Buile (The Mad Puck Goat) - The Chieftains"
+          - "BIRDS OF A FEATHER - Billie Eilish"
+          - "Bad Moon Rising - Creedence Clearwater Revival"
+          - "Blue Suede Shoes - Elvis Presley"
+          - "Brown Eyed Girl - Van Morrison"
+          - "Call Me Maybe - Carly Rae Jepsen"
+          - "Cheap Thrills - Sia"
+          - "Crazy World - Aslan"
+          - "Creep - Radiohead"
+          - "Dirty Old Town - The Pogues"
+          - "Dog Days Are Over - Florence + The Machine"
+          - "Don't Look Back In Anger - Oasis"
+          - "Dreams - The Cranberries"
+          - "Ex's & Oh's - Elle King"
+          - "Folsom Prison Blues - Johnny Cash"
+          - "Friday I'm In Love - The Cure"
+          - "Happy Birthday To You (in D) - Traditional"
+          - "Ho Hey - The Lumineers"
+          - "Hot N Cold - Katy Perry"
+          - "Hotel Yorba - The White Stripes"
+          - "I Will Survive - Gloria Gaynor"
+          - "Jump in the Line - Harry Belafonte"
+          - "Just Can't Get Enough - Depeche Mode"
+          - "Linger - The Cranberries"
+          - "Little Lion Man - Mumford and Sons"
+          - "Love Me Do - The Beatles"
+          - "Nothing Compares 2 U - Sinéad O'Connor"
+          - "Price Tag - Jessie J (feat. B.o.B)"
+          - "Proud Mary - Tina Turner"
+          - "Psycho Killer - Talking Heads"
+          - "Red Wine Supernova - Chappell Roan"
+          - "Sammy the Seal - Alessandro Pedroni"
+          - "Shake It Off - Taylor Swift"
+          - "Should I Stay or Should I Go - The Clash"
+          - "Spice Up Your Life - Spice Girls"
+          - "Stuck in the Middle with You - Stealers Wheel"
+          - "The Best (Edit) - Tina Turner"
+          - "The Lion Sleeps Tonight - The Tokens"
+          - "Tree Hugger - Kimya Dawson & Antsy Pants"
+          - "Waterloo - ABBA"
+          - "What's Up? - 4 Non Blondes"
+          - "Where's Me Jumper? - Sultans Of Ping F.C."
+          - "Whiskey in the Jar - Thin Lizzy"
+          - "With Or Without You - U2"
+          - "You're So Vain - Carly Simon"
+          - "Zombie - The Cranberries"
+          - "vampire - Olivia Rodrigo"
+          # New since Hooley 2025
+          - "Blinding Lights - The Weeknd"
+          - "Chaise Longue - Wet Leg"
