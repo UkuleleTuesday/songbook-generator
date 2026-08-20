@@ -38,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      app-code: ${{ steps.filter.outputs.app-code }}
+      config: ${{ steps.filter.outputs.config }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -51,6 +53,14 @@ jobs:
         # the GCP deploy jobs (Cloud Functions builds, Cloud Run deploys,
         # scheduler jobs) to avoid needless build/storage cost.
         #
+        # "app-code" additionally excludes the songbook edition configs:
+        # config-only changes skip the function deploys entirely — the config
+        # is published to GCS by the publish-config job and picked up by the
+        # deployed functions at request time.
+        #
+        # "config" is true when songbook edition configs changed, and gates
+        # publish-config.
+        #
         # predicate-quantifier: every — a file must satisfy ALL patterns (match
         # '**' AND not be under docs/ AND not be Markdown) for "code" to match.
         # Without this, the default 'some' quantifier OR's the patterns, so '**'
@@ -61,18 +71,65 @@ jobs:
             - '**'
             - '!docs/**'
             - '!**/*.md'
+          app-code:
+            - '**'
+            - '!docs/**'
+            - '!**/*.md'
+            - '!generator/config/songbooks/**'
+          config:
+            - 'generator/config/songbooks/**'
 
   test:
     name: Test and Lint
     if: github.event.action != 'closed'
     uses: ./.github/workflows/test.yaml
 
+  publish-config:
+    name: Publish Editions Config to GCS
+    needs: [changes, test]
+    if: needs.changes.outputs.config == 'true' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup GCP and dependencies
+      uses: ./.github/actions/setup-gcp-deps
+      with:
+        gcp_sa_key: ${{ secrets.GCP_SA_KEY }}
+        gcp_project_id: ${{ vars.GCP_PROJECT_ID }}
+
+    - name: Validate editions config
+      # Constructing Settings parses and schema-validates every YAML in
+      # generator/config/songbooks/, so invalid config fails here before
+      # anything is uploaded.
+      run: |
+        uv run python -c "
+        from generator.common.config import get_settings
+        editions = get_settings().editions
+        assert editions, 'no editions loaded'
+        print(f'Validated {len(editions)} edition(s):', ', '.join(e.id for e in editions))
+        "
+
+    - name: Sync edition YAMLs to GCS
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          REF="pr-${{ github.event.pull_request.number }}"
+        else
+          REF="main"
+        fi
+        echo "Publishing editions config for ref: ${REF}"
+        gcloud storage rsync generator/config/songbooks \
+          "gs://${{ env.GCS_WORKER_CACHE_BUCKET }}/config/${REF}" \
+          --delete-unmatched-destination-objects
+
   deploy-infrastructure:
     name: Deploy GCS Infrastructure
     needs: [changes]
-    # Skipping this job on doc-only changes cascades to every GCP deploy job,
-    # since they all (transitively) depend on it via `needs`.
-    if: needs.changes.outputs.code == 'true' && github.event.action != 'closed'
+    # Skipping this job on doc-only or config-only changes cascades to every
+    # GCP deploy job, since they all (transitively) depend on it via `needs`.
+    if: needs.changes.outputs.app-code == 'true' && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -207,6 +264,7 @@ jobs:
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
           GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS: "${{ env.GDRIVE_SONGBOOK_EDITIONS_FOLDER_IDS }}"
+          EDITIONS_CONFIG_BUCKET: "${{ github.event_name == 'pull_request' && '' || env.GCS_WORKER_CACHE_BUCKET }}"
 
   deploy-generator:
     name: Deploy Worker
@@ -256,6 +314,7 @@ jobs:
           OTEL_SDK_DISABLED: "false"
           LOG_LEVEL: "info"
           LOCAL_CACHE_ENABLED: "false"
+          EDITIONS_CONFIG_BUCKET: "${{ github.event_name == 'pull_request' && '' || env.GCS_WORKER_CACHE_BUCKET }}"
 
   deploy-cache-updater:
     name: Deploy Cache Updater
@@ -633,9 +692,18 @@ jobs:
           --quiet \
           || echo "Failed to delete Firestore database ${DB_NAME}, skipping"
 
+    - name: Delete PR editions config from GCS
+      run: |
+        PR_NUM="${{ github.event.pull_request.number }}"
+        echo "Deleting editions config for PR #${PR_NUM}"
+        gcloud storage rm -r "gs://${{ env.GCS_WORKER_CACHE_BUCKET }}/config/pr-${PR_NUM}/" \
+          || echo "No PR editions config found, skipping"
+
   detect-changed-editions:
     name: Detect Changed Editions
-    needs: [deploy-api, deploy-generator]
+    # Pure git diff — must not depend on the deploy jobs, which are skipped
+    # entirely on config-only changes.
+    needs: [changes]
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -667,10 +735,25 @@ jobs:
 
   regenerate-changed-editions:
     name: Regenerate (${{ matrix.edition }})
-    needs: [deploy-api, detect-changed-editions]
+    # Runs in three configurations:
+    # - main config-only merge: deploys skipped, runs after publish-config;
+    #   empty api_url falls back to the production API in
+    #   generate-songbook.yaml, which reads the config/main/ edition YAMLs.
+    # - PR config-only: deploys skipped; the production API is used with
+    #   config_ref pr-N so the worker reads the PR's published config.
+    # - code (or mixed) change: deploys ran; PR api_url with baked config,
+    #   as before.
+    # The contains() guards treat skipped upstream jobs as OK while real
+    # failures still block regeneration.
+    needs: [deploy-api, deploy-generator, publish-config, detect-changed-editions]
     if: >-
+      !cancelled() &&
+      needs.detect-changed-editions.result == 'success' &&
       needs.detect-changed-editions.outputs.editions != '[]' &&
-      needs.detect-changed-editions.outputs.editions != ''
+      needs.detect-changed-editions.outputs.editions != '' &&
+      contains(fromJSON('["success", "skipped"]'), needs.deploy-api.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.deploy-generator.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.publish-config.result)
     strategy:
       matrix:
         edition: ${{ fromJSON(needs.detect-changed-editions.outputs.editions) }}
@@ -679,6 +762,7 @@ jobs:
     with:
       edition: ${{ matrix.edition }}
       api_url: ${{ needs.deploy-api.outputs.api_url }}
+      config_ref: ${{ github.event_name == 'pull_request' && needs.deploy-api.result == 'skipped' && format('pr-{0}', github.event.pull_request.number) || '' }}
     secrets: inherit
 
   notify-pr-songbook-preview:
