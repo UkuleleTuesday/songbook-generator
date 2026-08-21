@@ -20,8 +20,9 @@ sections:
     line_spacing: 15
   songs:
     filters:
-      # Seeded from the 2025 Hooley set (specialbooks contains hooley-2025);
-      # curate by editing this list.
+      # Seeded from the 2025 Hooley set (specialbooks contains hooley-2025),
+      # then curated for 2026: Sammy the Seal dropped, and two easy songs
+      # introduced since last year added (see "New since Hooley 2025" below).
       - key: "name"
         operator: "in"
         value:
