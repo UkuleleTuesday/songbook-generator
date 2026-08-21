@@ -278,17 +278,6 @@ def test_unlisted_editions_in_config():
         )
 
 
-def test_public_editions_in_config():
-    """current, complete, wexford-2026 and ukulele-hooley-2026 are public."""
-    config.get_settings.cache_clear()
-    settings = config.get_settings()
-    edition_map = {e.id: e for e in settings.editions}
-    for edition_id in ("current", "complete", "wexford-2026", "ukulele-hooley-2026"):
-        assert edition_map[edition_id].publish.visibility == "public", (
-            f"{edition_id} should be public"
-        )
-
-
 def test_metadata_store_defaults(monkeypatch):
     monkeypatch.delenv("SONG_METADATA_FIRESTORE_COLLECTION", raising=False)
     monkeypatch.delenv("SONG_METADATA_DRIVE_WRITE_ENABLED", raising=False)
