@@ -33,7 +33,6 @@ sections:
           - "Blue Suede Shoes - Elvis Presley"
           - "Brown Eyed Girl - Van Morrison"
           - "Call Me Maybe - Carly Rae Jepsen"
-          - "Cheap Thrills - Sia"
           - "Crazy World - Aslan"
           - "Creep - Radiohead"
           - "Dirty Old Town - The Pogues"
@@ -68,7 +67,6 @@ sections:
           - "Waterloo - ABBA"
           - "What's Up? - 4 Non Blondes"
           - "Where's Me Jumper? - Sultans Of Ping F.C."
-          - "Whiskey in the Jar - Thin Lizzy"
           - "With Or Without You - U2"
           - "You're So Vain - Carly Simon"
           - "Zombie - The Cranberries"
@@ -76,3 +74,4 @@ sections:
           # New since Hooley 2025
           - "Blinding Lights - The Weeknd"
           - "Chaise Longue - Wet Leg"
+          - "One - U2"
