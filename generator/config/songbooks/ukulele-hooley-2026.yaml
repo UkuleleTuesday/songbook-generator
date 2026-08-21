@@ -1,6 +1,7 @@
 id: "ukulele-hooley-2026"
 title: "Ukulele Hooley 2026"
 description: "The official songbook for the 2026 Ukulele Hooley Friday jam."
+include_difficulty_wheels: false
 publish:
   visibility: public
 sections:
