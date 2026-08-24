@@ -4,7 +4,7 @@ description: >
   A dedicated Pride edition: every song flagged as Pride in the current
   Tuesday songbook, and only those. Happy Pride! 🏳️‍🌈
 publish:
-  visibility: unlisted
+  visibility: public
 sections:
   cover:
     file_id: "1v7JMZ84h_cLObsqBa8vL-25FxZIxcLERrw06pULa1kM"
