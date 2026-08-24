@@ -1,0 +1,21 @@
+# One-off latest.json pointer restores, applied by the Restore Publish
+# Pointers workflow when this file changes on main (and on manual dispatch).
+#
+# Each entry repoints <edition>/latest.json at an earlier published book:
+# the named PDF, its sibling .manifest.json, and that manifest's generated_at,
+# with visibility/pinned re-read from the edition config. Use this to roll an
+# edition back to a previous artifact — e.g. to undo an accidental republish.
+#
+# Entries are idempotent and can be removed once applied.
+#
+# Context for the current entries: the 2026-08-24 merge of #455 regenerated
+# these retired editions (content-identical, but restamping generated_at and
+# making them look freshly updated on the songbooks site). Point them back at
+# the last genuine release.
+restores:
+  - edition: travel-songbook
+    pdf_filename: ukulele-tuesday-songbook-travel-songbook-2026-06-20.pdf
+  - edition: wexford-2026
+    pdf_filename: ukulele-tuesday-songbook-wexford-2026-2026-05-04.pdf
+  - edition: monopolele-2026
+    pdf_filename: ukulele-tuesday-songbook-monopolele-2026-2026-05-26.pdf

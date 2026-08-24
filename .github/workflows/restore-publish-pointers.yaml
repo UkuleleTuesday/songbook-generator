@@ -1,23 +1,24 @@
-name: Sync Publish Metadata
+name: Restore Publish Pointers
 
-# Applies visibility/pinned changes from edition configs to the already
-# published latest.json files in GCS, without regenerating any songbook.
+# Applies the one-off latest.json pointer restores listed in
+# .github/restore-pointers.yml — rolling editions back to an earlier
+# published artifact without regenerating anything.
 on:
   push:
     branches: [main]
     paths:
-      - 'generator/config/songbooks/**'
+      - '.github/restore-pointers.yml'
   workflow_dispatch:
 
-# Serialized with the restore-publish-pointers workflow: both rewrite
+# Serialized with the sync-publish-metadata workflow: both rewrite
 # <edition>/latest.json, and one push can trigger both.
 concurrency:
   group: songbooks-bucket-metadata
   cancel-in-progress: false
 
 jobs:
-  sync-publish-metadata:
-    name: Sync publish metadata to GCS
+  restore-publish-pointers:
+    name: Restore latest.json pointers
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,5 +40,5 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
-    - name: Sync publish metadata
-      run: uv run .github/scripts/sync-publish-metadata.py "${GCS_SONGBOOKS_BUCKET}"
+    - name: Restore pointers
+      run: uv run .github/scripts/restore-publish-pointers.py "${GCS_SONGBOOKS_BUCKET}"
