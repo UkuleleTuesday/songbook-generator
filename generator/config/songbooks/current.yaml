@@ -6,6 +6,9 @@ description: >
 
   We rotate the songs we play on Tuesday sessions frequently,
   so make sure to download the latest version!
+publish:
+  visibility: public
+  pinned: true
 sections:
   cover:
     file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"

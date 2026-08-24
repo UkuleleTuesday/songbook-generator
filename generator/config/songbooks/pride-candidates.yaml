@@ -4,6 +4,8 @@ description: >
   All Pride-relevant songs from the Ukulele Tuesday catalogue.
   Songs already confirmed for the Pride special edition are shown in grey (✓).
   The remaining songs are the voteable candidates for the curation poll.
+publish:
+  visibility: unlisted
 sections:
   cover:
     file_id: "1l0YGV0UD-ZxTrsuaY8WcMlHybrhz3BdpgIKqhTEyRLY"
