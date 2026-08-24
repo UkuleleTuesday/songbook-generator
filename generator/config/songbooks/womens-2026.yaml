@@ -4,7 +4,7 @@ description: >
   A curated collection of songs by female-identified artists
   for the 2026 women's edition.
 publish:
-  visibility: unlisted
+  visibility: public
 sections:
   cover:
     file_id: "1h97bocC-vRFN_OBnHOmK0o01NrzIL8JtZxn_PeQi8bo"

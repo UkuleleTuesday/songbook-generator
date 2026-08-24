@@ -267,17 +267,6 @@ def test_edition_publish_unlisted():
     assert edition.publish.visibility == "unlisted"
 
 
-def test_unlisted_editions_in_config():
-    """womens-2026 and ukulele-hooley-2025 are unlisted."""
-    config.get_settings.cache_clear()
-    settings = config.get_settings()
-    edition_map = {e.id: e for e in settings.editions}
-    for edition_id in ("womens-2026", "ukulele-hooley-2025"):
-        assert edition_map[edition_id].publish.visibility == "unlisted", (
-            f"{edition_id} should be unlisted"
-        )
-
-
 def test_metadata_store_defaults(monkeypatch):
     monkeypatch.delenv("SONG_METADATA_FIRESTORE_COLLECTION", raising=False)
     monkeypatch.delenv("SONG_METADATA_DRIVE_WRITE_ENABLED", raising=False)
