@@ -1,6 +1,8 @@
 id: "travel-songbook"
 title: "Travel Songbook"
 description: "We packed a bunch of ukulele Tuesday classics in this songbook. Download it and play along with us wherever your travels take you!"
+publish:
+  visibility: unlisted
 sections:
   cover:
     file_id: "11yX2IY8x-nny0ET4qiOGSKFBQ0g3dQX1xKFtCUg3LKs"

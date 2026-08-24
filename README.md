@@ -35,6 +35,33 @@ The application uses a microservices architecture deployed on Google Cloud:
   It exposes the features of both the worker and cache updater (downloading and syncing song sheets, and generating a
   songbook) so they're easy to test locally.
 
+## Publishing & visibility
+
+Songbook editions are defined in `generator/config/songbooks/<edition>.yaml`. Published
+editions are uploaded to the public GCS bucket (`GCS_SONGBOOKS_BUCKET`) together with a
+`<edition>/latest.json` pointer that carries publish metadata, and the
+[songbooks microsite](https://github.com/UkuleleTuesday/songbooks) builds its listing
+from that metadata — these config files are the single source of truth for what appears
+on [songbooks.ukuleletuesday.ie](https://songbooks.ukuleletuesday.ie).
+
+Each edition config may include a `publish` block:
+
+```yaml
+publish:
+  visibility: public   # 'public' (listed on the site) or 'unlisted'
+                       # (downloadable at its /<edition>/ URL but not listed).
+                       # Defaults to 'public'.
+  pinned: false        # Pinned editions always appear first on the site,
+                       # ahead of recency ordering. Defaults to false.
+```
+
+`latest.json` is normally written when an edition is generated and published. Changing
+only `visibility`/`pinned` does not require a regeneration: the
+`Sync Publish Metadata` workflow (`.github/workflows/sync-publish-metadata.yaml`) runs
+on every push to `main` touching `generator/config/songbooks/` and patches those two
+fields into the already-published `latest.json` files. Editions that have never been
+published are left alone.
+
 ## Wanna help?
 
 While this is a workable proof of concept, there are still a fair amount of limitations. Help report issues, suggest enhancements -- or if you're a coder, roll up your sleeves and help improve this :-)
