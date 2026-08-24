@@ -651,19 +651,40 @@ jobs:
         id: get-editions
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            CHANGED=$(git diff --name-only \
-              "${{ github.event.pull_request.base.sha }}...HEAD" \
-              -- generator/config/songbooks/)
+            BASE=$(git merge-base "${{ github.event.pull_request.base.sha }}" HEAD)
           else
-            CHANGED=$(git diff --name-only HEAD~1 HEAD \
-              -- generator/config/songbooks/)
+            BASE=$(git rev-parse HEAD~1)
           fi
+          CHANGED=$(git diff --name-only "$BASE" HEAD -- generator/config/songbooks/)
           echo "Changed files: $CHANGED"
-          EDITIONS=$(echo "$CHANGED" \
-            | grep -oP 'generator/config/songbooks/\K[^.]+(?=\.ya?ml)' \
-            | jq -R . | jq -s . | jq -c .)
-          echo "Changed editions: $EDITIONS"
-          echo "editions=$EDITIONS" >> $GITHUB_OUTPUT
+          python3 -m pip install --quiet pyyaml
+          EDITIONS=()
+          for f in $CHANGED; do
+            edition=$(basename "$f")
+            edition="${edition%.*}"
+            if [[ ! -f "$f" ]]; then
+              echo "$edition: config deleted, skipping regeneration"
+              continue
+            fi
+            if git cat-file -e "$BASE:$f" 2>/dev/null; then
+              git show "$BASE:$f" > /tmp/old-edition-config.yaml
+              # Publish metadata (visibility/pinned) is applied to the already
+              # published latest.json by the sync-publish-metadata workflow;
+              # only changes outside the publish block affect the book itself.
+              if python3 .github/scripts/config-requires-regen.py /tmp/old-edition-config.yaml "$f"; then
+                echo "$edition: content changed, will regenerate"
+                EDITIONS+=("$edition")
+              else
+                echo "$edition: only publish metadata changed, skipping regeneration"
+              fi
+            else
+              echo "$edition: new config, will regenerate"
+              EDITIONS+=("$edition")
+            fi
+          done
+          EDITIONS_JSON=$(printf '%s\n' "${EDITIONS[@]}" | { grep -v '^$' || true; } | jq -R . | jq -s -c .)
+          echo "Changed editions: $EDITIONS_JSON"
+          echo "editions=$EDITIONS_JSON" >> $GITHUB_OUTPUT
 
   regenerate-changed-editions:
     name: Regenerate (${{ matrix.edition }})
