@@ -4,7 +4,6 @@ description: >
   The complete collection of all available Ukulele Tuesday songs sheets.
 publish:
   visibility: public
-  pinned: true
 sections:
   cover:
     file_id: "19ZDP4wYJ9i650pdvc2P5wLrUEsfdYW7jMpr3yorIJRY"
