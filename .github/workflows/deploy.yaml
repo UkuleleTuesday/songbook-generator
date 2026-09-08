@@ -720,6 +720,11 @@ jobs:
         with:
           pattern: songbook-artifact-*
           path: ./artifacts
+          # Download over the REST API: the default runtime-token path started
+          # failing with a 403 from the artifact backend, which silently left
+          # the preview comment without its per-edition PDF links.
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.run_id }}
         continue-on-error: true
 
       - name: Build PDF URL map
