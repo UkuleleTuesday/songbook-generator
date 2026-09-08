@@ -286,7 +286,13 @@ jobs:
           FILENAME=$(basename "$PDF_FILE")
           DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${FILENAME}"
           echo "Uploading '$FILENAME' to '$DEST_GCS_PATH'"
-          gcloud storage cp "$PDF_FILE" "$DEST_GCS_PATH"
+          # The filename only encodes the date, so several publishes in one day
+          # overwrite the same URL. Without a short max-age, caches keep serving
+          # an earlier build of that day for up to an hour (GCS defaults public
+          # objects to max-age=3600), which is how a removed song can linger on
+          # the site's download long after the book itself was regenerated.
+          gcloud storage cp "$PDF_FILE" "$DEST_GCS_PATH" \
+            --cache-control="public, max-age=300"
         else
           echo "No PDF file found in artifact."
           exit 1
