@@ -139,6 +139,25 @@ gcloud iam service-accounts add-iam-policy-binding "${SONGBOOK_GENERATOR_SERVICE
   --member="serviceAccount:${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}" \
   --role="roles/iam.serviceAccountTokenCreator" || echo "Already bound, continuing…"
 
+echo "7b. Allow CI (cloud-run-deployer) to impersonate the metadata-writer SA for CLI tag runs…"
+# The preview-retag workflow runs `songbook-tools tags update` from CI, which reads
+# song sheets from Drive via the `tag-updater` credential config (generator/common/config.py)
+# by impersonating songbook-metadata-writer. CI authenticates as cloud-run-deployer
+# (the GCP_SA_KEY identity), so it needs Token Creator on the metadata-writer SA.
+gcloud iam service-accounts add-iam-policy-binding \
+  "songbook-metadata-writer@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+  --member="serviceAccount:cloud-run-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/iam.serviceAccountTokenCreator" \
+  --project="${GCP_PROJECT_ID}" || echo "Already bound, continuing…"
+
+echo "7c. Allow CI (cloud-run-deployer) to call Vertex AI for LLM-backed tag dry-runs…"
+# The `theme` tagger is LLM-backed, so `tags update --retag theme` calls Vertex AI / Gemini
+# even under --dry-run (the dry-run flag only suppresses the final write). That call uses ADC
+# (cloud-run-deployer directly), so the deployer needs Vertex AI access.
+gcloud projects add-iam-policy-binding "${GCP_PROJECT_ID}" \
+  --member="serviceAccount:cloud-run-deployer@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+  --role="roles/aiplatform.user" || echo "Already bound, continuing…"
+
 echo "8. Make sure service account can write observability stuff"
 # Traces Writer
 gcloud projects add-iam-policy-binding ${GCP_PROJECT_ID} \
