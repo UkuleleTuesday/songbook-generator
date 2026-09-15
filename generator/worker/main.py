@@ -18,6 +18,7 @@ from .pdf import (
     generate_manifest,
 )
 from ..common.config import get_settings
+from ..common.editions import resolve_editions
 from ..common.gdrive import GoogleDriveClient
 
 # Initialize tracing
@@ -110,6 +111,8 @@ def worker_main(cloud_event):
         try:
             drive, cache = init_services()  # Uses ADC from env
             settings = get_settings()
+            editions, editions_source = resolve_editions(params.get("config_ref"))
+            main_span.set_attribute("editions.source", editions_source)
             source_folders = (
                 params.get("source_folders") or settings.song_sheets.folder_ids
             )
@@ -147,7 +150,7 @@ def worker_main(cloud_event):
                 if edition_id:
                     gen_span.set_attribute("edition_id", edition_id)
                     selected_edition = next(
-                        (e for e in settings.editions if e.id == edition_id), None
+                        (e for e in editions if e.id == edition_id), None
                     )
                     songs_files = None
                     if not selected_edition:
@@ -217,7 +220,7 @@ def worker_main(cloud_event):
                         limit=limit,
                         on_progress=progress_callback,
                         files=songs_files,
-                        all_editions=settings.editions,
+                        all_editions=editions,
                     )
                 else:
                     # Legacy mode: Parse filters parameter

@@ -11,7 +11,7 @@ from loguru import logger
 from ..common.tracing import get_tracer, setup_tracing
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient, client as build_drive_client
-from ..common.editions import scan_drive_editions
+from ..common.editions import resolve_editions, scan_drive_editions, validate_config_ref
 from ..worker.gcp import get_credentials
 
 _DRIVE_READONLY_SCOPE = "https://www.googleapis.com/auth/drive.readonly"
@@ -97,6 +97,23 @@ def handle_post(req, services):
     with services["tracer"].start_as_current_span("handle_post") as span:
         logger.info(f"Received POST request with payload: {req.get_data(as_text=True)}")
         payload = req.get_json(silent=True) or {}
+
+        # config_ref is the only externally-supplied part of the GCS config
+        # lookup (the worker builds the bucket/path itself), so reject
+        # malformed refs here instead of enqueueing a doomed job. The worker
+        # re-validates regardless.
+        if config_ref := payload.get("config_ref"):
+            try:
+                validate_config_ref(config_ref)
+            except ValueError as e:
+                body = json.dumps({"error": str(e)})
+                span.set_attribute("response.status_code", 400)
+                return (
+                    body,
+                    400,
+                    {**_cors_headers(), "Content-Type": "application/json"},
+                )
+
         job_id = uuid.uuid4().hex
 
         span.set_attribute("job_id", job_id)
@@ -208,7 +225,9 @@ def handle_get_editions(services):
     with services["tracer"].start_as_current_span("handle_get_editions") as span:
         settings = get_settings()
 
-        # Always include statically-configured editions
+        # Always include repo-config editions (from the GCS-published blob
+        # when available, baked-in config otherwise)
+        config_editions, config_source = resolve_editions()
         editions = [
             {
                 "id": e.id,
@@ -216,10 +235,14 @@ def handle_get_editions(services):
                 "description": e.description,
                 "source": "config",
             }
-            for e in settings.editions
+            for e in config_editions
         ]
         span.set_attribute("config_editions_count", len(editions))
-        logger.info(f"Loaded {len(editions)} edition(s) from static config")
+        span.set_attribute("config_editions_source", config_source)
+        logger.info(
+            f"Loaded {len(editions)} edition(s) from repo config "
+            f"(source: {config_source})"
+        )
 
         # Attempt to augment with Drive-detected editions
         credential_config = settings.google_cloud.credentials.get("api")

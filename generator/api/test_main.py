@@ -60,6 +60,10 @@ class TestHandleGetEditions:
         mock_settings = MagicMock()
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
         mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
@@ -108,6 +112,10 @@ class TestHandleGetEditions:
         mock_settings = MagicMock()
         mock_settings.editions = [config_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
 
         mock_drive_client = MagicMock()
         mocker.patch(
@@ -144,6 +152,10 @@ class TestHandleGetEditions:
         mock_settings = MagicMock()
         mock_settings.editions = []
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
 
         http_err = HttpError(resp=MagicMock(status=403), content=b"Forbidden")
         mocker.patch("generator.api.main._get_drive_client", side_effect=http_err)
@@ -177,6 +189,10 @@ class TestHandleGetEditions:
         mock_settings = MagicMock()
         mock_settings.editions = [config_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
 
         mock_drive_client = MagicMock()
         mocker.patch(
@@ -201,6 +217,10 @@ class TestHandleGetEditions:
         mock_settings = MagicMock()
         mock_settings.editions = []
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
 
         error_entry = DriveEditionError(
@@ -258,6 +278,10 @@ class TestApiMainRouting:
         mock_settings = MagicMock()
         mock_settings.editions = [mock_edition]
         mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=(mock_settings.editions, "baked"),
+        )
         mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
         mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
 
@@ -272,3 +296,75 @@ class TestApiMainRouting:
         assert status == 200
         data = json.loads(body)
         assert "editions" in data
+
+
+# ---------------------------------------------------------------------------
+# GCS-published config tests
+# ---------------------------------------------------------------------------
+
+
+class TestGcsConfigEditions:
+    """Editions resolved from the GCS-published blob and config_ref handling."""
+
+    def test_get_editions_reflects_resolved_set(self, mocker):
+        """The response reflects the resolve_editions set, not settings.editions."""
+        from ..common.config import Edition
+
+        baked_edition = Edition(id="baked-only", title="Baked", description="Baked")
+        gcs_edition = Edition(id="from-gcs", title="From GCS", description="GCS")
+
+        mock_settings = MagicMock()
+        mock_settings.editions = [baked_edition]
+        mocker.patch("generator.api.main.get_settings", return_value=mock_settings)
+        mocker.patch(
+            "generator.api.main.resolve_editions",
+            return_value=([gcs_edition], "gcs:main"),
+        )
+        mocker.patch("generator.api.main._get_drive_client", return_value=MagicMock())
+        mocker.patch("generator.api.main.scan_drive_editions", return_value=([], []))
+
+        from generator.api.main import handle_get_editions
+
+        body, status, _ = handle_get_editions(_make_services())
+
+        assert status == 200
+        ids = [e["id"] for e in json.loads(body)["editions"]]
+        assert ids == ["from-gcs"]
+
+    def test_post_rejects_invalid_config_ref(self):
+        """A malformed config_ref is rejected with 400 before a job is created."""
+        from generator.api.main import handle_post
+
+        services = _make_services()
+        req = _make_req(
+            method="POST",
+            path="/",
+            json_body={"edition": "current", "config_ref": "gs://evil/x"},
+        )
+
+        body, status, _ = handle_post(req, services)
+
+        assert status == 400
+        assert "config_ref" in json.loads(body)["error"]
+        services["db"].collection.assert_not_called()
+        services["publisher"].publish.assert_not_called()
+
+    def test_post_accepts_valid_config_ref(self, monkeypatch):
+        """A well-formed config_ref is passed through into the job params."""
+        monkeypatch.setenv("PUBSUB_TOPIC", "test-topic")
+        from generator.api.main import handle_post
+
+        services = _make_services()
+        req = _make_req(
+            method="POST",
+            path="/",
+            json_body={"edition": "current", "config_ref": "pr-123"},
+        )
+
+        body, status, _ = handle_post(req, services)
+
+        assert status == 200
+        published = json.loads(
+            services["publisher"].publish.call_args[0][1].decode("utf-8")
+        )
+        assert published["params"]["config_ref"] == "pr-123"
