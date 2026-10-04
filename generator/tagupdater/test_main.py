@@ -285,6 +285,7 @@ def test_get_services_success(
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
     mock_settings.metadata_store.firestore_write_enabled = False
+    mock_settings.metadata_store.firestore_read_enabled = False
     mock_settings.metadata_store.drive_write_enabled = True
     mock_get_settings.return_value = mock_settings
 
@@ -395,6 +396,7 @@ def test_get_services_tagger_instantiation(
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
     mock_settings.metadata_store.firestore_write_enabled = False
+    mock_settings.metadata_store.firestore_read_enabled = False
     mock_settings.metadata_store.drive_write_enabled = True
     mock_get_settings.return_value = mock_settings
 
