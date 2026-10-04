@@ -547,33 +547,6 @@ jobs:
           echo "Tag Updater function $TAGUPDATER_FN_NAME not found, skipping"
         fi
 
-    - name: Delete PR Artifact Registry images
-      # Deleting the PR functions above does not remove their container images
-      # from gcf-artifacts; without this they linger and accrue storage cost.
-      # Anything missed here (e.g. a naming mismatch) is still reclaimed by the
-      # repo cleanup policy's untagged rule as a backstop.
-      run: |
-        PR_NUM="${{ github.event.pull_request.number }}"
-        for FN_BASE in \
-          "${{ env.API_FUNCTION_NAME }}" \
-          "${{ env.WORKER_FUNCTION_NAME }}" \
-          "${{ env.CACHE_UPDATER_FUNCTION_NAME }}" \
-          "${{ env.DRIVEWATCHER_FUNCTION_NAME }}" \
-          "${{ env.TAGUPDATER_FUNCTION_NAME }}"; do
-          PKG="${FN_BASE}-pr-${PR_NUM}"
-          if gcloud artifacts packages describe "$PKG" \
-              --repository=gcf-artifacts --location="${{ env.GCP_REGION }}" \
-              --project="${{ env.GCP_PROJECT_ID }}" >/dev/null 2>&1; then
-            echo "Deleting Artifact Registry package: $PKG"
-            gcloud artifacts packages delete "$PKG" \
-              --repository=gcf-artifacts --location="${{ env.GCP_REGION }}" \
-              --project="${{ env.GCP_PROJECT_ID }}" --quiet \
-              || echo "Failed to delete package $PKG, skipping"
-          else
-            echo "Artifact Registry package $PKG not found, skipping"
-          fi
-        done
-
     - name: Delete PR Cloud Scheduler jobs
       run: |
         PR_NUM="${{ github.event.pull_request.number }}"
