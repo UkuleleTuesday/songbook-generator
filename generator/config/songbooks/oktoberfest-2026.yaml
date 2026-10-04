@@ -1,0 +1,37 @@
+id: "oktoberfest-2026"
+title: "Ukulele Tuesday - Oktoberfest 2026"
+description: >
+  Our Oktoberfest special for Tuesday 6 October 2026: a handful of songs
+  from German(-ish) artists. Prost! 🍺
+publish:
+  # Draft: keep unlisted until the song list is final.
+  visibility: unlisted
+sections:
+  # TODO: no Oktoberfest cover yet; add `cover.file_id` once one exists.
+  preface:
+    file_ids: []
+  table_of_contents:
+    # Short book: single, generously-sized column on one TOC page.
+    columns_per_page: 1
+    column_width: 360
+    margin_left: 120
+    margin_right: 120
+    text_fontsize: 15
+    title_fontsize: 19
+    title_margin_bottom: 35
+    line_spacing: 20
+  songs:
+    filters:
+      - key: "name"
+        operator: "in"
+        value:
+          # (3) Ready To Play
+          - "An der Nordseeküste - Klaus & Klaus"
+          - "Durch den Monsun (Original Version) - Tokio Hotel"
+          - "Lemon Tree - Fools Garden"
+          - "Wind of Change - Scorpions"
+          # (2) Ready for Review: these only show up once they're in a
+          # synced song sheet folder.
+          - "Mambo No. 5 (a Little bit of...) - Lou Bega"
+          - "No No Never - Texas Lightning"
+          # Left out for now: "Zu spät - Die Ärzte"
