@@ -947,6 +947,11 @@ def country(
     set of supported sub-national regions, so unrecognized values are dropped.
     The result is capped at ``max_countries`` as a backstop against the model
     returning a long list of chart-performance countries.
+
+    Known gap: sub-national regions and their parent country are both valid
+    values and nothing reconciles them, so "scotland" and "united kingdom"
+    (or "hawaii" and "united states") coexist and a filter on one misses the
+    other.
     """
     if not raw:
         return None
