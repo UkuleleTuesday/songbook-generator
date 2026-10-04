@@ -9,6 +9,7 @@ import pycountry
 from google import genai
 from google.genai import types
 
+from ..common.drive_activity import get_first_move_timestamp
 from ..common.metadata_store import SongMetadataStore
 from ..common.tracing import get_tracer
 from ..worker.models import File
@@ -82,6 +83,7 @@ class Context:
     document: Optional[SongSheetGoogleDocument] = None
     owner_name: Optional[str] = None
     genai_client: Optional[genai.Client] = None
+    activity_service: Optional[Any] = None
 
 
 @dataclass
@@ -442,9 +444,11 @@ class Tagger:
         drive_write_enabled: bool = True,
         tags: Optional[set] = None,
         retag: Optional[set] = None,
+        activity_service: Optional[Any] = None,
     ):
         self.drive_service = drive_service
         self.docs_service = docs_service
+        self.activity_service = activity_service
         self.trigger_field = trigger_field
         self.genai_client = genai_client
         self.llm_tagging_enabled = llm_tagging_enabled
@@ -514,6 +518,7 @@ class Tagger:
                 document=document,
                 owner_name=owner_name,
                 genai_client=self.genai_client,
+                activity_service=self.activity_service,
             )
 
             new_properties = {}
@@ -685,19 +690,40 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _first_move_date(ctx: Context, folder_id: str) -> Optional[str]:
+    if ctx.activity_service is None:
+        return None
+    return get_first_move_timestamp(ctx.activity_service, ctx.file.id, folder_id)
+
+
 @tag(only_if_unset=True)
 def ready_to_play_date(ctx: Context) -> Optional[str]:
-    """Records the datetime when a song was first marked as ready to play."""
-    if FOLDER_ID_READY_TO_PLAY in ctx.file.parents:
-        return _now_iso()
-    return None
+    """Records when a song first entered the ready-to-play folder."""
+    if FOLDER_ID_READY_TO_PLAY not in ctx.file.parents:
+        return None
+
+    move_date = _first_move_date(ctx, FOLDER_ID_READY_TO_PLAY)
+    legacy_date = ctx.file.properties.get("date")
+    if legacy_date:
+        try:
+            legacy_date = (
+                datetime.strptime(legacy_date, "%Y%m%d")
+                .replace(tzinfo=timezone.utc)
+                .strftime("%Y-%m-%dT%H:%M:%SZ")
+            )
+        except ValueError:
+            legacy_date = None
+
+    if move_date and (legacy_date is None or move_date[:10] <= legacy_date[:10]):
+        return move_date
+    return legacy_date or _now_iso()
 
 
 @tag(only_if_unset=True)
 def approved_date(ctx: Context) -> Optional[str]:
-    """Records the datetime when a song was first marked as approved."""
+    """Records when a song first entered the approved folder."""
     if FOLDER_ID_APPROVED in ctx.file.parents:
-        return _now_iso()
+        return _first_move_date(ctx, FOLDER_ID_APPROVED) or _now_iso()
     return None
 
 

@@ -342,6 +342,7 @@ class GoogleCloud(BaseModel):
             principal="songbook-metadata-writer@songbook-generator.iam.gserviceaccount.com",
             scopes=[
                 "https://www.googleapis.com/auth/drive.metadata",
+                "https://www.googleapis.com/auth/drive.activity.readonly",
                 "https://www.googleapis.com/auth/documents.readonly",
             ],
         ),
