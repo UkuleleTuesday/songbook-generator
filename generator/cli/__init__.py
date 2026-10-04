@@ -13,6 +13,7 @@ from .changelog import (
     backfill_changelog_from_pdfs,
     update_changelog,
 )
+from .difficulty import difficulty
 from .editions import editions
 from .generate import generate
 from .metadata import metadata
@@ -44,6 +45,7 @@ cli.add_command(validate_pdf_cli)
 cli.add_command(editions)
 cli.add_command(tags)
 cli.add_command(metadata)
+cli.add_command(difficulty)
 cli.add_command(update_changelog)
 cli.add_command(backfill_changelog)
 cli.add_command(backfill_changelog_from_pdfs)

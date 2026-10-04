@@ -180,7 +180,7 @@ Run `uv run songbook-tools --help` for more commands and options.
 ### CLI Commands
 
 The `songbook-tools` CLI provides commands for local development and utility tasks,
-organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`, `metadata`) and
+organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`, `metadata`, `difficulty`) and
 standalone commands (`generate`, `merge-pdfs`, `validate-pdf`, `print-settings`).
 
 Run `uv run songbook-tools --help` for a full list of commands and groups, and
@@ -209,6 +209,24 @@ uv run songbook-tools tags export --format csv --output tabdb.csv
 Or produce it on demand via the **Export Tags** GitHub Actions workflow
 (`.github/workflows/export-tags.yaml`): run it with the `csv` format and
 download the resulting artifact.
+
+### Difficulty rating eval (experimental)
+
+`songbook-tools difficulty` rates song sheets with Gemini using the annotator
+rubric, and measures agreement with the existing `difficulty` ratings on a
+fixed hold-out (~20% of songs, chosen by file ID hash) that is never used for
+prompt tuning.
+
+```bash
+# Rate one song, printing the prompt sent to the model
+uv run songbook-tools difficulty rate "Love Me Do" --verbose
+
+# Rate a stratified sample of the hold-out (re-run the same command to resume)
+uv run songbook-tools difficulty eval --sample-size 30 --output-dir difficulty-eval/
+
+# Explore and compare runs
+uv run streamlit run scripts/difficulty_dashboard.py -- difficulty-eval/
+```
 
 ### Testing Full Application
 
