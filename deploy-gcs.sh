@@ -100,6 +100,23 @@ EOF
 gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_CDN_BUCKET}"
 rm "${LIFECYCLE_JSON}"
 
+# Access logs for the songbooks bucket accumulate forever otherwise. A year is
+# generous — nothing reads them today — but it bounds the object count.
+LOGS_LIFECYCLE_JSON=$(mktemp)
+cat >"${LOGS_LIFECYCLE_JSON}" <<EOF
+{
+  "rule": [
+    {
+      "action": {"type": "Delete"},
+      "condition": {"age": 365}
+    }
+  ]
+}
+EOF
+
+gsutil lifecycle set "${LOGS_LIFECYCLE_JSON}" "gs://${GCS_SONGBOOKS_LOGS_BUCKET}"
+rm "${LOGS_LIFECYCLE_JSON}"
+
 echo "6. Granting IAM roles to ${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}…"
 # Pub/Sub: allow publishing and subscribing
 gcloud pubsub topics add-iam-policy-binding "projects/${GCP_PROJECT_ID}/topics/${PUBSUB_TOPIC}" \
