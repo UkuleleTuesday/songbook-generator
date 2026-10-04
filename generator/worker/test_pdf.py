@@ -198,7 +198,7 @@ def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
 
     # Verify the query was called correctly
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], None
+        ["folder1"], None, modified_after=None
     )
 
 
@@ -233,7 +233,7 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
 
     # Verify query was called once with both folders
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1", "folder2"], None
+        ["folder1", "folder2"], None, modified_after=None
     )
 
 
@@ -255,7 +255,7 @@ def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
 
     assert result == mock_files
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], mock_filter
+        ["folder1"], mock_filter, modified_after=None
     )
 
 
@@ -473,7 +473,7 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
 
     # Should have queried all folders once
     mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1", "folder2", "folder3"], None
+        ["folder1", "folder2", "folder3"], None, modified_after=None
     )
 
 

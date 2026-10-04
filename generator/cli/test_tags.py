@@ -190,3 +190,71 @@ def test_export_falls_back_to_drive_when_firestore_read_disabled(runner, mocker)
     assert doc["properties"] == {"song": "Let It Be"}
     # Drive fallback has no Firestore timestamp.
     assert "metadata_updated_at" not in doc
+
+
+def _mock_update_services(mocker, query_result):
+    """Patch the Drive/Docs plumbing behind `tags update` to a fake client."""
+    mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
+        google_cloud=mocker.Mock(
+            credentials={
+                "tag-updater": mocker.Mock(
+                    scopes=["https://www.googleapis.com/auth/drive"],
+                    principal="sa@project.iam.gserviceaccount.com",
+                )
+            },
+            project_id="proj",
+        ),
+        song_sheets=mocker.Mock(folder_ids=["folder1"]),
+        tag_updater=mocker.Mock(trigger_field=None, llm_tagging_enabled=False),
+        metadata_store=mocker.Mock(firestore_write_enabled=False),
+        caching=mocker.Mock(gcs=mocker.Mock(region="europe-west1")),
+    )
+    mocker.patch("generator.cli.tags.get_credentials")
+    mocker.patch("generator.cli.tags.build")
+    mocker.patch("generator.cli.tags.init_cache")
+    gdrive_client = mocker.Mock()
+    gdrive_client.query_drive_files.return_value = query_result
+    mocker.patch("generator.cli.tags.GoogleDriveClient", return_value=gdrive_client)
+    mocker.patch("generator.cli.tags.Tagger")
+    return gdrive_client
+
+
+def test_update_modified_since_filters_the_drive_query(runner, mocker):
+    from datetime import datetime
+
+    from ..worker.models import File
+
+    gdrive_client = _mock_update_services(
+        mocker,
+        [File(id="fileA", name="Let It Be - The Beatles", properties={})],
+    )
+
+    result = runner.invoke(
+        cli, ["tags", "update", "--modified-since", "2026-09-28T10:51:00", "--dry-run"]
+    )
+
+    assert result.exit_code == 0, result.output
+    gdrive_client.query_drive_files.assert_called_once_with(
+        ["folder1"], modified_after=datetime(2026, 9, 28, 10, 51, 0)
+    )
+    assert "Found 1 file(s) modified since cutoff." in result.output
+
+
+def test_update_modified_since_rejects_a_file_identifier(runner, mocker):
+    _mock_update_services(mocker, [])
+
+    result = runner.invoke(
+        cli, ["tags", "update", "Let It Be", "--modified-since", "2026-09-28"]
+    )
+
+    assert result.exit_code != 0
+    assert "Cannot use both a file identifier and --modified-since" in result.output
+
+
+def test_update_requires_a_selector(runner, mocker):
+    _mock_update_services(mocker, [])
+
+    result = runner.invoke(cli, ["tags", "update"])
+
+    assert result.exit_code != 0
+    assert "--modified-since" in result.output

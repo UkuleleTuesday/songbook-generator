@@ -67,5 +67,5 @@ def test_client_filter_is_passed_through_to_drive():
     source.collect_files(["folder1"], client_filter)
 
     gdrive.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], client_filter
+        ["folder1"], client_filter, modified_after=None
     )

@@ -5,7 +5,7 @@ import click
 from ..common.config import get_settings
 from ..common.filters import parse_filters
 from ..common.gdrive import GoogleDriveClient
-from ..worker.pdf import collect_and_sort_files, init_services
+from ..worker.pdf import _make_song_source, collect_and_sort_files, init_services
 from .utils import SubcmdGroup, _resolve_file_id, global_options
 
 
@@ -32,10 +32,31 @@ def songs():
     multiple=True,
     help="Filter files using property syntax (can be passed multiple times for AND logic).",
 )
-def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwargs):
+@click.option(
+    "--modified-since",
+    type=click.DateTime(
+        formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"]
+    ),
+    default=None,
+    help=(
+        "Only list songs modified in Drive since this UTC timestamp, e.g. "
+        "--modified-since 2026-07-11 or --modified-since 2026-07-11T20:49:19. "
+        "Can be used on its own or narrowed further with --edition/--filter."
+    ),
+)
+def list_songs(
+    ctx,
+    source_folder: str,
+    edition: str,
+    filter_str: tuple,
+    modified_since,
+    **kwargs,
+):
     """List songs matching a given filter expression or edition."""
-    if not edition and not filter_str:
-        raise click.UsageError("Either --edition or --filter must be provided.")
+    if not edition and not filter_str and not modified_since:
+        raise click.UsageError(
+            "Either --edition, --filter or --modified-since must be provided."
+        )
     if edition and filter_str:
         raise click.UsageError("Cannot use --edition and --filter simultaneously.")
 
@@ -49,9 +70,10 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwarg
         scopes=credential_config.scopes,
         target_principal=credential_config.principal,
     )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-
     source_folders = list(source_folder) if source_folder else []
+
+    if modified_since:
+        click.echo(f"Fetching files modified since {modified_since}")
 
     client_filter = None
     if filter_str:
@@ -66,9 +88,10 @@ def list_songs(ctx, source_folder: str, edition: str, filter_str: tuple, **kwarg
         client_filter = parse_filters(edition_config.sections.songs.filters)
 
     files = collect_and_sort_files(
-        gdrive_client=gdrive_client,
+        song_source=_make_song_source(drive, cache),
         source_folders=source_folders,
         client_filter=client_filter,
+        modified_after=modified_since,
     )
 
     if not files:

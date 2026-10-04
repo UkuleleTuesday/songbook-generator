@@ -1,5 +1,6 @@
 """Song sheet source abstraction: Drive for file existence, Firestore for properties."""
 
+from datetime import datetime
 from typing import List, Optional, Union
 
 from .gdrive import GoogleDriveClient
@@ -29,6 +30,7 @@ class SongSheetSource:
         self,
         source_folders: List[str],
         client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+        modified_after: Optional[datetime] = None,
     ) -> List[File]:
         """Return song sheet files, optionally filtered, with properties from the configured source.
 
@@ -36,7 +38,7 @@ class SongSheetSource:
         uses properties) produces the same result regardless of which source is active.
         """
         files = self._gdrive.query_drive_files_with_client_filter(
-            source_folders, client_filter
+            source_folders, client_filter, modified_after=modified_after
         )
         if self._metadata_store is not None:
             self._overlay_properties(files)
