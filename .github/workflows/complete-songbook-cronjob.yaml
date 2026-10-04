@@ -2,8 +2,9 @@ name: Complete Songbook Cronjob
 
 on:
   schedule:
-    # Run every hour
-    - cron: "0 * * * *"
+    # Run once a day. The complete songbook only changes when a song sheet
+    # does, so hourly runs regenerated an identical 22 MB PDF ~23 times a day.
+    - cron: "0 4 * * *"
   workflow_dispatch: {} # For manual runs
 
 permissions:
