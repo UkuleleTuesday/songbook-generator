@@ -528,46 +528,31 @@ def test_ready_to_play_date_set_when_in_ready_to_play_folder(mock_now):
     assert ready_to_play_date(Context(file=file)) == "2026-03-25T11:00:00Z"
 
 
-def test_ready_to_play_date_uses_move_before_legacy_first_played_date():
-    file = File(
-        id="1",
-        name="f",
-        parents=[FOLDER_ID_READY_TO_PLAY],
-        properties={"date": "20250415"},
-    )
-    activity_service = Mock()
-
-    with patch(
-        "generator.tagupdater.tags.get_first_move_timestamp",
-        return_value="2024-09-04T00:05:00Z",
-    ) as get_first_move:
-        value = ready_to_play_date(
-            Context(file=file, activity_service=activity_service)
-        )
-
-    assert value == "2024-09-04T00:05:00Z"
-    get_first_move.assert_called_once_with(
-        activity_service, "1", FOLDER_ID_READY_TO_PLAY
-    )
-
-
-def test_ready_to_play_date_falls_back_when_move_is_after_first_played_date():
+def test_ready_to_play_date_uses_move_timestamp_regardless_of_legacy_date():
     file = File(
         id="1",
         name="f",
         parents=[FOLDER_ID_READY_TO_PLAY],
         properties={"date": "20230620"},
     )
+    activity_service = Mock()
+
     with patch(
         "generator.tagupdater.tags.get_first_move_timestamp",
         return_value="2024-08-06T16:10:00Z",
-    ):
-        assert ready_to_play_date(Context(file=file, activity_service=Mock())) == (
-            "2023-06-20T00:00:00Z"
+    ) as get_first_move:
+        value = ready_to_play_date(
+            Context(file=file, activity_service=activity_service)
         )
 
+    assert value == "2024-08-06T16:10:00Z"
+    get_first_move.assert_called_once_with(
+        activity_service, "1", FOLDER_ID_READY_TO_PLAY
+    )
 
-def test_ready_to_play_date_falls_back_to_legacy_date_when_no_activity():
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_ready_to_play_date_falls_back_to_now_when_no_activity(mock_now):
     file = File(
         id="1",
         name="f",
@@ -576,7 +561,7 @@ def test_ready_to_play_date_falls_back_to_legacy_date_when_no_activity():
     )
     with patch("generator.tagupdater.tags.get_first_move_timestamp", return_value=None):
         assert ready_to_play_date(Context(file=file, activity_service=Mock())) == (
-            "2023-06-20T00:00:00Z"
+            "2026-03-25T11:00:00Z"
         )
 
 

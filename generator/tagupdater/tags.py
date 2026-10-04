@@ -702,21 +702,7 @@ def ready_to_play_date(ctx: Context) -> Optional[str]:
     if FOLDER_ID_READY_TO_PLAY not in ctx.file.parents:
         return None
 
-    move_date = _first_move_date(ctx, FOLDER_ID_READY_TO_PLAY)
-    legacy_date = ctx.file.properties.get("date")
-    if legacy_date:
-        try:
-            legacy_date = (
-                datetime.strptime(legacy_date, "%Y%m%d")
-                .replace(tzinfo=timezone.utc)
-                .strftime("%Y-%m-%dT%H:%M:%SZ")
-            )
-        except ValueError:
-            legacy_date = None
-
-    if move_date and (legacy_date is None or move_date[:10] <= legacy_date[:10]):
-        return move_date
-    return legacy_date or _now_iso()
+    return _first_move_date(ctx, FOLDER_ID_READY_TO_PLAY) or _now_iso()
 
 
 @tag(only_if_unset=True)
