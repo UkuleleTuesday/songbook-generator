@@ -206,7 +206,9 @@ def _mock_update_services(mocker, query_result):
         ),
         song_sheets=mocker.Mock(folder_ids=["folder1"]),
         tag_updater=mocker.Mock(trigger_field=None, llm_tagging_enabled=False),
-        metadata_store=mocker.Mock(firestore_write_enabled=False),
+        metadata_store=mocker.Mock(
+            firestore_write_enabled=False, firestore_read_enabled=False
+        ),
         caching=mocker.Mock(gcs=mocker.Mock(region="europe-west1")),
     )
     mocker.patch("generator.cli.tags.get_credentials")

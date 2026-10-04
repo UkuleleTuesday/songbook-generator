@@ -438,6 +438,7 @@ class Tagger:
         genai_client: Optional[genai.Client] = None,
         llm_tagging_enabled: bool = False,
         metadata_store: Optional[SongMetadataStore] = None,
+        metadata_reader: Optional[SongMetadataStore] = None,
         drive_write_enabled: bool = True,
         tags: Optional[set] = None,
         retag: Optional[set] = None,
@@ -448,11 +449,26 @@ class Tagger:
         self.genai_client = genai_client
         self.llm_tagging_enabled = llm_tagging_enabled
         self.metadata_store = metadata_store
+        self.metadata_reader = metadata_reader
         self.drive_write_enabled = drive_write_enabled
         # --tags: scope to these keys, respect only_if_unset
         # --retag: scope to these keys, ignore only_if_unset (force overwrite)
         self.tags: Optional[set] = tags
         self.retag: set = retag or set()
+
+    def _read_current_properties(self, file: File) -> Dict[str, str]:
+        """Return the tags already recorded for this file.
+
+        Read from the metadata store when one is configured: Drive properties
+        are empty whenever Drive writes are off (#402), and treating that as
+        "nothing is set yet" defeats only_if_unset and re-derives
+        first-write-wins tags on every run (#471, #442).
+        """
+        if self.metadata_reader is not None:
+            stored = self.metadata_reader.get_properties(file.id)
+            if stored is not None:
+                return dict(stored)
+        return file.properties.copy()
 
     def update_tags(self, file: File, dry_run: bool = False, verbose: bool = False):
         """
@@ -501,7 +517,7 @@ class Tagger:
             )
 
             new_properties = {}
-            current_properties = file.properties.copy()
+            current_properties = self._read_current_properties(file)
 
             # Determine effective scope: retag keys take precedence over tags filter
             effective_scope = self.retag or self.tags  # None means run all
