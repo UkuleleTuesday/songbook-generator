@@ -192,6 +192,7 @@ class GoogleDriveClient:
         self,
         source_folders: List[str],
         client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
+        modified_after: Optional[datetime] = None,
     ) -> List[File]:
         """
         Query Google Drive files and apply client-side filtering.
@@ -199,13 +200,16 @@ class GoogleDriveClient:
         Args:
             source_folders: List of folder IDs to search in
             client_filter: Client-side filter to apply after fetching files
+            modified_after: Only return files modified after this timestamp
 
         Returns:
             List of files matching the client-side filter
         """
         # First, get all files from Drive (no server-side property filtering)
         click.echo("Fetching all files from Drive for client-side filtering...")
-        all_files = self.query_drive_files(source_folders, None)
+        all_files = self.query_drive_files(
+            source_folders, None, modified_after=modified_after
+        )
 
         if not client_filter:
             return all_files

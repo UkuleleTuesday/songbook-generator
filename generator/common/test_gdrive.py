@@ -285,7 +285,9 @@ def test_query_drive_files_with_client_filter_no_filter(mock_drive_client, mocke
     result = mock_drive_client.query_drive_files_with_client_filter(["folder123"])
 
     assert result == mock_files
-    mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
+    mock_drive_client.query_drive_files.assert_called_once_with(
+        ["folder123"], None, modified_after=None
+    )
 
 
 def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, mocker):
@@ -308,7 +310,9 @@ def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, moc
 
     assert len(result) == 1
     assert result[0] == mock_files[0]
-    mock_drive_client.query_drive_files.assert_called_once_with(["folder123"], None)
+    mock_drive_client.query_drive_files.assert_called_once_with(
+        ["folder123"], None, modified_after=None
+    )
     assert client_filter.matches.call_count == 2
 
 

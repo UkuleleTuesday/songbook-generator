@@ -101,6 +101,7 @@ def collect_and_sort_files(
     source_folders: List[str],
     client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
     progress_step=None,
+    modified_after: Optional[datetime] = None,
 ) -> List[File]:
     """
     Collect files from multiple Google Drive folders and sort them alphabetically by name.
@@ -124,7 +125,9 @@ def collect_and_sort_files(
             json.dumps(client_filter.model_dump(mode="json")) if client_filter else "",
         )
 
-        files = song_source.collect_files(source_folders, client_filter)
+        files = song_source.collect_files(
+            source_folders, client_filter, modified_after=modified_after
+        )
 
         if progress_step:
             progress_step.increment(

@@ -428,6 +428,19 @@ def export_tags(output_format, output_path):
     help="Run the auto-tagger on all song sheets.",
 )
 @click.option(
+    "--modified-since",
+    type=click.DateTime(
+        formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ"]
+    ),
+    default=None,
+    help=(
+        "Run the auto-tagger on every song sheet modified in Drive since this "
+        "UTC timestamp, e.g. --modified-since 2026-09-28 or "
+        "--modified-since 2026-09-28T10:51:00. Use instead of --all to recover "
+        "from a missed-change window."
+    ),
+)
+@click.option(
     "--dry-run",
     is_flag=True,
     help="Show what tags would be applied without making any changes.",
@@ -472,18 +485,32 @@ def export_tags(output_format, output_path):
     ),
 )
 def update_tags(
-    file_identifier, all, dry_run, trigger_field, with_llm_tags, verbose, tags, retag
+    file_identifier,
+    all,
+    modified_since,
+    dry_run,
+    trigger_field,
+    with_llm_tags,
+    verbose,
+    tags,
+    retag,
 ):
     """Run the auto-tagger on a specific Google Drive file or all files."""
-    if not file_identifier and not all:
+    if not file_identifier and not all and not modified_since:
         click.echo(
-            "Error: Either a file identifier or the --all flag must be provided.",
+            "Error: Either a file identifier, the --all flag, or --modified-since "
+            "must be provided.",
             err=True,
         )
         raise click.Abort()
     if file_identifier and all:
         click.echo(
             "Error: Cannot use both a file identifier and the --all flag.", err=True
+        )
+        raise click.Abort()
+    if file_identifier and modified_since:
+        click.echo(
+            "Error: Cannot use both a file identifier and --modified-since.", err=True
         )
         raise click.Abort()
     if tags and retag:
@@ -512,6 +539,12 @@ def update_tags(
                 f"Error: Could not retrieve metadata for file ID {file_id}", err=True
             )
             raise click.Abort()
+    elif modified_since:
+        click.echo(f"Fetching song sheets modified since {modified_since}...")
+        files_to_process = gdrive_client.query_drive_files(
+            settings.song_sheets.folder_ids, modified_after=modified_since
+        )
+        click.echo(f"Found {len(files_to_process)} file(s) modified since cutoff.")
     else:  # --all flag
         click.echo("Fetching all song sheets from Drive...")
         files_to_process = gdrive_client.query_drive_files(
