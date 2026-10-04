@@ -250,11 +250,41 @@ jobs:
             fi
           fi
         fi
+        PREV_PDF_NAME=""
+        if [ -f ./prev-latest.json ]; then
+          PREV_PDF_NAME=$(jq -r '.pdf_filename // empty' ./prev-latest.json)
+        fi
         echo "prev_manifest_path=${PREV_MANIFEST_PATH}" >> "$GITHUB_OUTPUT"
         echo "prev_manifest_name=${PREV_MANIFEST_NAME}" >> "$GITHUB_OUTPUT"
+        echo "prev_pdf_name=${PREV_PDF_NAME}" >> "$GITHUB_OUTPUT"
         echo "Previous manifest: ${PREV_MANIFEST_PATH} (name: ${PREV_MANIFEST_NAME:-<none>})"
 
+    - name: Check whether the PDF changed
+      id: changed
+      run: |
+        set -e
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
+        PREV_PDF_NAME="${{ steps.fetch-previous.outputs.prev_pdf_name }}"
+        PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
+        UNCHANGED=false
+        if [ -n "$PREV_PDF_NAME" ] && [ -n "$PDF_FILE" ]; then
+          # Compare checksums rather than downloading 22 MB: GCS reports
+          # md5_hash base64-encoded, which is what openssl emits too.
+          PREV_MD5=$(gcloud storage objects describe \
+            "gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/${PREV_PDF_NAME}" \
+            --format='value(md5_hash)' 2>/dev/null || echo "")
+          NEW_MD5=$(openssl dgst -md5 -binary "$PDF_FILE" | base64)
+          echo "previous: ${PREV_MD5:-<none>}"
+          echo "new:      ${NEW_MD5}"
+          if [ -n "$PREV_MD5" ] && [ "$PREV_MD5" = "$NEW_MD5" ]; then
+            UNCHANGED=true
+            echo "Identical to the published PDF; skipping publish."
+          fi
+        fi
+        echo "unchanged=${UNCHANGED}" >> "$GITHUB_OUTPUT"
+
     - name: Update changelog history
+      if: steps.changed.outputs.unchanged != 'true'
       run: |
         set -e
         EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
@@ -278,6 +308,7 @@ jobs:
 
     - name: Upload PDF to GCS
       id: upload-pdf
+      if: steps.changed.outputs.unchanged != 'true'
       run: |
         set -e
         EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
@@ -299,12 +330,14 @@ jobs:
         fi
 
     - name: Generate latest.json
+      if: steps.changed.outputs.unchanged != 'true'
       run: |
         uv run .github/scripts/generate-latest-json.py \
           "${{ needs.generate-songbook.outputs.effective_edition }}" \
           ./songbooks
 
     - name: Upload Manifest and latest.json to GCS
+      if: steps.changed.outputs.unchanged != 'true'
       run: |
         set -e
         EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
