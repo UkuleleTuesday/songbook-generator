@@ -73,6 +73,54 @@ class SongSheetGoogleDocument:
         start_index = annotation_para_index + 1 if annotation_para_index != -1 else 0
         return doc_content[start_index:]
 
+    def to_prompt_text(self) -> str:
+        """
+        Renders the whole document as compact text for LLM prompts.
+
+        Bold runs (chords, section cues) are wrapped in ``**…**`` so the
+        model can tell chords from lyrics, and paragraphs made only of
+        inline images (the chord diagram row) collapse into a placeholder.
+        """
+        lines = []
+        for element in self.json.get("body", {}).get("content", []):
+            if "paragraph" not in element:
+                continue
+            runs: List[List[Any]] = []
+            image_count = 0
+            for para_element in element["paragraph"].get("elements", []):
+                if "inlineObjectElement" in para_element:
+                    image_count += 1
+                    runs.append(["[image]", False])
+                    continue
+                text_run = para_element.get("textRun")
+                if not text_run:
+                    continue
+                content = text_run.get("content", "").replace("\x0b", "\n")
+                bold = bool(text_run.get("textStyle", {}).get("bold"))
+                if runs and runs[-1][1] == bold:
+                    runs[-1][0] += content
+                else:
+                    runs.append([content, bold])
+
+            text = "".join(
+                _wrap_bold(content) if bold else content for content, bold in runs
+            ).rstrip()
+            if image_count and not text.replace("[image]", "").strip():
+                lines.append(f"[{image_count} chord diagrams]")
+            else:
+                lines.append(text)
+        return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
+
+def _wrap_bold(content: str) -> str:
+    """Wraps the non-whitespace core of ``content`` in markdown bold markers."""
+    stripped = content.strip()
+    if not stripped:
+        return content
+    start = content.index(stripped)
+    end = start + len(stripped)
+    return f"{content[:start]}**{stripped}**{content[end:]}"
+
 
 @dataclass
 class Context:
