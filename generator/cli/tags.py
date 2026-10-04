@@ -575,6 +575,11 @@ def update_tags(
         if settings.metadata_store.firestore_write_enabled
         else None
     )
+    metadata_reader = (
+        metadata_store or get_metadata_store()
+        if settings.metadata_store.firestore_read_enabled
+        else None
+    )
     if metadata_store is not None:
         click.echo(
             "Firestore metadata write enabled (collection "
@@ -595,6 +600,7 @@ def update_tags(
         genai_client=genai_client,
         llm_tagging_enabled=effective_llm_tagging,
         metadata_store=metadata_store,
+        metadata_reader=metadata_reader,
         drive_write_enabled=settings.metadata_store.drive_write_enabled,
         tags=tags_keys,
         retag=retag_keys,

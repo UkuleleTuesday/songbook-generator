@@ -77,6 +77,9 @@ def _get_services():
             "Firestore metadata write enabled (collection "
             f"'{settings.metadata_store.firestore_collection}')."
         )
+    metadata_reader = None
+    if settings.metadata_store.firestore_read_enabled:
+        metadata_reader = metadata_store or get_metadata_store()
     if not settings.metadata_store.drive_write_enabled:
         click.echo("Drive metadata write disabled.")
 
@@ -91,6 +94,7 @@ def _get_services():
             genai_client=genai_client,
             llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
             metadata_store=metadata_store,
+            metadata_reader=metadata_reader,
             drive_write_enabled=settings.metadata_store.drive_write_enabled,
         ),
     }

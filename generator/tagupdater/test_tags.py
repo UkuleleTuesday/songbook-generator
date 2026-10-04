@@ -1019,3 +1019,71 @@ def test_genre_aliases_are_valid():
     for k, v in _GENRE_ALIASES.items():
         assert k == k.lower(), f"alias key {k!r} is not lowercase"
         assert v == v.lower(), f"alias value {v!r} is not lowercase"
+
+
+def test_only_if_unset_reads_existing_tags_from_the_store(
+    mock_drive_service, mock_docs_service, mocker
+):
+    """only_if_unset honours the store when Drive properties are empty (#471).
+
+    Drive writes are off (#402), so a file's Drive properties are empty even
+    though its tags are recorded in Firestore. Reading Drive would make every
+    first-write-wins tag look unset and re-derive it on every run.
+    """
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
+
+    @tag(only_if_unset=True)
+    def tag_if_unset(ctx: Context) -> str:
+        return "recomputed_value"  # must not win over the stored value
+
+    try:
+        store = mocker.Mock()
+        store.get_properties.return_value = {"tag_if_unset": "stored_value"}
+        tagger = Tagger(
+            mock_drive_service,
+            mock_docs_service,
+            metadata_store=store,
+            metadata_reader=store,
+            drive_write_enabled=False,
+        )
+        # Empty Drive properties, as every song sheet has since #402.
+        tagger.update_tags(File(id="file1", name="test.pdf", properties={}))
+
+        store.get_properties.assert_called_once_with("file1")
+        # Nothing to change, so the tagger skips the write entirely.
+        store.write.assert_not_called()
+    finally:
+        from . import tags
+
+        tags._TAGGERS.pop()
+
+
+def test_store_miss_falls_back_to_drive_properties(
+    mock_drive_service, mock_docs_service, mocker
+):
+    """A file with no stored doc yet still gets its only_if_unset tags set."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
+
+    @tag(only_if_unset=True)
+    def tag_if_unset(ctx: Context) -> str:
+        return "new_value"
+
+    try:
+        store = mocker.Mock()
+        store.get_properties.return_value = None  # no Firestore doc
+        tagger = Tagger(
+            mock_drive_service,
+            mock_docs_service,
+            metadata_store=store,
+            metadata_reader=store,
+            drive_write_enabled=False,
+        )
+        tagger.update_tags(File(id="file2", name="test.pdf", properties={}))
+
+        store.write.assert_called_once()
+        written = store.write.call_args[0][1]
+        assert written["tag_if_unset"] == "new_value"
+    finally:
+        from . import tags
+
+        tags._TAGGERS.pop()

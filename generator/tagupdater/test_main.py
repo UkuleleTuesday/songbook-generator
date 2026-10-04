@@ -2,7 +2,7 @@
 
 import base64
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import click
 import pytest
@@ -426,6 +426,7 @@ def test_get_services_tagger_instantiation(
         genai_client=mock_genai.Client.return_value,
         llm_tagging_enabled=mock_get_settings.return_value.tag_updater.llm_tagging_enabled,
         metadata_store=None,
+        metadata_reader=ANY,
         drive_write_enabled=True,
     )
 
