@@ -14,7 +14,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from generator.worker.gcp import get_credentials
+from ..worker.gcp import get_credentials
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
