@@ -107,6 +107,15 @@ def test_google_drive_api_retries_default():
     assert settings.google_cloud.drive_client.api_retries == 3
 
 
+def test_tag_updater_credentials_include_drive_activity_scope():
+    config.get_settings.cache_clear()
+    settings = config.get_settings()
+    assert (
+        "https://www.googleapis.com/auth/drive.activity.readonly"
+        in settings.google_cloud.credentials["tag-updater"].scopes
+    )
+
+
 def test_google_drive_api_retries_override(monkeypatch):
     """Test that GOOGLE_DRIVE_API_RETRIES overrides drive_client.api_retries."""
     monkeypatch.setenv("GOOGLE_DRIVE_API_RETRIES", "5")

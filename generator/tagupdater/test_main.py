@@ -300,7 +300,12 @@ def test_get_services_success(
     # Mock Google API services
     mock_drive_service = Mock()
     mock_docs_service = Mock()
-    mock_build.side_effect = [mock_drive_service, mock_docs_service]
+    mock_activity_service = Mock()
+    mock_build.side_effect = [
+        mock_drive_service,
+        mock_docs_service,
+        mock_activity_service,
+    ]
 
     # Call the function
     result = _get_services()
@@ -314,10 +319,11 @@ def test_get_services_success(
         target_principal=mock_credential_config.principal,
     )
 
-    # Verify both services were built
-    assert mock_build.call_count == 2
+    # Verify all services were built
+    assert mock_build.call_count == 3
     mock_build.assert_any_call("drive", "v3", credentials=mock_creds)
     mock_build.assert_any_call("docs", "v1", credentials=mock_creds)
+    mock_build.assert_any_call("driveactivity", "v2", credentials=mock_creds)
 
     # Verify return structure
     assert "tracer" in result
@@ -411,7 +417,12 @@ def test_get_services_tagger_instantiation(
     # Mock Google API services
     mock_drive_service = Mock()
     mock_docs_service = Mock()
-    mock_build.side_effect = [mock_drive_service, mock_docs_service]
+    mock_activity_service = Mock()
+    mock_build.side_effect = [
+        mock_drive_service,
+        mock_docs_service,
+        mock_activity_service,
+    ]
 
     # Mock Tagger instance
     mock_tagger_instance = Mock()
@@ -424,6 +435,7 @@ def test_get_services_tagger_instantiation(
     mock_tagger_class.assert_called_once_with(
         mock_drive_service,
         mock_docs_service,
+        activity_service=mock_activity_service,
         trigger_field=mock_get_settings.return_value.tag_updater.trigger_field,
         genai_client=mock_genai.Client.return_value,
         llm_tagging_enabled=mock_get_settings.return_value.tag_updater.llm_tagging_enabled,

@@ -528,6 +528,7 @@ def update_tags(
     )
     drive_service = build("drive", "v3", credentials=creds)
     docs_service = build("docs", "v1", credentials=creds)
+    activity_service = build("driveactivity", "v2", credentials=creds)
     cache = init_cache()
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive_service)
 
@@ -596,6 +597,7 @@ def update_tags(
     tagger = Tagger(
         drive_service=drive_service,
         docs_service=docs_service,
+        activity_service=activity_service,
         trigger_field=effective_trigger_field,
         genai_client=genai_client,
         llm_tagging_enabled=effective_llm_tagging,

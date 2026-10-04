@@ -55,6 +55,9 @@ def _get_services():
     # Create Google Docs service for document content fetching
     docs_service = build("docs", "v1", credentials=tagger_creds)
 
+    # Create Google Drive Activity service for date tags derived from folder moves.
+    activity_service = build("driveactivity", "v2", credentials=tagger_creds)
+
     if settings.tag_updater.llm_tagging_enabled:
         genai_client = genai.Client(
             vertexai=True,
@@ -90,6 +93,7 @@ def _get_services():
         "tagger": Tagger(
             drive_service,
             docs_service,
+            activity_service=activity_service,
             trigger_field=settings.tag_updater.trigger_field,
             genai_client=genai_client,
             llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,

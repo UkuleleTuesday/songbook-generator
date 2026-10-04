@@ -528,6 +528,43 @@ def test_ready_to_play_date_set_when_in_ready_to_play_folder(mock_now):
     assert ready_to_play_date(Context(file=file)) == "2026-03-25T11:00:00Z"
 
 
+def test_ready_to_play_date_uses_move_timestamp_regardless_of_legacy_date():
+    file = File(
+        id="1",
+        name="f",
+        parents=[FOLDER_ID_READY_TO_PLAY],
+        properties={"date": "20230620"},
+    )
+    activity_service = Mock()
+
+    with patch(
+        "generator.tagupdater.tags.get_first_move_timestamp",
+        return_value="2024-08-06T16:10:00Z",
+    ) as get_first_move:
+        value = ready_to_play_date(
+            Context(file=file, activity_service=activity_service)
+        )
+
+    assert value == "2024-08-06T16:10:00Z"
+    get_first_move.assert_called_once_with(
+        activity_service, "1", FOLDER_ID_READY_TO_PLAY
+    )
+
+
+@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
+def test_ready_to_play_date_falls_back_to_now_when_no_activity(mock_now):
+    file = File(
+        id="1",
+        name="f",
+        parents=[FOLDER_ID_READY_TO_PLAY],
+        properties={"date": "20230620"},
+    )
+    with patch("generator.tagupdater.tags.get_first_move_timestamp", return_value=None):
+        assert ready_to_play_date(Context(file=file, activity_service=Mock())) == (
+            "2026-03-25T11:00:00Z"
+        )
+
+
 def test_ready_to_play_date_not_set_for_other_folder():
     """ready_to_play_date returns None when file is not in the ready to play folder."""
     file = File(id="1", name="f", parents=[FOLDER_ID_APPROVED])
@@ -539,6 +576,19 @@ def test_approved_date_set_when_in_approved_folder(mock_now):
     """approved_date is returned when file is in the approved folder."""
     file = File(id="1", name="f", parents=[FOLDER_ID_APPROVED])
     assert approved_date(Context(file=file)) == "2026-03-25T11:00:00Z"
+
+
+def test_approved_date_uses_move_timestamp():
+    file = File(id="1", name="f", parents=[FOLDER_ID_APPROVED])
+    activity_service = Mock()
+    with patch(
+        "generator.tagupdater.tags.get_first_move_timestamp",
+        return_value="2024-09-04T00:05:00Z",
+    ) as get_first_move:
+        value = approved_date(Context(file=file, activity_service=activity_service))
+
+    assert value == "2024-09-04T00:05:00Z"
+    get_first_move.assert_called_once_with(activity_service, "1", FOLDER_ID_APPROVED)
 
 
 def test_approved_date_not_set_for_other_folder():
@@ -553,7 +603,13 @@ def test_status_date_not_overwritten_once_set(
 ):
     """ready_to_play_date and approved_date are not overwritten if already set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
+    activity_service = Mock()
+    tagger = Tagger(
+        mock_drive_service,
+        mock_docs_service,
+        trigger_field="status",
+        activity_service=activity_service,
+    )
     file_to_tag = File(
         id="file123",
         name="test.pdf",
@@ -568,6 +624,7 @@ def test_status_date_not_overwritten_once_set(
 
     call_body = mock_drive_service.files.return_value.update.call_args[1]["body"]
     assert call_body["properties"]["approved_date"] == "2025-01-01T00:00:00Z"
+    activity_service.activity.assert_not_called()
 
 
 # --- year validator tests ---
