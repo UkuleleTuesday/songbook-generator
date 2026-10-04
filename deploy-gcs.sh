@@ -79,22 +79,25 @@ gcloud storage buckets add-iam-policy-binding "gs://${GCS_SONGBOOKS_LOGS_BUCKET}
 gcloud storage buckets update "gs://${GCS_SONGBOOKS_BUCKET}" --log-bucket="gs://${GCS_SONGBOOKS_LOGS_BUCKET}"
 
 
-echo "5. Setting lifecycle policies (90-day TTL) on buckets…"
-# prepare lifecycle config
+echo "5. Setting lifecycle policy (7-day TTL) on the CDN bucket…"
+# The CDN bucket holds one <job-id>/songbook.pdf + manifest.json per generation
+# request. The API expires jobs after JOB_TTL_DAYS=3, so the objects are dead
+# well before a week. Published editions live in the songbooks bucket and are
+# unaffected. The worker cache bucket is deliberately left without a lifecycle:
+# its contents are re-fetched from Drive when missing.
 LIFECYCLE_JSON=$(mktemp)
 cat >"${LIFECYCLE_JSON}" <<EOF
 {
   "rule": [
     {
       "action": {"type": "Delete"},
-      "condition": {"age": 90}
+      "condition": {"age": 7}
     }
   ]
 }
 EOF
 
 gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_CDN_BUCKET}"
-gsutil lifecycle set "${LIFECYCLE_JSON}" "gs://${GCS_WORKER_CACHE_BUCKET}"
 rm "${LIFECYCLE_JSON}"
 
 echo "6. Granting IAM roles to ${SONGBOOK_GENERATOR_SERVICE_ACCOUNT}…"
