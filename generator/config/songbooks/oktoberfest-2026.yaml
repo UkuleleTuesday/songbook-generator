@@ -28,6 +28,7 @@ sections:
               - "Wind of Change - Scorpions"
               - "Mambo No. 5 (a Little bit of...) - Lou Bega"
               - "No No Never - Texas Lightning"
+              - "99 Luftballons - Nena"
   songs:
     filters:
       - key: "name"
