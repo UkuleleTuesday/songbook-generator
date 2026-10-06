@@ -6,6 +6,7 @@ description: >
   a 🍺 in the table of contents. Prost!
 publish:
   visibility: public
+  pinned: true
 sections:
   cover:
     file_id: "1T_5X0BK0DAC1Udio85A_S-a5ucdbDdPR9nDOOyR-eUg"
