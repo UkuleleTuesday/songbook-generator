@@ -5,8 +5,7 @@ description: >
   songbook plus a handful of songs from German(-ish) artists, marked with
   a 🍺 in the table of contents. Prost!
 publish:
-  # Draft: keep unlisted until the song list is final.
-  visibility: unlisted
+  visibility: public
 sections:
   cover:
     file_id: "1T_5X0BK0DAC1Udio85A_S-a5ucdbDdPR9nDOOyR-eUg"
