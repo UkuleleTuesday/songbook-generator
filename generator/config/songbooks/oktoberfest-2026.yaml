@@ -34,13 +34,11 @@ sections:
       - key: "name"
         operator: "in"
         value:
-          # Oktoberfest specials, (3) Ready To Play
+          # Oktoberfest specials
           - "An der Nordseeküste - Klaus & Klaus"
           - "Durch den Monsun (Original Version) - Tokio Hotel"
           - "Lemon Tree - Fools Garden"
           - "Wind of Change - Scorpions"
-          # Oktoberfest specials, (2) Ready for Review: these only show up
-          # once they're moved to a synced song sheet folder.
           - "Mambo No. 5 (a Little bit of...) - Lou Bega"
           - "No No Never - Texas Lightning"
           # Left out for now: "Zu spät - Die Ärzte"
