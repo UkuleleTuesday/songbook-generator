@@ -8,8 +8,7 @@ description: >
   so make sure to download the latest version!
 publish:
   visibility: public
-  # Unpinned for the Oktoberfest session (6 Oct 2026); re-pin after.
-  pinned: false
+  pinned: true
 sections:
   cover:
     file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
