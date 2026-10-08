@@ -19,7 +19,8 @@ so backfilled books don't look freshly updated on the songbooks site — and no
 book is regenerated or republished.
 
 latest.json is only rewritten if it is still the version that was read, so a
-publish landing mid-run is never overwritten.
+publish landing mid-run is never overwritten. --dry-run does everything
+(including downloading and rendering) except writing to the bucket.
 """
 
 import json
@@ -63,11 +64,13 @@ def backfill_edition(bucket, edition: str, dry_run: bool) -> str:
         return "already has a cover"
 
     cover_filename = pdf_filename.removesuffix(".pdf") + ".cover.png"
-    if dry_run:
-        return f"would add {cover_filename}"
-
     pdf_bytes = bucket.blob(f"{edition}/{pdf_filename}").download_as_bytes()
     png, title, subject = render_cover(pdf_bytes)
+    if dry_run:
+        return (
+            f"would add {cover_filename} ({len(png) // 1024} KB, "
+            f"title={title!r}, subject={subject!r})"
+        )
 
     cover_blob = bucket.blob(f"{edition}/{cover_filename}")
     cover_blob.cache_control = CACHE_CONTROL_COVER

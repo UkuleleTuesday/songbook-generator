@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: "Only list the editions that would get a cover"
+        description: "Render the covers but don't write anything to the bucket"
         type: boolean
         default: false
 
