@@ -99,3 +99,37 @@ def validate_pdf_cli(
     except (OSError, IOError, fitz.FileDataError) as e:
         click.echo(f"❌ Error accessing PDF file: {e}", err=True)
         sys.exit(1)
+
+
+@click.command(name="render-cover")
+@global_options
+@click.argument("pdf_path", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Where to write the PNG (defaults to <pdf_basename>.cover.png next to the PDF).",
+)
+@click.option("--dpi", type=int, default=150, help="Render resolution.")
+def render_cover_cli(pdf_path: Path, output: Optional[Path], dpi: int, **kwargs):
+    """
+    Render a songbook's cover (its first page) to a PNG.
+
+    Published next to the PDF so consumers such as the songbooks site can show
+    the cover without downloading the whole book.
+    """
+    if output is None:
+        output = pdf_path.with_name(f"{pdf_path.stem}.cover.png")
+
+    try:
+        with fitz.open(pdf_path) as pdf:
+            if len(pdf) == 0:
+                click.echo(f"❌ {pdf_path} has no pages", err=True)
+                sys.exit(1)
+            pdf.load_page(0).get_pixmap(dpi=dpi, alpha=True).save(output)
+    except (OSError, fitz.FileDataError) as e:
+        click.echo(f"❌ Error reading PDF file: {e}", err=True)
+        sys.exit(1)
+
+    click.echo(f"✅ Cover written to {output}")

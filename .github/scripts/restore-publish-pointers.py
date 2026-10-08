@@ -13,10 +13,11 @@ Usage:
 
 Reads the restore spec (default: .github/restore-pointers.yml) and, for each
 entry, rewrites <edition>/latest.json to point at the named PDF and its
-sibling .manifest.json, with generated_at taken from that manifest and
-visibility/pinned re-read from the edition config (defaults public/unpinned
-when no config exists). Both artifacts must already exist in the bucket —
-this script never uploads a book, only moves the pointer.
+sibling .manifest.json (and .cover.png, when one was published), with
+generated_at, title and subject taken from that manifest and visibility/pinned
+re-read from the edition config (defaults public/unpinned when no config
+exists). The artifacts must already exist in the bucket — this script never
+uploads a book, only moves the pointer.
 """
 
 import json
@@ -43,18 +44,28 @@ def read_publish_vars(edition: str) -> tuple[str, bool]:
 def restore_edition(bucket, edition: str, pdf_filename: str) -> str:
     if not pdf_filename.endswith(".pdf"):
         raise ValueError(f"not a pdf filename: {pdf_filename}")
-    manifest_filename = pdf_filename[: -len(".pdf")] + ".manifest.json"
+    basename = pdf_filename[: -len(".pdf")]
+    manifest_filename = basename + ".manifest.json"
+    cover_filename = basename + ".cover.png"
 
     pdf_blob = bucket.blob(f"{edition}/{pdf_filename}")
     if not pdf_blob.exists():
         raise FileNotFoundError(f"{edition}/{pdf_filename} not in bucket")
     manifest_blob = bucket.blob(f"{edition}/{manifest_filename}")
     manifest = json.loads(manifest_blob.download_as_text())
+    pdf_info = manifest.get("pdf_info") or {}
+    # Books published before covers were rendered have none; the site then
+    # falls back to rendering the PDF itself.
+    if not bucket.blob(f"{edition}/{cover_filename}").exists():
+        cover_filename = ""
 
     visibility, pinned = read_publish_vars(edition)
     latest = {
         "pdf_filename": pdf_filename,
         "manifest_filename": manifest_filename,
+        "cover_filename": cover_filename,
+        "title": pdf_info.get("title") or "",
+        "subject": pdf_info.get("subject") or "",
         "generated_at": manifest["generated_at"],
         "visibility": visibility,
         "pinned": pinned,

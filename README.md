@@ -39,7 +39,8 @@ The application uses a microservices architecture deployed on Google Cloud:
 
 Songbook editions are defined in `generator/config/songbooks/<edition>.yaml`. Published
 editions are uploaded to the public GCS bucket (`GCS_SONGBOOKS_BUCKET`) together with a
-`<edition>/latest.json` pointer that carries publish metadata, and the
+`<edition>/latest.json` pointer that carries publish metadata (plus the book's title,
+subject and a rendered `.cover.png` of its first page), and the
 [songbooks microsite](https://github.com/UkuleleTuesday/songbooks) builds its listing
 from that metadata — these config files are the single source of truth for what appears
 on [songbooks.ukuleletuesday.ie](https://songbooks.ukuleletuesday.ie).
