@@ -1,0 +1,47 @@
+name: Backfill Covers
+
+# One-off: adds cover images to editions published before covers were
+# rendered at publish time, so the songbooks site never has to download their
+# PDFs. Touches only the cover and latest.json's cover_filename/title/subject —
+# no songbook is regenerated or republished. Safe to re-run.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list the editions that would get a cover"
+        type: boolean
+        default: false
+
+# Serialized with the other workflows that rewrite <edition>/latest.json.
+concurrency:
+  group: songbooks-bucket-metadata
+  cancel-in-progress: false
+
+jobs:
+  backfill-covers:
+    name: Backfill cover images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Load environment variables
+      uses: falti/dotenv-action@v1.1.4
+      with:
+        path: .env
+        export-variables: true
+        keys-case: bypass
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+    - name: Backfill covers
+      run: |
+        uv run .github/scripts/backfill-covers.py "${GCS_SONGBOOKS_BUCKET}" \
+          ${{ inputs.dry_run && '--dry-run' || '' }}
