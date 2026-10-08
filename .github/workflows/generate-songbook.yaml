@@ -329,6 +329,22 @@ jobs:
           exit 1
         fi
 
+    # Published next to the PDF so the songbooks site can show the cover
+    # without downloading the whole book on every build.
+    - name: Render and upload cover image
+      if: steps.changed.outputs.unchanged != 'true'
+      run: |
+        set -e
+        EDITION="${{ needs.generate-songbook.outputs.effective_edition }}"
+        PDF_FILE=$(find ./songbooks -name '*.pdf' -print -quit)
+        uv run songbook-tools render-cover "$PDF_FILE"
+        COVER_FILE="${PDF_FILE%.pdf}.cover.png"
+        DEST_GCS_PATH="gs://${GCS_SONGBOOKS_BUCKET}/${EDITION}/$(basename "$COVER_FILE")"
+        echo "Uploading cover to '$DEST_GCS_PATH'"
+        # Same max-age as the PDF: same-day republishes overwrite this URL too.
+        gcloud storage cp "$COVER_FILE" "$DEST_GCS_PATH" \
+          --cache-control="public, max-age=300"
+
     - name: Generate latest.json
       if: steps.changed.outputs.unchanged != 'true'
       run: |

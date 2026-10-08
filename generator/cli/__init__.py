@@ -16,7 +16,7 @@ from .changelog import (
 from .editions import editions
 from .generate import generate
 from .metadata import metadata
-from .misc import print_settings, validate_pdf_cli
+from .misc import print_settings, render_cover_cli, validate_pdf_cli
 from .pptx import generate_pptx
 from .songs import songs
 from .tags import tags
@@ -41,6 +41,7 @@ cli.add_command(songs)
 cli.add_command(cache)
 cli.add_command(print_settings)
 cli.add_command(validate_pdf_cli)
+cli.add_command(render_cover_cli)
 cli.add_command(editions)
 cli.add_command(tags)
 cli.add_command(metadata)

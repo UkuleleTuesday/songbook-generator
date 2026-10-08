@@ -10,9 +10,10 @@
 Usage:
     generate-latest-json.py <edition> <songbooks-dir> [output-file]
 
-Finds the .pdf and .manifest.json files in <songbooks-dir>, reads publish
-metadata from the edition YAML config, then writes latest.json to
-<output-file> (defaults to latest.json in the current directory).
+Finds the .pdf, .manifest.json and .cover.png files in <songbooks-dir>,
+reads publish metadata from the edition YAML config and the book's title and
+subject from the manifest, then writes latest.json to <output-file> (defaults
+to latest.json in the current directory).
 """
 
 import json
@@ -47,6 +48,7 @@ def main() -> None:
 
     pdf_file = next(songbooks_dir.glob("*.pdf"), None)
     manifest_file = next(songbooks_dir.glob("*.manifest.json"), None)
+    cover_file = next(songbooks_dir.glob("*.cover.png"), None)
 
     if manifest_file is None:
         print("Manifest file not found, skipping.", file=sys.stderr)
@@ -54,6 +56,7 @@ def main() -> None:
 
     pdf_filename = pdf_file.name if pdf_file else ""
     manifest_filename = manifest_file.name
+    pdf_info = json.loads(manifest_file.read_text()).get("pdf_info") or {}
 
     edition_yaml = Path(f"generator/config/songbooks/{edition}.yaml")
     visibility, pinned = read_publish_vars(edition_yaml)
@@ -61,6 +64,9 @@ def main() -> None:
     latest = {
         "pdf_filename": pdf_filename,
         "manifest_filename": manifest_filename,
+        "cover_filename": cover_file.name if cover_file else "",
+        "title": pdf_info.get("title") or "",
+        "subject": pdf_info.get("subject") or "",
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "visibility": visibility,
         "pinned": pinned,
