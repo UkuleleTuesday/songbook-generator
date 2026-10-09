@@ -1,5 +1,6 @@
 import os
 import yaml
+from datetime import date
 from enum import Enum
 from functools import lru_cache
 from typing import List, Literal, Optional, Union
@@ -121,6 +122,9 @@ class Toc(BaseModel):
 class PublishConfig(BaseModel):
     visibility: Literal["public", "unlisted"] = "public"
     pinned: bool = False
+    # Listed above every other edition (pinned included) up to and including
+    # this day, Dublin time; ordering reverts on its own once it has passed.
+    featured_until: Optional[date] = None
 
 
 class CoverSection(BaseModel):

@@ -14,9 +14,9 @@ Usage:
 Reads the restore spec (default: .github/restore-pointers.yml) and, for each
 entry, rewrites <edition>/latest.json to point at the named PDF and its
 sibling .manifest.json (and .cover.png, when one was published), with
-generated_at, title and subject taken from that manifest and visibility/pinned
-re-read from the edition config (defaults public/unpinned when no config
-exists). The artifacts must already exist in the bucket — this script never
+generated_at, title and subject taken from that manifest and the publish
+metadata (visibility/pinned/featured_until) re-read from the edition config
+(defaults public/unpinned/unfeatured when no config exists). The artifacts must already exist in the bucket — this script never
 uploads a book, only moves the pointer.
 """
 
@@ -30,15 +30,25 @@ from google.cloud import storage
 CACHE_CONTROL = "public, max-age=60"
 
 
-def read_publish_vars(edition: str) -> tuple[str, bool]:
+def publish_vars(pub: dict) -> dict:
+    featured_until = pub.get("featured_until")
+    return {
+        "visibility": pub.get("visibility", "public"),
+        "pinned": bool(pub.get("pinned", False)),
+        # YAML loads an unquoted date as datetime.date; str() gives YYYY-MM-DD.
+        "featured_until": str(featured_until) if featured_until else None,
+    }
+
+
+def read_publish_vars(edition: str) -> dict:
     edition_yaml = Path(f"generator/config/songbooks/{edition}.yaml")
     try:
         with open(edition_yaml) as f:
             cfg = yaml.safe_load(f)
         pub = cfg.get("publish", {}) if isinstance(cfg, dict) else {}
-        return pub.get("visibility", "public"), bool(pub.get("pinned", False))
+        return publish_vars(pub)
     except OSError:
-        return "public", False
+        return publish_vars({})
 
 
 def restore_edition(bucket, edition: str, pdf_filename: str) -> str:
@@ -59,7 +69,6 @@ def restore_edition(bucket, edition: str, pdf_filename: str) -> str:
     if not bucket.blob(f"{edition}/{cover_filename}").exists():
         cover_filename = ""
 
-    visibility, pinned = read_publish_vars(edition)
     latest = {
         "pdf_filename": pdf_filename,
         "manifest_filename": manifest_filename,
@@ -67,8 +76,7 @@ def restore_edition(bucket, edition: str, pdf_filename: str) -> str:
         "title": pdf_info.get("title") or "",
         "subject": pdf_info.get("subject") or "",
         "generated_at": manifest["generated_at"],
-        "visibility": visibility,
-        "pinned": pinned,
+        **read_publish_vars(edition),
     }
 
     latest_blob = bucket.blob(f"{edition}/latest.json")

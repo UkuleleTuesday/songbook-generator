@@ -641,7 +641,7 @@ jobs:
             fi
             if git cat-file -e "$BASE:$f" 2>/dev/null; then
               git show "$BASE:$f" > /tmp/old-edition-config.yaml
-              # Publish metadata (visibility/pinned) is applied to the already
+              # Publish metadata (the publish block) is applied to the already
               # published latest.json by the sync-publish-metadata workflow;
               # only changes outside the publish block affect the book itself.
               if python3 .github/scripts/config-requires-regen.py /tmp/old-edition-config.yaml "$f"; then
