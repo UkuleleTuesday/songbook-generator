@@ -6,18 +6,19 @@
 #   "google-cloud-storage>=2.16",
 # ]
 # ///
-"""Sync publish metadata (visibility/pinned) from edition configs to GCS.
+"""Sync publish metadata (visibility/pinned/featured_until) from edition
+configs to GCS.
 
 Usage:
     sync-publish-metadata.py <bucket> [configs-dir]
 
 For each edition YAML in <configs-dir> (default: generator/config/songbooks),
-reads the edition's existing latest.json in <bucket> and, when its
-visibility/pinned fields differ from the config's publish block, patches
-those two keys and re-uploads the file. Editions with no latest.json (never
+reads the edition's existing latest.json in <bucket> and, when its publish
+fields differ from the config's publish block, patches those keys and
+re-uploads the file. Editions with no latest.json (never
 published) are skipped — this script never creates one.
 
-This lets a visibility/pinned change in an edition config reach the bucket
+This lets a publish metadata change in an edition config reach the bucket
 without regenerating the songbook, which matters for retired editions that
 will never be re-published.
 """
@@ -33,28 +34,40 @@ from google.cloud import storage
 CACHE_CONTROL = "public, max-age=60"
 
 
-def read_publish_vars(edition_yaml: Path) -> tuple[str, bool]:
+def publish_vars(pub: dict) -> dict:
+    featured_until = pub.get("featured_until")
+    return {
+        "visibility": pub.get("visibility", "public"),
+        "pinned": bool(pub.get("pinned", False)),
+        # YAML loads an unquoted date as datetime.date; str() gives YYYY-MM-DD.
+        "featured_until": str(featured_until) if featured_until else None,
+    }
+
+
+def read_publish_vars(edition_yaml: Path) -> dict:
     with open(edition_yaml) as f:
         cfg = yaml.safe_load(f)
     pub = cfg.get("publish", {}) if isinstance(cfg, dict) else {}
-    return pub.get("visibility", "public"), bool(pub.get("pinned", False))
+    return publish_vars(pub)
 
 
-def sync_edition(bucket, edition: str, visibility: str, pinned: bool) -> str:
+def sync_edition(bucket, edition: str, publish: dict) -> str:
     blob = bucket.blob(f"{edition}/latest.json")
     try:
         latest = json.loads(blob.download_as_text())
     except NotFound:
         return "not published, skipped"
 
-    if latest.get("visibility") == visibility and latest.get("pinned") == pinned:
+    # A latest.json written before a field existed reads as None, so editions
+    # that don't set it aren't rewritten just to add the key.
+    if all(latest.get(key) == value for key, value in publish.items()):
         return "unchanged"
 
-    latest["visibility"] = visibility
-    latest["pinned"] = pinned
+    latest.update(publish)
     blob.cache_control = CACHE_CONTROL
     blob.upload_from_string(json.dumps(latest), content_type="application/json")
-    return f"updated (visibility={visibility}, pinned={pinned})"
+    fields = ", ".join(f"{key}={value}" for key, value in publish.items())
+    return f"updated ({fields})"
 
 
 def main() -> None:
@@ -75,8 +88,7 @@ def main() -> None:
     for edition_yaml in sorted(configs_dir.glob("*.yaml")):
         edition = edition_yaml.stem
         try:
-            visibility, pinned = read_publish_vars(edition_yaml)
-            outcome = sync_edition(bucket, edition, visibility, pinned)
+            outcome = sync_edition(bucket, edition, read_publish_vars(edition_yaml))
         except Exception as e:  # noqa: BLE001 - report and keep syncing the rest
             outcome = f"FAILED: {e}"
             failures += 1

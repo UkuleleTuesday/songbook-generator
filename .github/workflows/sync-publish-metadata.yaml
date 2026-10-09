@@ -1,6 +1,6 @@
 name: Sync Publish Metadata
 
-# Applies visibility/pinned changes from edition configs to the already
+# Applies visibility/pinned/featured_until changes from edition configs to the already
 # published latest.json files in GCS, without regenerating any songbook.
 on:
   push:

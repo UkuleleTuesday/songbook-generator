@@ -1,3 +1,5 @@
+from datetime import date
+
 import pytest
 from generator.common import config
 
@@ -244,6 +246,21 @@ def test_publish_config_pinned():
     """PublishConfig accepts pinned=True."""
     publish = config.PublishConfig(pinned=True)
     assert publish.pinned is True
+
+
+def test_publish_config_featured_until():
+    """PublishConfig parses featured_until as a date and defaults to None."""
+    assert config.PublishConfig().featured_until is None
+    publish = config.PublishConfig(featured_until="2026-10-27")
+    assert publish.featured_until == date(2026, 10, 27)
+
+
+def test_publish_config_invalid_featured_until():
+    """PublishConfig rejects a featured_until that is not a date."""
+    import pydantic
+
+    with pytest.raises(pydantic.ValidationError):
+        config.PublishConfig(featured_until="next tuesday")
 
 
 def test_publish_config_invalid_visibility():

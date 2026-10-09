@@ -52,16 +52,38 @@ publish:
   visibility: public   # 'public' (listed on the site) or 'unlisted'
                        # (downloadable at its /<edition>/ URL but not listed).
                        # Defaults to 'public'.
-  pinned: false        # Pinned editions always appear first on the site,
-                       # ahead of recency ordering. Defaults to false.
+  pinned: false        # Pinned editions appear ahead of recency ordering,
+                       # in name order. Defaults to false.
+  featured_until: 2026-10-27
+                       # Optional. Listed first on the site, above pinned
+                       # editions, up to and including this day (Dublin
+                       # time); afterwards the normal ordering resumes on its
+                       # own, so nothing needs undoing.
 ```
 
 `latest.json` is normally written when an edition is generated and published. Changing
-only `visibility`/`pinned` does not require a regeneration: the
+only the `publish` block does not require a regeneration: the
 `Sync Publish Metadata` workflow (`.github/workflows/sync-publish-metadata.yaml`) runs
-on every push to `main` touching `generator/config/songbooks/` and patches those two
+on every push to `main` touching `generator/config/songbooks/` and patches those
 fields into the already-published `latest.json` files. Editions that have never been
 published are left alone.
+
+### Special-edition checklist
+
+For a one-off songbook tied to an event (Oktoberfest, Halloween, …):
+
+1. **Draft**: add `generator/config/songbooks/<edition>.yaml` with
+   `publish.visibility: unlisted`. It is generated and reachable at
+   `/<edition>/` for review, but not listed.
+2. **Finalise songs**: iterate on the song list until it is signed off.
+3. **Go live**: in one PR, set `visibility: public` and
+   `featured_until: <event day>`.
+4. **Check the site**: within ~15 minutes of the merge, the edition should be
+   first on [songbooks.ukuleletuesday.ie](https://songbooks.ukuleletuesday.ie).
+5. **After the event**: nothing to do. The day after `featured_until` it falls back
+   into the normal ordering, and drops off the main grid 30 days after its last
+   song change. Delete `featured_until` whenever convenient, or set
+   `visibility: unlisted` to retire the book from the listing entirely.
 
 ## Wanna help?
 

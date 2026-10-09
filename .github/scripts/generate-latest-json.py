@@ -24,14 +24,24 @@ from pathlib import Path
 import yaml
 
 
-def read_publish_vars(edition_yaml: Path) -> tuple[str, bool]:
+def publish_vars(pub: dict) -> dict:
+    featured_until = pub.get("featured_until")
+    return {
+        "visibility": pub.get("visibility", "public"),
+        "pinned": bool(pub.get("pinned", False)),
+        # YAML loads an unquoted date as datetime.date; str() gives YYYY-MM-DD.
+        "featured_until": str(featured_until) if featured_until else None,
+    }
+
+
+def read_publish_vars(edition_yaml: Path) -> dict:
     try:
         with open(edition_yaml) as f:
             cfg = yaml.safe_load(f)
         pub = cfg.get("publish", {}) if isinstance(cfg, dict) else {}
-        return pub.get("visibility", "public"), bool(pub.get("pinned", False))
+        return publish_vars(pub)
     except (OSError, yaml.YAMLError):
-        return "public", False
+        return publish_vars({})
 
 
 def main() -> None:
@@ -59,7 +69,6 @@ def main() -> None:
     pdf_info = json.loads(manifest_file.read_text()).get("pdf_info") or {}
 
     edition_yaml = Path(f"generator/config/songbooks/{edition}.yaml")
-    visibility, pinned = read_publish_vars(edition_yaml)
 
     latest = {
         "pdf_filename": pdf_filename,
@@ -68,8 +77,7 @@ def main() -> None:
         "title": pdf_info.get("title") or "",
         "subject": pdf_info.get("subject") or "",
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "visibility": visibility,
-        "pinned": pinned,
+        **read_publish_vars(edition_yaml),
     }
     latest_json = json.dumps(latest)
     output_file.write_text(latest_json)
