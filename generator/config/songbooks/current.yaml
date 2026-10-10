@@ -11,11 +11,44 @@ publish:
   pinned: true
 sections:
   cover:
-    file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+    # Halloween 2026, week 1 (Halloween_2025_cover_1). Normal cover:
+    # "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
+    file_id: "1umElTLlai9GX6Ycp5BTlxb2M3g4ZePxyJYNY4n6fXtg"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
+    # Halloween 2026: pumpkin next to the Halloween songs. An explicit list
+    # rather than a `theme contains halloween` filter, because Candy, Toxic,
+    # vampire and Zombie only carry the tag in `specialbooks`.
+    decorations:
+      - badges:
+          - text: " 🎃"
+        filters:
+          - key: "name"
+            operator: "in"
+            value:
+              - "Bad Moon Rising - Creedence Clearwater Revival"
+              - "Boris The Spider - The Who"
+              - "Candy - Paolo Nutini"
+              - "Creep - Radiohead"
+              - "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult"
+              - "Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys"
+              - "Ex's & Oh's - Elle King"
+              - "Highway to Hell - AC/DC"
+              - "In Bloom - Nirvana"
+              - "Jump in the Line - Harry Belafonte"
+              - "Murder On The Dancefloor - Sophie Ellis-Bextor"
+              - "Nightcall - Kavinsky"
+              - "One Way or Another - Blondie"
+              - "Paint it, Black - The Rolling Stones"
+              - "Psycho Killer - Talking Heads"
+              - "She Wolf - Shakira"
+              - "Sweet Dreams (Are Made of This) - Eurythmics"
+              - "Toxic - Britney Spears"
+              - "vampire - Olivia Rodrigo"
+              - "(You're the) Devil in Disguise - Elvis Presley"
+              - "Zombie - The Cranberries"
     # decorations:
     #   - badges:
     #       - text: " ☘"
@@ -42,6 +75,8 @@ sections:
           - "BIRDS OF A FEATHER - Billie Eilish"
           - "Blinding Lights - The Weeknd"
           - "Blitzkrieg Bop - Ramones"
+          - "Boom, Boom, Boom, Boom!! - Vengaboys" # One off, dutch uke group visiting
+          - "Boris The Spider - The Who" # Halloween 2026
           - "Brown Eyed Girl - Van Morrison"
           - "Call Me - Blondie"
           - "Call Me Maybe - Carly Rae Jepsen"
@@ -56,10 +91,12 @@ sections:
           - "Creep - Radiohead"
           - "Dirty Old Town - The Pogues"
           - "Dog Days Are Over - Florence + The Machine"
+          - "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult" # Halloween 2026
           - "Don't Look Back In Anger - Oasis"
           - "Don't Stop Me Now - Queen"
           - "Don't You (Forget About Me) - Simple Minds"
           - "Dreams - The Cranberries"
+          - "Durch den Monsun (Original Version) - Tokio Hotel" # Promoted from the Oktoberfest 2026 special (6 Oct)
           - "Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys"
           - "Ex's & Oh's - Elle King"
           - "Faith - George Michael"
@@ -92,6 +129,7 @@ sections:
           - "Kids in America - Kim Wilde"
           - "Kiss/Mustang Sally Medley - Prince/The Commitments"
           - "Lady Madonna - The Beatles"
+          - "Lemon Tree - Fools Garden" # Promoted from the Oktoberfest 2026 special (6 Oct)
           - "Linger - The Cranberries"
           - "Little Lion Man - Mumford and Sons"
           - "Livin' on a Prayer - Bon Jovi"
@@ -139,6 +177,7 @@ sections:
           - "Walking On Sunshine - Katrina & The Waves"
           - "What's Up? - 4 Non Blondes"
           - "Where's Me Jumper? - Sultans Of Ping F.C."
+          - "Wind of Change - Scorpions" # Promoted from the Oktoberfest 2026 special (6 Oct)
           - "With Or Without You - U2"
           - "Wrecking Ball - Miley Cyrus"
           - "You Oughta Know - Alanis Morissette"
