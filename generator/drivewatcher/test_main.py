@@ -356,6 +356,40 @@ def test_drivewatcher_main_with_changes(
 
 @patch("generator.drivewatcher.main._get_services")
 @patch("generator.drivewatcher.main._get_watched_folders")
+@patch("generator.drivewatcher.main._get_last_check_time")
+@patch("generator.drivewatcher.main._detect_changes")
+@patch("generator.drivewatcher.main._publish_changes")
+@patch("generator.drivewatcher.main._save_check_time")
+def test_drivewatcher_main_no_changes(
+    mock_save_check_time,
+    mock_publish_changes,
+    mock_detect_changes,
+    mock_get_last_check_time,
+    mock_get_watched_folders,
+    mock_get_services,
+):
+    """A no-change run must not publish or advance the checkpoint."""
+    mock_span = Mock()
+    mock_tracer = Mock()
+    mock_tracer.start_as_current_span.return_value.__enter__ = Mock(
+        return_value=mock_span
+    )
+    mock_tracer.start_as_current_span.return_value.__exit__ = Mock(return_value=None)
+
+    mock_get_services.return_value = {"tracer": mock_tracer}
+    mock_get_watched_folders.return_value = ["folder1"]
+    mock_get_last_check_time.return_value = datetime.utcnow() - timedelta(hours=1)
+    mock_detect_changes.return_value = []
+
+    drivewatcher_main(Mock())
+
+    mock_detect_changes.assert_called_once()
+    mock_publish_changes.assert_not_called()
+    mock_save_check_time.assert_not_called()
+
+
+@patch("generator.drivewatcher.main._get_services")
+@patch("generator.drivewatcher.main._get_watched_folders")
 def test_drivewatcher_main_no_folders(mock_get_watched_folders, mock_get_services):
     """Test the main drivewatcher function when no folders are configured."""
     # Mock the services
