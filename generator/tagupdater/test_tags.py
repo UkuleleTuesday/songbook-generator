@@ -1144,3 +1144,55 @@ def test_store_miss_falls_back_to_drive_properties(
         from . import tags
 
         tags._TAGGERS.pop()
+
+
+@pytest.mark.parametrize(
+    "doc_json",
+    sorted(p.name for p in TEST_DATA_DIR.glob("*.json")),
+    indirect=True,
+)
+def test_to_prompt_text_marks_chords_and_collapses_diagrams(doc_json):
+    text = SongSheetGoogleDocument(json=doc_json).to_prompt_text()
+
+    assert text.startswith(f"**{doc_json['title']}**")
+    assert "chord diagrams]" in text
+    assert "[image]" not in text
+    assert "****" not in text
+    assert "\n\n\n" not in text
+
+
+@pytest.mark.parametrize("doc_json", ["love_me_do.json"], indirect=True)
+def test_to_prompt_text_love_me_do(doc_json):
+    lines = SongSheetGoogleDocument(json=doc_json).to_prompt_text().splitlines()
+
+    assert lines[1] == "[4 chord diagrams]"
+    assert "**148bpm    4/4**    swing" in lines[2]
+    assert "**(G)**Love, love me do **(C)**" in lines
+    assert "**(D)**Someone to love **(C)**someone like **(G)**you **(G↓↓)**" in lines
+
+
+def test_to_prompt_text_keeps_inline_images_within_text():
+    doc = SongSheetGoogleDocument(
+        json={
+            "body": {
+                "content": [
+                    {
+                        "paragraph": {
+                            "elements": [
+                                {"textRun": {"content": "Riff "}},
+                                {"inlineObjectElement": {"inlineObjectId": "x"}},
+                                {
+                                    "textRun": {
+                                        "content": " (Am)\n",
+                                        "textStyle": {"bold": True},
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    )
+
+    assert doc.to_prompt_text() == "Riff [image] **(Am)**"
