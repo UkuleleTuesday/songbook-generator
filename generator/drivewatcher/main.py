@@ -278,15 +278,17 @@ def drivewatcher_main(cloud_event: CloudEvent):
             # Detect changes since last check
             changed_files = _detect_changes(services, watched_folders, last_check_time)
 
-            # Publish changes if any found
+            # Publish changes if any found. The checkpoint only advances once
+            # changes have been published: a no-change run leaves the window
+            # open until the next one, so a quiet minute costs no write and a
+            # Drive query that failed and returned nothing cannot drop changes.
             if changed_files:
                 _publish_changes(services, changed_files, current_time)
+                _save_check_time(services, current_time)
                 main_span.set_attribute("status", "published_changes")
             else:
+                click.echo(f"No changes found; checkpoint stays at {last_check_time}")
                 main_span.set_attribute("status", "no_changes")
-
-            # Save current check time for next run
-            _save_check_time(services, current_time)
 
             main_span.set_attribute("files_changed", len(changed_files))
             click.echo("Drive watcher completed successfully")
