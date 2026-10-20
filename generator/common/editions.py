@@ -1,12 +1,15 @@
 """Utilities for scanning and managing songbook editions from Google Drive."""
 
+import os
+import re
+
 import click
 import yaml
 from dataclasses import dataclass
 from googleapiclient.errors import HttpError
 from loguru import logger
 from pydantic import ValidationError
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from . import config
 from .gdrive import GoogleDriveClient
@@ -17,6 +20,158 @@ tracer = get_tracer(__name__)
 # Maximum number of parent folder IDs to include in a single Drive API
 # OR-query.
 _YAML_SEARCH_BATCH_SIZE = 50
+
+# config_ref is the only externally-supplied piece of the GCS config lookup:
+# the bucket comes from the environment and the object prefix is constructed
+# here, so a caller can at most select an existing main/pr-N config set —
+# never an arbitrary URI.
+_CONFIG_REF_RE = re.compile(r"^(main|pr-\d{1,6})$")
+
+# Lazily-initialized GCS client, cached for warm starts.
+_storage_client = None
+
+
+def _get_storage_client():
+    global _storage_client
+    if _storage_client is None:
+        from google.cloud import storage
+
+        _storage_client = storage.Client()
+    return _storage_client
+
+
+def validate_config_ref(ref: str) -> str:
+    """
+    Validate a config_ref against the allowed ``main`` / ``pr-<N>`` pattern.
+
+    Args:
+        ref: The config_ref value to validate.
+
+    Returns:
+        The validated ref, unchanged.
+
+    Raises:
+        ValueError: If the ref does not match ``^(main|pr-\\d{1,6})$``.
+    """
+    if not ref or not _CONFIG_REF_RE.match(ref):
+        raise ValueError(
+            f"Invalid config_ref {ref!r}: must match {_CONFIG_REF_RE.pattern}"
+        )
+    return ref
+
+
+def editions_config_prefix(ref: str) -> str:
+    """Return the GCS object prefix of the edition config set for *ref*."""
+    return f"config/{validate_config_ref(ref)}/"
+
+
+def load_editions_from_gcs(bucket_name: str, ref: str) -> List[config.Edition]:
+    """
+    Load and validate the edition YAMLs for *ref* from *bucket_name*.
+
+    CI rsyncs ``generator/config/songbooks/`` verbatim to the ref's prefix,
+    so the objects are the same YAML files that live in the repo — parsed
+    the same way as the baked-in loader and the Drive ``.songbook.yaml``
+    loader.
+
+    Args:
+        bucket_name: Name of the GCS bucket holding the config sets.
+        ref: A validated config ref (``main`` or ``pr-<N>``).
+
+    Returns:
+        The full list of editions for the ref.
+
+    Raises:
+        ValueError: If the prefix contains no YAML files (config set not
+            published).
+        Exception: On download errors, YAML parse errors, or Edition
+            validation failures.
+    """
+    prefix = editions_config_prefix(ref)
+    blobs = _get_storage_client().list_blobs(bucket_name, prefix=prefix)
+    editions = []
+    for blob in sorted(blobs, key=lambda b: b.name):
+        if not blob.name.endswith((".yaml", ".yml")):
+            continue
+        data = yaml.safe_load(blob.download_as_bytes())
+        if not data:
+            continue
+        data["source_file"] = f"gs://{bucket_name}/{blob.name}"
+        editions.append(config.Edition.model_validate(data))
+    if not editions:
+        raise ValueError(f"No edition config found under gs://{bucket_name}/{prefix}")
+    return editions
+
+
+def resolve_editions(
+    config_ref: Optional[str] = None,
+) -> Tuple[List[config.Edition], str]:
+    """
+    Resolve the effective set of repo-config editions.
+
+    When ``EDITIONS_CONFIG_BUCKET`` is set, editions are read from the YAML
+    files CI publishes to GCS, so config-only changes take effect without a
+    function redeploy. The published set is a whole-set replacement for the
+    baked-in config (never a per-edition merge), so edition deletions
+    propagate.
+
+    Args:
+        config_ref: Optional explicit ref (``main`` or ``pr-<N>``) selecting
+            which published config set to read, used by PR previews running
+            through the production worker. ``None`` selects the default
+            (``main`` when the bucket is configured).
+
+    Returns:
+        A tuple ``(editions, source)`` where *source* is ``"gcs:<ref>"`` or
+        ``"baked"``.
+
+    Raises:
+        ValueError: If *config_ref* is malformed, or if it was explicitly
+            provided but its config set could not be loaded — an explicitly
+            requested config must never silently fall back to another one.
+    """
+    bucket_name = os.getenv("EDITIONS_CONFIG_BUCKET") or None
+
+    if config_ref:
+        validate_config_ref(config_ref)
+        if bucket_name is None:
+            # PR-deployed functions (mixed code+config PRs) don't set the
+            # bucket; their baked config already matches the PR.
+            logger.warning(
+                f"config_ref {config_ref!r} given but EDITIONS_CONFIG_BUCKET "
+                "is not set; using baked-in editions config"
+            )
+            return config.get_settings().editions, "baked"
+        try:
+            editions = load_editions_from_gcs(bucket_name, config_ref)
+        except Exception as e:
+            raise ValueError(
+                f"Could not load editions config for config_ref "
+                f"{config_ref!r} from gs://{bucket_name}: {e}"
+            ) from e
+        logger.info(
+            f"Loaded {len(editions)} edition(s) from "
+            f"gs://{bucket_name}/{editions_config_prefix(config_ref)}"
+        )
+        return editions, f"gcs:{config_ref}"
+
+    if bucket_name is None:
+        return config.get_settings().editions, "baked"
+
+    try:
+        editions = load_editions_from_gcs(bucket_name, "main")
+    except Exception as e:  # noqa: BLE001 - any failure falls back to baked config
+        logger.warning(
+            f"Could not load editions config from gs://{bucket_name}/"
+            f"{editions_config_prefix('main')}; falling back to baked-in "
+            f"editions config: {e}"
+        )
+        return config.get_settings().editions, "baked"
+    logger.info(
+        f"Loaded {len(editions)} edition(s) from "
+        f"gs://{bucket_name}/{editions_config_prefix('main')}"
+    )
+    return editions, "gcs:main"
 
 
 @dataclass

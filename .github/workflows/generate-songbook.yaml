@@ -17,6 +17,10 @@ on:
         description: "Override the API URL (e.g. for PR preview environments)"
         required: false
         type: string
+      config_ref:
+        description: "Editions-config ref the worker should load (e.g. 'pr-123'); empty = worker default"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -63,7 +67,8 @@ jobs:
     - name: Trigger and poll for completion
       id: trigger-and-poll
       run: |
-        PAYLOAD=$(jq -n --arg edition "${{ inputs.edition }}" '{ edition: $edition }')
+        PAYLOAD=$(jq -n --arg edition "${{ inputs.edition }}" --arg config_ref "${{ inputs.config_ref }}" \
+          '{ edition: $edition } + (if $config_ref != "" then { config_ref: $config_ref } else {} end)')
         echo "Triggering songbook generation with payload: $PAYLOAD"
         API_URL="${{ inputs.api_url || format('https://{0}-{1}.cloudfunctions.net/{2}', env.GCP_REGION, env.GCP_PROJECT_ID, env.API_FUNCTION_NAME) }}"
 
