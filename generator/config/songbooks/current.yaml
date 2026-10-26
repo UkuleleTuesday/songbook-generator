@@ -11,9 +11,9 @@ publish:
   pinned: true
 sections:
   cover:
-    # Halloween 2026, week 2 (Halloween_2025_cover_2). Normal cover:
+    # Halloween 2026, week 3 (Halloween_2025_cover_3). Normal cover:
     # "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
-    file_id: "1F_PCR3DyHbe0VcnNVEYkj_6r50mxlDFsxJoYaVnSIk4"
+    file_id: "1VIAAD_IYEXSMch0rBcypDFzqWo50uRHl_TAfMmKCe80"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
@@ -38,6 +38,7 @@ sections:
               - "Highway to Hell - AC/DC"
               - "In Bloom - Nirvana"
               - "Jump in the Line - Harry Belafonte"
+              - "Monster Mash - Bobby (Boris) Pickett and the Crypt-Kickers"
               - "Murder On The Dancefloor - Sophie Ellis-Bextor"
               - "Nightcall - Kavinsky"
               - "One Way or Another - Blondie"
@@ -45,7 +46,9 @@ sections:
               - "Psycho Killer - Talking Heads"
               - "She Wolf - Shakira"
               - "Sweet Dreams (Are Made of This) - Eurythmics"
+              - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"
               - "Toxic - Britney Spears"
+              - "Tribute - Tenacious D"
               - "vampire - Olivia Rodrigo"
               - "(You're the) Devil in Disguise - Elvis Presley"
               - "Zombie - The Cranberries"
@@ -138,6 +141,7 @@ sections:
           - "Mamma Mia - ABBA"
           - "Man! I Feel Like A Woman! - Shania Twain"
           - "Material Girl - Madonna"
+          - "Monster Mash - Bobby (Boris) Pickett and the Crypt-Kickers" # Halloween 2026
           - "Murder On The Dancefloor - Sophie Ellis-Bextor"
           - "Nancy Boy - Placebo"
           - "Nightcall - Kavinsky"
@@ -167,9 +171,11 @@ sections:
           - "TEXAS HOLD'EM - Beyoncé"
           - "The Best (Edit) - Tina Turner"
           - "The Lion Sleeps Tonight - The Tokens"
+          - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien" # Halloween 2026
           - "Torn - Natalie Imbruglia"
           - "Toxic - Britney Spears"
           - "Tree Hugger - Kimya Dawson & Antsy Pants"
+          - "Tribute - Tenacious D" # Halloween 2026
           - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
           - "vampire - Olivia Rodrigo"
           - "Venus - Bananarama"
