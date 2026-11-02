@@ -61,7 +61,7 @@ from .utils import global_options, make_cli_progress_callback
 @click.option(
     "--filter",
     "-f",
-    help="Filter files using property syntax. Examples: 'specialbooks:contains:regular', 'year:gte:2000', 'artist:equals:Beatles', 'difficulty:in:easy,medium'",
+    help="Filter files using property syntax. Examples: 'theme:contains:halloween', 'year:gte:2000', 'artist:equals:Beatles', 'difficulty:in:easy,medium'",
 )
 @click.option(
     "--preface-file-id",

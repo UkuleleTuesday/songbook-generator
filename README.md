@@ -203,7 +203,7 @@ Run `uv run songbook-tools --help` for more commands and options.
 ### CLI Commands
 
 The `songbook-tools` CLI provides commands for local development and utility tasks,
-organised into groups (`cache`, `songs`, `editions`, `specialbooks`, `tags`, `metadata`) and
+organised into groups (`cache`, `songs`, `editions`, `tags`, `metadata`) and
 standalone commands (`generate`, `merge-pdfs`, `validate-pdf`, `print-settings`).
 
 Run `uv run songbook-tools --help` for a full list of commands and groups, and

@@ -73,9 +73,11 @@ description: "A custom edition assembled in Drive."
 use_folder_components: true     # ← enables subfolder detection
 
 filters:
-  - key: "specialbooks"
-    operator: "contains"
-    value: "my-edition"
+  - key: "name"
+    operator: "in"
+    value:
+      - "Dreams - The Cranberries"
+      - "Linger - The Cranberries"
 ```
 
 To override a specific component with an explicit file ID while keeping
@@ -93,9 +95,11 @@ cover_file_id: "1aBcDeFgH..."   # explicit cover – subfolder ignored
 # postface_file_ids not set → resolved from Postface/ subfolder if present
 
 filters:
-  - key: "specialbooks"
-    operator: "contains"
-    value: "my-edition"
+  - key: "name"
+    operator: "in"
+    value:
+      - "Dreams - The Cranberries"
+      - "Linger - The Cranberries"
 ```
 
 ---
