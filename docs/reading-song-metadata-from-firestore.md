@@ -57,7 +57,7 @@ Each document is one song, keyed by its Drive file ID:
   numbers, dates and lists. `year` is `"1970"`, `difficulty` is `"3.5"`,
   list-like fields (`genre`, `specialbooks`, `chords`) are
   comma-separated strings. You must coerce/split client-side.
-- The **key set is whatever the Drive custom properties had** — it is not a
+- The **key set is whatever the tag updater has written** — it is not a
   fixed schema. Treat unknown keys as optional. Commonly present keys include:
   `artist`, `song`, `year`, `status`, `difficulty`, `difficulty_bin`,
   `tabber`, `duration`, `gender`, `genre`, `key`, `songbooks`,
@@ -255,7 +255,7 @@ request, no per-visitor read amplification, no Firebase/security-rules setup).
   despite some fields being conceptually numbers or lists.
 - `ready_to_play_date` / `approved_date` may be the literal string `"unknown"` —
   coerce it to null (see the post-processing checklist and #442).
-- The **key set is not fixed** — it mirrors whatever Drive custom properties
-  existed per song.
+- The **key set is not fixed** — it is whatever tags each song has been
+  given.
 - Browser-direct reads require **Firebase + security rules** on the project
   side; an external implementor cannot enable that alone.

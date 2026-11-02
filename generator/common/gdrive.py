@@ -1,4 +1,4 @@
-from typing import Generator, List, Dict, Optional, Set, Union
+from typing import Generator, List, Optional, Set
 from datetime import datetime
 import click
 from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
@@ -8,7 +8,6 @@ from loguru import logger
 from opentelemetry import trace
 from googleapiclient.discovery import build
 
-from .filters import FilterGroup, PropertyFilter
 from ..worker.models import File
 from .config import get_settings, GoogleDriveClientConfig
 from .tracing import get_tracer
@@ -22,30 +21,6 @@ tracer = get_tracer(__name__)
 def client(credentials: credentials.Credentials):
     """Build a Google Drive API client from credentials."""
     return build("drive", "v3", credentials=credentials)
-
-
-def _build_property_filters(property_filters: Optional[Dict[str, str]]) -> str:
-    """
-    Build Google Drive API query filters for custom properties.
-
-    Args:
-        property_filters: Dict of property_name -> value pairs to filter by
-
-    Returns:
-        String of property filter conditions to append to the main query
-    """
-    if not property_filters:
-        return ""
-
-    filters = []
-    for prop_name, prop_value in property_filters.items():
-        # Escape single quotes in property values
-        escaped_value = prop_value.replace("'", "\\'")
-        filters.append(
-            f"properties has {{ key='{prop_name}' and value='{escaped_value}' }}"
-        )
-
-    return " and " + " and ".join(filters) if filters else ""
 
 
 class GoogleDriveClient:
@@ -83,7 +58,7 @@ class GoogleDriveClient:
                 .list(
                     q=query,
                     pageSize=10,  # Limit to a reasonable number for this use case
-                    fields="files(id,name,parents,properties,mimeType)",
+                    fields="files(id,name,parents,mimeType)",
                 )
                 .execute(num_retries=self.config.api_retries)
             )
@@ -91,7 +66,6 @@ class GoogleDriveClient:
                 File(
                     id=f["id"],
                     name=f["name"],
-                    properties=f.get("properties", {}),
                     mimeType=f.get("mimeType"),
                     parents=f.get("parents", []),
                 )
@@ -105,23 +79,23 @@ class GoogleDriveClient:
     def query_drive_files(
         self,
         source_folders: List[str],
-        property_filters: Optional[Dict[str, str]] = None,
         modified_after: Optional[datetime] = None,
     ) -> List[File]:
         """
-        Query Google Drive files with optional property filtering.
+        List the files in the given Drive folders.
+
+        Song metadata is not read from Drive: it lives in the Firestore
+        metadata store (see ``SongSheetSource``).
 
         Args:
             source_folders: List of folder IDs to search in
-            property_filters: Optional dict of property_name -> value pairs to filter by
+            modified_after: Only return files modified after this timestamp
 
         Returns:
             List of files, or empty list if error occurs
         """
         parent_queries = [f"'{folder_id}' in parents" for folder_id in source_folders]
-        base_query = f"({' or '.join(parent_queries)}) and trashed = false"
-        property_query = _build_property_filters(property_filters)
-        query = base_query + property_query
+        query = f"({' or '.join(parent_queries)}) and trashed = false"
 
         if modified_after:
             # Format for Drive API query, e.g., '2023-08-01T12:00:00'
@@ -129,8 +103,6 @@ class GoogleDriveClient:
             query += f" and modifiedTime > '{ts_str}'"
 
         click.echo(f"Executing Drive API query: {query}")
-        if property_filters:
-            click.echo(f"Filtering by properties: {property_filters}")
 
         files = []
         page_token = None
@@ -142,7 +114,7 @@ class GoogleDriveClient:
                     .list(
                         q=query,
                         pageSize=1000,
-                        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
+                        fields="nextPageToken, files(id,name,parents,mimeType)",
                         orderBy="name_natural",
                         pageToken=page_token,
                     )
@@ -154,7 +126,6 @@ class GoogleDriveClient:
                         File(
                             id=f["id"],
                             name=f["name"],
-                            properties=f.get("properties", {}),
                             mimeType=f.get("mimeType"),
                             parents=f.get("parents", []),
                         )
@@ -187,43 +158,6 @@ class GoogleDriveClient:
                 break
 
         return files
-
-    def query_drive_files_with_client_filter(
-        self,
-        source_folders: List[str],
-        client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
-        modified_after: Optional[datetime] = None,
-    ) -> List[File]:
-        """
-        Query Google Drive files and apply client-side filtering.
-
-        Args:
-            source_folders: List of folder IDs to search in
-            client_filter: Client-side filter to apply after fetching files
-            modified_after: Only return files modified after this timestamp
-
-        Returns:
-            List of files matching the client-side filter
-        """
-        # First, get all files from Drive (no server-side property filtering)
-        click.echo("Fetching all files from Drive for client-side filtering...")
-        all_files = self.query_drive_files(
-            source_folders, None, modified_after=modified_after
-        )
-
-        if not client_filter:
-            return all_files
-
-        # Apply client-side filtering
-        filtered_files = []
-        for file in all_files:
-            if client_filter.matches({**file.properties, "name": file.name}):
-                filtered_files.append(file)
-
-        click.echo(
-            f"Client-side filtering: {len(filtered_files)} files match out of {len(all_files)} total"
-        )
-        return filtered_files
 
     def download_file_stream(self, file: File, use_cache: bool = True) -> io.BytesIO:
         """
@@ -345,13 +279,12 @@ class GoogleDriveClient:
                 # Get file metadata from Drive
                 file_metadata = (
                     self.drive.files()
-                    .get(fileId=file_id, fields="id,name,parents,properties,mimeType")
+                    .get(fileId=file_id, fields="id,name,parents,mimeType")
                     .execute(num_retries=self.config.api_retries)
                 )
                 file_obj = File(
                     id=file_id,
                     name=file_metadata.get("name", f"file_{file_id}"),
-                    properties=file_metadata.get("properties", {}),
                     mimeType=file_metadata.get("mimeType"),
                     parents=file_metadata.get("parents", []),
                 )
@@ -455,7 +388,7 @@ class GoogleDriveClient:
                         pageSize=1000,
                         fields=(
                             "nextPageToken, "
-                            "files(id,name,mimeType,parents,properties,"
+                            "files(id,name,mimeType,parents,"
                             "shortcutDetails)"
                         ),
                         orderBy="name",
@@ -509,7 +442,6 @@ class GoogleDriveClient:
                             id=target_id,
                             name=f["name"],
                             mimeType=target_mime,
-                            properties=f.get("properties") or {},
                             parents=f.get("parents") or [],
                         )
                     )
@@ -519,7 +451,6 @@ class GoogleDriveClient:
                             id=f["id"],
                             name=f["name"],
                             mimeType=f.get("mimeType"),
-                            properties=f.get("properties") or {},
                             parents=f.get("parents") or [],
                         )
                     )
@@ -551,7 +482,7 @@ class GoogleDriveClient:
                 .list(
                     q=query,
                     pageSize=1,
-                    fields="files(id,name,mimeType,parents,properties)",
+                    fields="files(id,name,mimeType,parents)",
                 )
                 .execute(num_retries=self.config.api_retries)
             )
@@ -563,7 +494,6 @@ class GoogleDriveClient:
                 id=f["id"],
                 name=f["name"],
                 mimeType=f.get("mimeType"),
-                properties=f.get("properties") or {},
                 parents=f.get("parents") or [],
             )
         except HttpError as e:
@@ -663,10 +593,7 @@ class GoogleDriveClient:
                         .list(
                             q=query,
                             pageSize=100,
-                            fields=(
-                                "nextPageToken, "
-                                "files(id,name,mimeType,parents,properties)"
-                            ),
+                            fields=("nextPageToken, files(id,name,mimeType,parents)"),
                             pageToken=page_token,
                         )
                         .execute(num_retries=self.config.api_retries)
@@ -693,7 +620,6 @@ class GoogleDriveClient:
                             id=f["id"],
                             name=f["name"],
                             mimeType=f.get("mimeType"),
-                            properties=f.get("properties") or {},
                             parents=f.get("parents") or [],
                         )
                     )
@@ -724,61 +650,6 @@ class GoogleDriveClient:
         while not done:
             _, done = downloader.next_chunk()
         return buffer.getvalue()
-
-    def get_file_properties(self, file_id: str) -> Optional[Dict[str, str]]:
-        """
-        Get custom properties for a given Google Drive file.
-
-        Args:
-            file_id: The ID of the file.
-
-        Returns:
-            A dictionary of properties, or None if the file is not found.
-        """
-        try:
-            file_metadata = (
-                self.drive.files()
-                .get(fileId=file_id, fields="properties")
-                .execute(num_retries=self.config.api_retries)
-            )
-            return file_metadata.get("properties", {})
-        except HttpError as e:
-            if e.resp.status == 404:
-                click.echo(f"Error: File with ID '{file_id}' not found.", err=True)
-                return None
-            click.echo(f"An API error occurred: {e}", err=True)
-            return None
-
-    def set_file_property(self, file_id: str, key: str, value: str) -> bool:
-        """
-        Sets a custom property on a Google Drive file.
-
-        Args:
-            file_id: The ID of the file to update.
-            key: The property key to set.
-            value: The property value to set.
-
-        Returns:
-            True if successful, False otherwise.
-        """
-        try:
-            # First, get the current properties to not overwrite them
-            file_metadata = (
-                self.drive.files()
-                .get(fileId=file_id, fields="properties")
-                .execute(num_retries=self.config.api_retries)
-            )
-            properties = file_metadata.get("properties", {})
-            properties[key] = value
-
-            body = {"properties": properties}
-            self.drive.files().update(fileId=file_id, body=body).execute(
-                num_retries=self.config.api_retries
-            )
-            return True
-        except HttpError as e:
-            click.echo(f"An error occurred: {e}", err=True)
-            return False
 
     def create_folder(self, name: str, parent_id: str) -> str:
         """

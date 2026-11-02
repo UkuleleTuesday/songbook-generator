@@ -125,6 +125,7 @@ def search_song(file_identifier):
         )
         raise click.Abort()
 
+    _make_song_source(drive, cache).hydrate(files)
     f = files[0]
     click.echo(
         json.dumps(

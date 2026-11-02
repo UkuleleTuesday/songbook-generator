@@ -71,7 +71,7 @@ def _get_services():
         )
 
     if settings.tag_updater.dry_run:
-        click.echo("WARNING: dry_run=True — no writes will be made to Google Drive.")
+        click.echo("WARNING: dry_run=True — no metadata writes will be made.")
 
     metadata_store = None
     if settings.metadata_store.firestore_write_enabled:
@@ -80,11 +80,7 @@ def _get_services():
             "Firestore metadata write enabled (collection "
             f"'{settings.metadata_store.firestore_collection}')."
         )
-    metadata_reader = None
-    if settings.metadata_store.firestore_read_enabled:
-        metadata_reader = metadata_store or get_metadata_store()
-    if not settings.metadata_store.drive_write_enabled:
-        click.echo("Drive metadata write disabled.")
+    metadata_reader = metadata_store or get_metadata_store()
 
     return {
         "tracer": tracer,
@@ -99,7 +95,6 @@ def _get_services():
             llm_tagging_enabled=settings.tag_updater.llm_tagging_enabled,
             metadata_store=metadata_store,
             metadata_reader=metadata_reader,
-            drive_write_enabled=settings.metadata_store.drive_write_enabled,
         ),
     }
 
@@ -157,7 +152,6 @@ def _convert_to_file_objects(changed_files: List[dict]) -> List[File]:
         file_obj = File(
             id=file_data["id"],
             name="",
-            properties=file_data.get("properties", {}),
             mimeType=file_data.get("mime_type"),
             parents=file_data.get("parents", []),
         )

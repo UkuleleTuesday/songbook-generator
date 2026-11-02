@@ -12,20 +12,14 @@ from .filters import FilterGroup, PropertyFilter
 
 
 class SongSheetSource:
-    """Provides song sheet file lists with properties sourced from Drive or Firestore.
+    """Provides song sheet file lists with properties from the metadata store.
 
-    Drive is always used for file existence (id, name, mimeType, parents). When a
-    ``metadata_store`` is provided, ``File.properties`` is overlaid from Firestore
-    after the Drive file list is fetched, making Firestore the authoritative source
-    for metadata, including for filtering. Without a store, Drive properties are
-    used unchanged.
+    Drive is used for file existence only (id, name, mimeType, parents).
+    ``File.properties`` always comes from Firestore: Drive properties stopped
+    being written in #402 and are no longer read.
     """
 
-    def __init__(
-        self,
-        gdrive: GoogleDriveClient,
-        metadata_store: Optional[SongMetadataStore] = None,
-    ):
+    def __init__(self, gdrive: GoogleDriveClient, metadata_store: SongMetadataStore):
         self._gdrive = gdrive
         self._metadata_store = metadata_store
 
@@ -35,21 +29,11 @@ class SongSheetSource:
         client_filter: Optional[Union[PropertyFilter, FilterGroup]] = None,
         modified_after: Optional[datetime] = None,
     ) -> List[File]:
-        """Return song sheet files, optionally filtered, with properties from the configured source.
-
-        With a metadata store, the filter runs after the Firestore overlay. Drive
-        properties are no longer written (#402), so filtering on them would drop
-        any song whose metadata changed since.
-        """
-        if self._metadata_store is None:
-            return self._gdrive.query_drive_files_with_client_filter(
-                source_folders, client_filter, modified_after=modified_after
-            )
-
-        files = self._gdrive.query_drive_files_with_client_filter(
-            source_folders, None, modified_after=modified_after
+        """Return song sheet files with Firestore properties, optionally filtered."""
+        files = self._gdrive.query_drive_files(
+            source_folders, modified_after=modified_after
         )
-        self._overlay_properties(files)
+        self.hydrate(files)
         if not client_filter:
             return files
 
@@ -61,8 +45,27 @@ class SongSheetSource:
         )
         return filtered
 
-    def _overlay_properties(self, files: List[File]) -> None:
+    def hydrate(self, files: List[File]) -> None:
+        """Replace each file's properties with its Firestore metadata.
+
+        A file with no metadata document is treated as untagged, so property
+        filters leave it out. Each one is reported, since it usually means the
+        tag updater missed the file (#468).
+        """
         all_metadata = self._metadata_store.get_all()
+        missing = []
         for file in files:
-            if file.id in all_metadata:
-                file.properties = all_metadata[file.id].get("properties", {})
+            doc = all_metadata.get(file.id)
+            if doc is None:
+                missing.append(file)
+                file.properties = {}
+            else:
+                file.properties = dict(doc.get("properties", {}))
+        if missing:
+            click.echo(
+                f"WARNING: {len(missing)} song sheet(s) have no Firestore metadata "
+                "and are treated as untagged:",
+                err=True,
+            )
+            for file in missing:
+                click.echo(f"  - {file.name} ({file.id})", err=True)

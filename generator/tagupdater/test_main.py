@@ -2,7 +2,7 @@
 
 import base64
 import json
-from unittest.mock import ANY, Mock, patch
+from unittest.mock import Mock, patch
 
 import click
 import pytest
@@ -111,7 +111,8 @@ def test_convert_to_file_objects(sample_changed_files):
     assert file1.name == ""
     assert file1.mimeType == "application/pdf"
     assert file1.parents == ["folder1"]
-    assert file1.properties == {"status": "APPROVED"}
+    # Drive properties in older watcher messages are ignored.
+    assert file1.properties == {}
 
     file2 = file_objects[1]
     assert file2.id == "file2"
@@ -254,6 +255,7 @@ def test_tagupdater_main_parsing_error(mock_get_services):
     mock_span.set_attribute.assert_any_call("status", "error")
 
 
+@patch("generator.tagupdater.main.get_metadata_store")
 @patch("generator.tagupdater.main.genai")
 @patch("generator.tagupdater.main.get_credentials")
 @patch("generator.tagupdater.main.build")
@@ -269,6 +271,7 @@ def test_get_services_success(
     mock_build,
     mock_get_credentials,
     mock_genai,
+    mock_get_metadata_store,
 ):
     """Test successful creation of services with correct credential config."""
     # Clear the cache before testing
@@ -285,8 +288,6 @@ def test_get_services_success(
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
     mock_settings.metadata_store.firestore_write_enabled = False
-    mock_settings.metadata_store.firestore_read_enabled = False
-    mock_settings.metadata_store.drive_write_enabled = True
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -370,6 +371,7 @@ def test_get_services_missing_credential_config(
 
 
 @patch("generator.tagupdater.main.Tagger")
+@patch("generator.tagupdater.main.get_metadata_store")
 @patch("generator.tagupdater.main.genai")
 @patch("generator.tagupdater.main.get_credentials")
 @patch("generator.tagupdater.main.build")
@@ -385,6 +387,7 @@ def test_get_services_tagger_instantiation(
     mock_build,
     mock_get_credentials,
     mock_genai,
+    mock_get_metadata_store,
     mock_tagger_class,
 ):
     """Test that Tagger is instantiated with both drive_service and docs_service."""
@@ -402,8 +405,6 @@ def test_get_services_tagger_instantiation(
     mock_settings = Mock()
     mock_settings.google_cloud.credentials.get.return_value = mock_credential_config
     mock_settings.metadata_store.firestore_write_enabled = False
-    mock_settings.metadata_store.firestore_read_enabled = False
-    mock_settings.metadata_store.drive_write_enabled = True
     mock_get_settings.return_value = mock_settings
 
     # Mock tracer
@@ -440,8 +441,7 @@ def test_get_services_tagger_instantiation(
         genai_client=mock_genai.Client.return_value,
         llm_tagging_enabled=mock_get_settings.return_value.tag_updater.llm_tagging_enabled,
         metadata_store=None,
-        metadata_reader=ANY,
-        drive_write_enabled=True,
+        metadata_reader=mock_get_metadata_store.return_value,
     )
 
     # Verify the tagger is returned
