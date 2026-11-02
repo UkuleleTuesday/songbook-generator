@@ -31,9 +31,6 @@ _DOCS = {
 
 def _mock_firestore_export(mocker):
     """Patch tags export to read the sample docs from a fake Firestore store."""
-    mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
-        metadata_store=mocker.Mock(firestore_read_enabled=True),
-    )
     store = mocker.Mock()
     store.get_all.return_value = _DOCS
     mocker.patch("generator.cli.tags.get_metadata_store", return_value=store)
@@ -129,9 +126,6 @@ def test_export_strips_unknown_date_sentinels(runner, mocker):
             },
         },
     }
-    mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
-        metadata_store=mocker.Mock(firestore_read_enabled=True),
-    )
     store = mocker.Mock()
     store.get_all.return_value = docs
     mocker.patch("generator.cli.tags.get_metadata_store", return_value=store)
@@ -152,46 +146,6 @@ def test_export_strips_unknown_date_sentinels(runner, mocker):
     assert "approved_date" not in by_id["fileB"]["properties"]
 
 
-def test_export_falls_back_to_drive_when_firestore_read_disabled(runner, mocker):
-    from ..worker.models import File
-
-    mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
-        metadata_store=mocker.Mock(firestore_read_enabled=False),
-        google_cloud=mocker.Mock(
-            credentials={
-                "songbook-metadata-writer": mocker.Mock(
-                    scopes=["https://www.googleapis.com/auth/drive"],
-                    principal="sa@project.iam.gserviceaccount.com",
-                )
-            }
-        ),
-        song_sheets=mocker.Mock(folder_ids=["folder1"]),
-    )
-    mocker.patch(
-        "generator.cli.tags.init_services",
-        return_value=(mocker.Mock(), mocker.Mock()),
-    )
-    gdrive_client = mocker.Mock()
-    gdrive_client.query_drive_files.return_value = [
-        File(
-            id="fileA", name="Let It Be - The Beatles", properties={"song": "Let It Be"}
-        ),
-    ]
-    mocker.patch("generator.cli.tags.GoogleDriveClient", return_value=gdrive_client)
-
-    result = runner.invoke(cli, ["tags", "export", "--format", "json"])
-
-    assert result.exit_code == 0, result.output
-    # stderr (the fallback notice) is mixed into output; keep only JSON lines.
-    lines = [line for line in result.output.splitlines() if line.startswith("{")]
-    assert len(lines) == 1
-    doc = json.loads(lines[0])
-    assert doc["gdrive_file_id"] == "fileA"
-    assert doc["properties"] == {"song": "Let It Be"}
-    # Drive fallback has no Firestore timestamp.
-    assert "metadata_updated_at" not in doc
-
-
 def _mock_update_services(mocker, query_result):
     """Patch the Drive/Docs plumbing behind `tags update` to a fake client."""
     mocker.patch("generator.cli.tags.get_settings").return_value = mocker.Mock(
@@ -206,9 +160,7 @@ def _mock_update_services(mocker, query_result):
         ),
         song_sheets=mocker.Mock(folder_ids=["folder1"]),
         tag_updater=mocker.Mock(trigger_field=None, llm_tagging_enabled=False),
-        metadata_store=mocker.Mock(
-            firestore_write_enabled=False, firestore_read_enabled=False
-        ),
+        metadata_store=mocker.Mock(firestore_write_enabled=False),
         caching=mocker.Mock(gcs=mocker.Mock(region="europe-west1")),
     )
     mocker.patch("generator.cli.tags.get_credentials")
@@ -218,6 +170,7 @@ def _mock_update_services(mocker, query_result):
     gdrive_client.query_drive_files.return_value = query_result
     mocker.patch("generator.cli.tags.GoogleDriveClient", return_value=gdrive_client)
     mocker.patch("generator.cli.tags.Tagger")
+    mocker.patch("generator.cli.tags.get_metadata_store")
     return gdrive_client
 
 

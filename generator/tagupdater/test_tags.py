@@ -17,7 +17,6 @@ from .tags import (
     duration,
     genre,
     ready_to_play_date,
-    split_specialbooks,
     status,
     tag,
     theme,
@@ -50,6 +49,28 @@ def mock_docs_service():
     return Mock()
 
 
+def _tagger(drive_service, docs_service, stored=None, **kwargs):
+    """Build a Tagger whose store holds ``stored`` ({file_id: properties})."""
+    store = Mock()
+    store.get_properties.side_effect = lambda file_id: (stored or {}).get(file_id)
+    tagger = Tagger(
+        drive_service,
+        docs_service,
+        metadata_store=store,
+        metadata_reader=store,
+        **kwargs,
+    )
+    return tagger, store
+
+
+def _written(store, file_id):
+    """Return the properties of the single store write for ``file_id``."""
+    store.write.assert_called_once()
+    args, _ = store.write.call_args
+    assert args[0] == file_id
+    return args[1]
+
+
 def test_status_tagger():
     """Test the status tag function logic."""
     file_approved = File(id="1", name="f1", parents=[FOLDER_ID_APPROVED])
@@ -69,7 +90,7 @@ def test_status_tagger():
 def test_update_tags_with_status_tag(mock_now, mock_drive_service, mock_docs_service):
     """Test Tagger.update_tags with the status tag."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service)
+    tagger, store = _tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(
         id="file123",
         name="test.pdf",
@@ -78,12 +99,10 @@ def test_update_tags_with_status_tag(mock_now, mock_drive_service, mock_docs_ser
 
     tagger.update_tags(file_to_tag)
 
-    expected_body = {
-        "properties": {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"}
+    assert _written(store, "file123") == {
+        "status": "APPROVED",
+        "approved_date": "2026-03-25T11:00:00Z",
     }
-    mock_drive_service.files.return_value.update.assert_called_once_with(
-        fileId="file123", body=expected_body, fields="properties"
-    )
 
 
 @pytest.mark.parametrize(
@@ -264,12 +283,12 @@ def test_update_tags_no_update_if_tag_returns_none(
 ):
     """Test that no update is made if the tag function returns None."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service)
+    tagger, store = _tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=["other_folder"])
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_not_called()
+    store.write.assert_not_called()
 
 
 def test_update_tags_no_update_if_tags_are_identical(
@@ -277,17 +296,18 @@ def test_update_tags_no_update_if_tags_are_identical(
 ):
     """Test that no update is made if the generated tags match existing ones."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service)
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
+    tagger, store = _tagger(
+        mock_drive_service,
+        mock_docs_service,
+        stored={
+            "file123": {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"}
+        },
     )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_not_called()
+    store.write.assert_not_called()
 
 
 @patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
@@ -304,28 +324,22 @@ def test_update_tags_with_multiple_tags_and_preserves_existing(
         return "another_value"
 
     try:
-        tagger = Tagger(mock_drive_service, mock_docs_service)
-        file_to_tag = File(
-            id="file123",
-            name="test.pdf",
-            parents=[FOLDER_ID_APPROVED],
-            properties={"existing_prop": "existing_value"},
+        tagger, store = _tagger(
+            mock_drive_service,
+            mock_docs_service,
+            stored={"file123": {"existing_prop": "existing_value"}},
         )
+        file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
         tagger.update_tags(file_to_tag)
 
-        expected_properties = {
+        assert _written(store, "file123") == {
             "status": "APPROVED",
             "approved_date": "2026-03-25T11:00:00Z",
             "tabber": "Test owner",
             "another_tag": "another_value",
             "existing_prop": "existing_value",
         }
-        expected_body = {"properties": expected_properties}
-
-        mock_drive_service.files.return_value.update.assert_called_once_with(
-            fileId="file123", body=expected_body, fields="properties"
-        )
 
     finally:
         # Clean up the dynamically added tag to not affect other tests
@@ -349,26 +363,23 @@ def test_only_if_unset_does_not_update_existing_tag(
         return "always_value"
 
     try:
-        tagger = Tagger(mock_drive_service, mock_docs_service)
-        file_with_prop = File(
-            id="file1",
-            name="test.pdf",
-            properties={
-                "tag_if_unset": "existing_value",
-                "existing_prop": "existing_value",
+        tagger, store = _tagger(
+            mock_drive_service,
+            mock_docs_service,
+            stored={
+                "file1": {
+                    "tag_if_unset": "existing_value",
+                    "existing_prop": "existing_value",
+                }
             },
         )
-        tagger.update_tags(file_with_prop)
+        tagger.update_tags(File(id="file1", name="test.pdf"))
 
-        expected_properties = {
+        assert _written(store, "file1") == {
             "tag_if_unset": "existing_value",  # Should remain unchanged
             "always_tag": "always_value",  # Should be added
             "existing_prop": "existing_value",
         }
-        expected_body = {"properties": expected_properties}
-        mock_drive_service.files.return_value.update.assert_called_once_with(
-            fileId="file1", body=expected_body, fields="properties"
-        )
 
     finally:
         from . import tags
@@ -390,21 +401,18 @@ def test_only_if_unset_sets_new_tag(mock_drive_service, mock_docs_service):
         return "always_value"
 
     try:
-        tagger = Tagger(mock_drive_service, mock_docs_service)
-        file_without_prop = File(
-            id="file2", name="test.pdf", properties={"existing_prop": "existing_value"}
+        tagger, store = _tagger(
+            mock_drive_service,
+            mock_docs_service,
+            stored={"file2": {"existing_prop": "existing_value"}},
         )
-        tagger.update_tags(file_without_prop)
+        tagger.update_tags(File(id="file2", name="test.pdf"))
 
-        expected_properties = {
+        assert _written(store, "file2") == {
             "tag_if_unset": "new_value",  # Should be set
             "always_tag": "always_value",  # Should be set
             "existing_prop": "existing_value",
         }
-        expected_body = {"properties": expected_properties}
-        mock_drive_service.files.return_value.update.assert_called_once_with(
-            fileId="file2", body=expected_body, fields="properties"
-        )
 
     finally:
         from . import tags
@@ -418,35 +426,35 @@ def test_trigger_field_skips_write_when_field_unchanged(
 ):
     """Test that no write occurs when trigger_field value is unchanged."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status is already APPROVED, and parents still point to APPROVED folder
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED"},
+    tagger, store = _tagger(
+        mock_drive_service,
+        mock_docs_service,
+        stored={"file123": {"status": "APPROVED"}},
+        trigger_field="status",
     )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_not_called()
+    store.write.assert_not_called()
 
 
 def test_trigger_field_writes_when_field_changes(mock_drive_service, mock_docs_service):
     """Test that a write occurs when trigger_field value changes."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status was READY_TO_PLAY, now file is in APPROVED folder
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={"status": "READY_TO_PLAY"},
+    tagger, store = _tagger(
+        mock_drive_service,
+        mock_docs_service,
+        stored={"file123": {"status": "READY_TO_PLAY"}},
+        trigger_field="status",
     )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_called_once()
+    assert _written(store, "file123")["status"] == "APPROVED"
 
 
 def test_trigger_field_writes_when_field_goes_from_absent_to_set(
@@ -454,18 +462,18 @@ def test_trigger_field_writes_when_field_goes_from_absent_to_set(
 ):
     """Test that a missing trigger field value counts as a change when set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
     # status not yet set, file is in APPROVED folder
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={},
+    tagger, store = _tagger(
+        mock_drive_service,
+        mock_docs_service,
+        stored={"file123": {}},
+        trigger_field="status",
     )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_called_once()
+    assert _written(store, "file123")["status"] == "APPROVED"
 
 
 def test_trigger_field_skips_write_even_when_other_properties_change(
@@ -481,18 +489,18 @@ def test_trigger_field_skips_write_even_when_other_properties_change(
         return "new_value"
 
     try:
-        tagger = Tagger(mock_drive_service, mock_docs_service, trigger_field="status")
         # status is already APPROVED (unchanged), but extra_tag is new
-        file_to_tag = File(
-            id="file123",
-            name="test.pdf",
-            parents=[FOLDER_ID_APPROVED],
-            properties={"status": "APPROVED"},
+        tagger, store = _tagger(
+            mock_drive_service,
+            mock_docs_service,
+            stored={"file123": {"status": "APPROVED"}},
+            trigger_field="status",
         )
+        file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
         tagger.update_tags(file_to_tag)
 
-        mock_drive_service.files.return_value.update.assert_not_called()
+        store.write.assert_not_called()
     finally:
         from . import tags
 
@@ -509,14 +517,14 @@ def test_update_tags_no_tags_defined(mock_drive_service, mock_docs_service):
     tags._TAGGERS = []
 
     try:
-        tagger = Tagger(mock_drive_service, mock_docs_service)
+        tagger, store = _tagger(mock_drive_service, mock_docs_service)
         file_to_tag = File(
             id="file123",
             name="test.pdf",
             parents=[FOLDER_ID_APPROVED],
         )
         tagger.update_tags(file_to_tag)
-        mock_drive_service.files.return_value.update.assert_not_called()
+        store.write.assert_not_called()
     finally:
         tags._TAGGERS = original_taggers
 
@@ -604,26 +612,23 @@ def test_status_date_not_overwritten_once_set(
     """ready_to_play_date and approved_date are not overwritten if already set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     activity_service = Mock()
-    tagger = Tagger(
+    tagger, store = _tagger(
         mock_drive_service,
         mock_docs_service,
+        stored={
+            "file123": {
+                "status": "READY_TO_PLAY",
+                "approved_date": "2025-01-01T00:00:00Z",
+            }
+        },
         trigger_field="status",
         activity_service=activity_service,
     )
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={
-            "status": "READY_TO_PLAY",
-            "approved_date": "2025-01-01T00:00:00Z",
-        },
-    )
+    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    call_body = mock_drive_service.files.return_value.update.call_args[1]["body"]
-    assert call_body["properties"]["approved_date"] == "2025-01-01T00:00:00Z"
+    assert _written(store, "file123")["approved_date"] == "2025-01-01T00:00:00Z"
     activity_service.activity.assert_not_called()
 
 
@@ -827,119 +832,50 @@ def test_run_llm_tags_interpolates_extra_in_prompt():
 
 
 @patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
-def test_dual_write_mirrors_properties_to_metadata_store(
+def test_update_tags_writes_to_metadata_store(
     mock_now, mock_drive_service, mock_docs_service
 ):
-    """When a metadata store is provided, the same properties are mirrored to it."""
+    """Computed properties are written to the metadata store."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
         "name": "test.pdf"
     }
-    metadata_store = Mock()
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, metadata_store=metadata_store
-    )
+    tagger, store = _tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag)
 
-    # Drive remains the source of truth and is still written.
-    mock_drive_service.files.return_value.update.assert_called_once()
-    # The mirror receives the exact same updated properties.
-    metadata_store.write.assert_called_once_with(
+    store.write.assert_called_once_with(
         "file123",
         {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
         name="test.pdf",
     )
 
 
-def test_dual_write_not_attempted_when_no_drive_write(
-    mock_drive_service, mock_docs_service
-):
-    """No mirror write happens when the Drive write is skipped (tags identical)."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
-    metadata_store = Mock()
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, metadata_store=metadata_store
-    )
-    # status already APPROVED and parents point to APPROVED -> identical, no write
-    file_to_tag = File(
-        id="file123",
-        name="test.pdf",
-        parents=[FOLDER_ID_APPROVED],
-        properties={"status": "APPROVED", "approved_date": "2026-01-01T00:00:00Z"},
-    )
-
-    tagger.update_tags(file_to_tag)
-
-    mock_drive_service.files.return_value.update.assert_not_called()
-    metadata_store.write.assert_not_called()
-
-
-def test_dual_write_failure_does_not_break_drive_write(
-    mock_drive_service, mock_docs_service
-):
-    """A Firestore mirror failure must not propagate or block the Drive write."""
+def test_store_write_failure_does_not_raise(mock_drive_service, mock_docs_service):
+    """A Firestore write failure is reported, not propagated."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
         "name": "test.pdf"
     }
-    metadata_store = Mock()
-    metadata_store.write.side_effect = RuntimeError("firestore unavailable")
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, metadata_store=metadata_store
-    )
+    tagger, store = _tagger(mock_drive_service, mock_docs_service)
+    store.write.side_effect = RuntimeError("firestore unavailable")
     file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
-    # Should not raise despite the mirror failing.
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_called_once()
-    metadata_store.write.assert_called_once()
+    store.write.assert_called_once()
 
 
-def test_dry_run_skips_both_drive_and_firestore_writes(
-    mock_drive_service, mock_docs_service
-):
-    """dry_run is the master override: no writes to either sink."""
+def test_dry_run_skips_store_write(mock_drive_service, mock_docs_service):
+    """dry_run is the master override: nothing is written."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
         "name": "test.pdf"
     }
-    metadata_store = Mock()
-    tagger = Tagger(
-        mock_drive_service, mock_docs_service, metadata_store=metadata_store
-    )
+    tagger, store = _tagger(mock_drive_service, mock_docs_service)
     file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
 
     tagger.update_tags(file_to_tag, dry_run=True)
 
-    mock_drive_service.files.return_value.update.assert_not_called()
-    metadata_store.write.assert_not_called()
-
-
-@patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
-def test_drive_write_disabled_writes_firestore_only(
-    mock_now, mock_drive_service, mock_docs_service
-):
-    """With drive_write_enabled=False, only Firestore is written."""
-    mock_drive_service.files.return_value.get.return_value.execute.return_value = {
-        "name": "test.pdf"
-    }
-    metadata_store = Mock()
-    tagger = Tagger(
-        mock_drive_service,
-        mock_docs_service,
-        metadata_store=metadata_store,
-        drive_write_enabled=False,
-    )
-    file_to_tag = File(id="file123", name="test.pdf", parents=[FOLDER_ID_APPROVED])
-
-    tagger.update_tags(file_to_tag)
-
-    mock_drive_service.files.return_value.update.assert_not_called()
-    metadata_store.write.assert_called_once_with(
-        "file123",
-        {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
-        name="test.pdf",
-    )
+    store.write.assert_not_called()
 
 
 # --- country / theme validator tests ---
@@ -992,42 +928,6 @@ def test_country_validator(raw, expected):
 )
 def test_theme_validator(raw, expected):
     assert theme(_make_ctx(), raw) == expected
-
-
-# --- split_specialbooks tests ---
-
-
-@pytest.mark.parametrize(
-    "specialbooks,expected_country,expected_theme,expected_unknown",
-    [
-        ("ireland", "ireland", None, []),
-        ("pride", None, "pride", []),
-        ("pride,ireland,regular", "ireland", "pride", []),
-        ("pride,halloween", None, "pride,halloween", []),
-        ("scottish", "scotland", None, []),  # alias normalization
-        ("pride.uk", None, "pride", []),  # alias normalization
-        ("xmas", None, "christmas", []),  # legacy xmas -> christmas
-        ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
-        (
-            "USA, UK",
-            "united states,united kingdom",
-            None,
-            [],
-        ),  # canonicalized + whitespace
-        ("ireland,ireland", "ireland", None, []),  # de-duplicated
-        ("new", None, None, ["new"]),  # unknown leftover surfaced
-        ("", None, None, []),
-        (None, None, None, []),
-    ],
-)
-def test_split_specialbooks(
-    specialbooks, expected_country, expected_theme, expected_unknown
-):
-    assert split_specialbooks(specialbooks) == (
-        expected_country,
-        expected_theme,
-        expected_unknown,
-    )
 
 
 # --- genre validator tests ---
@@ -1101,7 +1001,6 @@ def test_only_if_unset_reads_existing_tags_from_the_store(
             mock_docs_service,
             metadata_store=store,
             metadata_reader=store,
-            drive_write_enabled=False,
         )
         # Empty Drive properties, as every song sheet has since #402.
         tagger.update_tags(File(id="file1", name="test.pdf", properties={}))
@@ -1115,10 +1014,10 @@ def test_only_if_unset_reads_existing_tags_from_the_store(
         tags._TAGGERS.pop()
 
 
-def test_store_miss_falls_back_to_drive_properties(
+def test_store_miss_sets_only_if_unset_tags(
     mock_drive_service, mock_docs_service, mocker
 ):
-    """A file with no stored doc yet still gets its only_if_unset tags set."""
+    """A file with no stored doc yet gets its only_if_unset tags set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
 
     @tag(only_if_unset=True)
@@ -1126,20 +1025,35 @@ def test_store_miss_falls_back_to_drive_properties(
         return "new_value"
 
     try:
-        store = mocker.Mock()
-        store.get_properties.return_value = None  # no Firestore doc
-        tagger = Tagger(
+        tagger, store = _tagger(mock_drive_service, mock_docs_service)
+        tagger.update_tags(File(id="file2", name="test.pdf"))
+
+        assert _written(store, "file2")["tag_if_unset"] == "new_value"
+    finally:
+        from . import tags
+
+        tags._TAGGERS.pop()
+
+
+def test_tag_functions_see_stored_properties(mock_drive_service, mock_docs_service):
+    """ctx.file.properties holds the file's stored tags."""
+    mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
+    seen = {}
+
+    @tag
+    def capture(ctx: Context):
+        seen.update(ctx.file.properties)
+        return None
+
+    try:
+        tagger, _ = _tagger(
             mock_drive_service,
             mock_docs_service,
-            metadata_store=store,
-            metadata_reader=store,
-            drive_write_enabled=False,
+            stored={"file3": {"song": "Stored Title"}},
         )
-        tagger.update_tags(File(id="file2", name="test.pdf", properties={}))
+        tagger.update_tags(File(id="file3", name="test.pdf"))
 
-        store.write.assert_called_once()
-        written = store.write.call_args[0][1]
-        assert written["tag_if_unset"] == "new_value"
+        assert seen == {"song": "Stored Title"}
     finally:
         from . import tags
 

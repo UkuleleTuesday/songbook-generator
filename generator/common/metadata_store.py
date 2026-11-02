@@ -1,30 +1,15 @@
-"""Firestore-backed store for song-sheet metadata (issue #281).
-
-Song metadata currently lives in Google Drive custom file properties. Writing it
-back to Drive resets ``modifiedTime``/``lastModifyingUser`` and breaks tab
-review (#281). The migration away from Drive starts with two safe, additive
-steps implemented here:
-
-* **Hydrate** – backfill the Firestore collection from the existing Drive
-  properties (see the ``metadata backfill`` CLI command).
-* **Dual-write** – every metadata write is mirrored to both Drive (still the
-  source of truth) *and* this Firestore collection.
-
-Reads continue to come from Drive until a later cutover, so this module is
-write-and-verify only for now.
+"""Firestore-backed store for song-sheet metadata.
 
 Each song is one document keyed by its Drive file ID::
 
     {
         "gdrive_file_id": "<file id>",
         "gdrive_file_name": "Song - Artist",
-        "properties": { ...exact mirror of the Drive custom properties... },
+        "properties": { ...string key/value tags... },
         "metadata_updated_at": <server timestamp>,
     }
 
-The ``properties`` map mirrors the Drive custom properties one-to-one, which
-keeps the dual-write a faithful, reversible copy and makes a future read-path
-cutover a drop-in replacement for ``File.properties``.
+``SongSheetSource`` loads ``properties`` into ``File.properties``.
 """
 
 from __future__ import annotations

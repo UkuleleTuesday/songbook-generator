@@ -182,7 +182,6 @@ def _detect_changes(
                     "folder_id": parent_folder,
                     "mime_type": file.mimeType,
                     "parents": file.parents,
-                    "properties": file.properties,
                 }
                 all_changed_files.append(file_info)
                 click.echo(f"  CHANGED: {file.name} (ID: {file.id})")

@@ -5,7 +5,12 @@ import click
 from ..common.config import get_settings
 from ..common.filters import parse_filters
 from ..common.gdrive import GoogleDriveClient
-from ..worker.pdf import _make_song_source, collect_and_sort_files, init_services
+from ..worker.pdf import (
+    _make_song_source,
+    _song_source_for,
+    collect_and_sort_files,
+    init_services,
+)
 from .utils import SubcmdGroup, _resolve_file_id, global_options
 
 
@@ -118,7 +123,7 @@ def search_song(file_identifier):
     )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-    files = gdrive_client.get_files_metadata_by_ids([file_id])
+    files = _song_source_for(gdrive_client).get_files([file_id])
     if not files:
         click.echo(
             f"Error: Could not retrieve metadata for '{file_identifier}'.", err=True

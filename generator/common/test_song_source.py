@@ -1,4 +1,4 @@
-"""Tests for SongSheetSource — Drive file existence + optional Firestore property overlay."""
+"""Tests for SongSheetSource — Drive file existence + Firestore properties."""
 
 from unittest.mock import Mock
 
@@ -12,38 +12,20 @@ from .test_metadata_store import FakeFirestore
 
 def _make_source(files, metadata: dict | None = None) -> SongSheetSource:
     gdrive = Mock(spec=GoogleDriveClient)
-
-    def _query(source_folders, client_filter=None, modified_after=None):
-        # Mirror GoogleDriveClient: filter on the Drive properties it returns.
-        if not client_filter:
-            return files
-        return [
-            f for f in files if client_filter.matches({**f.properties, "name": f.name})
-        ]
-
-    gdrive.query_drive_files_with_client_filter.side_effect = _query
-
-    if metadata is None:
-        return SongSheetSource(gdrive)
+    gdrive.query_drive_files.return_value = files
 
     db = FakeFirestore()
     store = SongMetadataStore(db=db, collection="song-metadata")
-    for file_id, props in metadata.items():
+    for file_id, props in (metadata or {}).items():
         store.write(file_id, props)
     return SongSheetSource(gdrive, store)
 
 
-def test_drive_mode_returns_drive_properties():
-    files = [File(id="a", name="Song A", properties={"status": "APPROVED"})]
-    source = _make_source(files)
-
-    result = source.collect_files(["folder1"])
-
-    assert result[0].properties == {"status": "APPROVED"}
+READY_FILTER = PropertyFilter(key="status", operator="equals", value="READY_TO_PLAY")
 
 
-def test_firestore_mode_overlays_properties():
-    files = [File(id="a", name="Song A", properties={"status": "OLD"})]
+def test_properties_come_from_firestore():
+    files = [File(id="a", name="Song A")]
     source = _make_source(files, metadata={"a": {"status": "APPROVED", "year": "2020"}})
 
     result = source.collect_files(["folder1"])
@@ -51,41 +33,24 @@ def test_firestore_mode_overlays_properties():
     assert result[0].properties == {"status": "APPROVED", "year": "2020"}
 
 
-def test_firestore_mode_falls_back_to_drive_for_missing_documents():
+def test_file_without_firestore_doc_is_untagged(capsys):
     files = [
-        File(id="a", name="Song A", properties={"status": "APPROVED"}),
-        File(id="b", name="Song B", properties={"status": "DRAFT"}),
+        File(id="a", name="Song A"),
+        File(id="b", name="Song B"),
     ]
-    source = _make_source(files, metadata={"a": {"status": "FIRESTORE"}})
+    source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
 
     result = source.collect_files(["folder1"])
 
-    assert result[0].properties == {"status": "FIRESTORE"}
-    assert result[1].properties == {"status": "DRAFT"}
+    assert result[0].properties == {"status": "READY_TO_PLAY"}
+    assert result[1].properties == {}
+    err = capsys.readouterr().err
+    assert "1 song sheet(s) have no Firestore metadata" in err
+    assert "Song B (b)" in err
 
 
-def test_client_filter_is_passed_through_to_drive():
-    files = [File(id="a", name="Song A", properties={"specialbooks": "pride"})]
-    gdrive = Mock(spec=GoogleDriveClient)
-    gdrive.query_drive_files_with_client_filter.return_value = files
-    source = SongSheetSource(gdrive)
-
-    client_filter = PropertyFilter(
-        key="specialbooks", operator="contains", value="pride"
-    )
-    source.collect_files(["folder1"], client_filter)
-
-    gdrive.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], client_filter, modified_after=None
-    )
-
-
-READY_FILTER = PropertyFilter(key="status", operator="equals", value="READY_TO_PLAY")
-
-
-def test_firestore_mode_filters_on_firestore_properties():
-    # Drive writes are off, so a song readied since has no status on Drive.
-    files = [File(id="a", name="Song A", properties={})]
+def test_filter_uses_firestore_properties():
+    files = [File(id="a", name="Song A")]
     source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
 
     result = source.collect_files(["folder1"], READY_FILTER)
@@ -93,19 +58,53 @@ def test_firestore_mode_filters_on_firestore_properties():
     assert [f.id for f in result] == ["a"]
 
 
-def test_firestore_mode_filter_ignores_stale_drive_properties():
-    files = [File(id="a", name="Song A", properties={"status": "READY_TO_PLAY"})]
-    source = _make_source(files, metadata={"a": {"status": "DRAFT"}})
+def test_filter_excludes_file_without_firestore_doc():
+    files = [File(id="a", name="Song A")]
+    source = _make_source(files)
 
     assert source.collect_files(["folder1"], READY_FILTER) == []
 
 
-def test_firestore_mode_fetches_drive_files_unfiltered():
-    files = [File(id="a", name="Song A", properties={})]
-    source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
+def test_filter_can_match_on_name():
+    files = [File(id="a", name="Song A"), File(id="b", name="Song B")]
+    source = _make_source(files, metadata={"a": {}, "b": {}})
+    name_filter = PropertyFilter(key="name", operator="equals", value="Song B")
+
+    assert [f.id for f in source.collect_files(["folder1"], name_filter)] == ["b"]
+
+
+def test_drive_query_passes_folders_and_cutoff():
+    source = _make_source([])
 
     source.collect_files(["folder1"], READY_FILTER)
 
-    source._gdrive.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], None, modified_after=None
+    source._gdrive.query_drive_files.assert_called_once_with(
+        ["folder1"], modified_after=None
     )
+
+
+def test_list_folder_returns_files_with_properties():
+    source = _make_source([], metadata={"a": {"difficulty": "2.5"}})
+    source._gdrive.list_folder_contents.return_value = [
+        File(id="a", name="Song A"),
+        File(id="b", name="Song B"),
+    ]
+
+    result = source.list_folder("folder1", resolve_shortcuts=True)
+
+    assert [f.properties for f in result] == [{"difficulty": "2.5"}, {}]
+    source._gdrive.list_folder_contents.assert_called_once_with(
+        "folder1", resolve_shortcuts=True
+    )
+
+
+def test_get_files_returns_files_with_properties():
+    source = _make_source([], metadata={"a": {"status": "APPROVED"}})
+    source._gdrive.get_files_metadata_by_ids.return_value = [
+        File(id="a", name="Song A")
+    ]
+
+    result = source.get_files(["a"])
+
+    assert result[0].properties == {"status": "APPROVED"}
+    source._gdrive.get_files_metadata_by_ids.assert_called_once_with(["a"])

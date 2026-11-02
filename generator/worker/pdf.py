@@ -85,15 +85,13 @@ def _sort_titles(files: List[File]) -> List[File]:
 
 
 def _make_song_source(drive, cache) -> SongSheetSource:
-    from ..common.config import get_settings
+    return _song_source_for(GoogleDriveClient(cache=cache, drive=drive))
+
+
+def _song_source_for(gdrive_client: GoogleDriveClient) -> SongSheetSource:
     from ..common.metadata_store import get_metadata_store
 
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-    settings = get_settings()
-    metadata_store = (
-        get_metadata_store() if settings.metadata_store.firestore_read_enabled else None
-    )
-    return SongSheetSource(gdrive_client, metadata_store)
+    return SongSheetSource(gdrive_client, get_metadata_store())
 
 
 def collect_and_sort_files(
@@ -601,7 +599,7 @@ def _resolve_songs_from_folder(
             span.set_attribute("songs_subfolder_found", False)
             return None
 
-        songs_files = gdrive_client.list_folder_contents(
+        songs_files = _song_source_for(gdrive_client).list_folder(
             songs_folder_id, resolve_shortcuts=True
         )
         if not songs_files:
@@ -1246,7 +1244,7 @@ def generate_songbook_from_drive_folder(
         gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
 
         click.echo(f"Listing contents of Drive folder: {folder_id}")
-        all_files = gdrive_client.list_folder_contents(
+        all_files = _song_source_for(gdrive_client).list_folder(
             folder_id, resolve_shortcuts=True
         )
         click.echo(f"Found {len(all_files)} item(s) in folder")

@@ -3,7 +3,9 @@ import pytest
 from datetime import datetime, timezone
 from pathlib import Path
 from ..common.config import Edition
+from ..common.metadata_store import SongMetadataStore
 from ..common.song_source import SongSheetSource
+from ..common.test_metadata_store import FakeFirestore
 from .pdf import (
     _resolve_songs_from_folder,
     add_page_number,
@@ -29,6 +31,23 @@ def mock_gdrive_client(mocker):
     """Fixture to mock GoogleDriveClient."""
     mock_client = mocker.Mock()
     return mock_client
+
+
+@pytest.fixture(autouse=True)
+def fake_metadata_store(mocker):
+    """Keep generation paths off real Firestore; tests seed it as needed."""
+    store = SongMetadataStore(db=FakeFirestore(), collection="song-metadata")
+    mocker.patch(
+        "generator.common.metadata_store.get_metadata_store", return_value=store
+    )
+    return store
+
+
+def _song_source(gdrive, metadata: dict | None = None) -> SongSheetSource:
+    store = SongMetadataStore(db=FakeFirestore(), collection="song-metadata")
+    for file_id, props in (metadata or {}).items():
+        store.write(file_id, props)
+    return SongSheetSource(gdrive, store)
 
 
 @pytest.fixture
@@ -137,7 +156,6 @@ def test_generate_songbook_sets_metadata(mocker, tmp_path):
         return_value=[],
     )
     mocker.patch("generator.worker.pdf.get_credentials")
-    mocker.patch("generator.common.metadata_store.get_metadata_store")
     mocker.patch(
         "generator.worker.cover.CoverGenerator.generate_cover", return_value=fitz.open()
     )
@@ -181,10 +199,10 @@ def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
         File(name="banana.pdf", id="2"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -197,8 +215,8 @@ def test_collect_and_sort_files_single_folder(mocker, mock_gdrive_client):
     assert result == expected
 
     # Verify the query was called correctly
-    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], None, modified_after=None
+    mock_gdrive_client.query_drive_files.assert_called_once_with(
+        ["folder1"], modified_after=None
     )
 
 
@@ -215,10 +233,10 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
     ]
 
     all_files = folder1_files + folder2_files
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = all_files
+    mock_gdrive_client.query_drive_files.return_value = all_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1", "folder2"],
     )
 
@@ -232,8 +250,8 @@ def test_collect_and_sort_files_multiple_folders(mocker, mock_gdrive_client):
     assert result == expected
 
     # Verify query was called once with both folders
-    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1", "folder2"], None, modified_after=None
+    mock_gdrive_client.query_drive_files.assert_called_once_with(
+        ["folder1", "folder2"], modified_after=None
     )
 
 
@@ -243,28 +261,32 @@ def test_collect_and_sort_files_with_client_filter(mocker, mock_gdrive_client):
         key="artist", operator=FilterOperator.EQUALS, value="Test Artist"
     )
 
-    mock_files = [File(name="test.pdf", id="1")]
-
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = [
+        File(name="test.pdf", id="1"),
+        File(name="other.pdf", id="2"),
+    ]
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(
+            mock_gdrive_client,
+            {"1": {"artist": "Test Artist"}, "2": {"artist": "Someone Else"}},
+        ),
         source_folders=["folder1"],
         client_filter=mock_filter,
     )
 
-    assert result == mock_files
-    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1"], mock_filter, modified_after=None
+    assert [f.id for f in result] == ["1"]
+    mock_gdrive_client.query_drive_files.assert_called_once_with(
+        ["folder1"], modified_after=None
     )
 
 
 def test_collect_and_sort_files_empty_folders(mocker, mock_gdrive_client):
     """Test that empty folders return an empty list."""
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = []
+    mock_gdrive_client.query_drive_files.return_value = []
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["empty_folder"],
     )
 
@@ -278,12 +300,10 @@ def test_collect_and_sort_files_with_progress_step(mocker, mock_gdrive_client):
     folder1_files = [File(name="file1.pdf", id="1")]
     folder2_files = [File(name="file2.pdf", id="2")]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = (
-        folder1_files + folder2_files
-    )
+    mock_gdrive_client.query_drive_files.return_value = folder1_files + folder2_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1", "folder2"],
         progress_step=mock_progress_step,
     )
@@ -305,11 +325,11 @@ def test_collect_and_sort_files_no_progress_step(mocker, mock_gdrive_client):
     """Test that no progress reporting occurs when progress_step is None."""
     mock_files = [File(name="test.pdf", id="1")]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     # Should not raise any errors when progress_step is None
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
         progress_step=None,
     )
@@ -324,10 +344,10 @@ def test_collect_and_sort_files_strips_artist_name(mocker, mock_gdrive_client):
         File(name="a - cd.pdf", id="2"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -346,10 +366,10 @@ def test_collect_and_sort_files_case_sensitive_sorting(mocker, mock_gdrive_clien
         File(name="Banana.pdf", id="3"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -368,10 +388,10 @@ def test_collect_and_sort_files_strips_punctuation(mocker, mock_gdrive_client):
         File(name="cucumber.pdf", id="3"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -390,10 +410,10 @@ def test_collect_and_sort_files_accent_sensitive_sorting(mocker, mock_gdrive_cli
         File(name="cz.pdf", id="3"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
 
@@ -412,10 +432,10 @@ def test_collect_and_sort_files_numeral_sensitive_sorting(mocker, mock_gdrive_cl
         File(name="things 001 things.pdf", id="3"),
     ]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = mock_files
+    mock_gdrive_client.query_drive_files.return_value = mock_files
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1"],
     )
     expected = [
@@ -435,10 +455,10 @@ def test_collect_and_sort_files_progress_increment_calculation(
     # Test with 3 folders
     folder_files = [File(name="file.pdf", id="1")]
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = folder_files
+    mock_gdrive_client.query_drive_files.return_value = folder_files
 
     collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1", "folder2", "folder3"],
         progress_step=mock_progress_step,
     )
@@ -454,13 +474,13 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
 ):
     """Test handling of mixed empty and non-empty folders."""
 
-    mock_gdrive_client.query_drive_files_with_client_filter.return_value = [
+    mock_gdrive_client.query_drive_files.return_value = [
         File(name="file2.pdf", id="2"),
         File(name="file1.pdf", id="1"),
     ]
 
     result = collect_and_sort_files(
-        song_source=SongSheetSource(mock_gdrive_client),
+        song_source=_song_source(mock_gdrive_client),
         source_folders=["folder1", "folder2", "folder3"],
     )
 
@@ -472,8 +492,8 @@ def test_collect_and_sort_files_mixed_empty_and_non_empty_folders(
     assert result == expected
 
     # Should have queried all folders once
-    mock_gdrive_client.query_drive_files_with_client_filter.assert_called_once_with(
-        ["folder1", "folder2", "folder3"], None, modified_after=None
+    mock_gdrive_client.query_drive_files.assert_called_once_with(
+        ["folder1", "folder2", "folder3"], modified_after=None
     )
 
 
@@ -853,6 +873,25 @@ def test_categorize_empty_list():
 # ---------------------------------------------------------------------------
 # generate_songbook_from_drive_folder tests
 # ---------------------------------------------------------------------------
+
+
+def test_generate_from_drive_folder_songs_have_properties(mocker, fake_metadata_store):
+    """Folder-listed songs get their properties from the metadata store."""
+    fake_metadata_store.write("song1_id", {"difficulty": "2.5"})
+    mocker.patch(
+        "generator.common.gdrive.GoogleDriveClient.list_folder_contents",
+        return_value=[File(id="song1_id", name="Song A.pdf")],
+    )
+    mock_gen = mocker.patch("generator.worker.pdf.generate_songbook")
+
+    generate_songbook_from_drive_folder(
+        drive=mocker.Mock(),
+        cache=mocker.Mock(),
+        folder_id="folder123",
+        destination_path=Path("out/test.pdf"),
+    )
+
+    assert mock_gen.call_args[1]["files"][0].properties == {"difficulty": "2.5"}
 
 
 def test_generate_from_drive_folder_basic(mocker):
@@ -1299,6 +1338,20 @@ def test_resolve_songs_from_folder_returns_sorted_files(mocker):
     assert result[0].name == "Amazing Grace.pdf"
     assert result[1].name == "Bohemian Rhapsody.pdf"
     mock_gdrive.find_subfolder_by_name.assert_called_once_with("folder_id", "Songs")
+
+
+def test_resolve_songs_from_folder_loads_properties(mocker, fake_metadata_store):
+    """Songs come back with their properties from the metadata store."""
+    fake_metadata_store.write("song_1", {"difficulty": "2.5"})
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "songs_subfolder"
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="song_1", name="Amazing Grace.pdf")
+    ]
+
+    result = _resolve_songs_from_folder(mock_gdrive, "folder_id")
+
+    assert result[0].properties == {"difficulty": "2.5"}
 
 
 def test_resolve_songs_from_folder_no_subfolder_returns_none(mocker):

@@ -299,13 +299,12 @@ The Cloud Functions require these environment variables:
 - `TAGUPDATER_DRY_RUN`: Set to `true` to compute tags without writing back to Drive. Automatically set on PR preview deployments.
 - `TAGUPDATER_LLM_TAGGING_ENABLED`: Set to `false` to disable LLM-backed tags (year, duration, genre via Gemini + Google Search). Enabled by default.
 
-**Song metadata store variables (experimental, issue #281):**
+**Song metadata store variables (issue #281):**
 
-Drive and Firestore metadata writes are controlled independently, so the tag updater can target Drive only, Firestore only, both, or neither. `TAGUPDATER_DRY_RUN=true` is a master override that suppresses all writes.
+Song metadata (tags) is stored in Firestore. `TAGUPDATER_DRY_RUN=true` is a master override that suppresses all writes.
 
-- `SONG_METADATA_DRIVE_WRITE_ENABLED`: Whether computed metadata is written back to Google Drive file properties. Defaults to `true` (the historical behaviour). Set to `false` to stop writing to Drive.
-- `SONG_METADATA_FIRESTORE_WRITE_ENABLED`: Whether computed metadata is written to a Firestore collection. Defaults to `false`. Set to `true` to enable. See `docs/spikes/281-firestore-metadata-evaluation.md`.
-- `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Hydrate it with `uv run songbook-tools metadata backfill`, and inspect a single document with `uv run songbook-tools metadata get <file-id>`. Preview environments are isolated via a named Firestore database (`FIRESTORE_DATABASE`) rather than a separate collection name.
+- `SONG_METADATA_FIRESTORE_WRITE_ENABLED`: Whether computed metadata is written to Firestore. Defaults to `true`.
+- `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Inspect a single document with `uv run songbook-tools metadata get <file-id>`. Preview environments are isolated via a named Firestore database (`FIRESTORE_DATABASE`) rather than a separate collection name.
 
 ### Caching
 

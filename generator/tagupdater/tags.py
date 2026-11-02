@@ -1,6 +1,6 @@
 import json
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
@@ -236,53 +236,6 @@ def _canonical_country(value: Optional[str]) -> Optional[str]:
     return (getattr(country, "common_name", None) or country.name).lower()
 
 
-def split_specialbooks(specialbooks: Optional[str]) -> tuple:
-    """
-    Split a legacy comma-separated ``specialbooks`` value into the new typed
-    ``country`` and ``theme`` properties.
-
-    Country/theme values are extracted (after normalization); edition/event and
-    other non-themed values (e.g. ``regular``, ``womens-2026``, ``hooley-2025``)
-    are dropped. Returns ``(country_csv, theme_csv, unknown_values)`` where the
-    CSV strings are ``None`` when empty and ``unknown_values`` lists any leftover
-    tokens that matched neither a country nor a theme (for logging).
-    """
-    countries: List[str] = []
-    themes: List[str] = []
-    unknown: List[str] = []
-    # Edition/event membership values handled by edition YAMLs, not migrated.
-    dropped = {
-        "regular",
-        "womens",
-        "womens-2026",
-        "hooley-2025",
-        "can2025",
-        "nocan2025",
-    }
-
-    for raw in (specialbooks or "").split(","):
-        token = raw.strip().lower()
-        if not token:
-            continue
-        if token in dropped:
-            continue
-        theme_token = _THEME_ALIASES.get(token, token)
-        if theme_token in THEME_VALUES:
-            if theme_token not in themes:
-                themes.append(theme_token)
-            continue
-        canonical = _canonical_country(token)
-        if canonical:
-            if canonical not in countries:
-                countries.append(canonical)
-        else:
-            unknown.append(token)
-
-    country_csv = ",".join(countries) if countries else None
-    theme_csv = ",".join(themes) if themes else None
-    return country_csv, theme_csv, unknown
-
-
 def tag(_func=None, *, only_if_unset: bool = False):
     """
     Decorator to register a function as a tag generator.
@@ -441,7 +394,6 @@ class Tagger:
         llm_tagging_enabled: bool = False,
         metadata_store: Optional[SongMetadataStore] = None,
         metadata_reader: Optional[SongMetadataStore] = None,
-        drive_write_enabled: bool = True,
         tags: Optional[set] = None,
         retag: Optional[set] = None,
         activity_service: Optional[Any] = None,
@@ -454,29 +406,20 @@ class Tagger:
         self.llm_tagging_enabled = llm_tagging_enabled
         self.metadata_store = metadata_store
         self.metadata_reader = metadata_reader
-        self.drive_write_enabled = drive_write_enabled
         # --tags: scope to these keys, respect only_if_unset
         # --retag: scope to these keys, ignore only_if_unset (force overwrite)
         self.tags: Optional[set] = tags
         self.retag: set = retag or set()
 
     def _read_current_properties(self, file: File) -> Dict[str, str]:
-        """Return the tags already recorded for this file.
-
-        Read from the metadata store when one is configured: Drive properties
-        are empty whenever Drive writes are off (#402), and treating that as
-        "nothing is set yet" defeats only_if_unset and re-derives
-        first-write-wins tags on every run (#471, #442).
-        """
-        if self.metadata_reader is not None:
-            stored = self.metadata_reader.get_properties(file.id)
-            if stored is not None:
-                return dict(stored)
-        return file.properties.copy()
+        """Return the tags recorded for this file; none if it has no document yet."""
+        if self.metadata_reader is None:
+            return {}
+        return dict(self.metadata_reader.get_properties(file.id) or {})
 
     def update_tags(self, file: File, dry_run: bool = False, verbose: bool = False):
         """
-        Update Google Drive file properties based on registered tag functions.
+        Update the file's stored metadata based on registered tag functions.
 
         This method builds a context for the file, which may include fetching
         the content of a Google Doc. It then calls each registered tagger
@@ -512,8 +455,9 @@ class Tagger:
             if "owners" in file_meta and file_meta["owners"]:
                 owner_name = file_meta["owners"][0].get("displayName")
 
+            current_properties = self._read_current_properties(file)
             context = Context(
-                file=file,
+                file=replace(file, properties=current_properties.copy()),
                 file_name=file_name,
                 document=document,
                 owner_name=owner_name,
@@ -522,7 +466,6 @@ class Tagger:
             )
 
             new_properties = {}
-            current_properties = self._read_current_properties(file)
 
             # Determine effective scope: retag keys take precedence over tags filter
             effective_scope = self.retag or self.tags  # None means run all
@@ -633,7 +576,7 @@ class Tagger:
                     return
 
                 # dry_run is the master override: compute everything but write
-                # nothing, to either sink.
+                # nothing.
                 if dry_run or verbose:
                     for k, v in sorted(new_properties.items()):
                         old_v = current_properties.get(k)
@@ -645,23 +588,9 @@ class Tagger:
                     span.set_attribute("dry_run", "true")
                     return
 
-                # Drive and Firestore writes are controlled independently (#281),
-                # so the tagger can target either, both, or neither.
-                if self.drive_write_enabled:
-                    self.drive_service.files().update(
-                        fileId=file.id,
-                        body={"properties": updated_properties},
-                        fields="properties",
-                    ).execute()
-                    span.set_attribute("drive_write", True)
-                else:
-                    click.echo("  Drive write disabled, skipping Drive update.")
-                    span.set_attribute("drive_write", False)
-
                 # The Firestore write is gated by the presence of metadata_store
                 # (constructed only when firestore writes are enabled). Best
-                # effort: a Firestore failure must never break tagging or the
-                # Drive write.
+                # effort: a Firestore failure must never break tagging.
                 if self.metadata_store is not None:
                     try:
                         self.metadata_store.write(

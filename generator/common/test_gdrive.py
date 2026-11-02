@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch
-from .gdrive import GoogleDriveClient, _build_property_filters
+from .gdrive import GoogleDriveClient
 from .config import GoogleDriveClientConfig
 
 
@@ -40,7 +40,7 @@ def test_search_files_by_name(mock_drive_client):
     mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=10,
-        fields="files(id,name,parents,properties,mimeType)",
+        fields="files(id,name,parents,mimeType)",
     )
     mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
         num_retries=3
@@ -69,7 +69,7 @@ def test_query_drive_files_basic(mock_drive_client):
     mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q="('folder123' in parents) and trashed = false",
         pageSize=1000,
-        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
+        fields="nextPageToken, files(id,name,parents,mimeType)",
         orderBy="name_natural",
         pageToken=None,
     )
@@ -92,7 +92,7 @@ def test_query_drive_files_with_multiple_folders(mock_drive_client):
     mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q=expected_query,
         pageSize=1000,
-        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
+        fields="nextPageToken, files(id,name,parents,mimeType)",
         orderBy="name_natural",
         pageToken=None,
     )
@@ -186,152 +186,6 @@ def test_query_drive_files_logs_query(mock_echo, mock_drive_client):
     # Verify the query was logged
     mock_echo.assert_called_once_with(
         "Executing Drive API query: ('folder123' in parents) and trashed = false"
-    )
-
-
-def test_query_drive_files_with_property_filters(mock_drive_client):
-    """Test property filtering functionality."""
-    mock_response = {
-        "files": [
-            {"id": "file1", "name": "Song 1", "properties": {"artist": "Beatles"}}
-        ],
-        "nextPageToken": None,
-    }
-
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
-
-    property_filters = {"artist": "Beatles", "difficulty": "easy"}
-    result = mock_drive_client.query_drive_files(["folder123"], property_filters)
-
-    assert len(result) == 1
-    assert result[0].id == "file1"
-
-    # Verify the API was called with property filters
-    expected_query = (
-        "('folder123' in parents) and trashed = false and "
-        "properties has { key='artist' and value='Beatles' } and "
-        "properties has { key='difficulty' and value='easy' }"
-    )
-
-    mock_drive_client.drive.files.return_value.list.assert_called_once_with(
-        q=expected_query,
-        pageSize=1000,
-        fields="nextPageToken, files(id,name,parents,properties,mimeType)",
-        orderBy="name_natural",
-        pageToken=None,
-    )
-    mock_drive_client.drive.files.return_value.list.return_value.execute.assert_called_once_with(
-        num_retries=3
-    )
-
-
-@patch("generator.common.gdrive.click.echo")
-def test_query_drive_files_logs_property_filters(mock_echo, mock_drive_client):
-    """Test that property filters are logged."""
-    mock_response = {
-        "files": [{"id": "file1", "name": "Song 1"}],
-        "nextPageToken": None,
-    }
-
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = mock_response
-
-    property_filters = {"artist": "Beatles"}
-    mock_drive_client.query_drive_files(["folder123"], property_filters)
-
-    # Verify both the query and filters were logged
-    assert mock_echo.call_count == 2
-    calls = [call.args[0] for call in mock_echo.call_args_list]
-    assert any("Executing Drive API query:" in call for call in calls)
-    assert any(
-        "Filtering by properties: {'artist': 'Beatles'}" in call for call in calls
-    )
-
-
-def test__build_property_filters():
-    """Test the _build_property_filters function."""
-    # Test with no filters
-    assert _build_property_filters(None) == ""
-    assert _build_property_filters({}) == ""
-
-    # Test with single filter
-    result = _build_property_filters({"artist": "Beatles"})
-    expected = " and properties has { key='artist' and value='Beatles' }"
-    assert result == expected
-
-    # Test with multiple filters
-    result = _build_property_filters({"artist": "Beatles", "difficulty": "easy"})
-    # Since dict order may vary, check both possible orders
-    expected1 = (
-        " and properties has { key='artist' and value='Beatles' } and "
-        "properties has { key='difficulty' and value='easy' }"
-    )
-    expected2 = (
-        " and properties has { key='difficulty' and value='easy' } and "
-        "properties has { key='artist' and value='Beatles' }"
-    )
-    assert result in [expected1, expected2]
-
-    # Test escaping single quotes
-    result = _build_property_filters({"song": "Don't Stop Me Now"})
-    expected = " and properties has { key='song' and value='Don\\'t Stop Me Now' }"
-    assert result == expected
-
-
-def test_query_drive_files_with_client_filter_no_filter(mock_drive_client, mocker):
-    """Test client-side filtering when no filter is provided."""
-    mock_files = [Mock(properties={}), Mock(properties={})]
-    mocker.patch.object(mock_drive_client, "query_drive_files", return_value=mock_files)
-
-    result = mock_drive_client.query_drive_files_with_client_filter(["folder123"])
-
-    assert result == mock_files
-    mock_drive_client.query_drive_files.assert_called_once_with(
-        ["folder123"], None, modified_after=None
-    )
-
-
-def test_query_drive_files_with_client_filter_with_filter(mock_drive_client, mocker):
-    """Test client-side filtering with a filter applied."""
-    mock_files = [
-        Mock(properties={"difficulty": "easy"}),
-        Mock(properties={"difficulty": "hard"}),
-    ]
-    mocker.patch.object(mock_drive_client, "query_drive_files", return_value=mock_files)
-
-    client_filter = Mock()
-    client_filter.matches.side_effect = [
-        True,
-        False,
-    ]  # First song matches, second fails
-
-    result = mock_drive_client.query_drive_files_with_client_filter(
-        ["folder123"], client_filter
-    )
-
-    assert len(result) == 1
-    assert result[0] == mock_files[0]
-    mock_drive_client.query_drive_files.assert_called_once_with(
-        ["folder123"], None, modified_after=None
-    )
-    assert client_filter.matches.call_count == 2
-
-
-def test_query_drive_files_with_client_filter_passes_name_to_filter(
-    mock_drive_client, mocker
-):
-    """Test that file name is passed as 'name' key alongside properties."""
-    mock_file = Mock(properties={"artist": "Beatles"})
-    mock_file.name = "Hey Jude"
-    mocker.patch.object(
-        mock_drive_client, "query_drive_files", return_value=[mock_file]
-    )
-    client_filter = Mock()
-    client_filter.matches.return_value = True
-
-    mock_drive_client.query_drive_files_with_client_filter(["folder1"], client_filter)
-
-    client_filter.matches.assert_called_once_with(
-        {"artist": "Beatles", "name": "Hey Jude"}
     )
 
 
@@ -674,7 +528,7 @@ def test_find_file_in_folder_found(mock_drive_client):
     mock_drive_client.drive.files.return_value.list.assert_called_once_with(
         q="'folder123' in parents and name = '.songbook.yaml' and trashed = false",
         pageSize=1,
-        fields="files(id,name,mimeType,parents,properties)",
+        fields="files(id,name,mimeType,parents)",
     )
 
 

@@ -12,7 +12,7 @@ from ..common.caching import init_cache
 from ..common.config import get_settings
 from ..common.gdrive import GoogleDriveClient
 from ..common.metadata_store import get_metadata_store
-from ..tagupdater.tags import Tagger, split_specialbooks
+from ..tagupdater.tags import Tagger
 from ..worker.gcp import get_credentials
 from ..worker.pdf import init_services
 from .utils import SubcmdGroup, _resolve_file_id
@@ -20,14 +20,14 @@ from .utils import SubcmdGroup, _resolve_file_id
 
 @click.group(cls=SubcmdGroup)
 def tags():
-    """Get and set tags (custom properties) on Google Drive files."""
+    """Get and set song tags in the Firestore metadata store."""
 
 
 @tags.command(name="get")
 @click.argument("file_identifier")
 @click.argument("key", required=False)
 def get_tag(file_identifier, key):
-    """Get a specific tag or all tags for a Google Drive file."""
+    """Get a specific tag or all tags for a song sheet."""
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
         "songbook-metadata-writer"
@@ -45,16 +45,9 @@ def get_tag(file_identifier, key):
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
-    if settings.metadata_store.firestore_read_enabled:
-        store = get_metadata_store()
-        properties = store.get_properties(file_id)
-        if properties is None:
-            click.echo("No Firestore doc found, falling back to Drive.", err=True)
-            properties = gdrive_client.get_file_properties(file_id)
-    else:
-        properties = gdrive_client.get_file_properties(file_id)
-
+    properties = get_metadata_store().get_properties(file_id)
     if properties is None:
+        click.echo(f"No metadata document found for file ID '{file_id}'.", err=True)
         raise click.Abort()
 
     if key:
@@ -72,7 +65,7 @@ def get_tag(file_identifier, key):
 @click.argument("key")
 @click.argument("value")
 def set_tag(file_identifier, key, value):
-    """Set a tag on a Google Drive file."""
+    """Set a tag on a song sheet."""
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
         "songbook-metadata-writer"
@@ -88,13 +81,6 @@ def set_tag(file_identifier, key, value):
     )
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
-
-    if settings.metadata_store.drive_write_enabled:
-        if gdrive_client.set_file_property(file_id, key, value):
-            click.echo(f"Successfully set tag '{key}' to '{value}' in Drive.")
-        else:
-            click.echo("Failed to set tag in Drive.", err=True)
-            raise click.Abort()
 
     if settings.metadata_store.firestore_write_enabled:
         store = get_metadata_store()
@@ -108,7 +94,7 @@ def set_tag(file_identifier, key, value):
 @click.argument("file_identifier")
 @click.argument("key")
 def delete_tag(file_identifier, key):
-    """Delete a tag from a Google Drive file."""
+    """Delete a tag from a song sheet."""
     settings = get_settings()
     credential_config = settings.google_cloud.credentials.get(
         "songbook-metadata-writer"
@@ -125,28 +111,6 @@ def delete_tag(file_identifier, key):
     gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
     file_id = _resolve_file_id(gdrive_client, file_identifier)
 
-    if settings.metadata_store.drive_write_enabled:
-        try:
-            file_metadata = (
-                gdrive_client.drive.files()
-                .get(fileId=file_id, fields="properties")
-                .execute()
-            )
-            properties = file_metadata.get("properties", {})
-
-            if key not in properties:
-                click.echo(f"Tag '{key}' not found on file in Drive. No changes made.")
-            else:
-                gdrive_client.drive.files().update(
-                    fileId=file_id,
-                    body={"properties": {key: None}},
-                    fields="properties",
-                ).execute()
-                click.echo(f"Successfully deleted tag '{key}' from Drive.")
-        except HttpError as e:
-            click.echo(f"Failed to delete tag '{key}' from Drive: {e}", err=True)
-            raise click.Abort()
-
     if settings.metadata_store.firestore_write_enabled:
         store = get_metadata_store()
         props = store.get_properties(file_id)
@@ -157,114 +121,6 @@ def delete_tag(file_identifier, key):
         else:
             store.delete_property(file_id, key)
             click.echo(f"Successfully deleted tag '{key}' from Firestore.")
-
-
-@tags.command(name="migrate-specialbooks")
-@click.argument("file_identifier", required=False)
-@click.option(
-    "--all",
-    "all_files",
-    is_flag=True,
-    default=False,
-    help="Migrate all song sheets.",
-)
-@click.option(
-    "--dry-run",
-    is_flag=True,
-    help="Show what would be written without making any changes.",
-)
-def migrate_specialbooks(file_identifier, all_files, dry_run):
-    """Backfill typed `country`/`theme` tags from legacy `specialbooks` values.
-
-    Splits each file's `specialbooks` property into the new `country` and
-    `theme` properties (dropping edition/event values). Existing `country`/
-    `theme` values are left untouched, and `specialbooks` itself is preserved.
-    """
-    if not file_identifier and not all_files:
-        click.echo(
-            "Error: Either a file identifier or the --all flag must be provided.",
-            err=True,
-        )
-        raise click.Abort()
-    if file_identifier and all_files:
-        click.echo(
-            "Error: Cannot use both a file identifier and the --all flag.", err=True
-        )
-        raise click.Abort()
-
-    settings = get_settings()
-    credential_config = settings.google_cloud.credentials.get(
-        "songbook-metadata-writer"
-    )
-    if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
-        raise click.Abort()
-
-    drive, cache = init_services(
-        scopes=credential_config.scopes, target_principal=credential_config.principal
-    )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-
-    if file_identifier:
-        file_id = _resolve_file_id(gdrive_client, file_identifier)
-        files_to_process = gdrive_client.get_files_metadata_by_ids([file_id])
-    else:
-        click.echo("Fetching all song sheets from Drive...")
-        files_to_process = gdrive_client.query_drive_files(
-            settings.song_sheets.folder_ids
-        )
-
-    store = (
-        get_metadata_store()
-        if settings.metadata_store.firestore_write_enabled
-        else None
-    )
-
-    migrated = 0
-    for file_obj in files_to_process:
-        specialbooks = file_obj.properties.get("specialbooks")
-        if not specialbooks:
-            continue
-
-        country, theme, unknown = split_specialbooks(specialbooks)
-        if unknown:
-            click.echo(
-                f"  '{file_obj.name}': unrecognized specialbooks value(s): "
-                f"{', '.join(unknown)}",
-                err=True,
-            )
-
-        # Only set keys that resolved to a value and aren't already present.
-        new_props = {}
-        if country and "country" not in file_obj.properties:
-            new_props["country"] = country
-        if theme and "theme" not in file_obj.properties:
-            new_props["theme"] = theme
-        if not new_props:
-            continue
-
-        migrated += 1
-        rendered = ", ".join(f"{k}={v!r}" for k, v in new_props.items())
-        click.echo(f"'{file_obj.name}': {rendered}")
-        if dry_run:
-            continue
-
-        if settings.metadata_store.drive_write_enabled:
-            for key, value in new_props.items():
-                if not gdrive_client.set_file_property(file_obj.id, key, value):
-                    click.echo(
-                        f"  Failed to set '{key}' in Drive for '{file_obj.name}'.",
-                        err=True,
-                    )
-        if store is not None:
-            props = store.get_properties(file_obj.id) or {}
-            props.update(new_props)
-            store.write(file_obj.id, props)
-
-    suffix = " (dry run)" if dry_run else ""
-    click.echo(f"\nMigrated {migrated} file(s){suffix}.")
 
 
 # Date properties that store the literal string "unknown" as a sentinel when the
@@ -290,51 +146,15 @@ def _normalise_unknown_sentinels(doc: dict) -> dict:
     return doc
 
 
-def _load_metadata_documents(settings) -> list[dict]:
-    """Return all song metadata documents, sorted by Drive file ID.
-
-    Reads from Firestore when ``SONG_METADATA_FIRESTORE_READ_ENABLED`` is on
-    (the default); otherwise falls back to live Drive custom properties,
-    synthesising documents with the same top-level schema (minus the
-    Firestore-only ``metadata_updated_at`` timestamp).
+def _load_metadata_documents() -> list[dict]:
+    """Return all song metadata documents from Firestore, sorted by Drive file ID.
 
     Date fields holding the ``"unknown"`` sentinel are normalised to absent so
     the exported dataset never surfaces the magic string (see #442).
     """
-    if settings.metadata_store.firestore_read_enabled:
-        store = get_metadata_store()
-        all_docs = store.get_all()
-        return [
-            _normalise_unknown_sentinels(all_docs[file_id])
-            for file_id in sorted(all_docs)
-        ]
-
-    click.echo(
-        "Firestore read disabled; exporting from live Drive properties.", err=True
-    )
-    credential_config = settings.google_cloud.credentials.get(
-        "songbook-metadata-writer"
-    )
-    if not credential_config:
-        click.echo(
-            "Error: credential config 'songbook-metadata-writer' not found.", err=True
-        )
-        raise click.Abort()
-
-    drive, cache = init_services(
-        scopes=credential_config.scopes, target_principal=credential_config.principal
-    )
-    gdrive_client = GoogleDriveClient(cache=cache, drive=drive)
-    files = gdrive_client.query_drive_files(settings.song_sheets.folder_ids)
+    all_docs = get_metadata_store().get_all()
     return [
-        _normalise_unknown_sentinels(
-            {
-                "gdrive_file_id": f.id,
-                "gdrive_file_name": f.name,
-                "properties": dict(f.properties),
-            }
-        )
-        for f in sorted(files, key=lambda f: f.id)
+        _normalise_unknown_sentinels(all_docs[file_id]) for file_id in sorted(all_docs)
     ]
 
 
@@ -396,8 +216,7 @@ def _write_csv(documents: list[dict], out) -> None:
 def export_tags(output_format, output_path):
     """Bulk-export all song metadata (tags) to a local file or stdout.
 
-    Reads every song document from Firestore (respecting
-    SONG_METADATA_FIRESTORE_READ_ENABLED) and writes them in the requested
+    Reads every song document from Firestore and writes them in the requested
     format:
 
     \b
@@ -406,8 +225,7 @@ def export_tags(output_format, output_path):
     - csv: one row per song, columns derived from the union of all property
       keys present across documents.
     """
-    settings = get_settings()
-    documents = _load_metadata_documents(settings)
+    documents = _load_metadata_documents()
 
     with _open_output(output_path) as out:
         if output_format == "json":
@@ -495,7 +313,7 @@ def update_tags(
     tags,
     retag,
 ):
-    """Run the auto-tagger on a specific Google Drive file or all files."""
+    """Run the auto-tagger on a specific song sheet or all of them."""
     if not file_identifier and not all and not modified_since:
         click.echo(
             "Error: Either a file identifier, the --all flag, or --modified-since "
@@ -576,18 +394,12 @@ def update_tags(
         if settings.metadata_store.firestore_write_enabled
         else None
     )
-    metadata_reader = (
-        metadata_store or get_metadata_store()
-        if settings.metadata_store.firestore_read_enabled
-        else None
-    )
+    metadata_reader = metadata_store or get_metadata_store()
     if metadata_store is not None:
         click.echo(
             "Firestore metadata write enabled (collection "
             f"'{settings.metadata_store.firestore_collection}')."
         )
-    if not settings.metadata_store.drive_write_enabled:
-        click.echo("Drive metadata write disabled.")
     tags_keys = {k.strip() for k in tags.split(",")} if tags else None
     retag_keys = {k.strip() for k in retag.split(",")} if retag else None
     if tags_keys:
@@ -603,7 +415,6 @@ def update_tags(
         llm_tagging_enabled=effective_llm_tagging,
         metadata_store=metadata_store,
         metadata_reader=metadata_reader,
-        drive_write_enabled=settings.metadata_store.drive_write_enabled,
         tags=tags_keys,
         retag=retag_keys,
     )
