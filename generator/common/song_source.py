@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import List, Optional, Union
 
+import click
+
 from .gdrive import GoogleDriveClient
 from .metadata_store import SongMetadataStore
 from ..worker.models import File
@@ -15,7 +17,8 @@ class SongSheetSource:
     Drive is always used for file existence (id, name, mimeType, parents). When a
     ``metadata_store`` is provided, ``File.properties`` is overlaid from Firestore
     after the Drive file list is fetched, making Firestore the authoritative source
-    for metadata. Without a store, Drive properties are used unchanged.
+    for metadata, including for filtering. Without a store, Drive properties are
+    used unchanged.
     """
 
     def __init__(
@@ -34,15 +37,29 @@ class SongSheetSource:
     ) -> List[File]:
         """Return song sheet files, optionally filtered, with properties from the configured source.
 
-        Drive and Firestore mirror properties 1:1, so client-side filtering (which
-        uses properties) produces the same result regardless of which source is active.
+        With a metadata store, the filter runs after the Firestore overlay. Drive
+        properties are no longer written (#402), so filtering on them would drop
+        any song whose metadata changed since.
         """
+        if self._metadata_store is None:
+            return self._gdrive.query_drive_files_with_client_filter(
+                source_folders, client_filter, modified_after=modified_after
+            )
+
         files = self._gdrive.query_drive_files_with_client_filter(
-            source_folders, client_filter, modified_after=modified_after
+            source_folders, None, modified_after=modified_after
         )
-        if self._metadata_store is not None:
-            self._overlay_properties(files)
-        return files
+        self._overlay_properties(files)
+        if not client_filter:
+            return files
+
+        filtered = [
+            f for f in files if client_filter.matches({**f.properties, "name": f.name})
+        ]
+        click.echo(
+            f"Client-side filtering: {len(filtered)} files match out of {len(files)} total"
+        )
+        return filtered
 
     def _overlay_properties(self, files: List[File]) -> None:
         all_metadata = self._metadata_store.get_all()
