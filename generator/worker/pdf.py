@@ -734,7 +734,6 @@ def generate_songbook_from_edition(
         if files is not None:
             span.set_attribute("songs_pre_supplied", True)
             span.set_attribute("songs_files_count", len(files))
-            # Songs listed from a Drive folder carry no metadata yet.
             _make_song_source(drive, cache).hydrate(files)
 
         if edition.inherit_metadata_from_edition and files is not None and all_editions:

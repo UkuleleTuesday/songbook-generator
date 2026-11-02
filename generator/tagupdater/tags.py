@@ -457,8 +457,6 @@ class Tagger:
 
             current_properties = self._read_current_properties(file)
             context = Context(
-                # Tag functions read existing values (e.g. song, artist) from
-                # ctx.file.properties, so give them the stored ones.
                 file=replace(file, properties=current_properties.copy()),
                 file_name=file_name,
                 document=document,
