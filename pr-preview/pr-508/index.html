@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Songbook Chef</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.indigo-pink.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <main class="mdl-layout__content">
+      <div class="mdl-card mdl-shadow--2dp">
+        <div class="mdl-card__title">
+          <h3>Songbook Chef</h3>
+          <img src="img/logo.png" alt="Songbook Chef Logo" style="width: 50%; height: auto; margin: auto;" />
+          <p>
+            Songbook Chef is an experimental songbook generator for Ukulele Tuesday.
+            Issue reports, pull requests or improvement suggestions are welcome on
+            <a href="https://github.com/jjst/songbook-generator" target="_blank">GitHub</a>.
+          </p>
+        </div>
+        <div class="mdl-card__actions">
+          <div class="mdl-tabs mdl-js-tabs mdl-js-ripple-effect">
+            <section class="mdl-tabs__panel is-active" id="generator-panel">
+              <form id="jobForm" style="text-align: left;">
+                <div class="source-toggle-group">
+                  <span class="editions-section-label" style="margin-top: 0;">Edition Source</span>
+                  <div class="source-toggle" id="source-toggle"
+                       role="group" aria-label="Edition source">
+                    <label class="source-toggle-option">
+                      <input type="radio" name="edition_source"
+                             value="drive" checked>
+                      <span>Google Drive</span>
+                    </label>
+                    <label class="source-toggle-option">
+                      <input type="radio" name="edition_source"
+                             value="config">
+                      <span>Standard</span>
+                    </label>
+                  </div>
+                </div>
+                <div id="config-info" class="config-info"
+                     style="display: none;" role="note">
+                  <i class="material-icons" aria-hidden="true">folder</i>
+                  <div class="config-info-body">
+                    <p><strong>Config-based editions</strong></p>
+                    <p>Songbook editions can be defined by YAML files found in the <a href="https://github.com/UkuleleTuesday/songbook-generator/tree/main/generator/config/songbooks" target="_blank" rel="noopener noreferrer">config/songbooks</a> folder in this repository. To create or edit a config-based edition, add or edit a <code>.yaml</code> file in that directory. See the README for details on the format.</p>
+                  </div>
+                </div>
+                <div id="drive-warning" class="drive-warning"
+                     role="alert">
+                  <i class="material-icons" aria-hidden="true">science</i>
+                  <div class="drive-warning-body">
+                    <p><strong>Google Drive editions (Experimental)</strong></p>
+                    <p>These editions are defined by a <code>.songbook.yaml</code> file inside a Google Drive folder. Each folder that is a direct child of the configured source folders and contains a valid <code>.songbook.yaml</code> will appear here. Click the <span style="font-size:0.8rem; vertical-align:middle;" class="material-icons">folder_open</span> icon next to an edition to open its Drive folder. <a href="https://github.com/UkuleleTuesday/songbook-generator?tab=readme-ov-file#experimental-drive-based-edition-support" target="_blank" rel="noopener noreferrer">Learn more.</a></p>
+                  </div>
+                </div>
+                <span class="editions-section-label">Songbook Edition</span>
+                <div id="editions-grid" class="editions-grid">
+                  <div class="editions-loading">
+                    <div class="editions-loading-spinner"></div>
+                    Loading editions…
+                  </div>
+                </div>
+                <div id="editions-error" style="display: none; color: #c62828; font-size: 0.85rem; margin-top: 0.25rem;"></div>
+              </form>
+            </section>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/material-design-lite/1.3.0/material.min.js"></script>
+  <script>
+    function getApiBase() {
+      const currentPath = window.location.pathname;
+      const prMatch = currentPath.match(/\/pr-preview\/pr-(\d+)\//);
+      if (prMatch) {
+        const prNumber = prMatch[1];
+        return `https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api-pr-${prNumber}`;
+      }
+      return "https://europe-west1-songbook-generator.cloudfunctions.net/songbook-generator-api";
+    }
+
+    const apiBase = getApiBase();
+    let progressContainer = null;
+    let progressBar = null;
+    let progressText = null;
+    let progressPercentage = null;
+    let abortController = null;
+
+    function addSongbookToHistory(name, url, editionId) {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      // To keep the list clean, we'll limit it to the last 10 generated songbooks
+      const newSongbooks = [{ name, url, date: new Date().toISOString(), editionId }, ...songbooks].slice(0, 10);
+      localStorage.setItem('generatedSongbooks', JSON.stringify(newSongbooks));
+      if (editionId) updateEditionCardHistory(editionId);
+    }
+
+    function getEditionHistory(editionId) {
+      const songbooks = JSON.parse(localStorage.getItem('generatedSongbooks') || '[]');
+      return songbooks.filter(s => s.editionId === editionId);
+    }
+
+    function createEditionHistorySection(history) {
+      const section = document.createElement('div');
+      section.className = 'edition-card-history';
+
+      const label = document.createElement('span');
+      label.className = 'edition-card-history-label';
+      label.textContent = 'Previously generated';
+      section.appendChild(label);
+
+      const list = document.createElement('ul');
+      list.className = 'edition-card-history-list';
+
+      history.slice(0, 5).forEach(item => {
+        const li = document.createElement('li');
+        const icon = document.createElement('i');
+        icon.className = 'material-icons';
+        icon.textContent = 'picture_as_pdf';
+        li.appendChild(icon);
+        const a = document.createElement('a');
+        a.href = item.url;
+        a.target = '_blank';
+        a.textContent = new Date(item.date).toLocaleString('en-GB');
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+
+      section.appendChild(list);
+      return section;
+    }
+
+    function updateEditionCardHistory(editionId) {
+      const radio = document.getElementById(`edition-${editionId}`);
+      if (!radio) return;
+      const card = radio.closest('.edition-card');
+      if (!card) return;
+      const actions = card.querySelector('.edition-card-actions');
+      if (!actions) return;
+
+      const existing = actions.querySelector('.edition-card-history');
+      if (existing) existing.remove();
+
+      const history = getEditionHistory(editionId);
+      if (history.length > 0) {
+        actions.appendChild(createEditionHistorySection(history));
+      }
+    }
+
+    function setIndeterminate(indeterminate) {
+      if (!progressBar) return;
+      if (indeterminate) {
+        progressBar.classList.add('mdl-progress__indeterminate');
+      } else {
+        progressBar.classList.remove('mdl-progress__indeterminate');
+      }
+    }
+
+    function updateProgress(progress, message) {
+      if (!progressBar) return;
+      const percentage = Math.round(progress * 100);
+      if (progress > 0) {
+        setIndeterminate(false);
+      }
+      if (progressBar.MaterialProgress) {
+        progressBar.MaterialProgress.setProgress(percentage);
+      }
+      if (progressPercentage) progressPercentage.textContent = percentage + '%';
+      if (message && progressText) {
+        progressText.textContent = message;
+      }
+    }
+
+    function showProgress() {
+      const checked = document.querySelector(
+        'input[name="songbook_edition"]:checked'
+      );
+      if (!checked) return;
+      const card = checked.closest('.edition-card');
+      if (!card) return;
+      progressContainer = card.querySelector('.edition-card-progress');
+      progressBar = card.querySelector('.edition-card-progress-bar');
+      progressText = card.querySelector('.edition-card-progress-text');
+      progressPercentage = card.querySelector('.edition-card-progress-pct');
+      if (progressContainer) progressContainer.style.display = 'block';
+      setIndeterminate(true);
+      updateProgress(0, 'Starting...');
+    }
+
+    function hideProgress() {
+      document.querySelectorAll('.edition-card-progress').forEach(
+        el => { el.style.display = 'none'; }
+      );
+      progressContainer = null;
+      progressBar = null;
+      progressText = null;
+      progressPercentage = null;
+    }
+
+    function _makeGenerateButton() {
+      const btn = document.createElement('button');
+      btn.type = 'submit';
+      btn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
+      const icon = document.createElement('i');
+      icon.className = 'material-icons';
+      icon.textContent = 'auto_fix_high';
+      btn.appendChild(icon);
+      const text = document.createElement('span');
+      text.className = 'btn-text';
+      text.textContent = 'Generate';
+      btn.appendChild(text);
+      return btn;
+    }
+
+    function restoreGenerateButton() {
+      document.querySelectorAll('.edition-cancel-btn').forEach(cancelBtn => {
+        const generateBtn = _makeGenerateButton();
+        cancelBtn.replaceWith(generateBtn);
+        if (typeof componentHandler !== 'undefined') {
+          componentHandler.upgradeElement(generateBtn);
+        }
+      });
+    }
+
+    function showCancelButton() {
+      const checked = document.querySelector('input[name="songbook_edition"]:checked');
+      if (!checked) return;
+      const card = checked.closest('.edition-card');
+      if (!card) return;
+      const generateBtn = card.querySelector('.edition-generate-btn');
+      if (!generateBtn) return;
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect edition-cancel-btn';
+      const cancelIcon = document.createElement('i');
+      cancelIcon.className = 'material-icons';
+      cancelIcon.textContent = 'cancel';
+      cancelBtn.appendChild(cancelIcon);
+      const cancelText = document.createElement('span');
+      cancelText.className = 'btn-text';
+      cancelText.textContent = 'Cancel';
+      cancelBtn.appendChild(cancelText);
+      cancelBtn.addEventListener('click', () => {
+        if (abortController) abortController.abort();
+      });
+      generateBtn.replaceWith(cancelBtn);
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeElement(cancelBtn);
+      }
+    }
+
+    async function pollStatus(jobId, signal) {
+      const statusUrl = `${apiBase}/${jobId}`;
+      while (true) {
+        const res = await fetch(statusUrl, { method: 'GET', signal });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || res.statusText);
+        }
+        const data = await res.json();
+        const { status, result_url, progress, last_message } = data;
+
+        // Update progress if available
+        if (typeof progress === 'number') {
+          updateProgress(progress, last_message || `Status: ${status}`);
+        } else if (progressText) {
+          progressText.textContent = `Status: ${status}`;
+        }
+
+        if (status === 'completed') {
+          updateProgress(1.0, 'Completed! Starting download...');
+          return result_url;
+        }
+        if (status === 'failed') {
+          throw new Error('Job failed on server');
+        }
+        // wait before next poll
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 1000);
+          signal.addEventListener('abort', () => { clearTimeout(t); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+        });
+      }
+    }
+
+    /**
+     * All editions loaded from the API. Filtered by source before display.
+     */
+    let allEditions = [];
+    let hasDriveError = false;
+
+    /**
+     * Create a single edition card DOM element.
+     */
+    function _createDriveFolderLink(folderId) {
+      const driveLink = document.createElement('a');
+      driveLink.href =
+        `https://drive.google.com/drive/folders/${folderId}`;
+      driveLink.target = '_blank';
+      driveLink.rel = 'noopener noreferrer';
+      driveLink.className = 'edition-drive-link';
+      driveLink.title = 'Open Drive folder';
+      const icon = document.createElement('i');
+      icon.className = 'material-icons';
+      icon.textContent = 'folder_open';
+      driveLink.appendChild(icon);
+      return driveLink;
+    }
+
+    function createEditionCard(edition) {
+      const isError = edition.status === 'error';
+
+      const card = document.createElement('div');
+      card.className = isError ? 'edition-card edition-card--error' : 'edition-card';
+
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = 'songbook_edition';
+      radio.id = `edition-${edition.id}`;
+      radio.value = edition.id;
+      radio.className = 'edition-radio';
+      if (isError) radio.disabled = true;
+
+      const lbl = document.createElement('label');
+      lbl.htmlFor = radio.id;
+      lbl.className = 'edition-card-label';
+
+      const header = document.createElement('div');
+      header.className = 'edition-card-header';
+
+      const title = document.createElement('span');
+      title.className = 'edition-card-title';
+      title.textContent = edition.title || edition.folder_name || edition.id;
+      header.appendChild(title);
+
+      const headerRight = document.createElement('div');
+      headerRight.className = 'edition-card-header-right';
+
+      if (isError) {
+        const badge = document.createElement('span');
+        badge.className = 'edition-card-badge edition-card-badge--error';
+        badge.textContent = 'invalid';
+        headerRight.appendChild(badge);
+      } else if (edition.source) {
+        const badge = document.createElement('span');
+        badge.className = `edition-card-badge edition-card-badge--${edition.source}`;
+        badge.textContent = edition.source;
+        headerRight.appendChild(badge);
+      }
+
+      if (edition.folder_id) {
+        headerRight.appendChild(_createDriveFolderLink(edition.folder_id));
+      }
+
+      header.appendChild(headerRight);
+      lbl.appendChild(header);
+
+      if (!isError && edition.description) {
+        const desc = document.createElement('p');
+        desc.className = 'edition-card-description';
+        desc.textContent = edition.description;
+        lbl.appendChild(desc);
+      }
+
+      if (isError && edition.error) {
+        const errMsg = document.createElement('p');
+        errMsg.className = 'edition-card-error-msg';
+        const errIcon = document.createElement('i');
+        errIcon.className = 'material-icons';
+        errIcon.textContent = 'error_outline';
+        errMsg.appendChild(errIcon);
+        errMsg.appendChild(document.createTextNode(edition.error));
+        lbl.appendChild(errMsg);
+      }
+
+      card.appendChild(radio);
+      card.appendChild(lbl);
+
+      if (!isError) {
+        const actions = document.createElement('div');
+        actions.className = 'edition-card-actions';
+
+        const actionsRow = document.createElement('div');
+        actionsRow.className = 'edition-card-actions-row';
+
+        const generateBtn = document.createElement('button');
+        generateBtn.type = 'submit';
+        generateBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect mdl-button--accent edition-generate-btn';
+
+        const btnIcon = document.createElement('i');
+        btnIcon.className = 'material-icons';
+        btnIcon.textContent = 'auto_fix_high';
+        generateBtn.appendChild(btnIcon);
+
+        const btnText = document.createElement('span');
+        btnText.className = 'btn-text';
+        btnText.textContent = 'Generate';
+        generateBtn.appendChild(btnText);
+
+        const editUrl = edition.source === 'drive' && edition.folder_id
+          ? `https://drive.google.com/drive/folders/${edition.folder_id}`
+          : `https://github.com/UkuleleTuesday/songbook-generator/edit/main/generator/config/songbooks/${edition.id}.yaml`;
+
+        const editBtn = document.createElement('a');
+        editBtn.href = editUrl;
+        editBtn.target = '_blank';
+        editBtn.rel = 'noopener noreferrer';
+        editBtn.className = 'mdl-button mdl-js-button mdl-js-ripple-effect edition-edit-btn';
+
+        const editIcon = document.createElement('i');
+        editIcon.className = 'material-icons';
+        editIcon.textContent = edition.source === 'drive' ? 'folder_open' : 'edit';
+        editBtn.appendChild(editIcon);
+        editBtn.appendChild(document.createTextNode('Edit'));
+
+        actionsRow.appendChild(editBtn);
+        actionsRow.appendChild(generateBtn);
+        actions.appendChild(actionsRow);
+
+        const progressSection = document.createElement('div');
+        progressSection.className = 'edition-card-progress';
+        progressSection.style.display = 'none';
+
+        const progressBarEl = document.createElement('div');
+        progressBarEl.className =
+          'edition-card-progress-bar mdl-progress mdl-js-progress';
+        progressSection.appendChild(progressBarEl);
+
+        const progressInfo = document.createElement('div');
+        progressInfo.className = 'edition-card-progress-info';
+
+        const progressTextEl = document.createElement('span');
+        progressTextEl.className = 'edition-card-progress-text';
+        progressTextEl.textContent = 'Starting...';
+        progressInfo.appendChild(progressTextEl);
+
+        const progressPctEl = document.createElement('span');
+        progressPctEl.className = 'edition-card-progress-pct';
+        progressPctEl.textContent = '0%';
+        progressInfo.appendChild(progressPctEl);
+
+        progressSection.appendChild(progressInfo);
+        actions.appendChild(progressSection);
+
+        const history = getEditionHistory(edition.id);
+        if (history.length > 0) {
+          actions.appendChild(createEditionHistorySection(history));
+        }
+
+        card.appendChild(actions);
+      }
+
+      return card;
+    }
+
+    /**
+     * Render only editions matching the given source ('config' or 'drive').
+     * Shows the experimental warning banner when source is 'drive'.
+     */
+    function renderEditions(source) {
+      const grid = document.getElementById('editions-grid');
+      const editionsError = document.getElementById('editions-error');
+      const driveWarning = document.getElementById('drive-warning');
+      const configInfo = document.getElementById('config-info');
+
+      const filtered = allEditions.filter(e => e.source === source);
+
+      grid.innerHTML = '';
+      if (filtered.length === 0) {
+        const emptyMsg = source === 'drive'
+          ? 'No drive-based editions available.'
+          : 'No editions available.';
+        grid.innerHTML =
+          `<p class="editions-empty-msg">${emptyMsg}</p>`;
+      } else {
+        filtered.forEach((edition) => {
+          grid.appendChild(createEditionCard(edition));
+        });
+      }
+
+      driveWarning.style.display = source === 'drive' ? 'flex' : 'none';
+      configInfo.style.display = source === 'config' ? 'flex' : 'none';
+
+      if (hasDriveError && source === 'drive') {
+        editionsError.textContent =
+          'Note: Drive edition scanning encountered an error. ' +
+          'Some drive-based editions may not be listed.';
+        editionsError.style.display = 'block';
+      } else {
+        editionsError.style.display = 'none';
+      }
+
+      if (typeof componentHandler !== 'undefined') {
+        componentHandler.upgradeDom();
+      }
+    }
+
+    /**
+     * Populate the edition cards from the API response.
+     * Falls back gracefully if the API is unavailable.
+     */
+    async function loadEditions() {
+      const grid = document.getElementById('editions-grid');
+      const editionsError = document.getElementById('editions-error');
+      try {
+        const res = await fetch(`${apiBase}/editions`, { method: 'GET' });
+        if (!res.ok) throw new Error(`API returned ${res.status}`);
+        const data = await res.json();
+        allEditions = data.editions || [];
+        hasDriveError = !!data.drive_error;
+
+        const selectedSource = document.querySelector(
+          'input[name="edition_source"]:checked'
+        ).value;
+        renderEditions(selectedSource);
+      } catch (err) {
+        grid.innerHTML =
+          '<p class="editions-empty-msg">Could not load editions.</p>';
+        editionsError.textContent = 'Could not load editions from the API.';
+        editionsError.style.display = 'block';
+      }
+    }
+
+    document.getElementById("jobForm").onsubmit = async (e) => {
+      e.preventDefault();
+
+      // Show cancel button and progress
+      abortController = new AbortController();
+      showCancelButton();
+      showProgress();
+
+      const payload = {};
+
+      const checkedRadio = document.querySelector('input[name="songbook_edition"]:checked');
+      const songbookEdition = checkedRadio ? checkedRadio.value : '';
+
+      if (!songbookEdition) {
+        restoreGenerateButton();
+        hideProgress();
+        alert("Please select an edition.");
+        return;
+      }
+
+      payload.edition = songbookEdition;
+
+      try {
+        // submit job
+        updateProgress(0, 'Submitting job...');
+        const { signal } = abortController;
+        const submitRes = await fetch(apiBase, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal,
+        });
+        if (!submitRes.ok) throw new Error(submitRes.statusText);
+        const { job_id } = await submitRes.json();
+
+        updateProgress(0, 'Job submitted, waiting for processing...');
+
+        // poll until done
+        const downloadUrl = await pollStatus(job_id, signal);
+
+        updateProgress(1.0, 'Ready!');
+
+        // Add to history
+        const editionTitle = checkedRadio
+          ? checkedRadio.nextElementSibling.querySelector('.edition-card-title').textContent
+          : songbookEdition;
+        const songbookName = `Edition: ${editionTitle} - Generated on ${new Date().toLocaleString('en-GB')}`;
+        addSongbookToHistory(songbookName, downloadUrl, songbookEdition);
+        // Highlight the newly added history entry so the user can find the PDF
+        const activeCard = checkedRadio.closest('.edition-card');
+        if (activeCard) {
+          const firstHistoryItem = activeCard.querySelector('.edition-card-history-list li');
+          if (firstHistoryItem) firstHistoryItem.classList.add('edition-card-history-item--new');
+        }
+
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          updateProgress(0, `Error: ${err.message}`);
+          alert("Error: " + err.message);
+        } else {
+          updateProgress(0, 'Cancelled.');
+        }
+      } finally {
+        abortController = null;
+        restoreGenerateButton();
+        // Hide progress after a delay to let user see final status
+        setTimeout(() => {
+          hideProgress();
+        }, 3000);
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load editions from the API (populates the grid dynamically)
+      loadEditions();
+      // Re-render when the source toggle changes
+      document.querySelectorAll('input[name="edition_source"]').forEach(
+        radio => radio.addEventListener('change', () => {
+          renderEditions(radio.value);
+        })
+      );
+    });
+  </script>
+</body>
+</html>
