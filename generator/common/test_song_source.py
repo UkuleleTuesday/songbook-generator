@@ -12,7 +12,16 @@ from .test_metadata_store import FakeFirestore
 
 def _make_source(files, metadata: dict | None = None) -> SongSheetSource:
     gdrive = Mock(spec=GoogleDriveClient)
-    gdrive.query_drive_files_with_client_filter.return_value = files
+
+    def _query(source_folders, client_filter=None, modified_after=None):
+        # Mirror GoogleDriveClient: filter on the Drive properties it returns.
+        if not client_filter:
+            return files
+        return [
+            f for f in files if client_filter.matches({**f.properties, "name": f.name})
+        ]
+
+    gdrive.query_drive_files_with_client_filter.side_effect = _query
 
     if metadata is None:
         return SongSheetSource(gdrive)
@@ -68,4 +77,35 @@ def test_client_filter_is_passed_through_to_drive():
 
     gdrive.query_drive_files_with_client_filter.assert_called_once_with(
         ["folder1"], client_filter, modified_after=None
+    )
+
+
+READY_FILTER = PropertyFilter(key="status", operator="equals", value="READY_TO_PLAY")
+
+
+def test_firestore_mode_filters_on_firestore_properties():
+    # Drive writes are off, so a song readied since has no status on Drive.
+    files = [File(id="a", name="Song A", properties={})]
+    source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
+
+    result = source.collect_files(["folder1"], READY_FILTER)
+
+    assert [f.id for f in result] == ["a"]
+
+
+def test_firestore_mode_filter_ignores_stale_drive_properties():
+    files = [File(id="a", name="Song A", properties={"status": "READY_TO_PLAY"})]
+    source = _make_source(files, metadata={"a": {"status": "DRAFT"}})
+
+    assert source.collect_files(["folder1"], READY_FILTER) == []
+
+
+def test_firestore_mode_fetches_drive_files_unfiltered():
+    files = [File(id="a", name="Song A", properties={})]
+    source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
+
+    source.collect_files(["folder1"], READY_FILTER)
+
+    source._gdrive.query_drive_files_with_client_filter.assert_called_once_with(
+        ["folder1"], None, modified_after=None
     )
