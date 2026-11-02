@@ -1,4 +1,4 @@
-"""CLI commands for the Firestore-backed song metadata store (issue #281)."""
+"""CLI commands for the Firestore-backed song metadata store."""
 
 import json
 
@@ -10,7 +10,7 @@ from .utils import SubcmdGroup
 
 @click.group(cls=SubcmdGroup)
 def metadata():
-    """Manage the Firestore-backed song metadata store (#281)."""
+    """Manage the Firestore-backed song metadata store."""
 
 
 @metadata.command(name="copy")

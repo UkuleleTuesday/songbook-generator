@@ -17,7 +17,6 @@ from .tags import (
     duration,
     genre,
     ready_to_play_date,
-    split_specialbooks,
     status,
     tag,
     theme,
@@ -929,42 +928,6 @@ def test_country_validator(raw, expected):
 )
 def test_theme_validator(raw, expected):
     assert theme(_make_ctx(), raw) == expected
-
-
-# --- split_specialbooks tests ---
-
-
-@pytest.mark.parametrize(
-    "specialbooks,expected_country,expected_theme,expected_unknown",
-    [
-        ("ireland", "ireland", None, []),
-        ("pride", None, "pride", []),
-        ("pride,ireland,regular", "ireland", "pride", []),
-        ("pride,halloween", None, "pride,halloween", []),
-        ("scottish", "scotland", None, []),  # alias normalization
-        ("pride.uk", None, "pride", []),  # alias normalization
-        ("xmas", None, "christmas", []),  # legacy xmas -> christmas
-        ("womens-2026,hooley-2025,can2025,nocan2025,womens", None, None, []),  # dropped
-        (
-            "USA, UK",
-            "united states,united kingdom",
-            None,
-            [],
-        ),  # canonicalized + whitespace
-        ("ireland,ireland", "ireland", None, []),  # de-duplicated
-        ("new", None, None, ["new"]),  # unknown leftover surfaced
-        ("", None, None, []),
-        (None, None, None, []),
-    ],
-)
-def test_split_specialbooks(
-    specialbooks, expected_country, expected_theme, expected_unknown
-):
-    assert split_specialbooks(specialbooks) == (
-        expected_country,
-        expected_theme,
-        expected_unknown,
-    )
 
 
 # --- genre validator tests ---

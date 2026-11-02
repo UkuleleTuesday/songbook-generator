@@ -236,53 +236,6 @@ def _canonical_country(value: Optional[str]) -> Optional[str]:
     return (getattr(country, "common_name", None) or country.name).lower()
 
 
-def split_specialbooks(specialbooks: Optional[str]) -> tuple:
-    """
-    Split a legacy comma-separated ``specialbooks`` value into the new typed
-    ``country`` and ``theme`` properties.
-
-    Country/theme values are extracted (after normalization); edition/event and
-    other non-themed values (e.g. ``regular``, ``womens-2026``, ``hooley-2025``)
-    are dropped. Returns ``(country_csv, theme_csv, unknown_values)`` where the
-    CSV strings are ``None`` when empty and ``unknown_values`` lists any leftover
-    tokens that matched neither a country nor a theme (for logging).
-    """
-    countries: List[str] = []
-    themes: List[str] = []
-    unknown: List[str] = []
-    # Edition/event membership values handled by edition YAMLs, not migrated.
-    dropped = {
-        "regular",
-        "womens",
-        "womens-2026",
-        "hooley-2025",
-        "can2025",
-        "nocan2025",
-    }
-
-    for raw in (specialbooks or "").split(","):
-        token = raw.strip().lower()
-        if not token:
-            continue
-        if token in dropped:
-            continue
-        theme_token = _THEME_ALIASES.get(token, token)
-        if theme_token in THEME_VALUES:
-            if theme_token not in themes:
-                themes.append(theme_token)
-            continue
-        canonical = _canonical_country(token)
-        if canonical:
-            if canonical not in countries:
-                countries.append(canonical)
-        else:
-            unknown.append(token)
-
-    country_csv = ",".join(countries) if countries else None
-    theme_csv = ",".join(themes) if themes else None
-    return country_csv, theme_csv, unknown
-
-
 def tag(_func=None, *, only_if_unset: bool = False):
     """
     Decorator to register a function as a tag generator.
