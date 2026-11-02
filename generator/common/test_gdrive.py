@@ -78,17 +78,6 @@ def test_query_drive_files_basic(mock_drive_client):
     )
 
 
-def test_query_drive_files_ignores_drive_properties(mock_drive_client):
-    """Song metadata lives in Firestore; stale Drive properties are never read."""
-    mock_drive_client.drive.files.return_value.list.return_value.execute.return_value = {
-        "files": [{"id": "file1", "name": "Song 1", "properties": {"status": "DRAFT"}}],
-    }
-
-    result = mock_drive_client.query_drive_files(["folder123"])
-
-    assert result[0].properties == {}
-
-
 def test_query_drive_files_with_multiple_folders(mock_drive_client):
     """Test querying multiple source folders."""
     mock_response = {

@@ -878,7 +878,7 @@ def test_categorize_empty_list():
 def test_generate_from_drive_folder_hydrates_song_properties(
     mocker, fake_metadata_store
 ):
-    """Folder-listed songs get their properties from Firestore, not Drive."""
+    """Folder-listed songs get their properties from the metadata store."""
     fake_metadata_store.write("song1_id", {"difficulty": "2.5"})
     mocker.patch(
         "generator.common.gdrive.GoogleDriveClient.list_folder_contents",

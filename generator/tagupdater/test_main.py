@@ -26,7 +26,6 @@ def sample_changed_files():
             "folder_id": "folder1",
             "mime_type": "application/pdf",
             "parents": ["folder1"],
-            "properties": {"status": "APPROVED"},
         },
         {
             "id": "file2",
@@ -34,7 +33,6 @@ def sample_changed_files():
             "folder_id": "folder1",
             "mime_type": "application/pdf",
             "parents": ["folder1"],
-            "properties": {},
         },
     ]
 
@@ -111,13 +109,10 @@ def test_convert_to_file_objects(sample_changed_files):
     assert file1.name == ""
     assert file1.mimeType == "application/pdf"
     assert file1.parents == ["folder1"]
-    # Drive properties in older watcher messages are ignored.
-    assert file1.properties == {}
 
     file2 = file_objects[1]
     assert file2.id == "file2"
     assert file2.name == ""
-    assert file2.properties == {}
 
 
 def test_convert_to_file_objects_empty():

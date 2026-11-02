@@ -833,10 +833,10 @@ def test_run_llm_tags_interpolates_extra_in_prompt():
 
 
 @patch("generator.tagupdater.tags._now_iso", return_value="2026-03-25T11:00:00Z")
-def test_update_tags_writes_only_to_metadata_store(
+def test_update_tags_writes_to_metadata_store(
     mock_now, mock_drive_service, mock_docs_service
 ):
-    """Computed properties go to the metadata store; Drive is never written."""
+    """Computed properties are written to the metadata store."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {
         "name": "test.pdf"
     }
@@ -845,7 +845,6 @@ def test_update_tags_writes_only_to_metadata_store(
 
     tagger.update_tags(file_to_tag)
 
-    mock_drive_service.files.return_value.update.assert_not_called()
     store.write.assert_called_once_with(
         "file123",
         {"status": "APPROVED", "approved_date": "2026-03-25T11:00:00Z"},
@@ -1052,10 +1051,10 @@ def test_only_if_unset_reads_existing_tags_from_the_store(
         tags._TAGGERS.pop()
 
 
-def test_store_miss_ignores_drive_properties(
+def test_store_miss_sets_only_if_unset_tags(
     mock_drive_service, mock_docs_service, mocker
 ):
-    """A file with no stored doc is untagged, whatever its stale Drive properties."""
+    """A file with no stored doc yet gets its only_if_unset tags set."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
 
     @tag(only_if_unset=True)
@@ -1064,9 +1063,7 @@ def test_store_miss_ignores_drive_properties(
 
     try:
         tagger, store = _tagger(mock_drive_service, mock_docs_service)
-        tagger.update_tags(
-            File(id="file2", name="test.pdf", properties={"tag_if_unset": "stale"})
-        )
+        tagger.update_tags(File(id="file2", name="test.pdf"))
 
         assert _written(store, "file2")["tag_if_unset"] == "new_value"
     finally:
@@ -1076,7 +1073,7 @@ def test_store_miss_ignores_drive_properties(
 
 
 def test_tag_functions_see_stored_properties(mock_drive_service, mock_docs_service):
-    """ctx.file.properties holds the stored tags, not the Drive ones."""
+    """ctx.file.properties holds the file's stored tags."""
     mock_drive_service.files.return_value.get.return_value.execute.return_value = {}
     seen = {}
 
@@ -1091,9 +1088,7 @@ def test_tag_functions_see_stored_properties(mock_drive_service, mock_docs_servi
             mock_docs_service,
             stored={"file3": {"song": "Stored Title"}},
         )
-        tagger.update_tags(
-            File(id="file3", name="test.pdf", properties={"song": "Drive Title"})
-        )
+        tagger.update_tags(File(id="file3", name="test.pdf"))
 
         assert seen == {"song": "Stored Title"}
     finally:

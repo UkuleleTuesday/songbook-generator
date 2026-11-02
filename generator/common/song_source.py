@@ -12,12 +12,7 @@ from .filters import FilterGroup, PropertyFilter
 
 
 class SongSheetSource:
-    """Provides song sheet file lists with properties from the metadata store.
-
-    Drive is used for file existence only (id, name, mimeType, parents).
-    ``File.properties`` always comes from Firestore: Drive properties stopped
-    being written in #402 and are no longer read.
-    """
+    """Lists song sheets from Drive with their properties from the metadata store."""
 
     def __init__(self, gdrive: GoogleDriveClient, metadata_store: SongMetadataStore):
         self._gdrive = gdrive

@@ -84,9 +84,6 @@ class GoogleDriveClient:
         """
         List the files in the given Drive folders.
 
-        Song metadata is not read from Drive: it lives in the Firestore
-        metadata store (see ``SongSheetSource``).
-
         Args:
             source_folders: List of folder IDs to search in
             modified_after: Only return files modified after this timestamp

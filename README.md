@@ -301,7 +301,7 @@ The Cloud Functions require these environment variables:
 
 **Song metadata store variables (issue #281):**
 
-Song metadata (tags) lives only in Firestore; Drive is used for file existence and content. `TAGUPDATER_DRY_RUN=true` is a master override that suppresses all writes.
+Song metadata (tags) is stored in Firestore. `TAGUPDATER_DRY_RUN=true` is a master override that suppresses all writes.
 
 - `SONG_METADATA_FIRESTORE_WRITE_ENABLED`: Whether computed metadata is written to Firestore. Defaults to `true`.
 - `SONG_METADATA_FIRESTORE_COLLECTION`: Firestore collection name for song metadata documents. Defaults to `song-metadata`. Inspect a single document with `uv run songbook-tools metadata get <file-id>`. Preview environments are isolated via a named Firestore database (`FIRESTORE_DATABASE`) rather than a separate collection name.

@@ -281,11 +281,9 @@ class TagUpdater(BaseModel):
 
 
 class MetadataStore(BaseModel):
-    """Configuration for the Firestore song-sheet metadata store (issue #281).
+    """Configuration for the Firestore song-sheet metadata store.
 
-    Firestore is the only source of song metadata: Drive is used for file
-    existence only. ``TAGUPDATER_DRY_RUN`` remains a master override that
-    suppresses all writes.
+    ``TAGUPDATER_DRY_RUN`` is a master override that suppresses all writes.
     """
 
     firestore_collection: str = Field(

@@ -1,8 +1,4 @@
-"""Firestore-backed store for song-sheet metadata (issue #281).
-
-This is the only source of song metadata. It replaced Google Drive custom file
-properties, whose writes reset ``modifiedTime``/``lastModifyingUser`` and broke
-tab review (#281); Drive properties are no longer read or written (#481).
+"""Firestore-backed store for song-sheet metadata.
 
 Each song is one document keyed by its Drive file ID::
 

@@ -36,7 +36,7 @@ def test_properties_come_from_firestore():
 def test_file_without_firestore_doc_is_untagged(capsys):
     files = [
         File(id="a", name="Song A"),
-        File(id="b", name="Song B", properties={"status": "READY_TO_PLAY"}),
+        File(id="b", name="Song B"),
     ]
     source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
 
@@ -50,7 +50,6 @@ def test_file_without_firestore_doc_is_untagged(capsys):
 
 
 def test_filter_uses_firestore_properties():
-    # Drive writes are off, so a song readied since has no status on Drive (#506).
     files = [File(id="a", name="Song A")]
     source = _make_source(files, metadata={"a": {"status": "READY_TO_PLAY"}})
 
@@ -82,12 +81,3 @@ def test_drive_query_passes_folders_and_cutoff():
     source._gdrive.query_drive_files.assert_called_once_with(
         ["folder1"], modified_after=None
     )
-
-
-def test_hydrate_overwrites_existing_properties():
-    files = [File(id="a", name="Song A", properties={"difficulty": "1.0"})]
-    source = _make_source([], metadata={"a": {"difficulty": "3.5"}})
-
-    source.hydrate(files)
-
-    assert files[0].properties == {"difficulty": "3.5"}

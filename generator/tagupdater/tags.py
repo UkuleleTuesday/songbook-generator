@@ -459,12 +459,7 @@ class Tagger:
         self.retag: set = retag or set()
 
     def _read_current_properties(self, file: File) -> Dict[str, str]:
-        """Return the tags already recorded for this file in the metadata store.
-
-        Drive properties are never consulted: they stopped being written in
-        #402, and treating their stale values as current defeats only_if_unset
-        (#471, #442). A file with no store document has no tags yet.
-        """
+        """Return the tags recorded for this file; none if it has no document yet."""
         if self.metadata_reader is None:
             return {}
         return dict(self.metadata_reader.get_properties(file.id) or {})

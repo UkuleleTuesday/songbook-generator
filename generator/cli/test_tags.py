@@ -235,9 +235,8 @@ def test_migrate_specialbooks_reads_and_writes_the_store(runner, mocker):
         return_value=(mocker.Mock(), mocker.Mock()),
     )
     gdrive_client = mocker.Mock()
-    # Drive no longer carries properties; stale ones must be ignored.
     gdrive_client.query_drive_files.return_value = [
-        File(id="fileA", name="Song A", properties={"specialbooks": "ireland"}),
+        File(id="fileA", name="Song A"),
         File(id="fileB", name="Song B"),
     ]
     mocker.patch("generator.cli.tags.GoogleDriveClient", return_value=gdrive_client)

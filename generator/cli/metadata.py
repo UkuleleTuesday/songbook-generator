@@ -41,9 +41,6 @@ def copy(source_database, dest_database, dry_run):
     writes it into the destination database (merge semantics). Used to backfill
     an isolated per-PR preview database from production so previews see the same
     song properties as main.
-
-    Firestore is the only copy of song metadata, so there is nothing else to
-    hydrate a preview database from.
     """
     if source_database == dest_database:
         raise click.ClickException(
