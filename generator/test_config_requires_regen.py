@@ -4,7 +4,9 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).parent.parent / ".github" / "scripts" / "config-requires-regen.py"
+SCRIPT = (
+    Path(__file__).parent.parent / ".github" / "scripts" / "config-requires-regen.py"
+)
 
 BASE = 'id: "e"\ntitle: "E"\ndescription: "D"\n'
 
