@@ -243,7 +243,6 @@ jobs:
           GOOGLE_CLOUD_PROJECT: "${{ env.GCP_PROJECT_ID }}"
           FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
           FIRESTORE_COLLECTION: "${{ env.FIRESTORE_COLLECTION }}"
-          SONG_METADATA_FIRESTORE_READ_ENABLED: "true"
           GCS_CDN_BUCKET: "${{ env.GCS_CDN_BUCKET }}"
           GCS_WORKER_CACHE_BUCKET: "${{ env.GCS_WORKER_CACHE_BUCKET }}"
           GCP_REGION: "${{ env.GCP_REGION }}"
@@ -353,13 +352,8 @@ jobs:
           LOCAL_CACHE_ENABLED: "false"
           TAGUPDATER_TRIGGER_FIELD: "status"
           TAGUPDATER_DRY_RUN: "false"
-          # Drive and Firestore writes are controlled independently (#281).
-          # Metadata reads are served from Firestore, so the tag updater no
-          # longer writes to Drive in any environment: this avoids resetting
-          # modifiedTime / lastModifyingUser and breaking tab review (#281).
-          # Firestore writes go to an isolated per-PR named database on previews
-          # so the path is still exercised; main writes to the default database.
-          SONG_METADATA_DRIVE_WRITE_ENABLED: "false"
+          # Previews write to an isolated per-PR named Firestore database;
+          # main writes to the default database.
           SONG_METADATA_FIRESTORE_WRITE_ENABLED: "true"
           FIRESTORE_DATABASE: "${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || '' }}"
 
