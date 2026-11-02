@@ -875,9 +875,7 @@ def test_categorize_empty_list():
 # ---------------------------------------------------------------------------
 
 
-def test_generate_from_drive_folder_hydrates_song_properties(
-    mocker, fake_metadata_store
-):
+def test_generate_from_drive_folder_songs_have_properties(mocker, fake_metadata_store):
     """Folder-listed songs get their properties from the metadata store."""
     fake_metadata_store.write("song1_id", {"difficulty": "2.5"})
     mocker.patch(
@@ -1342,6 +1340,20 @@ def test_resolve_songs_from_folder_returns_sorted_files(mocker):
     mock_gdrive.find_subfolder_by_name.assert_called_once_with("folder_id", "Songs")
 
 
+def test_resolve_songs_from_folder_loads_properties(mocker, fake_metadata_store):
+    """Songs come back with their properties from the metadata store."""
+    fake_metadata_store.write("song_1", {"difficulty": "2.5"})
+    mock_gdrive = mocker.Mock()
+    mock_gdrive.find_subfolder_by_name.return_value = "songs_subfolder"
+    mock_gdrive.list_folder_contents.return_value = [
+        File(id="song_1", name="Amazing Grace.pdf")
+    ]
+
+    result = _resolve_songs_from_folder(mock_gdrive, "folder_id")
+
+    assert result[0].properties == {"difficulty": "2.5"}
+
+
 def test_resolve_songs_from_folder_no_subfolder_returns_none(mocker):
     """When no Songs subfolder exists, None is returned."""
     mock_gdrive = mocker.Mock()
@@ -1433,47 +1445,6 @@ def test_generate_songbook_from_edition_with_pre_supplied_files(mocker):
 
     call_kwargs = mock_generate.call_args.kwargs
     assert call_kwargs["files"] is song_files
-
-
-def test_generate_songbook_from_edition_hydrates_pre_supplied_files(
-    mocker, fake_metadata_store
-):
-    """Pre-supplied songs are hydrated before inherited difficulty is filled in."""
-    from ..common.config import Edition as Cfg_Edition
-
-    fake_metadata_store.write("song_1", {"status": "APPROVED"})
-    fake_metadata_store.write("ref_2", {"difficulty": "4.0"})
-    song_files = [
-        File(id="song_1", name="Amazing Grace.pdf"),
-        File(id="song_2", name="Bohemian Rhapsody.pdf"),
-    ]
-    mocker.patch(
-        "generator.common.gdrive.GoogleDriveClient.query_drive_files",
-        return_value=[File(id="ref_2", name="Bohemian Rhapsody.pdf")],
-    )
-    mock_generate = mocker.patch("generator.worker.pdf.generate_songbook")
-    ref = Cfg_Edition(id="ref", title="Ref", description="Ref")
-    edition = Cfg_Edition(
-        id="test",
-        title="Test",
-        description="Test",
-        inherit_metadata_from_edition="ref",
-    )
-
-    generate_songbook_from_edition(
-        drive=mocker.Mock(),
-        cache=mocker.Mock(),
-        source_folders=["folder_id"],
-        destination_path=Path("/tmp/out.pdf"),
-        edition=edition,
-        limit=None,
-        files=song_files,
-        all_editions=[ref, edition],
-    )
-
-    files = mock_generate.call_args.kwargs["files"]
-    assert files[0].properties == {"status": "APPROVED"}
-    assert files[1].properties == {"difficulty": "4.0"}
 
 
 def test_generate_songbook_from_edition_without_files_passes_none(mocker):

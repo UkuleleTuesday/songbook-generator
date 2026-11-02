@@ -28,7 +28,15 @@ class SongSheetSource:
         files = self._gdrive.query_drive_files(
             source_folders, modified_after=modified_after
         )
-        self.hydrate(files)
+        missing = self._load_properties(files)
+        if missing:
+            click.echo(
+                f"WARNING: {len(missing)} song sheet(s) have no Firestore metadata "
+                "and are treated as untagged:",
+                err=True,
+            )
+            for file in missing:
+                click.echo(f"  - {file.name} ({file.id})", err=True)
         if not client_filter:
             return files
 
@@ -40,12 +48,26 @@ class SongSheetSource:
         )
         return filtered
 
-    def hydrate(self, files: List[File]) -> None:
-        """Replace each file's properties with its Firestore metadata.
+    def list_folder(
+        self, folder_id: str, resolve_shortcuts: bool = False
+    ) -> List[File]:
+        """Return the files in a Drive folder with their properties."""
+        files = self._gdrive.list_folder_contents(
+            folder_id, resolve_shortcuts=resolve_shortcuts
+        )
+        self._load_properties(files)
+        return files
 
-        A file with no metadata document is treated as untagged, so property
-        filters leave it out. Each one is reported, since it usually means the
-        tag updater missed the file (#468).
+    def get_files(self, file_ids: List[str]) -> List[File]:
+        """Return the files with the given Drive IDs with their properties."""
+        files = self._gdrive.get_files_metadata_by_ids(file_ids)
+        self._load_properties(files)
+        return files
+
+    def _load_properties(self, files: List[File]) -> List[File]:
+        """Set each file's properties from the store; return files with no document.
+
+        A file with no document is untagged, so property filters leave it out.
         """
         all_metadata = self._metadata_store.get_all()
         missing = []
@@ -53,14 +75,5 @@ class SongSheetSource:
             doc = all_metadata.get(file.id)
             if doc is None:
                 missing.append(file)
-                file.properties = {}
-            else:
-                file.properties = dict(doc.get("properties", {}))
-        if missing:
-            click.echo(
-                f"WARNING: {len(missing)} song sheet(s) have no Firestore metadata "
-                "and are treated as untagged:",
-                err=True,
-            )
-            for file in missing:
-                click.echo(f"  - {file.name} ({file.id})", err=True)
+            file.properties = dict((doc or {}).get("properties", {}))
+        return missing

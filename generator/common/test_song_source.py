@@ -81,3 +81,30 @@ def test_drive_query_passes_folders_and_cutoff():
     source._gdrive.query_drive_files.assert_called_once_with(
         ["folder1"], modified_after=None
     )
+
+
+def test_list_folder_returns_files_with_properties():
+    source = _make_source([], metadata={"a": {"difficulty": "2.5"}})
+    source._gdrive.list_folder_contents.return_value = [
+        File(id="a", name="Song A"),
+        File(id="b", name="Song B"),
+    ]
+
+    result = source.list_folder("folder1", resolve_shortcuts=True)
+
+    assert [f.properties for f in result] == [{"difficulty": "2.5"}, {}]
+    source._gdrive.list_folder_contents.assert_called_once_with(
+        "folder1", resolve_shortcuts=True
+    )
+
+
+def test_get_files_returns_files_with_properties():
+    source = _make_source([], metadata={"a": {"status": "APPROVED"}})
+    source._gdrive.get_files_metadata_by_ids.return_value = [
+        File(id="a", name="Song A")
+    ]
+
+    result = source.get_files(["a"])
+
+    assert result[0].properties == {"status": "APPROVED"}
+    source._gdrive.get_files_metadata_by_ids.assert_called_once_with(["a"])
