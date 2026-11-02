@@ -168,6 +168,9 @@ class Edition(BaseModel):
     publish: "PublishConfig" = Field(default_factory=PublishConfig)
     sections: EditionSections = Field(default_factory=EditionSections)
     include_difficulty_wheels: bool = True
+    # Deploys never regenerate a frozen edition, so its published book keeps
+    # its contents and date. Generate it by hand to update it.
+    frozen: bool = False
     use_folder_components: bool = False
     source_file: Optional[str] = None
     inherit_metadata_from_edition: Optional[str] = None

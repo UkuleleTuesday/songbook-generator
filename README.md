@@ -68,6 +68,10 @@ on every push to `main` touching `generator/config/songbooks/` and patches those
 fields into the already-published `latest.json` files. Editions that have never been
 published are left alone.
 
+A top-level `frozen: true` stops deploys from regenerating an edition when its config
+changes, so a finished book keeps its contents and date. Run the `Generate Songbook`
+workflow by hand if it does need updating.
+
 ### Special-edition checklist
 
 For a one-off songbook tied to an event (Oktoberfest, Halloween, …):
@@ -84,6 +88,7 @@ For a one-off songbook tied to an event (Oktoberfest, Halloween, …):
    into the normal ordering, and drops off the main grid 30 days after its last
    song change. Delete `featured_until` whenever convenient, or set
    `visibility: unlisted` to retire the book from the listing entirely.
+   Set `frozen: true` once the book should no longer change.
 
 ## Wanna help?
 

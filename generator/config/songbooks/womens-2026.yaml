@@ -3,6 +3,7 @@ title: "Women's Songbook 2026"
 description: >
   A curated collection of songs by female-identified artists
   for the 2026 women's edition.
+frozen: true
 publish:
   visibility: public
 sections:
