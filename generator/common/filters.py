@@ -89,7 +89,7 @@ class FilterParser:
 
     @staticmethod
     def parse_simple_filter(filter_str: str) -> PropertyFilter:
-        """Parse a filter string like 'specialbooks:contains:regular' or 'year:gte:2000'"""
+        """Parse a filter string like 'theme:contains:halloween' or 'year:gte:2000'"""
         parts = filter_str.split(":", 2)
 
         if len(parts) == 2:
@@ -97,7 +97,7 @@ class FilterParser:
             key, value = parts
             return PropertyFilter(key=key, operator=FilterOperator.EQUALS, value=value)
         elif len(parts) == 3:
-            # Explicit operator: "specialbooks:contains:regular"
+            # Explicit operator: "theme:contains:halloween"
             key, op_str, value = parts
             try:
                 operator = FilterOperator(op_str)

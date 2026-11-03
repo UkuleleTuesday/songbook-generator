@@ -6,7 +6,8 @@ Usage:
 
 Exits 0 when the configs differ outside the `publish` block (regeneration
 needed), 1 when only publish metadata changed — that is handled by the
-sync-publish-metadata workflow without touching the published book.
+sync-publish-metadata workflow without touching the published book — or when
+the new config is `frozen`.
 """
 
 import sys
@@ -24,7 +25,11 @@ def load_without_publish(path):
 
 def main() -> None:
     old, new = sys.argv[1], sys.argv[2]
-    sys.exit(0 if load_without_publish(old) != load_without_publish(new) else 1)
+    new_cfg = load_without_publish(new)
+    if isinstance(new_cfg, dict) and new_cfg.get("frozen"):
+        print(f"{new}: edition is frozen, not regenerating")
+        sys.exit(1)
+    sys.exit(0 if load_without_publish(old) != new_cfg else 1)
 
 
 if __name__ == "__main__":

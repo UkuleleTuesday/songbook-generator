@@ -20,7 +20,7 @@ sections:
   table_of_contents:
     # Halloween 2026: pumpkin next to the Halloween songs. An explicit list
     # rather than a `theme contains halloween` filter, because Candy, Toxic,
-    # vampire and Zombie only carry the tag in `specialbooks`.
+    # vampire and Zombie aren't tagged `theme: halloween`.
     decorations:
       - badges:
           - text: " 🎃"

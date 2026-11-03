@@ -43,7 +43,7 @@ Each document is one song, keyed by its Drive file ID:
     "key": "C",
     "genre": "rock",
     "duration": "185",
-    "specialbooks": "regular,complete",
+    "theme": "halloween",
     "tabber": "Mischa"
     // ...etc — see note below
   },
@@ -55,13 +55,13 @@ Each document is one song, keyed by its Drive file ID:
 
 - It is a flat `map<string, string>` — **every value is a string**, even
   numbers, dates and lists. `year` is `"1970"`, `difficulty` is `"3.5"`,
-  list-like fields (`genre`, `specialbooks`, `chords`) are
+  list-like fields (`genre`, `theme`, `chords`) are
   comma-separated strings. You must coerce/split client-side.
 - The **key set is whatever the tag updater has written** — it is not a
   fixed schema. Treat unknown keys as optional. Commonly present keys include:
   `artist`, `song`, `year`, `status`, `difficulty`, `difficulty_bin`,
   `tabber`, `duration`, `gender`, `genre`, `key`, `songbooks`,
-  `specialbooks`, `song_in_subfolder`, `chords`, `features`, `bpm`,
+  `country`, `theme`, `song_in_subfolder`, `chords`, `features`, `bpm`,
   `time_signature`, `language`, `ready_to_play_date`, `approved_date`.
 - The top-level fields you can rely on are exactly three:
   `gdrive_file_id`, `gdrive_file_name`, `metadata_updated_at`, plus the
@@ -218,7 +218,7 @@ const songs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 ## 5. Post-processing checklist
 
 1. **Coerce strings.** `Number(properties.year)`, `parseFloat(properties.difficulty)`.
-2. **Split list fields** on `,` (`genre`, `specialbooks`, `chords`, `features`).
+2. **Split list fields** on `,` (`genre`, `theme`, `chords`, `features`).
 3. **Treat keys as optional** — do not assume any `properties` key exists.
 4. **Coerce the `"unknown"` sentinel to null.** `ready_to_play_date` and
    `approved_date` may hold the literal string `"unknown"` when the real date
