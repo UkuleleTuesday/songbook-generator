@@ -11,47 +11,11 @@ publish:
   pinned: true
 sections:
   cover:
-    # November 2026, subtle Halloween (Halloween_2025_cover_3). Normal cover:
-    # "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
-    file_id: "1VIAAD_IYEXSMch0rBcypDFzqWo50uRHl_TAfMmKCe80"
+    file_id: "1rxn4Kl6fe-SUFqfYieb5FrxkVwHLLVPbwOXtWRGc740"
   preface:
     file_ids:
       - "1ZxYst-xswtkO6ZSU7tiPKKDoYwvBRWo-ag2tyu6fO2w"
   table_of_contents:
-    # Halloween 2026: pumpkin next to the Halloween songs. An explicit list
-    # rather than a `theme contains halloween` filter, because Candy, Toxic,
-    # vampire and Zombie aren't tagged `theme: halloween`.
-    decorations:
-      - badges:
-          - text: " 🎃"
-        filters:
-          - key: "name"
-            operator: "in"
-            value:
-              - "Bad Moon Rising - Creedence Clearwater Revival"
-              - "Boris The Spider - The Who"
-              - "Candy - Paolo Nutini"
-              - "Creep - Radiohead"
-              - "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult"
-              - "Everybody (Backstreet's Back) (Radio Edit) - Backstreet Boys"
-              - "Ex's & Oh's - Elle King"
-              - "Highway to Hell - AC/DC"
-              - "In Bloom - Nirvana"
-              - "Jump in the Line - Harry Belafonte"
-              - "Monster Mash - Bobby (Boris) Pickett and the Crypt-Kickers"
-              - "Murder On The Dancefloor - Sophie Ellis-Bextor"
-              - "Nightcall - Kavinsky"
-              - "One Way or Another - Blondie"
-              - "Paint it, Black - The Rolling Stones"
-              - "Psycho Killer - Talking Heads"
-              - "She Wolf - Shakira"
-              - "Sweet Dreams (Are Made of This) - Eurythmics"
-              - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien"
-              - "Toxic - Britney Spears"
-              - "Tribute - Tenacious D"
-              - "vampire - Olivia Rodrigo"
-              - "(You're the) Devil in Disguise - Elvis Presley"
-              - "Zombie - The Cranberries"
     # decorations:
     #   - badges:
     #       - text: " ☘"
@@ -77,7 +41,6 @@ sections:
           - "BIRDS OF A FEATHER - Billie Eilish"
           - "Blinding Lights - The Weeknd"
           - "Blitzkrieg Bop - Ramones"
-          - "Boris The Spider - The Who" # Halloween 2026
           - "Brown Eyed Girl - Van Morrison"
           - "Call Me - Blondie"
           - "Call Me Maybe - Carly Rae Jepsen"
@@ -92,7 +55,6 @@ sections:
           - "Creep - Radiohead"
           - "Dirty Old Town - The Pogues"
           - "Dog Days Are Over - Florence + The Machine"
-          - "(Don't Fear) The Reaper (Single Version) - Blue Öyster Cult" # Halloween 2026
           - "Don't Look Back In Anger - Oasis"
           - "Don't Stop Me Now - Queen"
           - "Don't You (Forget About Me) - Simple Minds"
@@ -137,7 +99,6 @@ sections:
           - "Mambo No. 5 (a Little bit of...) - Lou Bega" # Promoted from the Oktoberfest 2026 special (6 Oct)
           - "Mamma Mia - ABBA"
           - "Man! I Feel Like A Woman! - Shania Twain"
-          - "Monster Mash - Bobby (Boris) Pickett and the Crypt-Kickers" # Halloween 2026
           - "Murder On The Dancefloor - Sophie Ellis-Bextor"
           - "Nancy Boy - Placebo"
           - "Nightcall - Kavinsky"
@@ -168,11 +129,9 @@ sections:
           - "TEXAS HOLD'EM - Beyoncé"
           - "The Best (Edit) - Tina Turner"
           - "The Lion Sleeps Tonight - The Tokens"
-          - "Time Warp - Little Nell, Patricia Quinn, Richard O'Brien" # Halloween 2026
           - "Torn - Natalie Imbruglia"
           - "Toxic - Britney Spears"
           - "Tree Hugger - Kimya Dawson & Antsy Pants"
-          - "Tribute - Tenacious D" # Halloween 2026
           - "Valerie (feat. Amy Winehouse) (Version Revisited) - Mark Ronson"
           - "vampire - Olivia Rodrigo"
           - "Venus - Bananarama"
